@@ -3,9 +3,10 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
-
+#include <unistd.h>
 
 int open_new_connection(int is_ipv6 
                         , struct sockaddr* local_address
@@ -70,8 +71,13 @@ int open_new_connection(int is_ipv6
                     }
                     //check connect status
                     if (connect_status < 0){
-                        puts("failed to connect");
-                        ret_state = RetState_ConnectFailed;
+                        if (errno == EINPROGRESS){
+                            puts("connection in progress");
+                            ret_state = RetState_NoErr;
+                        }else{
+                            puts("failed to connect");
+                            ret_state = RetState_ConnectFailed;
+                        }
                     }else{
                         puts("connect succeed");
                         ret_state = RetState_NoErr;
@@ -83,10 +89,11 @@ int open_new_connection(int is_ipv6
 
     if (ret_state != RetState_NoErr){
         //todo error handling
-        return 0;
+        return -1;
     }
 
-    return -1;
+    sleep(15);
+    return 0;
 }
 
 int main(int argc, char** argv)
@@ -97,14 +104,14 @@ int main(int argc, char** argv)
     memset(&local_addr, 0, sizeof(local_addr));
     local_addr.sin_len = sizeof(struct sockaddr_in);    
     local_addr.sin_family = AF_INET;
-    local_addr.sin_port = htons(9000);
-    local_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    local_addr.sin_port = htons(0);
+    inet_pton(AF_INET, "192.168.1.8", &(local_addr.sin_addr));
 
     memset(&remote_addr, 0, sizeof(remote_addr));
     remote_addr.sin_len = sizeof(struct sockaddr_in);    
     remote_addr.sin_family = AF_INET;
-    remote_addr.sin_port = htons(9000);
-    remote_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    remote_addr.sin_port = htons(80);
+    inet_pton(AF_INET, "172.217.6.78", &(remote_addr.sin_addr));
 
     open_new_connection(0, 
                         (struct sockaddr*) &local_addr, 
