@@ -5,10 +5,12 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <unistd.h>
+#include <sys/epoll.h>
 
-int open_new_connection(int is_ipv6 
+#include <gmodule.h>
+
+int tcp_new_connection(int is_ipv6 
                         , struct sockaddr* local_address
                         , struct sockaddr* remote_address)
 {
@@ -17,8 +19,6 @@ int open_new_connection(int is_ipv6
         RetState_ProgErr,
         RetState_SocketCreateFailed,
         RetState_BindFailed,
-        RetState_FcntlGetFailed,
-        RetState_FcntlSetFailed,
         RetState_ConnectFailed        
     };
 
@@ -31,10 +31,9 @@ int open_new_connection(int is_ipv6
 
     //create socket
     if (is_ipv6){
-        socket_fd = socket(AF_INET6 , SOCK_STREAM , 0);
-
+        socket_fd = socket(AF_INET6 , SOCK_STREAM | SOCK_NONBLOCK , 0);
     }else{
-        socket_fd = socket(AF_INET , SOCK_STREAM , 0);
+        socket_fd = socket(AF_INET , SOCK_STREAM | SOCK_NONBLOCK , 0);
     }
 
     if (socket_fd == -1) {
@@ -47,53 +46,41 @@ int open_new_connection(int is_ipv6
         }else{
             bind_status = bind(socket_fd, local_address, sizeof(struct sockaddr_in));
         }
-
         if (bind_status == -1){
             puts("failed to bind socket");
             ret_state = RetState_BindFailed;
         }else{
-            //set socket in non-blocking mode
-            socket_flags = fcntl(socket_fd, F_GETFL, 0);
-            if (socket_flags < 0){
-                puts("failed to get fcntl for socket");
-                ret_state = RetState_FcntlGetFailed;
+            //connect socket
+            if (is_ipv6){
+                connect_status = connect(socket_fd, remote_address, sizeof(struct sockaddr_in6));
             }else{
-                socket_flags |= O_NONBLOCK;
-                if (fcntl(socket_fd, F_SETFL, socket_flags) < 0){
-                    puts("failed to set fcntl for socket");
-                    ret_state = RetState_FcntlSetFailed;
+                connect_status = connect(socket_fd, remote_address, sizeof(struct sockaddr_in));
+            }
+            //check connect status
+            if (connect_status < 0){
+                if (errno == EINPROGRESS){
+                    puts("connection in progress");
+                    ret_state = RetState_NoErr;
                 }else{
-                    //connect socket
-                    if (is_ipv6){
-                        connect_status = connect(socket_fd, remote_address, sizeof(struct sockaddr_in6));
-                    }else{
-                        connect_status = connect(socket_fd, remote_address, sizeof(struct sockaddr_in));
-                    }
-                    //check connect status
-                    if (connect_status < 0){
-                        if (errno == EINPROGRESS){
-                            puts("connection in progress");
-                            ret_state = RetState_NoErr;
-                        }else{
-                            puts("failed to connect");
-                            ret_state = RetState_ConnectFailed;
-                        }
-                    }else{
-                        puts("connect succeed");
-                        ret_state = RetState_NoErr;
-                    }                    
+                    puts("failed to connect");
+                    ret_state = RetState_ConnectFailed;
                 }
+            }else{
+                puts("connection in progress2");
+                ret_state = RetState_NoErr;
             }
         }
     }
 
     if (ret_state != RetState_NoErr){
-        //todo error handling
+        if (socket_fd != -1){
+            close(socket_fd);
+            puts("socket close");
+        }
         return -1;
     }
 
-    sleep(15);
-    return 0;
+    return socket_fd;
 }
 
 int main(int argc, char** argv)
@@ -101,20 +88,60 @@ int main(int argc, char** argv)
     struct sockaddr_in local_addr;
     struct sockaddr_in remote_addr;
 
+    GSList* conn_ctx_list = g_slist_alloc ();
+
     memset(&local_addr, 0, sizeof(local_addr));
-    local_addr.sin_len = sizeof(struct sockaddr_in);    
     local_addr.sin_family = AF_INET;
-    local_addr.sin_port = htons(0);
-    inet_pton(AF_INET, "192.168.1.8", &(local_addr.sin_addr));
+    inet_pton(AF_INET, "10.116.0.61", &(local_addr.sin_addr));
 
     memset(&remote_addr, 0, sizeof(remote_addr));
-    remote_addr.sin_len = sizeof(struct sockaddr_in);    
     remote_addr.sin_family = AF_INET;
     remote_addr.sin_port = htons(80);
     inet_pton(AF_INET, "172.217.6.78", &(remote_addr.sin_addr));
 
-    open_new_connection(0, 
+    int epfd = epoll_create(1);
+
+
+    int socket_fd = tcp_new_connection(0, 
                         (struct sockaddr*) &local_addr, 
                         (struct sockaddr*) &remote_addr);
 
+    if (socket_fd == -1){
+        puts("failed to connect");
+    }else{
+        struct epoll_event event;
+        struct epoll_event events[1];
+        event.events = EPOLLOUT;
+        event.data.fd = socket_fd;
+        event.data.ptr = &socket_fd;
+        epoll_ctl(epfd, EPOLL_CTL_ADD, socket_fd, &event);
+
+        conn_ctx_list = g_slist_append (conn_ctx_list, GINT_TO_POINTER(socket_fd));
+
+        int continue_app = 1;
+        while(continue_app == 1){
+            int num_ready = epoll_wait(epfd, events, 1, 0);
+            if (num_ready > 0){
+                for(int event_index = 0; event_index < num_ready; event_index++){
+                    socket_fd = *((int*)events[event_index].data.ptr);
+                    //check if connection succeed
+                    int code;
+                    socklen_t len = sizeof(int);
+                    int ret = getsockopt(socket_fd, SOL_SOCKET, SO_ERROR, &code, &len);
+                    if ((ret||code) == 0){
+                        puts("connected");
+                        continue_app = 0;
+                    }else{
+                        perror("connect or write fail");
+                        continue_app = 0;
+                    }
+                }
+            }
+        }
+
+
+        puts("exit");
+    }
+
+    close(epfd);
 }
