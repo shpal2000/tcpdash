@@ -10,7 +10,7 @@
 
 #include <gmodule.h>
 
-int tcp_new_connection(int is_ipv6 
+int tcp_start_new_connection(int is_ipv6 
                         , struct sockaddr* local_address
                         , struct sockaddr* remote_address)
 {
@@ -102,7 +102,7 @@ int main(int argc, char** argv)
     int epfd = epoll_create(1);
 
 
-    int socket_fd = tcp_new_connection(0, 
+    int socket_fd = tcp_start_new_connection(0, 
                         (struct sockaddr*) &local_addr, 
                         (struct sockaddr*) &remote_addr);
 
