@@ -1,0 +1,50 @@
+{
+    "version": "0.2.0",
+    "configurations": [ 
+      {
+        "name": "C++ Launch",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${workspaceRoot}/apps/bin/sf_test",
+        "miDebuggerServerAddress": "localhost:9091",
+        "args": [],
+        "stopAtEntry": true,
+        "cwd": "${workspaceRoot}",
+        "environment": [],
+        "externalConsole": true,
+        "linux": {
+          "MIMode": "gdb"
+        },
+        "osx": {
+          "MIMode": "gdb"
+        },
+        "windows": {
+          "MIMode": "gdb"
+        },
+        "sourceFileMap": { "/home/user/tcpdash": "/Users/spal/Documents/tcpdash" }
+      },
+
+      {
+        "name": "C++ Dump",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${workspaceRoot}/socket_factory/a.out",
+        "coreDumpPath": "${workspaceRoot}/socket_factory/dump",
+        "args": [],
+        "stopAtEntry": true,
+        "cwd": "${workspaceRoot}",
+        "environment": [],
+        "externalConsole": true,
+        "linux": {
+          "MIMode": "gdb"
+        },
+        "osx": {
+          "MIMode": "gdb"
+        },
+        "windows": {
+          "MIMode": "gdb"
+        },
+        "sourceFileMap": { "/home/user/tcpdash": "/Users/spal/Documents/tcpdash" }
+      }      
+    ]
+  }

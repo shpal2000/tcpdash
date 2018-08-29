@@ -6,30 +6,26 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <unistd.h>
-#include <sys/epoll.h>
 
+#include <sys/epoll.h>
 #include <gmodule.h>
 
 int tcp_start_new_connection(int is_ipv6 
-                        , struct sockaddr* local_address
-                        , struct sockaddr* remote_address)
+                        , struct sockaddr* localAddress
+                        , struct sockaddr* remoteAddress)
 {
     enum RetState {
         RetState_NoErr=0,
         RetState_ProgErr,
         RetState_SocketCreateFailed,
         RetState_BindFailed,
-        RetState_ConnectFailed        
+        RetState_ConnectFailed
     };
 
     enum RetState ret_state = RetState_ProgErr; 
 
-    int socket_fd = -1;
-    int bind_status = -1;
-    int connect_status = -1;
-    int socket_flags = -1;
-
     //create socket
+    int socket_fd = -1;
     if (is_ipv6){
         socket_fd = socket(AF_INET6 , SOCK_STREAM | SOCK_NONBLOCK , 0);
     }else{
@@ -41,20 +37,22 @@ int tcp_start_new_connection(int is_ipv6
         ret_state = RetState_SocketCreateFailed;
     }else{
         //bind local socket
+        int bind_status = -1;
         if (is_ipv6){
-            bind_status = bind(socket_fd, local_address, sizeof(struct sockaddr_in6));
+            bind_status = bind(socket_fd, localAddress, sizeof(struct sockaddr_in6));
         }else{
-            bind_status = bind(socket_fd, local_address, sizeof(struct sockaddr_in));
+            bind_status = bind(socket_fd, localAddress, sizeof(struct sockaddr_in));
         }
         if (bind_status == -1){
             puts("failed to bind socket");
             ret_state = RetState_BindFailed;
         }else{
             //connect socket
+            int connect_status = -1;
             if (is_ipv6){
-                connect_status = connect(socket_fd, remote_address, sizeof(struct sockaddr_in6));
+                connect_status = connect(socket_fd, remoteAddress, sizeof(struct sockaddr_in6));
             }else{
-                connect_status = connect(socket_fd, remote_address, sizeof(struct sockaddr_in));
+                connect_status = connect(socket_fd, remoteAddress, sizeof(struct sockaddr_in));
             }
             //check connect status
             if (connect_status < 0){
@@ -85,26 +83,26 @@ int tcp_start_new_connection(int is_ipv6
 
 int main(int argc, char** argv)
 {
-    struct sockaddr_in local_addr;
-    struct sockaddr_in remote_addr;
+    struct sockaddr_in localAddr;
+    struct sockaddr_in remoteAddr;
 
-    GSList* conn_ctx_list = g_slist_alloc ();
+    GSList* connCtxList = g_slist_alloc ();
 
-    memset(&local_addr, 0, sizeof(local_addr));
-    local_addr.sin_family = AF_INET;
-    inet_pton(AF_INET, "10.116.0.61", &(local_addr.sin_addr));
+    memset(&localAddr, 0, sizeof(localAddr));
+    localAddr.sin_family = AF_INET;
+    inet_pton(AF_INET, "10.116.0.61", &(localAddr.sin_addr));
 
-    memset(&remote_addr, 0, sizeof(remote_addr));
-    remote_addr.sin_family = AF_INET;
-    remote_addr.sin_port = htons(80);
-    inet_pton(AF_INET, "172.217.6.78", &(remote_addr.sin_addr));
+    memset(&remoteAddr, 0, sizeof(remoteAddr));
+    remoteAddr.sin_family = AF_INET;
+    remoteAddr.sin_port = htons(80);
+    inet_pton(AF_INET, "172.217.6.78", &(remoteAddr.sin_addr));
 
     int epfd = epoll_create(1);
 
 
     int socket_fd = tcp_start_new_connection(0, 
-                        (struct sockaddr*) &local_addr, 
-                        (struct sockaddr*) &remote_addr);
+                        (struct sockaddr*) &localAddr, 
+                        (struct sockaddr*) &remoteAddr);
 
     if (socket_fd == -1){
         puts("failed to connect");
@@ -116,7 +114,7 @@ int main(int argc, char** argv)
         event.data.ptr = &socket_fd;
         epoll_ctl(epfd, EPOLL_CTL_ADD, socket_fd, &event);
 
-        conn_ctx_list = g_slist_append (conn_ctx_list, GINT_TO_POINTER(socket_fd));
+        connCtxList = g_slist_append (connCtxList, GINT_TO_POINTER(socket_fd));
 
         int continue_app = 1;
         while(continue_app == 1){
@@ -128,7 +126,7 @@ int main(int argc, char** argv)
                     int code;
                     socklen_t len = sizeof(int);
                     int ret = getsockopt(socket_fd, SOL_SOCKET, SO_ERROR, &code, &len);
-                    if ((ret||code) == 0){
+                    if ((ret|code) == 0){
                         puts("connected");
                         continue_app = 0;
                     }else{
