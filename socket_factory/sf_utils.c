@@ -10,8 +10,9 @@
 #include <sys/epoll.h>
 #include <gmodule.h>
 
+#include "td_states.h"
+#include "lf_utils.h"
 #include "sf_utils.h"
-#include "td_errno.h"
 
 /** @brief Initiate the TCP connection establishment process 
  *         to remote host.
@@ -25,7 +26,8 @@
  */
 int TcpNewConnection(int isIpv6 
                         , struct sockaddr* localAddress
-                        , struct sockaddr* remoteAddress)
+                        , struct sockaddr* remoteAddress
+                        , struct TDLogEntry* tdLogEntry)
 {
     int ret_state = TD_PROGRAM_ERROR; 
 
@@ -38,7 +40,7 @@ int TcpNewConnection(int isIpv6
     }
 
     if (socket_fd == -1) {
-        puts("failed to create socket");
+        TDLog(tdLogEntry,"failed to create socket");
         ret_state = TD_SOCKET_CREATE_FAILED;
     }else{
         //bind local socket
@@ -49,7 +51,7 @@ int TcpNewConnection(int isIpv6
             bind_status = bind(socket_fd, localAddress, sizeof(struct sockaddr_in));
         }
         if (bind_status == -1){
-            puts("failed to bind socket");
+            TDLog(tdLogEntry,"failed to bind socket");
             ret_state = TD_SOCKET_BIND_FAILED;
         }else{
             //connect socket
@@ -62,14 +64,14 @@ int TcpNewConnection(int isIpv6
             //check connect status
             if (connect_status < 0){
                 if (errno == EINPROGRESS){
-                    puts("connection in progress");
+                    TDLog(tdLogEntry,"connection in progress");
                     ret_state = TD_NO_ERROR;
                 }else{
-                    puts("failed to connect");
+                    TDLog(tdLogEntry,"failed to connect");
                     ret_state = TD_SOCKET_CONNECT_FAILED;
                 }
             }else{
-                puts("connection in progress2");
+                TDLog(tdLogEntry,"connection in progress2");
                 ret_state = TD_NO_ERROR;
             }
         }
@@ -78,7 +80,7 @@ int TcpNewConnection(int isIpv6
     if (ret_state != TD_NO_ERROR){
         if (socket_fd != -1){
             close(socket_fd);
-            puts("socket close");
+            TDLog(tdLogEntry,"socket close");
         }
         return -1;
     }

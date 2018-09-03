@@ -52,8 +52,6 @@ Mkfile.old
 dkms.conf
 
 CMakeFiles/
-CMakeCache.txt
-Makefile
-cmake_install.cmake
-build/cmake_install.cmake
-apps/bin/sf_test
+bin/
+docs/
+build/

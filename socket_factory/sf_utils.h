@@ -2,5 +2,6 @@
 #define __SF_UTILS_H
 int TcpNewConnection(int isIpv6 
                         , struct sockaddr* localAddress
-                        , struct sockaddr* remoteAddress);
+                        , struct sockaddr* remoteAddress
+                        , struct TDLogEntry* tdLogEntry);
 #endif

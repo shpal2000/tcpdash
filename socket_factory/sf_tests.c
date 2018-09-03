@@ -10,6 +10,7 @@
 #include <sys/epoll.h>
 #include <gmodule.h>
 
+#include "lf_utils.h"
 #include "sf_utils.h"
 
 int main(int argc, char** argv)
@@ -21,7 +22,7 @@ int main(int argc, char** argv)
 
     memset(&localAddr, 0, sizeof(localAddr));
     localAddr.sin_family = AF_INET;
-    inet_pton(AF_INET, "10.116.0.61", &(localAddr.sin_addr));
+    inet_pton(AF_INET, "10.116.0.62", &(localAddr.sin_addr));
 
     memset(&remoteAddr, 0, sizeof(remoteAddr));
     remoteAddr.sin_family = AF_INET;
@@ -33,7 +34,8 @@ int main(int argc, char** argv)
 
     int socket_fd = TcpNewConnection(0, 
                         (struct sockaddr*) &localAddr, 
-                        (struct sockaddr*) &remoteAddr);
+                        (struct sockaddr*) &remoteAddr,
+                        NULL);
 
     if (socket_fd == -1){
         puts("failed to connect");
