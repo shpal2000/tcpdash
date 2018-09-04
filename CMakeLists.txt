@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 
-set(CMAKE_C_FLAGS "-std=c99")
+set(CMAKE_C_FLAGS "-std=c99 -g")
 
 project(tcpdash)
 
@@ -14,12 +14,13 @@ include_directories("${PROJECT_SOURCE_DIR}"
                     /usr/lib/x86_64-linux-gnu/glib-2.0/include 
                     ${CMAKE_SOURCE_DIR}/socket_factory
                     ${CMAKE_SOURCE_DIR}/log_factory
-                    ${CMAKE_SOURCE_DIR}/include)
+                    ${CMAKE_SOURCE_DIR}/session_factory)
 
 add_executable(sf_tests.exe 
                 ${PROJECT_SOURCE_DIR}/log_factory/lf_utils.c
                 ${PROJECT_SOURCE_DIR}/socket_factory/sf_utils.c
-                ${PROJECT_SOURCE_DIR}/socket_factory/sf_tests.c)
+                ${PROJECT_SOURCE_DIR}/socket_factory/sf_tests.c
+                ${PROJECT_SOURCE_DIR}/session_factory/sessions.c)
 
 target_link_libraries(sf_tests.exe glib-2.0)
 

@@ -5,7 +5,7 @@
         "name": "C++ Launch",
         "type": "cppdbg",
         "request": "launch",
-        "program": "${workspaceRoot}/apps/bin/sf_test",
+        "program": "${workspaceRoot}/bin/sf_tests.exe",
         "miDebuggerServerAddress": "localhost:9091",
         "args": [],
         "stopAtEntry": true,

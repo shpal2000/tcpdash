@@ -11,6 +11,7 @@
 #include <gmodule.h>
 
 #include "lf_utils.h"
+#include "sstates.h"
 #include "sf_utils.h"
 
 int main(int argc, char** argv)
@@ -31,11 +32,11 @@ int main(int argc, char** argv)
 
     int epfd = epoll_create(1);
 
-
+    struct TDSessionState tdSessionState; 
     int socket_fd = TcpNewConnection(0, 
                         (struct sockaddr*) &localAddr, 
                         (struct sockaddr*) &remoteAddr,
-                        NULL);
+                        &tdSessionState);
 
     if (socket_fd == -1){
         puts("failed to connect");
