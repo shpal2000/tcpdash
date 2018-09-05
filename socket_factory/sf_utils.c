@@ -6,11 +6,8 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <unistd.h>
-
 #include <gmodule.h>
 
-#include "lf_utils.h"
-#include "sstates.h"
 #include "sf_utils.h"
 
 /** @brief Initiate the TCP connection establishment process 
@@ -26,7 +23,7 @@
 int TcpNewConnection(int isIpv6 
                         , struct sockaddr* localAddress
                         , struct sockaddr* remoteAddress
-                        , struct TDSessionState* tdSessionState)
+                        , struct TDSession* tdSessionState)
 {
     TDSetSessionLastErr(tdSessionState, TD_PROGRAM_ERROR_TcpNewConnection);
 

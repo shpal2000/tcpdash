@@ -6,13 +6,12 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <unistd.h>
-
 #include <sys/epoll.h>
 #include <gmodule.h>
 
 #include "lf_utils.h"
-#include "sstates.h"
 #include "sf_utils.h"
+
 
 int main(int argc, char** argv)
 {
@@ -23,7 +22,7 @@ int main(int argc, char** argv)
 
     memset(&localAddr, 0, sizeof(localAddr));
     localAddr.sin_family = AF_INET;
-    inet_pton(AF_INET, "10.116.0.62", &(localAddr.sin_addr));
+    inet_pton(AF_INET, "10.116.0.61", &(localAddr.sin_addr));
 
     memset(&remoteAddr, 0, sizeof(remoteAddr));
     remoteAddr.sin_family = AF_INET;
@@ -32,7 +31,9 @@ int main(int argc, char** argv)
 
     int epfd = epoll_create(1);
 
-    struct TDSessionState tdSessionState; 
+    struct TDSession tdSessionState;
+    TDSessionInit(&tdSessionState);
+
     int socket_fd = TcpNewConnection(0, 
                         (struct sockaddr*) &localAddr, 
                         (struct sockaddr*) &remoteAddr,
@@ -62,6 +63,7 @@ int main(int argc, char** argv)
                     int ret = getsockopt(socket_fd, SOL_SOCKET, SO_ERROR, &code, &len);
                     if ((ret|code) == 0){
                         puts("connected");
+                        TDSetSessionState1(&tdSessionState, STATE_TCP_CONN_ESTABLISHED);
                         continue_app = 0;
                     }else{
                         perror("connect or write fail");
