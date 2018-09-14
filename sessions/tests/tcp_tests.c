@@ -12,7 +12,6 @@
 #include "lf_utils.h"
 #include "sf_utils.h"
 
-
 int main(int argc, char** argv)
 {
     struct sockaddr_in localAddr;

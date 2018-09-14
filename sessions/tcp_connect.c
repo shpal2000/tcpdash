@@ -8,7 +8,10 @@
 #include <unistd.h>
 #include <gmodule.h>
 
-#include "sf_utils.h"
+#include "sstates.h"
+#include "tcp_connect.h"
+#include "logging/logs.h"
+
 
 /** @brief Initiate the TCP connection establishment process 
  *         to remote host.
@@ -23,9 +26,9 @@
 int TcpNewConnection(int isIpv6 
                         , struct sockaddr* localAddress
                         , struct sockaddr* remoteAddress
-                        , struct TDSession* tdSessionState)
+                        , struct TDSessionState* tdSessionState)
 {
-    TDSetSessionLastErr(tdSessionState, TD_PROGRAM_ERROR_TcpNewConnection);
+    TDSetSessionStateLastErr(tdSessionState, TD_PROGRAM_ERROR_TcpNewConnection);
 
     //create socket
     int socket_fd = -1;
@@ -36,7 +39,7 @@ int TcpNewConnection(int isIpv6
     }
 
     if (socket_fd == -1) {
-        TDSetSessionLastErr(tdSessionState, TD_SOCKET_CREATE_FAILED);
+        TDSetSessionStateLastErr(tdSessionState, TD_SOCKET_CREATE_FAILED);
     }else{
         TDSetSessionState1(tdSessionState, STATE_TCP_SOCK_CREATE);
 
@@ -49,7 +52,7 @@ int TcpNewConnection(int isIpv6
         }
         
         if (bind_status == -1){
-            TDSetSessionLastErr(tdSessionState, TD_SOCKET_BIND_FAILED);
+            TDSetSessionStateLastErr(tdSessionState, TD_SOCKET_BIND_FAILED);
         }else{
             TDSetSessionState1(tdSessionState, STATE_TCP_SOCK_BIND);
 
@@ -66,19 +69,19 @@ int TcpNewConnection(int isIpv6
             if (connect_status < 0){
                 if (errno == EINPROGRESS){
                     TDSetSessionState1(tdSessionState, STATE_TCP_CONN_IN_PROGRESS);
-                    TDSetSessionLastErr(tdSessionState, TD_NO_ERROR);
+                    TDSetSessionStateLastErr(tdSessionState, TD_NO_ERROR);
                 }else{
-                    TDSetSessionLastErr(tdSessionState, TD_SOCKET_CONNECT_ESTABLISH_FAILED);
-                    TDSetSessionLastErr(tdSessionState, TD_NO_ERROR);
+                    TDSetSessionStateLastErr(tdSessionState, TD_SOCKET_CONNECT_ESTABLISH_FAILED);
+                    TDSetSessionStateLastErr(tdSessionState, TD_NO_ERROR);
                 }
             }else{
                 TDSetSessionState1(tdSessionState, STATE_TCP_CONN_IN_PROGRESS2);
-                TDSetSessionLastErr(tdSessionState, TD_NO_ERROR);
+                TDSetSessionStateLastErr(tdSessionState, TD_NO_ERROR);
             }
         }
     }
 
-    if (TDGetSessionLastErr(tdSessionState) != TD_NO_ERROR){
+    if (TDGetSessionStateLastErr(tdSessionState) != TD_NO_ERROR){
         if (socket_fd != -1){
             close(socket_fd);
             TDSetSessionState1(tdSessionState, STATE_TCP_SOCK_FD_CLOSE);

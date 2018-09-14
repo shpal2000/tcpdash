@@ -2,11 +2,11 @@
     "version": "0.2.0",
     "configurations": [ 
       {
-        "name": "C++ Launch",
+        "name": "tcp_client",
         "type": "cppdbg",
         "request": "launch",
-        "program": "${workspaceRoot}/bin/sf_tests.exe",
-        "miDebuggerServerAddress": "localhost:9091",
+        "program": "${workspaceRoot}/build/apps/tcp/tcp_client.exe",
+        "miDebuggerServerAddress": "10.116.6.3:9091",
         "args": [],
         "stopAtEntry": true,
         "cwd": "${workspaceRoot}",
@@ -21,7 +21,30 @@
         "windows": {
           "MIMode": "gdb"
         },
-        "sourceFileMap": { "/home/user/tcpdash": "/Users/spal/Documents/tcpdash" }
+        "sourceFileMap": { "/home/user/tcpdash2": "/Users/spal/Documents/tcpdash2" }
+      },
+
+      {
+        "name": "json",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${workspaceRoot}/build/lab/json.exe",
+        "miDebuggerServerAddress": "10.116.6.3:9091",
+        "args": [],
+        "stopAtEntry": true,
+        "cwd": "${workspaceRoot}",
+        "environment": [],
+        "externalConsole": true,
+        "linux": {
+          "MIMode": "gdb"
+        },
+        "osx": {
+          "MIMode": "gdb"
+        },
+        "windows": {
+          "MIMode": "gdb"
+        },
+        "sourceFileMap": { "/home/user/tcpdash2": "/Users/spal/Documents/tcpdash2" }
       },
 
       {
