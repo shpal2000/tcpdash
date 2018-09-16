@@ -4,7 +4,7 @@ glib_dep = dependency('glib-2.0')
 
 incdir = include_directories('..')
 
-static_library('sessions.a'
+sessionslib = static_library('sessions'
                 , sources : sessions_src
                 , include_directories : incdir
                 , dependencies : glib_dep)
