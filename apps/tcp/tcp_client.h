@@ -7,35 +7,42 @@
 #define APP_STATE_CONNECTION_CLOSED                  3
 
 typedef struct TcpClientAppOptions {
-    int maxEvents;
-    int maxActiveSessions;
-} TcpClientAppOptions;
+    uint32_t maxEvents;
+    uint32_t maxActiveSessions;
+} TcpClientAppOptions_t;
+
+typedef struct TcpClientStats {
+    uint64_t connectionAttempt;
+    uint64_t connectionSuccess;
+    uint64_t connectionFail;
+} TcpClientStats_t;
 
 typedef struct TcpClientApp {
-    struct TcpClientAppOptions appOptions;
+    TcpClientAppOptions_t appOptions;
+    TcpClientStats_t appStats;
     GQueue* freeSessionPool;
     GQueue* activeSessionPool;
     struct epoll_event* EventArray;
-} TcpClientApp;
+} TcpClientApp_t;
 
 typedef struct TcpClientSession{
     int socketFd;
     int isIpv6;
     struct sockaddr* localAddress;
     struct sockaddr* remoteAddress;
-    struct TDSessionState sState;
+    TdSS_t sState;
     int appState;
-} TcpClientSession;
+} TcpClientSession_t;
 
-void AppInit(TcpClientApp* theApp, TcpClientAppOptions* options);
-void AppCleanup(TcpClientApp* theApp);
+void InitApp(TcpClientApp_t* theApp, TcpClientAppOptions_t* options);
+void CleanupApp(TcpClientApp_t* theApp);
 
-TcpClientSession* GetFromFreeSessionPool(TcpClientApp* theApp);
-void ReturnToFreeSessionPool(TcpClientApp* theApp, TcpClientSession* aSession);
+TcpClientSession_t* GetFromFreeSessionPool(TcpClientApp_t* theApp);
+void ReturnToFreeSessionPool(TcpClientApp_t* theApp, TcpClientSession_t* aSession);
 
-void SessionInit(TcpClientSession* aSession);
+void InitAppSession(TcpClientSession_t* aSession);
 
-inline static void SetSessionAddress(TcpClientSession* aSession
+inline static void SetSessionAddress(TcpClientSession_t* aSession
                                     , int isIpv6
                                     , struct sockaddr* localAddr
                                     , struct sockaddr* remoteAddr) {
@@ -45,6 +52,6 @@ inline static void SetSessionAddress(TcpClientSession* aSession
     aSession->remoteAddress = remoteAddr;
 }
 
-int InitiateConnection(TcpClientSession* aSession);
+int InitiateConnection(TcpClientSession_t* aSession);
 
 #endif

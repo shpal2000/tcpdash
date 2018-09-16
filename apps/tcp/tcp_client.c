@@ -7,52 +7,53 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/epoll.h>
-#include <gmodule.h>
 
-#include "sessions/sstates.h"
+#include "sessions/sessions.h"
 #include "sessions/tcp_connect.h"
 #include "logging/logs.h"
 #include "tcp_client.h"
 
 
-void AppInit(TcpClientApp* theApp, TcpClientAppOptions* options) {
+void InitApp(TcpClientApp_t* theApp, TcpClientAppOptions_t* options) {
 
     theApp->appOptions = *options;
 
-    theApp->freeSessionPool = g_queue_new();
-    theApp->activeSessionPool = g_queue_new();
+    theApp->freeSessionPool = AllocEmptySessionPool();
+    theApp->activeSessionPool = AllocEmptySessionPool();
 
     for (int i = 0; i < theApp->appOptions.maxActiveSessions; i++) {
-        TcpClientSession* aSession = g_slice_new (TcpClientSession);
-        SessionInit(aSession);
-        g_queue_push_tail (theApp->freeSessionPool, aSession);
+        TcpClientSession_t* aSession = AllocAppSession (TcpClientSession_t);
+        InitAppSession (aSession);
+        AddToSessionPool (theApp->freeSessionPool, aSession);
     }
 
-    theApp->EventArray = g_new (struct epoll_event, theApp->appOptions.maxEvents);
+    theApp->EventArray = CreateEventArray(theApp->appOptions.maxEvents);
+
+    memset(&theApp->appStats, 0, sizeof (TcpClientStats_t)); 
 }
 
-void AppCleanup(struct TcpClientApp* theApp) {
+void CleanupApp(TcpClientApp_t* theApp) {
     //todo
 }
 
-TcpClientSession* GetFromFreeSessionPool(TcpClientApp* theApp) {
+TcpClientSession_t* AllocSession(TcpClientApp_t* theApp) {
 
-    struct TcpClientSession* aSession = g_queue_pop_head (theApp->freeSessionPool);
-    SessionInit(aSession);
-    g_queue_push_tail (theApp->activeSessionPool, aSession);
+    TcpClientSession_t* aSession = GetAnySesionFromPool (theApp->freeSessionPool);
+    AddToSessionPool (theApp->activeSessionPool, aSession);
+    InitAppSession(aSession);
     return aSession;
 }
 
-void ReturnToFreeSessionPool(TcpClientApp* theApp
-                                , TcpClientSession* aSession) {
+void FreeSession(TcpClientApp_t* theApp
+                                , TcpClientSession_t* aSession) {
     
-    g_queue_remove (theApp->activeSessionPool, aSession);
-    g_queue_push_tail (theApp->freeSessionPool, aSession);
+    RemoveFromSessionPool (theApp->activeSessionPool, aSession);
+    AddToSessionPool (theApp->freeSessionPool, aSession);
 }
 
-void SessionInit(TcpClientSession* aSession) {
+void InitAppSession(TcpClientSession_t* aSession) {
     
-    TDSessionSateInit(&aSession->sState);
+    TdSSInit(&aSession->sState);
 
     aSession->socketFd = 0;
     aSession->isIpv6 = 0;
@@ -61,22 +62,23 @@ void SessionInit(TcpClientSession* aSession) {
     aSession->appState = APP_STATE_INIT;
 }
 
-int InitiateConnection(TcpClientSession* aSession) {
+int InitiateConnection(TcpClientSession_t* aSession) {
 
     aSession->socketFd = TcpNewConnection(aSession->isIpv6, 
                                             aSession->localAddress, 
                                             aSession->remoteAddress,
                                             &aSession->sState);
 
-    return TDGetSessionStateLastErr (&aSession->sState);    
+    return TdGetSSLastErr (&aSession->sState);    
 }
 
 int TcpClientAppRun() {
     
-    TcpClientApp tcpClientApp;
-    TcpClientAppOptions tcpClientAppOptions = { .maxEvents = 1000
+    TcpClientApp_t tcpClientApp;
+    TcpClientAppOptions_t tcpClientAppOptions = { .maxEvents = 1000
                                                 , .maxActiveSessions = 100 };
-    AppInit(&tcpClientApp, &tcpClientAppOptions);
+    InitApp(&tcpClientApp, &tcpClientAppOptions);
+    TcpClientStats_t* tcpClientStats = &tcpClientApp.appStats;
 
 
     //hard coded
@@ -90,18 +92,15 @@ int TcpClientAppRun() {
     remoteAddr.sin_port = htons(80);
     inet_pton(AF_INET, "172.217.6.78", &(remoteAddr.sin_addr));
 
-    int connectionAttempt = 0;
-    int connectionSuccess = 0;
-    int connectionFail = 0;
     int epfd = epoll_create(1);
 
-    while (connectionAttempt < tcpClientAppOptions.maxActiveSessions 
-                || connectionSuccess + connectionFail < tcpClientAppOptions.maxActiveSessions) {
+    while (tcpClientStats->connectionAttempt < tcpClientAppOptions.maxActiveSessions 
+                || tcpClientStats->connectionSuccess + tcpClientStats->connectionFail < tcpClientAppOptions.maxActiveSessions) {
 
 
-        if (connectionAttempt < tcpClientAppOptions.maxActiveSessions) {
-            connectionAttempt += 1;
-            struct TcpClientSession* newSession = GetFromFreeSessionPool(&tcpClientApp);
+        if (tcpClientStats->connectionAttempt < tcpClientAppOptions.maxActiveSessions) {
+            tcpClientStats->connectionAttempt += 1;
+            TcpClientSession_t* newSession = AllocSession(&tcpClientApp);
 
             SetSessionAddress(newSession, 0
                                 , (struct sockaddr*) &localAddr
@@ -110,8 +109,8 @@ int TcpClientAppRun() {
             newSession->appState = APP_STATE_CONNECTION_IN_PROGRESS;
             
             if (InitiateConnection(newSession)){
-                connectionFail += 1;
-                ReturnToFreeSessionPool (&tcpClientApp, newSession);
+                tcpClientStats->connectionFail += 1;
+                FreeSession (&tcpClientApp, newSession);
             }else{
                 struct epoll_event setEvent;
                 setEvent.events = EPOLLOUT;
@@ -127,7 +126,7 @@ int TcpClientAppRun() {
             for(int eventIndex = 0; eventIndex < eventReadyCount; eventIndex++) {
 
                 struct epoll_event readyEvent = tcpClientApp.EventArray[eventIndex];
-                TcpClientSession* eventSession = (TcpClientSession*) readyEvent.data.ptr;
+                TcpClientSession_t* eventSession = (TcpClientSession_t*) readyEvent.data.ptr;
 
                 if (readyEvent.events && EPOLLOUT) {
                     if (eventSession->appState == APP_STATE_CONNECTION_IN_PROGRESS) {
@@ -139,12 +138,12 @@ int TcpClientAppRun() {
                                                 , &socketErr
                                                 , &socketErrBufLen);
                         if ((retGetsockopt|socketErr) == 0){
-                            connectionSuccess += 1;
+                            tcpClientStats->connectionSuccess += 1;
                             eventSession->appState = APP_STATE_CONNECTION_ESTABLISHED;
-                            TDSetSessionState1(&eventSession->sState
+                            TdSetSS1(&eventSession->sState
                                                 , STATE_TCP_CONN_ESTABLISHED);
                         }else{
-                           connectionFail += 1; 
+                           tcpClientStats->connectionFail += 1; 
                         }
                     }
                 }

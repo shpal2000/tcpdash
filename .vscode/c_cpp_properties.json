@@ -3,7 +3,7 @@
         {
             "name": "Mac",
             "includePath": [
-                "/Users/spal/Documents/tcpdash/**",
+                "/Users/spal/Documents/tcpdash2/**",
                 "/Users/spal/Documents/tcpdashUsr/include/glib-2.0",
                 "/Users/spal/Documents/tcpdashUsr/lib/x86_64-linux-gnu/glib-2.0/include",
                 "/Users/spal/Documents/tcpdashUsr/lib/gcc/x86_64-linux-gnu/4.8/include",
