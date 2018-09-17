@@ -59,7 +59,7 @@ void RegisterForWriteEvent(int pollId, int fd, void* data);
 #define STATE_TCP_SOCK_FD_CLOSE                             0x0000000000000040
 
 
-#define AllocAppSession(__type) g_slice_new(__type)
+#define AllocSession(__type) g_slice_new(__type)
 #define AddToSessionPool(__pool,__session) g_queue_push_tail (__pool,__session)
 #define RemoveFromSessionPool(__pool,__session) g_queue_remove (__pool,__session)
 #define AllocEmptySessionPool() g_queue_new()

@@ -21,8 +21,8 @@ void InitApp(TcpClientApp_t* theApp, TcpClientAppOptions_t* options) {
     theApp->activeSessionPool = AllocEmptySessionPool();
 
     for (int i = 0; i < theApp->appOptions.maxActiveSessions; i++) {
-        TcpClientSession_t* aSession = AllocAppSession (TcpClientSession_t);
-        InitAppSession (aSession);
+        TcpClientSession_t* aSession = AllocSession (TcpClientSession_t);
+        InitSession (aSession);
         AddToSessionPool (theApp->freeSessionPool, aSession);
     }
 
@@ -35,22 +35,21 @@ void CleanupApp(TcpClientApp_t* theApp) {
     //todo
 }
 
-TcpClientSession_t* AllocSession(TcpClientApp_t* theApp) {
+TcpClientSession_t* GetSession(TcpClientApp_t* theApp) {
 
     TcpClientSession_t* aSession = GetAnySesionFromPool (theApp->freeSessionPool);
     AddToSessionPool (theApp->activeSessionPool, aSession);
-    InitAppSession(aSession);
+    InitSession(aSession);
     return aSession;
 }
 
-void FreeSession(TcpClientApp_t* theApp
-                                , TcpClientSession_t* aSession) {
+void ReturnSession(TcpClientApp_t* theApp, TcpClientSession_t* aSession) {
     
     RemoveFromSessionPool (theApp->activeSessionPool, aSession);
     AddToSessionPool (theApp->freeSessionPool, aSession);
 }
 
-void InitAppSession(TcpClientSession_t* aSession) {
+void InitSession(TcpClientSession_t* aSession) {
     
     TdSSInit(&aSession->sState);
 
@@ -100,7 +99,7 @@ int TcpClientAppRun() {
 
         if (appStats->connectionAttempt < appOptions.maxActiveSessions) {
             appStats->connectionAttempt += 1;
-            TcpClientSession_t* newSession = AllocSession(&theApp);
+            TcpClientSession_t* newSession = GetSession(&theApp);
 
             SetSessionAddress(newSession, 0
                                 , (struct sockaddr*) &localAddr
@@ -110,7 +109,7 @@ int TcpClientAppRun() {
             
             if (InitiateConnection(newSession)){
                 appStats->connectionFail += 1;
-                FreeSession (&theApp, newSession);
+                ReturnSession (&theApp, newSession);
             }else{
                 RegisterForWriteEvent(eventQId, newSession->socketFd, newSession);
             }
@@ -131,7 +130,8 @@ int TcpClientAppRun() {
                             eSession->appState = APP_STATE_CONNECTION_ESTABLISHED;
                             TdSetSS1(&eSession->sState, STATE_TCP_CONN_ESTABLISHED);
                         }else{
-                            appStats->connectionFail += 1; 
+                            appStats->connectionFail += 1;
+                            //to capture the error ?
                         }
                     }
                 }

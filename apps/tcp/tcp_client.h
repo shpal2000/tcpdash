@@ -40,7 +40,7 @@ void CleanupApp(TcpClientApp_t* theApp);
 TcpClientSession_t* GetFromFreeSessionPool(TcpClientApp_t* theApp);
 void ReturnToFreeSessionPool(TcpClientApp_t* theApp, TcpClientSession_t* aSession);
 
-void InitAppSession(TcpClientSession_t* aSession);
+void InitSession(TcpClientSession_t* aSession);
 
 inline static void SetSessionAddress(TcpClientSession_t* aSession
                                     , int isIpv6
