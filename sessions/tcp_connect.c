@@ -91,7 +91,7 @@ int TcpNewConnection(int isIpv6
     return socket_fd;
 }
 
-int IsTcpConnectionComplete(int fd){
+int IsNewTcpConnectionComplete(int fd){
     int socketErr;
     socklen_t socketErrBufLen = sizeof(int);
 

@@ -34,24 +34,4 @@ typedef struct TcpClientSession{
     int appState;
 } TcpClientSession_t;
 
-void InitApp(TcpClientApp_t* theApp, TcpClientAppOptions_t* options);
-void CleanupApp(TcpClientApp_t* theApp);
-
-TcpClientSession_t* GetFromFreeSessionPool(TcpClientApp_t* theApp);
-void ReturnToFreeSessionPool(TcpClientApp_t* theApp, TcpClientSession_t* aSession);
-
-void InitSession(TcpClientSession_t* aSession);
-
-inline static void SetSessionAddress(TcpClientSession_t* aSession
-                                    , int isIpv6
-                                    , struct sockaddr* localAddr
-                                    , struct sockaddr* remoteAddr) {
-
-    aSession->isIpv6 = isIpv6;
-    aSession->localAddress = localAddr;
-    aSession->remoteAddress = remoteAddr;
-}
-
-int InitiateConnection(TcpClientSession_t* aSession);
-
 #endif

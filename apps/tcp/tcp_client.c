@@ -12,42 +12,7 @@
 #include "logging/logs.h"
 #include "tcp_client.h"
 
-
-void InitApp(TcpClientApp_t* theApp, TcpClientAppOptions_t* options) {
-
-    theApp->appOptions = *options;
-
-    theApp->freeSessionPool = AllocEmptySessionPool();
-    theApp->activeSessionPool = AllocEmptySessionPool();
-
-    for (int i = 0; i < theApp->appOptions.maxActiveSessions; i++) {
-        TcpClientSession_t* aSession = AllocSession (TcpClientSession_t);
-        InitSession (aSession);
-        AddToSessionPool (theApp->freeSessionPool, aSession);
-    }
-
-    theApp->EventArr = CreateEventArray(theApp->appOptions.maxEvents);
-
-    memset(&theApp->appStats, 0, sizeof (TcpClientStats_t)); 
-}
-
-void CleanupApp(TcpClientApp_t* theApp) {
-    //todo
-}
-
-TcpClientSession_t* GetSession(TcpClientApp_t* theApp) {
-
-    TcpClientSession_t* aSession = GetAnySesionFromPool (theApp->freeSessionPool);
-    AddToSessionPool (theApp->activeSessionPool, aSession);
-    InitSession(aSession);
-    return aSession;
-}
-
-void ReturnSession(TcpClientApp_t* theApp, TcpClientSession_t* aSession) {
-    
-    RemoveFromSessionPool (theApp->activeSessionPool, aSession);
-    AddToSessionPool (theApp->freeSessionPool, aSession);
-}
+TcpClientApp_t theApp;
 
 void InitSession(TcpClientSession_t* aSession) {
     
@@ -58,6 +23,52 @@ void InitSession(TcpClientSession_t* aSession) {
     aSession->localAddress = NULL;
     aSession->remoteAddress = NULL;
     aSession->appState = APP_STATE_INIT;
+}
+
+void InitApp(TcpClientAppOptions_t* options) {
+
+    theApp.appOptions = *options;
+
+    theApp.freeSessionPool = AllocEmptySessionPool();
+    theApp.activeSessionPool = AllocEmptySessionPool();
+
+    for (int i = 0; i < theApp.appOptions.maxActiveSessions; i++) {
+        TcpClientSession_t* aSession = AllocSession (TcpClientSession_t);
+        InitSession (aSession);
+        AddToSessionPool (theApp.freeSessionPool, aSession);
+    }
+
+    theApp.EventArr = CreateEventArray(theApp.appOptions.maxEvents);
+
+    memset(&theApp.appStats, 0, sizeof (TcpClientStats_t)); 
+}
+
+void CleanupApp() {
+    //todo
+}
+
+void SetSessionAddress(TcpClientSession_t* aSession
+                        , int isIpv6
+                        , struct sockaddr* localAddr
+                        , struct sockaddr* remoteAddr) {
+
+    aSession->isIpv6 = isIpv6;
+    aSession->localAddress = localAddr;
+    aSession->remoteAddress = remoteAddr;
+}
+
+TcpClientSession_t* GetSession() {
+
+    TcpClientSession_t* aSession = GetAnySesionFromPool (theApp.freeSessionPool);
+    AddToSessionPool (theApp.activeSessionPool, aSession);
+    InitSession(aSession);
+    return aSession;
+}
+
+void ReturnSession(TcpClientSession_t* aSession) {
+    
+    RemoveFromSessionPool (theApp.activeSessionPool, aSession);
+    AddToSessionPool (theApp.freeSessionPool, aSession);
 }
 
 int InitiateConnection(TcpClientSession_t* aSession) {
@@ -71,11 +82,9 @@ int InitiateConnection(TcpClientSession_t* aSession) {
 }
 
 int TcpClientAppRun() {
-    
-    TcpClientApp_t theApp;
     TcpClientAppOptions_t appOptions = {  .maxEvents = 1000
                                         , .maxActiveSessions = 100 };
-    InitApp(&theApp, &appOptions);
+    InitApp(&appOptions);
     TcpClientStats_t* appStats = &theApp.appStats;
 
 
@@ -109,7 +118,7 @@ int TcpClientAppRun() {
             
             if (InitiateConnection(newSession)){
                 appStats->connectionFail += 1;
-                ReturnSession (&theApp, newSession);
+                ReturnSession (newSession);
             }else{
                 RegisterForWriteEvent(eventQId, newSession->socketFd, newSession);
             }
@@ -125,7 +134,7 @@ int TcpClientAppRun() {
 
                 if (IsWriteEvent(theApp.EventArr[eIndex])) {
                     if (eSession->appState == APP_STATE_CONNECTION_IN_PROGRESS) {
-                        if ( IsTcpConnectionComplete(eSession->socketFd) ){
+                        if ( IsNewTcpConnectionComplete(eSession->socketFd) ){
                             appStats->connectionSuccess += 1;
                             eSession->appState = APP_STATE_CONNECTION_ESTABLISHED;
                             TdSetSS1(&eSession->sState, STATE_TCP_CONN_ESTABLISHED);
