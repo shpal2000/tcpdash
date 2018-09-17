@@ -25,28 +25,6 @@ void InitSession(TcpClientSession_t* aSession) {
     aSession->appState = APP_STATE_INIT;
 }
 
-void InitApp(TcpClientAppOptions_t* options) {
-
-    theApp.appOptions = *options;
-
-    theApp.freeSessionPool = AllocEmptySessionPool();
-    theApp.activeSessionPool = AllocEmptySessionPool();
-
-    for (int i = 0; i < theApp.appOptions.maxActiveSessions; i++) {
-        TcpClientSession_t* aSession = AllocSession (TcpClientSession_t);
-        InitSession (aSession);
-        AddToSessionPool (theApp.freeSessionPool, aSession);
-    }
-
-    theApp.EventArr = CreateEventArray(theApp.appOptions.maxEvents);
-
-    memset(&theApp.appStats, 0, sizeof (TcpClientStats_t)); 
-}
-
-void CleanupApp() {
-    //todo
-}
-
 void SetSessionAddress(TcpClientSession_t* aSession
                         , int isIpv6
                         , struct sockaddr* localAddr
@@ -81,7 +59,30 @@ int InitiateConnection(TcpClientSession_t* aSession) {
     return TdGetSSLastErr (&aSession->sState);    
 }
 
-int TcpClientAppRun() {
+void InitApp(TcpClientAppOptions_t* options) {
+
+    theApp.appOptions = *options;
+
+    theApp.freeSessionPool = AllocEmptySessionPool();
+    theApp.activeSessionPool = AllocEmptySessionPool();
+
+    for (int i = 0; i < theApp.appOptions.maxActiveSessions; i++) {
+        TcpClientSession_t* aSession = AllocSession (TcpClientSession_t);
+        InitSession (aSession);
+        AddToSessionPool (theApp.freeSessionPool, aSession);
+    }
+
+    theApp.EventArr = CreateEventArray(theApp.appOptions.maxEvents);
+
+    memset(&theApp.appStats, 0, sizeof (TcpClientStats_t)); 
+}
+
+void CleanupApp() {
+    //todo
+}
+
+int main(int argc, char** argv)
+{
     TcpClientAppOptions_t appOptions = {  .maxEvents = 1000
                                         , .maxActiveSessions = 100 };
     InitApp(&appOptions);
@@ -149,13 +150,6 @@ int TcpClientAppRun() {
     }
 
     DeleteEventQ(eventQId);
-
-    return 0;   
-}
-
-int main(int argc, char** argv)
-{
-    TcpClientAppRun();
     
     return 0;
 }
