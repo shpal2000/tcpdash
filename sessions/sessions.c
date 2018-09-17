@@ -10,6 +10,10 @@
 
 #include "sessions.h"
 
-void CreateSessionPool(){
-   g_queue_new() 
+void RegisterForWriteEvent(int pollId, int fd, void* data){
+    struct epoll_event setEvent;
+    setEvent.events = EPOLLOUT;
+    setEvent.data.ptr = data;
+    epoll_ctl(pollId, EPOLL_CTL_ADD, fd, &setEvent);
 }
+

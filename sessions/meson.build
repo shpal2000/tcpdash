@@ -1,4 +1,6 @@
-sessions_src = ['tcp_connect.c', 'tls_connect.c']
+sessions_src = ['tcp_connect.c'
+                , 'tls_connect.c'
+                , 'sessions.c']
 
 glib_dep = dependency('glib-2.0')
 

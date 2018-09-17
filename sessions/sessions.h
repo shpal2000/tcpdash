@@ -2,6 +2,7 @@
 #define __TD_SESSIONS_H
 
 #include <gmodule.h>
+#include <sys/epoll.h>
 
 typedef struct TdSS{
     uint64_t state1;
@@ -38,6 +39,7 @@ static inline uint16_t TdGetSSLastErrCount(TdSS_t* tdSS) {
     return tdSS->lastErrCount;
 }
 
+void RegisterForWriteEvent(int pollId, int fd, void* data);
 
 #define TD_NO_ERROR                                         0
 #define TD_PROGRAM_ERROR                                    1
@@ -63,5 +65,12 @@ static inline uint16_t TdGetSSLastErrCount(TdSS_t* tdSS) {
 #define AllocEmptySessionPool() g_queue_new()
 #define CreateEventArray(__count) g_new(struct epoll_event, __count)
 #define GetAnySesionFromPool(__pool) g_queue_pop_head(__pool)
+
+#define CreateEventQ() epoll_create(1)
+#define DeleteEventQ(__eventQId) close(__eventQId)
+#define GetIOEvents(__eventQId, __eventArray, __maxEvents) epoll_wait(__eventQId, __eventArray, __maxEvents, 0)
+
+#define GetIOEventData(__event) __event.data.ptr
+#define IsWriteEvent(__event) __event.events && EPOLLOUT 
 #endif 
 

@@ -22,7 +22,7 @@ typedef struct TcpClientApp {
     TcpClientStats_t appStats;
     GQueue* freeSessionPool;
     GQueue* activeSessionPool;
-    struct epoll_event* EventArray;
+    struct epoll_event* EventArr;
 } TcpClientApp_t;
 
 typedef struct TcpClientSession{

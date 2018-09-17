@@ -6,7 +6,6 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <unistd.h>
-#include <sys/epoll.h>
 
 #include "sessions/sessions.h"
 #include "sessions/tcp_connect.h"
@@ -27,7 +26,7 @@ void InitApp(TcpClientApp_t* theApp, TcpClientAppOptions_t* options) {
         AddToSessionPool (theApp->freeSessionPool, aSession);
     }
 
-    theApp->EventArray = CreateEventArray(theApp->appOptions.maxEvents);
+    theApp->EventArr = CreateEventArray(theApp->appOptions.maxEvents);
 
     memset(&theApp->appStats, 0, sizeof (TcpClientStats_t)); 
 }
@@ -74,11 +73,11 @@ int InitiateConnection(TcpClientSession_t* aSession) {
 
 int TcpClientAppRun() {
     
-    TcpClientApp_t tcpClientApp;
-    TcpClientAppOptions_t tcpClientAppOptions = { .maxEvents = 1000
-                                                , .maxActiveSessions = 100 };
-    InitApp(&tcpClientApp, &tcpClientAppOptions);
-    TcpClientStats_t* tcpClientStats = &tcpClientApp.appStats;
+    TcpClientApp_t theApp;
+    TcpClientAppOptions_t appOptions = {  .maxEvents = 1000
+                                        , .maxActiveSessions = 100 };
+    InitApp(&theApp, &appOptions);
+    TcpClientStats_t* appStats = &theApp.appStats;
 
 
     //hard coded
@@ -92,15 +91,16 @@ int TcpClientAppRun() {
     remoteAddr.sin_port = htons(80);
     inet_pton(AF_INET, "172.217.6.78", &(remoteAddr.sin_addr));
 
-    int epfd = epoll_create(1);
+    int eventQId = CreateEventQ();
 
-    while (tcpClientStats->connectionAttempt < tcpClientAppOptions.maxActiveSessions 
-                || tcpClientStats->connectionSuccess + tcpClientStats->connectionFail < tcpClientAppOptions.maxActiveSessions) {
+    while (appStats->connectionAttempt < appOptions.maxActiveSessions 
+            || appStats->connectionSuccess + appStats->connectionFail 
+                    < appOptions.maxActiveSessions) {
 
 
-        if (tcpClientStats->connectionAttempt < tcpClientAppOptions.maxActiveSessions) {
-            tcpClientStats->connectionAttempt += 1;
-            TcpClientSession_t* newSession = AllocSession(&tcpClientApp);
+        if (appStats->connectionAttempt < appOptions.maxActiveSessions) {
+            appStats->connectionAttempt += 1;
+            TcpClientSession_t* newSession = AllocSession(&theApp);
 
             SetSessionAddress(newSession, 0
                                 , (struct sockaddr*) &localAddr
@@ -109,48 +109,37 @@ int TcpClientAppRun() {
             newSession->appState = APP_STATE_CONNECTION_IN_PROGRESS;
             
             if (InitiateConnection(newSession)){
-                tcpClientStats->connectionFail += 1;
-                FreeSession (&tcpClientApp, newSession);
+                appStats->connectionFail += 1;
+                FreeSession (&theApp, newSession);
             }else{
-                struct epoll_event setEvent;
-                setEvent.events = EPOLLOUT;
-                setEvent.data.ptr = newSession;
-                epoll_ctl(epfd, EPOLL_CTL_ADD, newSession->socketFd, &setEvent);
+                RegisterForWriteEvent(eventQId, newSession->socketFd, newSession);
             }
         }
 
-        int eventReadyCount = epoll_wait(epfd, tcpClientApp.EventArray
-                                            , tcpClientApp.appOptions.maxEvents
-                                            , 0);
-        if (eventReadyCount > 0){
-            for(int eventIndex = 0; eventIndex < eventReadyCount; eventIndex++) {
+        int eCount = GetIOEvents(eventQId, theApp.EventArr
+                                , theApp.appOptions.maxEvents);
+        if (eCount > 0){
+            for(int eIndex = 0; eIndex < eCount; eIndex++) {
 
-                struct epoll_event readyEvent = tcpClientApp.EventArray[eventIndex];
-                TcpClientSession_t* eventSession = (TcpClientSession_t*) readyEvent.data.ptr;
+                TcpClientSession_t* eSession = 
+                    (TcpClientSession_t*) GetIOEventData(theApp.EventArr[eIndex]);
 
-                if (readyEvent.events && EPOLLOUT) {
-                    if (eventSession->appState == APP_STATE_CONNECTION_IN_PROGRESS) {
-                        int socketErr;
-                        socklen_t socketErrBufLen = sizeof(int);
-                        int retGetsockopt = getsockopt(eventSession->socketFd
-                                                , SOL_SOCKET
-                                                , SO_ERROR
-                                                , &socketErr
-                                                , &socketErrBufLen);
-                        if ((retGetsockopt|socketErr) == 0){
-                            tcpClientStats->connectionSuccess += 1;
-                            eventSession->appState = APP_STATE_CONNECTION_ESTABLISHED;
-                            TdSetSS1(&eventSession->sState
-                                                , STATE_TCP_CONN_ESTABLISHED);
+                if (IsWriteEvent(theApp.EventArr[eIndex])) {
+                    if (eSession->appState == APP_STATE_CONNECTION_IN_PROGRESS) {
+                        if ( IsTcpConnectionComplete(eSession->socketFd) ){
+                            appStats->connectionSuccess += 1;
+                            eSession->appState = APP_STATE_CONNECTION_ESTABLISHED;
+                            TdSetSS1(&eSession->sState, STATE_TCP_CONN_ESTABLISHED);
                         }else{
-                           tcpClientStats->connectionFail += 1; 
+                            appStats->connectionFail += 1; 
                         }
                     }
                 }
-
             }
         }
     }
+
+    DeleteEventQ(eventQId);
 
     return 0;   
 }

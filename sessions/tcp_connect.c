@@ -6,7 +6,6 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <unistd.h>
-#include <gmodule.h>
 
 #include "sessions.h"
 #include "tcp_connect.h"
@@ -90,4 +89,21 @@ int TcpNewConnection(int isIpv6
     }
 
     return socket_fd;
+}
+
+int IsTcpConnectionComplete(int fd){
+    int socketErr;
+    socklen_t socketErrBufLen = sizeof(int);
+
+    int retGetsockopt = getsockopt(fd
+                                    , SOL_SOCKET
+                                    , SO_ERROR
+                                    , &socketErr
+                                    , &socketErrBufLen);
+    
+    if ((retGetsockopt|socketErr) == 0){
+        return 1;
+    }
+
+    return 0;
 }
