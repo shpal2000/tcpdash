@@ -4,7 +4,7 @@
 int TcpNewConnection(int isIpv6 
                         , struct sockaddr* localAddress
                         , struct sockaddr* remoteAddress
-                        , TdSS_t* tdSessionState);
+                        , void* aSession);
 
 int IsNewTcpConnectionComplete(int fd);
 #endif

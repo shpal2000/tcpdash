@@ -16,7 +16,7 @@ TcpClientApp_t theApp;
 
 void InitSession(TcpClientSession_t* aSession) {
     
-    TdSSInit(&aSession->sState);
+    SSInit(aSession, TcpClientAppId);
 
     aSession->socketFd = 0;
     aSession->isIpv6 = 0;
@@ -54,9 +54,9 @@ int InitiateConnection(TcpClientSession_t* aSession) {
     aSession->socketFd = TcpNewConnection(aSession->isIpv6, 
                                             aSession->localAddress, 
                                             aSession->remoteAddress,
-                                            &aSession->sState);
+                                            aSession);
 
-    return TdGetSSLastErr (&aSession->sState);    
+    return GetSSLastErr (aSession);    
 }
 
 void InitApp(TcpClientAppOptions_t* options) {
@@ -74,11 +74,13 @@ void InitApp(TcpClientAppOptions_t* options) {
 
     theApp.EventArr = CreateEventArray(theApp.appOptions.maxEvents);
 
-    memset(&theApp.appStats, 0, sizeof (TcpClientStats_t)); 
+    memset(&theApp.appStats, 0, sizeof (TcpClientStats_t));
+
+    theApp.eventQId = CreateEventQ();
 }
 
 void CleanupApp() {
-    //todo
+    DeleteEventQ(theApp.eventQId);
 }
 
 int main(int argc, char** argv)
@@ -100,8 +102,6 @@ int main(int argc, char** argv)
     remoteAddr.sin_port = htons(80);
     inet_pton(AF_INET, "172.217.6.78", &(remoteAddr.sin_addr));
 
-    int eventQId = CreateEventQ();
-
     while (appStats->connectionAttempt < appOptions.maxActiveSessions 
             || appStats->connectionSuccess + appStats->connectionFail 
                     < appOptions.maxActiveSessions) {
@@ -109,7 +109,7 @@ int main(int argc, char** argv)
 
         if (appStats->connectionAttempt < appOptions.maxActiveSessions) {
             appStats->connectionAttempt += 1;
-            TcpClientSession_t* newSession = GetSession(&theApp);
+            TcpClientSession_t* newSession = GetSession ();
 
             SetSessionAddress(newSession, 0
                                 , (struct sockaddr*) &localAddr
@@ -121,26 +121,27 @@ int main(int argc, char** argv)
                 appStats->connectionFail += 1;
                 ReturnSession (newSession);
             }else{
-                RegisterForWriteEvent(eventQId, newSession->socketFd, newSession);
+                RegisterForWriteEvent(theApp.eventQId, newSession->socketFd, newSession);
             }
         }
 
-        int eCount = GetIOEvents(eventQId, theApp.EventArr
-                                , theApp.appOptions.maxEvents);
+        int eCount = GetIOEvents(theApp.eventQId, theApp.EventArr
+                                    , theApp.appOptions.maxEvents);
         if (eCount > 0){
             for(int eIndex = 0; eIndex < eCount; eIndex++) {
 
                 TcpClientSession_t* eSession = 
                     (TcpClientSession_t*) GetIOEventData(theApp.EventArr[eIndex]);
 
-                if (IsWriteEvent(theApp.EventArr[eIndex])) {
+                if (IsWriteEventBitSet(theApp.EventArr[eIndex])) {
                     if (eSession->appState == APP_STATE_CONNECTION_IN_PROGRESS) {
                         if ( IsNewTcpConnectionComplete(eSession->socketFd) ){
                             appStats->connectionSuccess += 1;
                             eSession->appState = APP_STATE_CONNECTION_ESTABLISHED;
-                            TdSetSS1(&eSession->sState, STATE_TCP_CONN_ESTABLISHED);
+                            SetSS1(eSession, STATE_TCP_CONN_ESTABLISHED);
                         }else{
                             appStats->connectionFail += 1;
+                            SetSS1(eSession, STATE_TCP_SOCK_FD_CLOSE);
                             //to capture the error ?
                         }
                     }
@@ -149,7 +150,7 @@ int main(int argc, char** argv)
         }
     }
 
-    DeleteEventQ(eventQId);
-    
+    CleanupApp();
+
     return 0;
 }

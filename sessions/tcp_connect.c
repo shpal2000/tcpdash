@@ -25,9 +25,9 @@
 int TcpNewConnection(int isIpv6 
                         , struct sockaddr* localAddress
                         , struct sockaddr* remoteAddress
-                        , TdSS_t* tdSS)
-{
-    TdSetSSLastErr(tdSS, TD_PROGRAM_ERROR_TcpNewConnection);
+                        , void* aSession){
+
+    SetSSLastErr(aSession, TD_PROGRAM_ERROR_TcpNewConnection);
 
     //create socket
     int socket_fd = -1;
@@ -38,9 +38,9 @@ int TcpNewConnection(int isIpv6
     }
 
     if (socket_fd == -1) {
-        TdSetSSLastErr(tdSS, TD_SOCKET_CREATE_FAILED);
+        SetSSLastErr(aSession, TD_SOCKET_CREATE_FAILED);
     }else{
-        TdSetSS1(tdSS, STATE_TCP_SOCK_CREATE);
+        SetSS1(aSession, STATE_TCP_SOCK_CREATE);
 
         //bind local socket
         int bind_status = -1;
@@ -51,9 +51,9 @@ int TcpNewConnection(int isIpv6
         }
         
         if (bind_status == -1){
-            TdSetSSLastErr(tdSS, TD_SOCKET_BIND_FAILED);
+            SetSSLastErr(aSession, TD_SOCKET_BIND_FAILED);
         }else{
-            TdSetSS1(tdSS, STATE_TCP_SOCK_BIND);
+            SetSS1(aSession, STATE_TCP_SOCK_BIND);
 
             //connect socket
             int connect_status = -1;
@@ -62,28 +62,28 @@ int TcpNewConnection(int isIpv6
             }else{
                 connect_status = connect(socket_fd, remoteAddress, sizeof(struct sockaddr_in));
             }
-            TdSetSS1(tdSS, STATE_TCP_CONN_INIT);
+            SetSS1(aSession, STATE_TCP_CONN_INIT);
 
             //check connect status
             if (connect_status < 0){
                 if (errno == EINPROGRESS){
-                    TdSetSS1(tdSS, STATE_TCP_CONN_IN_PROGRESS);
-                    TdSetSSLastErr(tdSS, TD_NO_ERROR);
+                    SetSS1(aSession, STATE_TCP_CONN_IN_PROGRESS);
+                    SetSSLastErr(aSession, TD_NO_ERROR);
                 }else{
-                    TdSetSSLastErr(tdSS, TD_SOCKET_CONNECT_ESTABLISH_FAILED);
-                    TdSetSSLastErr(tdSS, TD_NO_ERROR);
+                    SetSSLastErr(aSession, TD_SOCKET_CONNECT_ESTABLISH_FAILED);
+                    SetSSLastErr(aSession, TD_NO_ERROR);
                 }
             }else{
-                TdSetSS1(tdSS, STATE_TCP_CONN_IN_PROGRESS2);
-                TdSetSSLastErr(tdSS, TD_NO_ERROR);
+                SetSS1(aSession, STATE_TCP_CONN_IN_PROGRESS2);
+                SetSSLastErr(aSession, TD_NO_ERROR);
             }
         }
     }
 
-    if (TdGetSSLastErr(tdSS) != TD_NO_ERROR){
+    if (GetSSLastErr(aSession) != TD_NO_ERROR){
         if (socket_fd != -1){
             close(socket_fd);
-            TdSetSS1(tdSS, STATE_TCP_SOCK_FD_CLOSE);
+            SetSS1(aSession, STATE_TCP_SOCK_FD_CLOSE);
         }
         return -1;
     }

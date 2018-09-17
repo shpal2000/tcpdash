@@ -23,14 +23,16 @@ typedef struct TcpClientApp {
     GQueue* freeSessionPool;
     GQueue* activeSessionPool;
     struct epoll_event* EventArr;
+    int eventQId;
 } TcpClientApp_t;
 
 typedef struct TcpClientSession{
+    SessionState_t _sS; 
+    
     int socketFd;
     int isIpv6;
     struct sockaddr* localAddress;
     struct sockaddr* remoteAddress;
-    TdSS_t sState;
     int appState;
 } TcpClientSession_t;
 

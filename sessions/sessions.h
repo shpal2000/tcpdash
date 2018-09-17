@@ -4,39 +4,52 @@
 #include <gmodule.h>
 #include <sys/epoll.h>
 
-typedef struct TdSS{
+enum AppTypeId { TcpClientAppId = 1
+                , TcpServerAppId = 2};
+
+typedef struct SessionState{
     uint64_t state1;
     uint64_t state2;
     uint16_t lastErr;
     uint16_t lastErrCount;
-} TdSS_t;
+    enum AppTypeId appId;
+} SessionState_t;
 
-static inline void TdSSInit(TdSS_t* tdSS) {
-    tdSS->state1 = 0;
-    tdSS->state2 = 0;
-    tdSS->lastErr = 0;
-    tdSS->lastErrCount = 0;
+static inline void SSInit(void* aSession, enum AppTypeId appId) {
+    SessionState_t* sS = (SessionState_t*) aSession;
+
+    sS->state1 = 0;
+    sS->state2 = 0;
+    sS->lastErr = 0;
+    sS->lastErrCount = 0;
+
+    sS->appId = appId;
 }
 
-static inline void TdSetSS1(TdSS_t* tdSS, uint64_t state) {
-    tdSS->state1 |= state;
+static inline void SetSS1(void* aSession, uint64_t state) {
+    SessionState_t* sS = (SessionState_t*) aSession;
+    sS->state1 |= state;
 }
 
-static inline void TdSetSS2(TdSS_t* tdSS, uint64_t state) {
-    tdSS->state2 |= state;
+static inline void SetSS2(void* aSession, uint64_t state) {
+    SessionState_t* sS = (SessionState_t*) aSession;
+    sS->state2 |= state;
 }
 
-static inline void TdSetSSLastErr(TdSS_t* tdSS, uint16_t err) {
-    tdSS->lastErr = err;
-    tdSS->lastErrCount += 1;
+static inline void SetSSLastErr(void* aSession, uint16_t err) {
+    SessionState_t* sS = (SessionState_t*) aSession;
+    sS->lastErr = err;
+    sS->lastErrCount += 1;
 }
 
-static inline uint16_t TdGetSSLastErr(TdSS_t* tdSS) {
-    return tdSS->lastErr;
+static inline uint16_t GetSSLastErr(void* aSession) {
+    SessionState_t* sS = (SessionState_t*) aSession;
+    return sS->lastErr;
 }
 
-static inline uint16_t TdGetSSLastErrCount(TdSS_t* tdSS) {
-    return tdSS->lastErrCount;
+static inline uint16_t GetSSLastErrCount(void* aSession) {
+    SessionState_t* sS = (SessionState_t*) aSession;
+    return sS->lastErrCount;
 }
 
 void RegisterForWriteEvent(int pollId, int fd, void* data);
@@ -71,6 +84,6 @@ void RegisterForWriteEvent(int pollId, int fd, void* data);
 #define GetIOEvents(__eventQId, __eventArray, __maxEvents) epoll_wait(__eventQId, __eventArray, __maxEvents, 0)
 
 #define GetIOEventData(__event) __event.data.ptr
-#define IsWriteEvent(__event) __event.events && EPOLLOUT 
+#define IsWriteEventBitSet(__event) __event.events && EPOLLOUT 
 #endif 
 
