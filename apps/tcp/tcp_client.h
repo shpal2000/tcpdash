@@ -9,26 +9,29 @@
 typedef struct TcpClientAppOptions {
     uint32_t maxEvents;
     uint32_t maxActiveSessions;
+    uint32_t maxErrorSessions;
+    uint64_t maxSessions;
 } TcpClientAppOptions_t;
 
 typedef struct TcpClientStats {
     uint64_t connectionAttempt;
     uint64_t connectionSuccess;
     uint64_t connectionFail;
+    uint64_t connectionProgress;
 } TcpClientStats_t;
 
 typedef struct TcpClientApp {
     TcpClientAppOptions_t appOptions;
     TcpClientStats_t appStats;
-    GQueue* freeSessionPool;
-    GQueue* activeSessionPool;
+    SessionPool_t* freeSessionPool;
+    SessionPool_t* activeSessionPool;
     struct epoll_event* EventArr;
     int eventQId;
 } TcpClientApp_t;
 
 typedef struct TcpClientSession{
     SessionState_t _sS; 
-    
+
     int socketFd;
     int isIpv6;
     struct sockaddr* localAddress;

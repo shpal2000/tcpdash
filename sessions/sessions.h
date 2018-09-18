@@ -15,42 +15,34 @@ typedef struct SessionState{
     enum AppTypeId appId;
 } SessionState_t;
 
+typedef GQueue SessionPool_t;
+
 static inline void SSInit(void* aSession, enum AppTypeId appId) {
-    SessionState_t* sS = (SessionState_t*) aSession;
 
-    sS->state1 = 0;
-    sS->state2 = 0;
-    sS->lastErr = 0;
-    sS->lastErrCount = 0;
+    ((SessionState_t*)aSession)->state1 = 0;
+    ((SessionState_t*)aSession)->state2 = 0;
+    ((SessionState_t*)aSession)->lastErr = 0;
+    ((SessionState_t*)aSession)->lastErrCount = 0;
 
-    sS->appId = appId;
+    ((SessionState_t*)aSession)->appId = appId;
 }
 
-static inline void SetSS1(void* aSession, uint64_t state) {
-    SessionState_t* sS = (SessionState_t*) aSession;
-    sS->state1 |= state;
-}
+#define SetSS1(__aSession, __state) ((SessionState_t*)__aSession)->state1 |= __state
 
-static inline void SetSS2(void* aSession, uint64_t state) {
-    SessionState_t* sS = (SessionState_t*) aSession;
-    sS->state2 |= state;
-}
+#define SetSS2(__aSession, __state) ((SessionState_t*)__aSession)->state2 |= __state
+
+#define InitSSLastErr(__aSession, __err) ((SessionState_t*)__aSession)->lastErr = __err
 
 static inline void SetSSLastErr(void* aSession, uint16_t err) {
-    SessionState_t* sS = (SessionState_t*) aSession;
-    sS->lastErr = err;
-    sS->lastErrCount += 1;
+    ((SessionState_t*)aSession)->lastErr = err;
+    ((SessionState_t*)aSession)->lastErrCount += 1;
 }
 
-static inline uint16_t GetSSLastErr(void* aSession) {
-    SessionState_t* sS = (SessionState_t*) aSession;
-    return sS->lastErr;
-}
+#define GetSSLastErr(__aSession) ((SessionState_t*)__aSession)->lastErr
 
-static inline uint16_t GetSSLastErrCount(void* aSession) {
-    SessionState_t* sS = (SessionState_t*) aSession;
-    return sS->lastErrCount;
-}
+#define GetSSLastErrCount(__aSession) ((SessionState_t*)__aSession)->lastErrCount
+
+#define CopySS(__srcSS, __dstSS) 
 
 void RegisterForWriteEvent(int pollId, int fd, void* data);
 
@@ -78,12 +70,13 @@ void RegisterForWriteEvent(int pollId, int fd, void* data);
 #define AllocEmptySessionPool() g_queue_new()
 #define CreateEventArray(__count) g_new(struct epoll_event, __count)
 #define GetAnySesionFromPool(__pool) g_queue_pop_head(__pool)
+#define IsSessionPoolEmpty(__pool) g_queue_is_empty(__pool)
 
 #define CreateEventQ() epoll_create(1)
 #define DeleteEventQ(__eventQId) close(__eventQId)
 #define GetIOEvents(__eventQId, __eventArray, __maxEvents) epoll_wait(__eventQId, __eventArray, __maxEvents, 0)
 
 #define GetIOEventData(__event) __event.data.ptr
-#define IsWriteEventBitSet(__event) __event.events && EPOLLOUT 
+#define IsWriteEventSet(__event) __event.events && EPOLLOUT 
 #endif 
 

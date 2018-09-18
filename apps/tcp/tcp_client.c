@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdbool.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -35,7 +37,7 @@ void SetSessionAddress(TcpClientSession_t* aSession
     aSession->remoteAddress = remoteAddr;
 }
 
-TcpClientSession_t* GetSession() {
+TcpClientSession_t* GetFreeSession() {
 
     TcpClientSession_t* aSession = GetAnySesionFromPool (theApp.freeSessionPool);
     AddToSessionPool (theApp.activeSessionPool, aSession);
@@ -43,7 +45,7 @@ TcpClientSession_t* GetSession() {
     return aSession;
 }
 
-void ReturnSession(TcpClientSession_t* aSession) {
+void SetFreeSession(TcpClientSession_t* aSession) {
     
     RemoveFromSessionPool (theApp.activeSessionPool, aSession);
     AddToSessionPool (theApp.freeSessionPool, aSession);
@@ -80,13 +82,22 @@ void InitApp(TcpClientAppOptions_t* options) {
 }
 
 void CleanupApp() {
+    TcpClientStats_t* appStats = &theApp.appStats;
+
     DeleteEventQ(theApp.eventQId);
+
+    printf ("%" PRIu64 ", %" PRIu64 ", %" PRIu64
+                , appStats->connectionAttempt
+                , appStats->connectionSuccess
+                , appStats->connectionFail);
 }
 
 int main(int argc, char** argv)
 {
     TcpClientAppOptions_t appOptions = {  .maxEvents = 1000
-                                        , .maxActiveSessions = 100 };
+                                        , .maxActiveSessions = 10
+                                        , .maxErrorSessions = 10
+                                        , .maxSessions = 10 };
     InitApp(&appOptions);
     TcpClientStats_t* appStats = &theApp.appStats;
 
@@ -96,20 +107,24 @@ int main(int argc, char** argv)
     struct sockaddr_in remoteAddr;
     memset(&localAddr, 0, sizeof(localAddr));
     localAddr.sin_family = AF_INET;
-    inet_pton(AF_INET, "10.116.0.61", &(localAddr.sin_addr));
+    inet_pton(AF_INET, "10.116.6.3", &(localAddr.sin_addr));
     memset(&remoteAddr, 0, sizeof(remoteAddr));
     remoteAddr.sin_family = AF_INET;
     remoteAddr.sin_port = htons(80);
     inet_pton(AF_INET, "172.217.6.78", &(remoteAddr.sin_addr));
+    //hard coded
 
-    while (appStats->connectionAttempt < appOptions.maxActiveSessions 
-            || appStats->connectionSuccess + appStats->connectionFail 
-                    < appOptions.maxActiveSessions) {
+    while (true) {
 
+        if ( (appStats->connectionFail == appOptions.maxErrorSessions) 
+                || (appStats->connectionAttempt == appOptions.maxSessions 
+                        && IsSessionPoolEmpty (theApp.activeSessionPool)) ){
+            break;
+        }
 
-        if (appStats->connectionAttempt < appOptions.maxActiveSessions) {
+        if (appStats->connectionAttempt < appOptions.maxSessions) {
             appStats->connectionAttempt += 1;
-            TcpClientSession_t* newSession = GetSession ();
+            TcpClientSession_t* newSession = GetFreeSession ();
 
             SetSessionAddress(newSession, 0
                                 , (struct sockaddr*) &localAddr
@@ -119,7 +134,7 @@ int main(int argc, char** argv)
             
             if (InitiateConnection(newSession)){
                 appStats->connectionFail += 1;
-                ReturnSession (newSession);
+                SetFreeSession (newSession);
             }else{
                 RegisterForWriteEvent(theApp.eventQId, newSession->socketFd, newSession);
             }
@@ -133,15 +148,21 @@ int main(int argc, char** argv)
                 TcpClientSession_t* eSession = 
                     (TcpClientSession_t*) GetIOEventData(theApp.EventArr[eIndex]);
 
-                if (IsWriteEventBitSet(theApp.EventArr[eIndex])) {
+                if (IsWriteEventSet(theApp.EventArr[eIndex])) {
                     if (eSession->appState == APP_STATE_CONNECTION_IN_PROGRESS) {
                         if ( IsNewTcpConnectionComplete(eSession->socketFd) ){
                             appStats->connectionSuccess += 1;
                             eSession->appState = APP_STATE_CONNECTION_ESTABLISHED;
                             SetSS1(eSession, STATE_TCP_CONN_ESTABLISHED);
+                            close(eSession->socketFd);
+                            SetSS1(eSession, STATE_TCP_SOCK_FD_CLOSE);
+                            SetFreeSession (eSession);
+                            eSession->appState = APP_STATE_CONNECTION_CLOSED;
                         }else{
                             appStats->connectionFail += 1;
+                            close(eSession->socketFd);
                             SetSS1(eSession, STATE_TCP_SOCK_FD_CLOSE);
+                            SetFreeSession (eSession);
                             //to capture the error ?
                         }
                     }
