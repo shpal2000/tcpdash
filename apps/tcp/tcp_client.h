@@ -18,7 +18,22 @@ typedef struct TcpClientStats {
     uint64_t connectionSuccess;
     uint64_t connectionFail;
     uint64_t connectionProgress;
+
+    uint32_t dbgNoFreeSession;
 } TcpClientStats_t;
+
+typedef struct TcpClientSession{
+    SessionState_t _sS; 
+    int socketFd;
+    int isIpv6;
+    struct sockaddr* localAddress;
+    struct sockaddr* remoteAddress;
+} TcpClientSession_t;
+
+typedef struct TcpClientSessionE{
+    SessionState_t _sS; 
+    int socketFd;
+} TcpClientSessionE_t;
 
 typedef struct TcpClientApp {
     TcpClientAppOptions_t appOptions;
@@ -27,16 +42,8 @@ typedef struct TcpClientApp {
     SessionPool_t* activeSessionPool;
     struct epoll_event* EventArr;
     int eventQId;
+    uint32_t errorSessionCount;
+    TcpClientSessionE_t* errorSessionArr;
 } TcpClientApp_t;
-
-typedef struct TcpClientSession{
-    SessionState_t _sS; 
-
-    int socketFd;
-    int isIpv6;
-    struct sockaddr* localAddress;
-    struct sockaddr* remoteAddress;
-    int appState;
-} TcpClientSession_t;
 
 #endif
