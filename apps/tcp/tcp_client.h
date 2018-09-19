@@ -14,12 +14,14 @@ typedef struct TcpClientAppOptions {
 } TcpClientAppOptions_t;
 
 typedef struct TcpClientStats {
+    SessionStats_t _sS;
+
     uint64_t connectionAttempt;
     uint64_t connectionSuccess;
     uint64_t connectionFail;
     uint64_t connectionProgress;
 
-    uint32_t dbgNoFreeSession;
+    uint64_t dbgNoFreeSession;
 } TcpClientStats_t;
 
 typedef struct TcpClientSession{

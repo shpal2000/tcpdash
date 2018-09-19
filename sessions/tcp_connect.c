@@ -25,7 +25,8 @@
 int TcpNewConnection(int isIpv6 
                         , struct sockaddr* localAddress
                         , struct sockaddr* remoteAddress
-                        , void* aSession){
+                        , void* aSession
+                        , void* aStats){
 
     ResetErrno();
     InitSSLastErr(aSession, TD_PROGRAM_ERROR_TcpNewConnection);
@@ -39,8 +40,10 @@ int TcpNewConnection(int isIpv6
     }
 
     if (socket_fd == -1) {
+        IncSStats(aStats, socketCreateFail);
         SetSSLastErr(aSession, TD_SOCKET_CREATE_FAILED);
     }else{
+        IncSStats(aStats, socketCreate);
         SetSS1(aSession, STATE_TCP_SOCK_CREATE);
 
         //bind local socket
@@ -52,8 +55,18 @@ int TcpNewConnection(int isIpv6
         }
 
         if (bind_status == -1){
+            if (isIpv6){
+                IncSStats(aStats, socketBindIpv6Fail);
+            }else{
+                IncSStats(aStats, socketBindIpv4Fail);
+            }
             SetSSLastErr(aSession, TD_SOCKET_BIND_FAILED);
         }else{
+            if (isIpv6){
+                IncSStats(aStats, socketBindIpv6);
+            }else{
+                IncSStats(aStats, socketBindIpv4);
+            }
             SetSS1(aSession, STATE_TCP_SOCK_BIND);
 
             //connect socket

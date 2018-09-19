@@ -70,19 +70,10 @@ void DumpErrSessions() {
     if (theApp.errorSessionCount) {
         for (int i = 0; i < theApp.errorSessionCount; i++) {
             TcpClientSessionE_t* eS = &theApp.errorSessionArr[i];
-            printf ("SS1 = %" PRIx64 ", SS2 = %" PRIx64 "\n", GetSS1(eS), GetSS2(eS)); 
+            printf ("SS1 = %#018" PRIx64 ", Err = %d, SysErr = %d\n"
+                    , GetSS1(eS), GetSSLastErr(eS), GetErrno(eS) ); 
         }
     }
-}
-
-int InitiateConnection(TcpClientSession_t* aSession) {
-
-    aSession->socketFd = TcpNewConnection(aSession->isIpv6, 
-                                            aSession->localAddress, 
-                                            aSession->remoteAddress,
-                                            aSession);
-
-    return GetSSLastErr (aSession);    
 }
 
 void InitApp(TcpClientAppOptions_t* options) {
@@ -118,7 +109,9 @@ void CleanupApp() {
                 , appStats->connectionAttempt
                 , appStats->connectionSuccess
                 , appStats->connectionFail);
-    
+
+    DumpSessionStats(appStats);
+
     DumpErrSessions();
 }
 
@@ -127,7 +120,7 @@ int main(int argc, char** argv)
     TcpClientAppOptions_t appOptions = {  .maxEvents = 1000
                                         , .maxActiveSessions = 1000
                                         , .maxErrorSessions = 20
-                                        , .maxSessions = 10000 };
+                                        , .maxSessions = 1000 };
     InitApp(&appOptions);
     TcpClientStats_t* appStats = &theApp.appStats;
 
@@ -146,7 +139,7 @@ int main(int argc, char** argv)
                 appStats->dbgNoFreeSession++;      
             }else {
                 //hard coded
-                char* srcIp = "10.116.6.3";
+                char* srcIp = "10.116.6.4";
                 char* dstIp = "10.116.0.61";
                 struct sockaddr_in localAddr;
                 struct sockaddr_in remoteAddr;
@@ -168,7 +161,8 @@ int main(int argc, char** argv)
                 newSession->socketFd = TcpNewConnection(newSession->isIpv6, 
                                                         newSession->localAddress, 
                                                         newSession->remoteAddress,
-                                                        newSession);
+                                                        newSession,
+                                                        appStats);
                 if ( GetSSLastErr (newSession) ) {
                     appStats->connectionFail++;
                     StoreErrSession(newSession);

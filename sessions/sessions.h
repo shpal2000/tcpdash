@@ -4,8 +4,17 @@
 #include <gmodule.h>
 #include <sys/epoll.h>
 
-enum AppTypeId { TcpClientAppId = 1
-                , TcpServerAppId = 2};
+typedef struct SessionStats{
+    uint64_t socketCreate;    
+    uint64_t socketCreateFail;
+    uint64_t socketBindIpv4;    
+    uint64_t socketBindIpv4Fail;
+    uint64_t socketBindIpv6;    
+    uint64_t socketBindIpv6Fail;
+    uint64_t socketConnectEstablishFail;    
+    uint64_t socketConnectEstablishFail2;    
+    uint64_t programErrorTcpNewConnection;    
+} SessionStats_t;
 
 typedef struct SessionState{
     uint64_t state1;
@@ -40,6 +49,10 @@ static inline void SSInit(void* aSession) {
 
 #define InitSSLastErr(__aSession, __err) ((SessionState_t*)__aSession)->lastErr = __err
 
+#define IncSStats(__aStats, __stat) ((SessionStats_t*)__aStats)->__stat++
+
+#define GetSStats(__aStats, __stat) ((SessionStats_t*)__aStats)->__stat
+
 static inline void SetSSLastErr(void* aSession, uint16_t err) {
     ((SessionState_t*)aSession)->lastErr = err;
     ((SessionState_t*)aSession)->lastErrCount += 1;
@@ -53,16 +66,18 @@ static inline void SetSSLastErr(void* aSession, uint16_t err) {
 
 #define SaveErrno(__aSession) ((SessionState_t*)__aSession)->sysErrno = errno
 
+#define GetErrno(__aSession) ((SessionState_t*)__aSession)->sysErrno
+
 void RegisterForWriteEvent(int pollId, int fd, void* data);
 
+void DumpSessionStats(void* aStats);
 #define TD_NO_ERROR                                         0
-#define TD_PROGRAM_ERROR                                    1
 
-#define TD_SOCKET_CREATE_FAILED                             2
-#define TD_SOCKET_BIND_FAILED                               3
-#define TD_SOCKET_CONNECT_ESTABLISH_FAILED                  4
-#define TD_SOCKET_CONNECT_ESTABLISH_FAILED2                 5
-#define TD_PROGRAM_ERROR_TcpNewConnection                   6
+#define TD_SOCKET_CREATE_FAILED                             1
+#define TD_SOCKET_BIND_FAILED                               2
+#define TD_SOCKET_CONNECT_ESTABLISH_FAILED                  3
+#define TD_SOCKET_CONNECT_ESTABLISH_FAILED2                 4
+#define TD_PROGRAM_ERROR_TcpNewConnection                   5
 
 #define STATE_TCP_SOCK_CREATE                               0x0000000000000001
 #define STATE_TCP_SOCK_BIND                                 0x0000000000000002
