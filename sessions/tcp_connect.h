@@ -1,17 +1,19 @@
-#ifndef __SF_UTILS_H
+#ifndef __TCP_CONNECT_H
 
-#define __SF_UTILS_H
+#define __TCP_CONNECT_H
 int TcpNewConnection(int isIpv6 
                         , struct sockaddr* localAddress
                         , struct sockaddr* remoteAddress
-                        , void* aSession
-                        , void* aStats);
+                        , void* aStats
+                        , void* bStats
+                        , void* cState);
 
 int IsNewTcpConnectionComplete(int fd);
 
 int TcpListenStart(int isIpv6 
                     , struct sockaddr* localAddress
                     , int listenQLen
-                    , void* aSession
-                    , void* aStats);
+                    , void* aStats
+                    , void* bStats
+                    , void* cState);
 #endif

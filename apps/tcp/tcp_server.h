@@ -14,13 +14,13 @@ typedef struct TcpServerAppOptions {
 } TcpServerAppOptions_t;
 
 typedef struct TcpServerStats {
-    SessionStats_t _sS;
-    uint64_t connectionSuccess;
+    CommonConnStats_t _sS;
+    uint64_t tcpConnInitSuccess;
     uint64_t dbgNoFreeSession;
 } TcpServerStats_t;
 
 typedef struct TcpServerSession{
-    SessionState_t _sS; 
+    CommonConnState_t _sS; 
     int socketFd;
     int isIpv6;
     struct sockaddr* localAddress;
@@ -28,13 +28,13 @@ typedef struct TcpServerSession{
 } TcpServerSession_t;
 
 typedef struct TcpServerSessionE{
-    SessionState_t _sS; 
+    CommonConnState_t _sS; 
     int socketFd;
 } TcpServerSessionE_t;
 
 typedef struct TcpServerApp {
     TcpServerAppOptions_t appOptions;
-    TcpServerStats_t appStats;
+    TcpServerStats_t appConnStats;
     SessionPool_t* freeSessionPool;
     SessionPool_t* activeSessionPool;
     struct epoll_event* EventArr;

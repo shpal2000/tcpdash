@@ -4,7 +4,8 @@
 #include <gmodule.h>
 #include <sys/epoll.h>
 
-typedef struct SessionStats{
+typedef struct CommonConnStats{
+
     uint64_t socketCreate;    
     uint64_t socketCreateFail;
     uint64_t socketListenFail;
@@ -12,66 +13,75 @@ typedef struct SessionStats{
     uint64_t socketBindIpv4Fail;
     uint64_t socketBindIpv6;    
     uint64_t socketBindIpv6Fail;
+
     uint64_t socketConnectEstablishFail;    
     uint64_t socketConnectEstablishFail2;    
-    uint64_t programErrorTcpNewConnection;    
-} SessionStats_t;
 
-typedef struct SessionState{
+    uint64_t tcpConnInit;
+    uint64_t tcpConnInitSuccess;
+    uint64_t tcpConnInitFail;
+    uint64_t tcpConnInitProgress;
+
+    uint64_t programErrorTcpNewConnection;    
+} CommonConnStats_t;
+
+typedef struct CommonConnState{
     uint64_t state1;
     uint64_t state2;
     uint16_t lastErr;
     uint16_t lastErrCount;
     int sysErrno;
-    int appState;    
-} SessionState_t;
+    int appState;                                                                  
+} CommonConnState_t;
 
 typedef GQueue SessionPool_t;
 
 static inline void SSInit(void* aSession) {
 
-    ((SessionState_t*)aSession)->state1 = 0;
-    ((SessionState_t*)aSession)->state2 = 0;
-    ((SessionState_t*)aSession)->lastErr = 0;
-    ((SessionState_t*)aSession)->lastErrCount = 0;
+    ((CommonConnState_t*)aSession)->state1 = 0;
+    ((CommonConnState_t*)aSession)->state2 = 0;
+    ((CommonConnState_t*)aSession)->lastErr = 0;
+    ((CommonConnState_t*)aSession)->lastErrCount = 0;
 }
 
-#define SetAppState(__aSession, __state) ((SessionState_t*)__aSession)->appState = __state
+#define SetAppState(__aSession, __state) ((CommonConnState_t*)__aSession)->appState = __state
 
-#define GetAppState(__aSession) ((SessionState_t*)__aSession)->appState
+#define GetAppState(__aSession) ((CommonConnState_t*)__aSession)->appState
 
-#define SetSS1(__aSession, __state) ((SessionState_t*)__aSession)->state1 |= __state
+#define SetSS1(__aSession, __state) ((CommonConnState_t*)__aSession)->state1 |= __state
 
-#define SetSS2(__aSession, __state) ((SessionState_t*)__aSession)->state2 |= __state
+#define SetSS2(__aSession, __state) ((CommonConnState_t*)__aSession)->state2 |= __state
 
-#define GetSS1(__aSession) ((SessionState_t*)__aSession)->state1
+#define GetSS1(__aSession) ((CommonConnState_t*)__aSession)->state1
 
-#define GetSS2(__aSession) ((SessionState_t*)__aSession)->state2
+#define GetSS2(__aSession) ((CommonConnState_t*)__aSession)->state2
 
-#define InitSSLastErr(__aSession, __err) ((SessionState_t*)__aSession)->lastErr = __err
+#define InitSSLastErr(__aSession, __err) ((CommonConnState_t*)__aSession)->lastErr = __err
 
-#define IncSStats(__aStats, __stat) ((SessionStats_t*)__aStats)->__stat++
+#define IncSStats(__aStats, __stat) ((CommonConnStats_t*)__aStats)->__stat++
 
-#define GetSStats(__aStats, __stat) ((SessionStats_t*)__aStats)->__stat
+#define IncSStats2(__aStats, __bStats, __stat) ((CommonConnStats_t*)__aStats)->__stat++;((CommonConnStats_t*)__bStats)->__stat++
+
+#define GetCommonConnStats(__aStats, __stat) ((CommonConnStats_t*)__aStats)->__stat
 
 static inline void SetSSLastErr(void* aSession, uint16_t err) {
-    ((SessionState_t*)aSession)->lastErr = err;
-    ((SessionState_t*)aSession)->lastErrCount += 1;
+    ((CommonConnState_t*)aSession)->lastErr = err;
+    ((CommonConnState_t*)aSession)->lastErrCount += 1;
 }
 
-#define GetSSLastErr(__aSession) ((SessionState_t*)__aSession)->lastErr
+#define GetSSLastErr(__aSession) ((CommonConnState_t*)__aSession)->lastErr
 
-#define GetSSLastErrCount(__aSession) ((SessionState_t*)__aSession)->lastErrCount
+#define GetSSLastErrCount(__aSession) ((CommonConnState_t*)__aSession)->lastErrCount
 
-#define CopySS(__dstSS, __srcSS) *((SessionState_t*)(__dstSS)) = *((SessionState_t*)(__srcSS))
+#define CopySS(__dstSS, __srcSS) *((CommonConnState_t*)(__dstSS)) = *((CommonConnState_t*)(__srcSS))
 
-#define SaveErrno(__aSession) ((SessionState_t*)__aSession)->sysErrno = errno
+#define SaveErrno(__aSession) ((CommonConnState_t*)__aSession)->sysErrno = errno
 
-#define GetErrno(__aSession) ((SessionState_t*)__aSession)->sysErrno
+#define GetErrno(__aSession) ((CommonConnState_t*)__aSession)->sysErrno
 
 void RegisterForWriteEvent(int pollId, int fd, void* data);
 
-void DumpSessionStats(void* aStats);
+void DumpCommonConnStats(CommonConnStats_t* aStats);
 #define TD_NO_ERROR                                         0
 
 #define TD_SOCKET_CREATE_FAILED                             1

@@ -13,39 +13,42 @@ typedef struct TcpClientAppOptions {
     uint64_t maxSessions;
 } TcpClientAppOptions_t;
 
-typedef struct TcpClientStats {
-    SessionStats_t _sS;
+typedef struct TcpClientConnStats {
+    CommonConnStats_t connStats;
+} TcpClientConnStats_t;
 
-    uint64_t connectionAttempt;
-    uint64_t connectionSuccess;
-    uint64_t connectionFail;
-    uint64_t connectionProgress;
-
+typedef struct TcpClientAppStats {
     uint64_t dbgNoFreeSession;
-} TcpClientStats_t;
+} TcpClientAppStats_t;
 
-typedef struct TcpClientSession{
-    SessionState_t _sS; 
+typedef struct TcpClientConnection_t{
+    CommonConnState_t _sS; 
     int socketFd;
     int isIpv6;
     struct sockaddr* localAddress;
     struct sockaddr* remoteAddress;
-} TcpClientSession_t;
+    TcpClientSession_t* clientSession;
+} TcpClientConnection_t;
 
-typedef struct TcpClientSessionE{
-    SessionState_t _sS; 
-    int socketFd;
-} TcpClientSessionE_t;
+typedef struct TcpClientSession{
+    TcpClientConnection_t clientConn; 
+    TcpClientConnStats_t* groupStats;
+} TcpClientSession_t;
 
 typedef struct TcpClientApp {
     TcpClientAppOptions_t appOptions;
-    TcpClientStats_t appStats;
+    
+    TcpClientAppStats_t appStats;
+    TcpClientConnStats_t appConnStats;
+    TcpClientConnStats_t appGroupConnStats[1];
+
     SessionPool_t* freeSessionPool;
     SessionPool_t* activeSessionPool;
+
     struct epoll_event* EventArr;
     int eventQId;
     uint32_t errorSessionCount;
-    TcpClientSessionE_t* errorSessionArr;
+    TcpClientSession_t* errorSessionArr;
 } TcpClientApp_t;
 
 #endif

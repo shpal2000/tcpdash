@@ -25,11 +25,12 @@
 int TcpNewConnection(int isIpv6 
                         , struct sockaddr* localAddress
                         , struct sockaddr* remoteAddress
-                        , void* aSession
-                        , void* aStats){
+                        , void* aStats
+                        , void* bStats
+                        , void* cState){
 
     ResetErrno();
-    InitSSLastErr(aSession, TD_PROGRAM_ERROR_TcpNewConnection);
+    InitSSLastErr(cState, TD_PROGRAM_ERROR_TcpNewConnection);
 
     //create socket
     int socket_fd = -1;
@@ -40,11 +41,11 @@ int TcpNewConnection(int isIpv6
     }
 
     if (socket_fd == -1) {
-        IncSStats(aStats, socketCreateFail);
-        SetSSLastErr(aSession, TD_SOCKET_CREATE_FAILED);
+        IncSStats2(aStats, bStats, socketCreateFail);
+        SetSSLastErr(cState, TD_SOCKET_CREATE_FAILED);
     }else{
-        IncSStats(aStats, socketCreate);
-        SetSS1(aSession, STATE_TCP_SOCK_CREATE);
+        IncSStats2(aStats, bStats, socketCreate);
+        SetSS1(cState, STATE_TCP_SOCK_CREATE);
 
         //bind local socket
         int bind_status = -1;
@@ -56,18 +57,18 @@ int TcpNewConnection(int isIpv6
 
         if (bind_status == -1){
             if (isIpv6){
-                IncSStats(aStats, socketBindIpv6Fail);
+                IncSStats2(aStats, bStats, socketBindIpv6Fail);
             }else{
-                IncSStats(aStats, socketBindIpv4Fail);
+                IncSStats2(aStats, bStats, socketBindIpv4Fail);
             }
-            SetSSLastErr(aSession, TD_SOCKET_BIND_FAILED);
+            SetSSLastErr(cState, TD_SOCKET_BIND_FAILED);
         }else{
             if (isIpv6){
-                IncSStats(aStats, socketBindIpv6);
+                IncSStats2(aStats, bStats, socketBindIpv6);
             }else{
-                IncSStats(aStats, socketBindIpv4);
+                IncSStats2(aStats, bStats, socketBindIpv4);
             }
-            SetSS1(aSession, STATE_TCP_SOCK_BIND);
+            SetSS1(cState, STATE_TCP_SOCK_BIND);
 
             //connect socket
             int connect_status = -1;
@@ -76,28 +77,28 @@ int TcpNewConnection(int isIpv6
             }else{
                 connect_status = connect(socket_fd, remoteAddress, sizeof(struct sockaddr_in));
             }
-            SetSS1(aSession, STATE_TCP_CONN_INIT);
+            SetSS1(cState, STATE_TCP_CONN_INIT);
 
             //check connect status
             if (connect_status < 0){
                 if (errno == EINPROGRESS){
-                    SetSS1(aSession, STATE_TCP_CONN_IN_PROGRESS);
-                    SetSSLastErr(aSession, TD_NO_ERROR);
+                    SetSS1(cState, STATE_TCP_CONN_IN_PROGRESS);
+                    SetSSLastErr(cState, TD_NO_ERROR);
                 }else{
-                    SetSSLastErr(aSession, TD_SOCKET_CONNECT_FAILED_IMMEDIATE);
+                    SetSSLastErr(cState, TD_SOCKET_CONNECT_FAILED_IMMEDIATE);
                 }
             }else{
-                SetSS1(aSession, STATE_TCP_CONN_IN_PROGRESS2);
-                SetSSLastErr(aSession, TD_NO_ERROR);
+                SetSS1(cState, STATE_TCP_CONN_IN_PROGRESS2);
+                SetSSLastErr(cState, TD_NO_ERROR);
             }
         }
     }
 
-    if (GetSSLastErr(aSession) != TD_NO_ERROR){
-        SaveErrno(aSession);
+    if (GetSSLastErr(cState) != TD_NO_ERROR){
+        SaveErrno(cState);
         if (socket_fd != -1){
             close(socket_fd);
-            SetSS1(aSession, STATE_TCP_SOCK_FD_CLOSE);
+            SetSS1(cState, STATE_TCP_SOCK_FD_CLOSE);
         }
         return -1;
     }
@@ -125,11 +126,12 @@ int IsNewTcpConnectionComplete(int fd){
 int TcpListenStart(int isIpv6 
                     , struct sockaddr* localAddress
                     , int listenQLen
-                    , void* aSession
-                    , void* aStats) {
+                    , void* aStats
+                    , void* bStats
+                    , void* cState) {
 
     ResetErrno();
-    InitSSLastErr(aSession, TD_PROGRAM_ERROR_TcpListenStart);
+    InitSSLastErr(cState, TD_PROGRAM_ERROR_TcpListenStart);
 
     //create socket
     int socket_fd = -1;
@@ -140,11 +142,11 @@ int TcpListenStart(int isIpv6
     }
 
     if (socket_fd == -1) {
-        IncSStats(aStats, socketCreateFail);
-        SetSSLastErr(aSession, TD_SOCKET_CREATE_FAILED);
+        IncSStats2(aStats, bStats, socketCreateFail);
+        SetSSLastErr(cState, TD_SOCKET_CREATE_FAILED);
     }else{
-        IncSStats(aStats, socketCreate);
-        SetSS1(aSession, STATE_TCP_SOCK_CREATE);
+        IncSStats2(aStats, bStats, socketCreate);
+        SetSS1(cState, STATE_TCP_SOCK_CREATE);
 
         //bind local socket
         int bind_status = -1;
@@ -156,18 +158,18 @@ int TcpListenStart(int isIpv6
 
         if (bind_status == -1){
             if (isIpv6){
-                IncSStats(aStats, socketBindIpv6Fail);
+                IncSStats2(aStats, bStats, socketBindIpv6Fail);
             }else{
-                IncSStats(aStats, socketBindIpv4Fail);
+                IncSStats2(aStats, bStats, socketBindIpv4Fail);
             }
-            SetSSLastErr(aSession, TD_SOCKET_BIND_FAILED);
+            SetSSLastErr(cState, TD_SOCKET_BIND_FAILED);
         }else{
             if (isIpv6){
-                IncSStats(aStats, socketBindIpv6);
+                IncSStats2(aStats, bStats, socketBindIpv6);
             }else{
-                IncSStats(aStats, socketBindIpv4);
+                IncSStats2(aStats, bStats, socketBindIpv4);
             }
-            SetSS1(aSession, STATE_TCP_SOCK_BIND);
+            SetSS1(cState, STATE_TCP_SOCK_BIND);
 
             //listen socket
             int listen_status = -1;
@@ -175,19 +177,19 @@ int TcpListenStart(int isIpv6
 
             //check listen status
             if (listen_status < 0) {
-               SetSSLastErr(aSession, TD_SOCKET_LISTEN_FAILED); 
+               SetSSLastErr(cState, TD_SOCKET_LISTEN_FAILED); 
             } else {
-                SetSS1(aSession, STATE_TCP_LISTENING);
-                SetSSLastErr(aSession, TD_NO_ERROR); 
+                SetSS1(cState, STATE_TCP_LISTENING);
+                SetSSLastErr(cState, TD_NO_ERROR); 
             }
         }
     }
 
-    if (GetSSLastErr(aSession) != TD_NO_ERROR){
-        SaveErrno(aSession);
+    if (GetSSLastErr(cState) != TD_NO_ERROR){
+        SaveErrno(cState);
         if (socket_fd != -1){
             close(socket_fd);
-            SetSS1(aSession, STATE_TCP_SOCK_FD_CLOSE);
+            SetSS1(cState, STATE_TCP_SOCK_FD_CLOSE);
         }
         return -1;
     }
