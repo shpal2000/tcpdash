@@ -7,6 +7,7 @@
 typedef struct SessionStats{
     uint64_t socketCreate;    
     uint64_t socketCreateFail;
+    uint64_t socketListenFail;
     uint64_t socketBindIpv4;    
     uint64_t socketBindIpv4Fail;
     uint64_t socketBindIpv6;    
@@ -75,9 +76,11 @@ void DumpSessionStats(void* aStats);
 
 #define TD_SOCKET_CREATE_FAILED                             1
 #define TD_SOCKET_BIND_FAILED                               2
-#define TD_SOCKET_CONNECT_ESTABLISH_FAILED                  3
-#define TD_SOCKET_CONNECT_ESTABLISH_FAILED2                 4
+#define TD_SOCKET_CONNECT_FAILED                            3
+#define TD_SOCKET_CONNECT_FAILED_IMMEDIATE                  4
 #define TD_PROGRAM_ERROR_TcpNewConnection                   5
+#define TD_PROGRAM_ERROR_TcpListenStart                     6
+#define TD_SOCKET_LISTEN_FAILED                             7
 
 #define STATE_TCP_SOCK_CREATE                               0x0000000000000001
 #define STATE_TCP_SOCK_BIND                                 0x0000000000000002
@@ -86,6 +89,8 @@ void DumpSessionStats(void* aStats);
 #define STATE_TCP_CONN_IN_PROGRESS2                         0x0000000000000010
 #define STATE_TCP_CONN_ESTABLISHED                          0x0000000000000020
 #define STATE_TCP_SOCK_FD_CLOSE                             0x0000000000000040
+#define STATE_TCP_LISTENING                                 0x0000000000000080
+#define STATE_TCP_LISTEN_STOP                               0x0000000000000100
 
 
 #define AllocSession(__type) g_slice_new(__type)

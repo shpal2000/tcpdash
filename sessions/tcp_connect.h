@@ -8,4 +8,10 @@ int TcpNewConnection(int isIpv6
                         , void* aStats);
 
 int IsNewTcpConnectionComplete(int fd);
+
+int TcpListenStart(int isIpv6 
+                    , struct sockaddr* localAddress
+                    , int listenQLen
+                    , void* aSession
+                    , void* aStats);
 #endif

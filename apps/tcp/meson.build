@@ -1,5 +1,7 @@
 tcp_client_src = ['tcp_client.c']
 
+tcp_server_src = ['tcp_server.c']
+
 glib_dep = dependency('glib-2.0')
 
 incdir = include_directories('../..')
@@ -9,3 +11,4 @@ executable('tcp_client.exe'
             , include_directories : incdir
             , dependencies : glib_dep
             , link_with : sessionslib)
+

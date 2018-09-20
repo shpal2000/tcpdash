@@ -84,8 +84,7 @@ int TcpNewConnection(int isIpv6
                     SetSS1(aSession, STATE_TCP_CONN_IN_PROGRESS);
                     SetSSLastErr(aSession, TD_NO_ERROR);
                 }else{
-                    SetSSLastErr(aSession, TD_SOCKET_CONNECT_ESTABLISH_FAILED);
-                    SetSSLastErr(aSession, TD_NO_ERROR);
+                    SetSSLastErr(aSession, TD_SOCKET_CONNECT_FAILED_IMMEDIATE);
                 }
             }else{
                 SetSS1(aSession, STATE_TCP_CONN_IN_PROGRESS2);
@@ -121,4 +120,77 @@ int IsNewTcpConnectionComplete(int fd){
     }
 
     return 0;
+}
+
+int TcpListenStart(int isIpv6 
+                    , struct sockaddr* localAddress
+                    , int listenQLen
+                    , void* aSession
+                    , void* aStats) {
+
+    ResetErrno();
+    InitSSLastErr(aSession, TD_PROGRAM_ERROR_TcpListenStart);
+
+    //create socket
+    int socket_fd = -1;
+    if (isIpv6){
+        socket_fd = socket(AF_INET6 , SOCK_STREAM | SOCK_NONBLOCK , 0);
+    }else{
+        socket_fd = socket(AF_INET , SOCK_STREAM | SOCK_NONBLOCK , 0);
+    }
+
+    if (socket_fd == -1) {
+        IncSStats(aStats, socketCreateFail);
+        SetSSLastErr(aSession, TD_SOCKET_CREATE_FAILED);
+    }else{
+        IncSStats(aStats, socketCreate);
+        SetSS1(aSession, STATE_TCP_SOCK_CREATE);
+
+        //bind local socket
+        int bind_status = -1;
+        if (isIpv6){
+            bind_status = bind(socket_fd, localAddress, sizeof(struct sockaddr_in6));
+        }else{
+            bind_status = bind(socket_fd, localAddress, sizeof(struct sockaddr_in));
+        }
+
+        if (bind_status == -1){
+            if (isIpv6){
+                IncSStats(aStats, socketBindIpv6Fail);
+            }else{
+                IncSStats(aStats, socketBindIpv4Fail);
+            }
+            SetSSLastErr(aSession, TD_SOCKET_BIND_FAILED);
+        }else{
+            if (isIpv6){
+                IncSStats(aStats, socketBindIpv6);
+            }else{
+                IncSStats(aStats, socketBindIpv4);
+            }
+            SetSS1(aSession, STATE_TCP_SOCK_BIND);
+
+            //listen socket
+            int listen_status = -1;
+            listen_status = listen(socket_fd, listenQLen);
+
+            //check listen status
+            if (listen_status < 0) {
+               SetSSLastErr(aSession, TD_SOCKET_LISTEN_FAILED); 
+            } else {
+                SetSS1(aSession, STATE_TCP_LISTENING);
+                SetSSLastErr(aSession, TD_NO_ERROR); 
+            }
+        }
+    }
+
+    if (GetSSLastErr(aSession) != TD_NO_ERROR){
+        SaveErrno(aSession);
+        if (socket_fd != -1){
+            close(socket_fd);
+            SetSS1(aSession, STATE_TCP_SOCK_FD_CLOSE);
+        }
+        return -1;
+    }
+
+    return socket_fd;
 }
