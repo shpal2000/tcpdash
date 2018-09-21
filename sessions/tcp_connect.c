@@ -12,7 +12,7 @@
 #include "logging/logs.h"
 
 
-/** @brief Initiate the TCP connection establishment process 
+/** @brief Initiate the TCP connection etablishment process 
  *         to remote host.
  *         
  *  Supports both IPv4 and IPv6 internet address
@@ -47,50 +47,66 @@ int TcpNewConnection(int isIpv6
         IncSStats2(aStats, bStats, socketCreate);
         SetSS1(cState, STATE_TCP_SOCK_CREATE);
 
-        //bind local socket
-        int bind_status = -1;
-        if (isIpv6){
-            bind_status = bind(socket_fd, localAddress, sizeof(struct sockaddr_in6));
-        }else{
-            bind_status = bind(socket_fd, localAddress, sizeof(struct sockaddr_in));
-        }
+        int setsockopt_status = -1;
+        setsockopt_status = setsockopt(socket_fd, SOL_SOCKET
+                                , SO_REUSEADDR, &(int){ 1 }, sizeof(int));
 
-        if (bind_status == -1){
+        if (setsockopt_status == -1){
+            IncSStats2(aStats, bStats, socketReuseSetFail);
+            SetSSLastErr(cState, TD_SOCKET_REUSE_FAILED);
+        } else {
+            IncSStats2(aStats, bStats, socketReuseSet);
+            SetSS1(cState, STATE_TCP_SOCK_REUSE);
+            //bind local socket
+            int bind_status = -1;
             if (isIpv6){
-                IncSStats2(aStats, bStats, socketBindIpv6Fail);
+                bind_status = bind(socket_fd, localAddress, sizeof(struct sockaddr_in6));
             }else{
-                IncSStats2(aStats, bStats, socketBindIpv4Fail);
+                bind_status = bind(socket_fd, localAddress, sizeof(struct sockaddr_in));
             }
-            SetSSLastErr(cState, TD_SOCKET_BIND_FAILED);
-        }else{
-            if (isIpv6){
-                IncSStats2(aStats, bStats, socketBindIpv6);
-            }else{
-                IncSStats2(aStats, bStats, socketBindIpv4);
-            }
-            SetSS1(cState, STATE_TCP_SOCK_BIND);
 
-            //connect socket
-            int connect_status = -1;
-            if (isIpv6){
-                connect_status = connect(socket_fd, remoteAddress, sizeof(struct sockaddr_in6));
-            }else{
-                connect_status = connect(socket_fd, remoteAddress, sizeof(struct sockaddr_in));
-            }
-            SetSS1(cState, STATE_TCP_CONN_INIT);
-
-            //check connect status
-            if (connect_status < 0){
-                if (errno == EINPROGRESS){
-                    SetSS1(cState, STATE_TCP_CONN_IN_PROGRESS);
-                    SetSSLastErr(cState, TD_NO_ERROR);
+            if (bind_status == -1){
+                if (isIpv6){
+                    IncSStats2(aStats, bStats, socketBindIpv6Fail);
                 }else{
-                    SetSSLastErr(cState, TD_SOCKET_CONNECT_FAILED_IMMEDIATE);
+                    IncSStats2(aStats, bStats, socketBindIpv4Fail);
                 }
+                SetSSLastErr(cState, TD_SOCKET_BIND_FAILED);
             }else{
-                SetSS1(cState, STATE_TCP_CONN_IN_PROGRESS2);
-                SetSSLastErr(cState, TD_NO_ERROR);
-            }
+                if (isIpv6){
+                    IncSStats2(aStats, bStats, socketBindIpv6);
+                }else{
+                    IncSStats2(aStats, bStats, socketBindIpv4);
+                }
+                SetSS1(cState, STATE_TCP_SOCK_BIND);
+
+                //connect socket
+                int connect_status = -1;
+                if (isIpv6){
+                    connect_status = connect(socket_fd
+                                    , remoteAddress
+                                    , sizeof(struct sockaddr_in6));
+                }else{
+                    connect_status = connect(socket_fd
+                                        , remoteAddress
+                                        , sizeof(struct sockaddr_in));
+                }
+                SetSS1(cState, STATE_TCP_CONN_INIT);
+
+                //check connect status
+                if (connect_status < 0){
+                    if (errno == EINPROGRESS){
+                        SetSS1(cState, STATE_TCP_CONN_IN_PROGRESS);
+                        SetSSLastErr(cState, TD_NO_ERROR);
+                    }else{
+                        SetSSLastErr(cState
+                                , TD_SOCKET_CONNECT_FAILED_IMMEDIATE);
+                    }
+                }else{
+                    SetSS1(cState, STATE_TCP_CONN_IN_PROGRESS2);
+                    SetSSLastErr(cState, TD_NO_ERROR);
+                }
+    }
         }
     }
 

@@ -8,6 +8,9 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <time.h>
+
 
 #include "sessions/sessions.h"
 #include "sessions/tcp_connect.h"
@@ -15,6 +18,24 @@
 #include "tcp_client.h"
 
 TcpClientApp_t theApp;
+
+//hard coded
+char* srcIp = "12.20.50.1";
+char* dstIp = "12.20.60.1";
+int dstPort = 8080;
+struct sockaddr_in localAddr;
+struct sockaddr_in remoteAddr;
+
+TcpClientAppOptions_t appOptions = {  .maxEvents = 1000
+                                    , .maxActiveSessions = 1000
+                                    , .maxErrorSessions = 1000
+                                    , .maxSessions = 1000000 };
+int tcp_client_fifo;
+char statsString[120];
+int ignoreRet;
+//hard coded
+
+
 
 void InitSession(TcpClientSession_t* newSess) {
 
@@ -104,28 +125,37 @@ void InitApp(TcpClientAppOptions_t* options) {
     theApp.eventQId = CreateEventQ();
 }
 
-void CleanupApp() {
-    //TcpClientConnStats_t* appConnStats = &theApp.appConnStats;
-    CommonConnStats_t* appCommonConnStats = (CommonConnStats_t*) &theApp.appConnStats;
+char* GetStatsString() {
 
+    sprintf (statsString, 
+                        "%" PRIu64 
+                        ", %" PRIu64 
+                        ", %" PRIu64 
+                        ", %" PRIu64 
+                        "\n"
+        , GetSStats(&theApp.appConnStats, tcpConnInit)
+        , GetSStats(&theApp.appConnStats, tcpConnInitSuccess)
+        , GetSStats(&theApp.appConnStats, tcpConnInitFail)
+        , GetSStats(&theApp.appConnStats, tcpConnInitFailEaddrNotAvail)
+        );
+
+    return statsString;
+}
+void CleanupApp() {
     DeleteEventQ(theApp.eventQId);
 
-    printf ("%" PRIu64 ", %" PRIu64 ", %" PRIu64 "\n"
-                , appCommonConnStats->tcpConnInit
-                , appCommonConnStats->tcpConnInitSuccess
-                , appCommonConnStats->tcpConnInitFail);
-
-    DumpSStats(appCommonConnStats);
+//    DumpSStats(&theApp.appConnStats);
 
     DumpErrSessions();
 }
 
 int main(int argc, char** argv)
 {
-    TcpClientAppOptions_t appOptions = {  .maxEvents = 1000
-                                        , .maxActiveSessions = 1000
-                                        , .maxErrorSessions = 20
-                                        , .maxSessions = 1000 };
+    //hardcoded
+    tcp_client_fifo = open("/tmp/tcp_client", O_WRONLY);
+    time_t epochSinceSeconds = time(NULL);
+    //hardcoded
+
     InitApp(&appOptions);
     TcpClientConnStats_t* appConnStats = &theApp.appConnStats;
     TcpClientAppStats_t* appStats = &theApp.appStats;
@@ -144,19 +174,6 @@ int main(int argc, char** argv)
             if (newSess == NULL) {
                 appStats->dbgNoFreeSession++;      
             }else {
-                //hard coded
-                char* srcIp = "10.116.6.4";
-                char* dstIp = "10.116.0.61";
-                struct sockaddr_in localAddr;
-                struct sockaddr_in remoteAddr;
-                memset(&localAddr, 0, sizeof(localAddr));
-                localAddr.sin_family = AF_INET;
-                inet_pton(AF_INET, srcIp, &(localAddr.sin_addr));
-                memset(&remoteAddr, 0, sizeof(remoteAddr));
-                remoteAddr.sin_family = AF_INET;
-                remoteAddr.sin_port = htons(80);
-                inet_pton(AF_INET, dstIp, &(remoteAddr.sin_addr));
-                //hard coded
 
                 TcpClientConnection_t* newConn = &newSess->tcConn;
 
@@ -169,20 +186,44 @@ int main(int argc, char** argv)
 
                 SetAppState (newConn, APP_STATE_CONNECTION_IN_PROGRESS);
 
-                IncSStats2(appConnStats, groupConnStats, tcpConnInit);
+    //hard coded
+    memset(&localAddr, 0, sizeof(localAddr));
+    localAddr.sin_family = AF_INET;
+    inet_pton(AF_INET, srcIp, &(localAddr.sin_addr));
+    memset(&remoteAddr, 0, sizeof(remoteAddr));
+    remoteAddr.sin_family = AF_INET;
+    remoteAddr.sin_port = htons(dstPort);
+    inet_pton(AF_INET, dstIp, &(remoteAddr.sin_addr));
+    //hard coded 
 
-                newConn->socketFd = TcpNewConnection(newConn->isIpv6, 
-                                                        newConn->localAddress, 
-                                                        newConn->remoteAddress,
-                                                        appConnStats,
-                                                        groupConnStats,
-                                                        newConn);
+                newConn->socketFd 
+                        = TcpNewConnection(newConn->isIpv6, 
+                                        newConn->localAddress, 
+                                        newConn->remoteAddress,
+                                        appConnStats,
+                                        groupConnStats,
+                                        newConn);
+
                 if ( GetSSLastErr (newConn) ) {
-                    IncSStats2(appConnStats, groupConnStats, tcpConnInitFail);
-                    StoreErrSession(newSess);
+                    if (GetSSLastErr (newConn) == TD_SOCKET_CONNECT_FAILED_IMMEDIATE
+                        && GetErrno(newConn) == EADDRNOTAVAIL) {
+                            IncSStats2(appConnStats
+                                    , groupConnStats
+                                    , tcpConnInitFailEaddrNotAvail);
+
+                        } else {
+                        IncSStats2(appConnStats, groupConnStats, tcpConnInit);
+                        IncSStats2(appConnStats
+                                    , groupConnStats
+                                    , tcpConnInitFail);
+                        StoreErrSession(newSess);
+                        }
                     SetFreeSession (newSess);
                 } else {
-                    RegisterForWriteEvent(theApp.eventQId, newConn->socketFd, newConn);
+                    IncSStats2(appConnStats, groupConnStats, tcpConnInit);
+                    RegisterForWriteEvent(theApp.eventQId
+                                    , newConn->socketFd
+                                    , newConn);
                 }
             }
         }
@@ -217,6 +258,14 @@ int main(int argc, char** argv)
 
                             SetFreeSession (newSess);
                             //to capture the error ?
+                        }
+                        if ( (time(NULL) - epochSinceSeconds) >= 5) {
+                            GetStatsString();
+                            ignoreRet = write(tcp_client_fifo
+                                    , statsString
+                                    , strlen(statsString));
+                            ignoreRet += 1;
+                            epochSinceSeconds = time(NULL);
                         }
                     }
                 }

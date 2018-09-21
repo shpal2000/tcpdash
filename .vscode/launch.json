@@ -6,7 +6,7 @@
         "type": "cppdbg",
         "request": "launch",
         "program": "${workspaceRoot}/build/apps/tcp/tcp_client.exe",
-        "miDebuggerServerAddress": "10.116.6.3:9091",
+        "miDebuggerServerAddress": "10.116.0.61:9091",
         "args": [],
         "stopAtEntry": true,
         "cwd": "${workspaceRoot}",
