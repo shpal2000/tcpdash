@@ -18,15 +18,16 @@ void RegisterForWriteEvent(int pollId, int fd, void* data) {
     epoll_ctl(pollId, EPOLL_CTL_ADD, fd, &setEvent);
 }
 
-void DumpCommonConnStats(CommonConnStats_t* aStats) {
+void DumpSStats(void* aStats) {
+    CommonConnStats_t* cStats = (CommonConnStats_t*) aStats;
     printf ("\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64"\n"
-                , aStats->socketCreate
-                , aStats->socketCreateFail
-                , aStats->socketBindIpv4
-                , aStats->socketBindIpv4Fail
-                , aStats->socketBindIpv6
-                , aStats->socketBindIpv6Fail
-                , aStats->socketConnectEstablishFail
-                , aStats->socketConnectEstablishFail2
-                , aStats->programErrorTcpNewConnection);
+                , cStats->socketCreate
+                , cStats->socketCreateFail
+                , cStats->socketBindIpv4
+                , cStats->socketBindIpv4Fail
+                , cStats->socketBindIpv6
+                , cStats->socketBindIpv6Fail
+                , cStats->socketConnectEstablishFail
+                , cStats->socketConnectEstablishFail2
+                , cStats->programErrorTcpNewConnection);
 }

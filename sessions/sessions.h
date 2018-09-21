@@ -36,12 +36,12 @@ typedef struct CommonConnState{
 
 typedef GQueue SessionPool_t;
 
-static inline void SSInit(void* aSession) {
+static inline void SSInit(void* cState) {
 
-    ((CommonConnState_t*)aSession)->state1 = 0;
-    ((CommonConnState_t*)aSession)->state2 = 0;
-    ((CommonConnState_t*)aSession)->lastErr = 0;
-    ((CommonConnState_t*)aSession)->lastErrCount = 0;
+    ((CommonConnState_t*)cState)->state1 = 0;
+    ((CommonConnState_t*)cState)->state2 = 0;
+    ((CommonConnState_t*)cState)->lastErr = 0;
+    ((CommonConnState_t*)cState)->lastErrCount = 0;
 }
 
 #define SetAppState(__aSession, __state) ((CommonConnState_t*)__aSession)->appState = __state
@@ -62,7 +62,7 @@ static inline void SSInit(void* aSession) {
 
 #define IncSStats2(__aStats, __bStats, __stat) ((CommonConnStats_t*)__aStats)->__stat++;((CommonConnStats_t*)__bStats)->__stat++
 
-#define GetCommonConnStats(__aStats, __stat) ((CommonConnStats_t*)__aStats)->__stat
+#define GetSStats(__aStats, __stat) ((CommonConnStats_t*)__aStats)->__stat
 
 static inline void SetSSLastErr(void* aSession, uint16_t err) {
     ((CommonConnState_t*)aSession)->lastErr = err;
@@ -81,7 +81,7 @@ static inline void SetSSLastErr(void* aSession, uint16_t err) {
 
 void RegisterForWriteEvent(int pollId, int fd, void* data);
 
-void DumpCommonConnStats(CommonConnStats_t* aStats);
+void DumpSStats(void* aStats);
 #define TD_NO_ERROR                                         0
 
 #define TD_SOCKET_CREATE_FAILED                             1

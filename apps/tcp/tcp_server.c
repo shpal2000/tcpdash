@@ -107,7 +107,7 @@ void CleanupApp() {
 
     printf ("%" PRIu64 "\n", appConnStats->tcpConnInitSuccess);
 
-    DumpCommonConnStats(appConnStats);
+    DumpSStats(appConnStats);
 
     DumpErrSessions();
 }

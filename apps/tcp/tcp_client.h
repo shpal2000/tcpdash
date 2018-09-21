@@ -21,18 +21,18 @@ typedef struct TcpClientAppStats {
     uint64_t dbgNoFreeSession;
 } TcpClientAppStats_t;
 
-typedef struct TcpClientConnection_t{
-    CommonConnState_t _sS; 
+typedef struct TcpClientConnection{
+    CommonConnState_t ccState; 
     int socketFd;
     int isIpv6;
     struct sockaddr* localAddress;
     struct sockaddr* remoteAddress;
-    TcpClientSession_t* clientSession;
+    struct TcpClientSession* tcSess;
 } TcpClientConnection_t;
 
 typedef struct TcpClientSession{
-    TcpClientConnection_t clientConn; 
-    TcpClientConnStats_t* groupStats;
+    TcpClientConnection_t tcConn; 
+    TcpClientConnStats_t* groupConnStats;
 } TcpClientSession_t;
 
 typedef struct TcpClientApp {
