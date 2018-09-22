@@ -27,9 +27,10 @@ struct sockaddr_in localAddr;
 struct sockaddr_in remoteAddr;
 
 TcpClientAppOptions_t appOptions = {  .maxEvents = 1000
-                                    , .maxActiveSessions = 25000
-                                    , .maxErrorSessions = 1000
-                                    , .maxSessions = 1000000 };
+                        , .maxActiveSessions = 25000
+                        , .maxErrorSessions = 1000
+                        , .maxSessions = 10000000 };
+
 int tcp_client_fifo;
 char statsString[120];
 int ignoreRet;
@@ -54,8 +55,8 @@ void InitSession(TcpClientSession_t* newSess) {
 void SetSessionAddress(TcpClientConnection_t* newConn
                         , int isIpv6
                         , struct sockaddr* localAddr
-                        , struct sockaddr* remoteAddr) {
-
+                        , struct sockaddr* remoteAddr) 
+{
     newConn->isIpv6 = isIpv6;
     newConn->localAddress = localAddr;
     newConn->remoteAddress = remoteAddr;
@@ -83,20 +84,32 @@ void SetFreeSession(TcpClientSession_t* newSess) {
 void StoreErrSession(TcpClientSession_t* aSession) {
     if (theApp.errorSessionCount < theApp.appOptions.maxErrorSessions) {
 
-        TcpClientSession_t* errSession = &theApp.errorSessionArr[theApp.errorSessionCount];
+        TcpClientSession_t* errSession 
+                = &theApp.errorSessionArr[theApp.errorSessionCount];
+
         *errSession =  *aSession;
+
         theApp.errorSessionCount++;
     }
 }
 
 void DumpErrSessions() {
-    if (theApp.errorSessionCount) {
+    if (theApp.errorSessionCount) 
+    {
         for (int i = 0; i < theApp.errorSessionCount; i++) {
-            TcpClientSession_t* newSess = &theApp.errorSessionArr[i];
-            TcpClientConnection_t* newConn = &newSess->tcConn;
 
-            printf ("SS1 = %#018" PRIx64 ", Err = %d, SysErr = %d\n"
-                , GetSS1(newConn), GetSSLastErr(newConn), GetErrno(newConn) ); 
+            TcpClientSession_t* newSess 
+                    = &theApp.errorSessionArr[i];
+
+            TcpClientConnection_t* newConn 
+                    = &newSess->tcConn;
+
+            printf ("SS1 = %#018" PRIx64 
+                    ", Err = %d" 
+                    ", SysErr = %d\n"
+                    , GetSS1(newConn)
+                    , GetSSLastErr(newConn)
+                    , GetErrno(newConn) ); 
         }
     }
 }
@@ -109,12 +122,17 @@ void InitApp(TcpClientAppOptions_t* options) {
     theApp.activeSessionPool = AllocEmptySessionPool();
 
     for (int i = 0; i < theApp.appOptions.maxActiveSessions; i++) {
-        TcpClientSession_t* aSession = AllocSession (TcpClientSession_t);
+
+        TcpClientSession_t* aSession 
+                    = AllocSession (TcpClientSession_t);
+
         InitSession (aSession);
+
         AddToSessionPool (theApp.freeSessionPool, aSession);
     }
 
     theApp.errorSessionCount = 0;
+    
     theApp.errorSessionArr = CreateSessionArray (TcpClientSession_t
                                 , theApp.appOptions.maxErrorSessions); 
 
@@ -154,13 +172,27 @@ void CleanupApp() {
 int main(int argc, char** argv)
 {
     //hardcoded
-    tcp_client_fifo = open("/tmp/tcp_client", O_WRONLY);
-    time_t epochSinceSeconds = time(NULL);
+    //tcp_client_fifo = open("/tmp/tcp_client", O_WRONLY);
     //hardcoded
 
     InitApp(&appOptions);
     TcpClientConnStats_t* appConnStats = &theApp.appConnStats;
     TcpClientAppStats_t* appStats = &theApp.appStats;
+
+                //hard coded
+                int srcPort = 10000;
+                memset(&localAddr, 0, sizeof(localAddr));
+                localAddr.sin_family = AF_INET;
+                inet_pton(AF_INET, srcIp, &(localAddr.sin_addr));
+                localAddr.sin_port = htons(srcPort);
+                memset(&remoteAddr, 0, sizeof(remoteAddr));
+                remoteAddr.sin_family = AF_INET;
+                remoteAddr.sin_port = htons(dstPort);
+                inet_pton(AF_INET, dstIp, &(remoteAddr.sin_addr));
+                //hard coded 
+
+    time_t epochSinceSeconds = time(NULL);
+    printf("%ld - -\n", epochSinceSeconds);
 
     while (true) {
 
@@ -189,13 +221,11 @@ int main(int argc, char** argv)
                 SetAppState (newConn, APP_STATE_CONNECTION_IN_PROGRESS);
 
                 //hard coded
-                memset(&localAddr, 0, sizeof(localAddr));
-                localAddr.sin_family = AF_INET;
-                inet_pton(AF_INET, srcIp, &(localAddr.sin_addr));
-                memset(&remoteAddr, 0, sizeof(remoteAddr));
-                remoteAddr.sin_family = AF_INET;
-                remoteAddr.sin_port = htons(dstPort);
-                inet_pton(AF_INET, dstIp, &(remoteAddr.sin_addr));
+                localAddr.sin_port = htons(srcPort++);
+                if (srcPort == 60000) {
+                    srcPort = 10000;
+                }
+
                 //hard coded 
 
                 newConn->socketFd 
@@ -261,19 +291,22 @@ int main(int argc, char** argv)
                             SetFreeSession (newSess);
                             //to capture the error ?
                         }
-                        if ( (time(NULL) - epochSinceSeconds) >= 5) {
-                            GetStatsString();
-                            ignoreRet = write(tcp_client_fifo
-                                    , statsString
-                                    , strlen(statsString));
-                            ignoreRet += 1;
-                            epochSinceSeconds = time(NULL);
-                        }
+                        // if ( (time(NULL) - epochSinceSeconds) >= 5) {
+                        //     GetStatsString();
+                        //     ignoreRet = write(tcp_client_fifo
+                        //             , statsString
+                        //             , strlen(statsString));
+                        //     ignoreRet += 1;
+                        //     epochSinceSeconds = time(NULL);
+                        // }
                     }
                 }
             }
         }
     }
+
+    epochSinceSeconds = time(NULL);
+    printf("-- %ld\n", epochSinceSeconds);
 
     CleanupApp();
 
