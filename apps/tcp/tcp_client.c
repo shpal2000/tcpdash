@@ -22,12 +22,12 @@ TcpClientApp_t theApp;
 //hard coded
 char* srcIp = "12.20.50.1";
 char* dstIp = "12.20.60.1";
-int dstPort = 8080;
+int dstPort = 8081;
 struct sockaddr_in localAddr;
 struct sockaddr_in remoteAddr;
 
 TcpClientAppOptions_t appOptions = {  .maxEvents = 1000
-                                    , .maxActiveSessions = 1000
+                                    , .maxActiveSessions = 25000
                                     , .maxErrorSessions = 1000
                                     , .maxSessions = 1000000 };
 int tcp_client_fifo;
@@ -145,6 +145,8 @@ void CleanupApp() {
     DeleteEventQ(theApp.eventQId);
 
 //    DumpSStats(&theApp.appConnStats);
+    GetStatsString();
+    puts(statsString);
 
     DumpErrSessions();
 }
@@ -186,15 +188,15 @@ int main(int argc, char** argv)
 
                 SetAppState (newConn, APP_STATE_CONNECTION_IN_PROGRESS);
 
-    //hard coded
-    memset(&localAddr, 0, sizeof(localAddr));
-    localAddr.sin_family = AF_INET;
-    inet_pton(AF_INET, srcIp, &(localAddr.sin_addr));
-    memset(&remoteAddr, 0, sizeof(remoteAddr));
-    remoteAddr.sin_family = AF_INET;
-    remoteAddr.sin_port = htons(dstPort);
-    inet_pton(AF_INET, dstIp, &(remoteAddr.sin_addr));
-    //hard coded 
+                //hard coded
+                memset(&localAddr, 0, sizeof(localAddr));
+                localAddr.sin_family = AF_INET;
+                inet_pton(AF_INET, srcIp, &(localAddr.sin_addr));
+                memset(&remoteAddr, 0, sizeof(remoteAddr));
+                remoteAddr.sin_family = AF_INET;
+                remoteAddr.sin_port = htons(dstPort);
+                inet_pton(AF_INET, dstIp, &(remoteAddr.sin_addr));
+                //hard coded 
 
                 newConn->socketFd 
                         = TcpNewConnection(newConn->isIpv6, 

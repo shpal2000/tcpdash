@@ -12,3 +12,9 @@ executable('tcp_client.exe'
             , dependencies : glib_dep
             , link_with : sessionslib)
 
+executable('tcp_server.exe'
+            , sources : tcp_server_src
+            , include_directories : incdir
+            , dependencies : glib_dep
+            , link_with : sessionslib)
+

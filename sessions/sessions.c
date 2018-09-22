@@ -18,6 +18,13 @@ void RegisterForWriteEvent(int pollId, int fd, void* data) {
     epoll_ctl(pollId, EPOLL_CTL_ADD, fd, &setEvent);
 }
 
+void RegisterForReadEvent(int pollId, int fd, void* data) {
+    struct epoll_event setEvent;
+    setEvent.events = EPOLLIN;
+    setEvent.data.ptr = data;
+    epoll_ctl(pollId, EPOLL_CTL_ADD, fd, &setEvent);
+}
+
 void DumpSStats(void* aStats) {
     CommonConnStats_t* cStats = (CommonConnStats_t*) aStats;
     printf ("\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64"\n"

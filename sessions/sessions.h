@@ -83,6 +83,8 @@ static inline void SetSSLastErr(void* aSession, uint16_t err) {
 #define GetErrno(__aSession) ((CommonConnState_t*)__aSession)->sysErrno
 
 void RegisterForWriteEvent(int pollId, int fd, void* data);
+void RegisterForReadEvent(int pollId, int fd, void* data);
+
 
 void DumpSStats(void* aStats);
 #define TD_NO_ERROR                                         0
@@ -119,10 +121,11 @@ void DumpSStats(void* aStats);
 
 #define CreateEventQ() epoll_create(1)
 #define DeleteEventQ(__eventQId) close(__eventQId)
-#define GetIOEvents(__eventQId, __eventArray, __maxEvents) epoll_wait(__eventQId, __eventArray, __maxEvents, 1000)
+#define GetIOEvents(__eventQId, __eventArray, __maxEvents) epoll_wait(__eventQId, __eventArray, __maxEvents, 0)
 
 #define GetIOEventData(__event) __event.data.ptr
 #define IsWriteEventSet(__event) __event.events && EPOLLOUT 
+#define IsReadEventSet(__event) __event.events && EPOLLIN 
 
 #define ResetErrno() errno = 0
 #endif 
