@@ -11,6 +11,7 @@ typedef struct TcpClientAppOptions {
     uint32_t maxActiveSessions;
     uint32_t maxErrorSessions;
     uint64_t maxSessions;
+    uint32_t connectionPerSec;
 } TcpClientAppOptions_t;
 
 typedef struct TcpClientConnStats {
@@ -49,6 +50,7 @@ typedef struct TcpClientApp {
     int eventQId;
     uint32_t errorSessionCount;
     TcpClientSession_t* errorSessionArr;
+    TimerWheel_t* timerWheel;
 } TcpClientApp_t;
 
 #endif

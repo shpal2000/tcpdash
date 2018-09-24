@@ -29,7 +29,8 @@ struct sockaddr_in remoteAddr;
 TcpClientAppOptions_t appOptions = {  .maxEvents = 1000
                         , .maxActiveSessions = 25000
                         , .maxErrorSessions = 1000
-                        , .maxSessions = 10000000 };
+                        , .maxSessions = 100000
+                        , .connectionPerSec = 2000 };
 
 int tcp_client_fifo;
 char statsString[120];
@@ -141,6 +142,8 @@ void InitApp(TcpClientAppOptions_t* options) {
     memset(&theApp.appConnStats, 0, sizeof (TcpClientConnStats_t));
 
     theApp.eventQId = CreateEventQ();
+
+    theApp.timerWheel = CreateTimerWheel();
 }
 
 char* GetStatsString() {
@@ -159,8 +162,11 @@ char* GetStatsString() {
 
     return statsString;
 }
+
 void CleanupApp() {
     DeleteEventQ(theApp.eventQId);
+
+    DeleteTimerWheel(theApp.timerWheel);
 
 //    DumpSStats(&theApp.appConnStats);
     GetStatsString();
@@ -203,59 +209,65 @@ int main(int argc, char** argv)
         }
 
         if (GetSStats(appConnStats, tcpConnInit) < appOptions.maxSessions) {
-            
-            TcpClientSession_t* newSess = GetFreeSession ();
-            if (newSess == NULL) {
-                appStats->dbgNoFreeSession++;      
-            }else {
+ 
+            int connectionBurst = (TimeElapsedTimerWheel(theApp.timerWheel) 
+                                    * theApp.appOptions.connectionPerSec) 
+                                    - GetSStats(appConnStats, tcpConnInit);
 
-                TcpClientConnection_t* newConn = &newSess->tcConn;
+            while (connectionBurst-- > 0) {
+                TcpClientSession_t* newSess = GetFreeSession ();
+                if (newSess == NULL) {
+                    appStats->dbgNoFreeSession++;      
+                }else {
 
-                SetSessionAddress(newConn, 0
-                                    , (struct sockaddr*) &localAddr
-                                    , (struct sockaddr*) &remoteAddr);
+                    TcpClientConnection_t* newConn = &newSess->tcConn;
 
-                TcpClientConnStats_t* groupConnStats = &theApp.appGroupConnStats[0]; 
-                newSess->groupConnStats = groupConnStats;
+                    SetSessionAddress(newConn, 0
+                                        , (struct sockaddr*) &localAddr
+                                        , (struct sockaddr*) &remoteAddr);
 
-                SetAppState (newConn, APP_STATE_CONNECTION_IN_PROGRESS);
+                    TcpClientConnStats_t* groupConnStats = &theApp.appGroupConnStats[0]; 
+                    newSess->groupConnStats = groupConnStats;
 
-                //hard coded
-                localAddr.sin_port = htons(srcPort++);
-                if (srcPort == 60000) {
-                    srcPort = 10000;
-                }
+                    SetAppState (newConn, APP_STATE_CONNECTION_IN_PROGRESS);
 
-                //hard coded 
+                    //hard coded
+                    localAddr.sin_port = htons(srcPort++);
+                    if (srcPort == 60000) {
+                        srcPort = 10000;
+                    }
 
-                newConn->socketFd 
-                        = TcpNewConnection(newConn->isIpv6, 
-                                        newConn->localAddress, 
-                                        newConn->remoteAddress,
-                                        appConnStats,
-                                        groupConnStats,
-                                        newConn);
+                    //hard coded 
 
-                if ( GetSSLastErr (newConn) ) {
-                    if (GetSSLastErr (newConn) == TD_SOCKET_CONNECT_FAILED_IMMEDIATE
-                        && GetErrno(newConn) == EADDRNOTAVAIL) {
+                    newConn->socketFd 
+                            = TcpNewConnection(newConn->isIpv6, 
+                                            newConn->localAddress, 
+                                            newConn->remoteAddress,
+                                            appConnStats,
+                                            groupConnStats,
+                                            newConn);
+
+                    if ( GetSSLastErr (newConn) ) {
+                        if (GetSSLastErr (newConn) == TD_SOCKET_CONNECT_FAILED_IMMEDIATE
+                            && GetErrno(newConn) == EADDRNOTAVAIL) {
+                                IncSStats2(appConnStats
+                                        , groupConnStats
+                                        , tcpConnInitFailEaddrNotAvail);
+
+                            } else {
+                            IncSStats2(appConnStats, groupConnStats, tcpConnInit);
                             IncSStats2(appConnStats
-                                    , groupConnStats
-                                    , tcpConnInitFailEaddrNotAvail);
-
-                        } else {
+                                        , groupConnStats
+                                        , tcpConnInitFail);
+                            StoreErrSession(newSess);
+                            }
+                        SetFreeSession (newSess);
+                    } else {
                         IncSStats2(appConnStats, groupConnStats, tcpConnInit);
-                        IncSStats2(appConnStats
-                                    , groupConnStats
-                                    , tcpConnInitFail);
-                        StoreErrSession(newSess);
-                        }
-                    SetFreeSession (newSess);
-                } else {
-                    IncSStats2(appConnStats, groupConnStats, tcpConnInit);
-                    RegisterForWriteEvent(theApp.eventQId
-                                    , newConn->socketFd
-                                    , newConn);
+                        RegisterForWriteEvent(theApp.eventQId
+                                        , newConn->socketFd
+                                        , newConn);
+                    }
                 }
             }
         }

@@ -39,6 +39,8 @@ typedef struct CommonConnState{
 
 typedef GQueue SessionPool_t;
 
+typedef GTimer TimerWheel_t;
+
 static inline void SSInit(void* cState) {
 
     ((CommonConnState_t*)cState)->state1 = 0;
@@ -128,5 +130,9 @@ void DumpSStats(void* aStats);
 #define IsReadEventSet(__event) __event.events && EPOLLIN 
 
 #define ResetErrno() errno = 0
+
+#define CreateTimerWheel() g_timer_new()
+#define DeleteTimerWheel(__timer) g_timer_destroy(__timer)
+#define TimeElapsedTimerWheel(__timer) g_timer_elapsed(__timer, NULL)
 #endif 
 
