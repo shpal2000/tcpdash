@@ -12,6 +12,7 @@ typedef struct TcpClientAppOptions {
     uint32_t maxErrorSessions;
     uint64_t maxSessions;
     uint32_t connectionPerSec;
+    uint32_t csDataLen;
 } TcpClientAppOptions_t;
 
 typedef struct TcpClientConnStats {
@@ -29,6 +30,7 @@ typedef struct TcpClientConnection{
     struct sockaddr* localAddress;
     struct sockaddr* remoteAddress;
     struct TcpClientSession* tcSess;
+    uint32_t bytesSent;
 } TcpClientConnection_t;
 
 typedef struct TcpClientSession{
@@ -37,7 +39,6 @@ typedef struct TcpClientSession{
 } TcpClientSession_t;
 
 typedef struct TcpClientApp {
-    TcpClientAppOptions_t appOptions;
     
     TcpClientAppStats_t appStats;
     TcpClientConnStats_t appConnStats;
@@ -51,6 +52,7 @@ typedef struct TcpClientApp {
     uint32_t errorSessionCount;
     TcpClientSession_t* errorSessionArr;
     TimerWheel_t* timerWheel;
+    char* sendBuffer; 
 } TcpClientApp_t;
 
 #endif

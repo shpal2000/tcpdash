@@ -1,0 +1,8 @@
+                        // if ( (time(NULL) - epochSinceSeconds) >= 5) {
+                        //     GetStatsString();
+                        //     ignoreRet = write(tcp_client_fifo
+                        //             , statsString
+                        //             , strlen(statsString));
+                        //     ignoreRet += 1;
+                        //     epochSinceSeconds = time(NULL);
+                        // }

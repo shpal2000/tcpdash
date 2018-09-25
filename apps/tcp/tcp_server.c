@@ -26,7 +26,8 @@ struct sockaddr_in serverAddr;
 
 TcpServerAppOptions_t appOptions = {  .maxEvents = 1000
                                     , .maxActiveSessions = 1000
-                                    , .maxErrorSessions = 1000};
+                                    , .maxErrorSessions = 1000
+                                    , .csDataLen = 1500};
 //hard coded
 
 
@@ -39,6 +40,7 @@ void InitSession(TcpServerSession_t* newSess) {
 
     newConn->socketFd = 0;
     newConn->tcSess = newSess;
+    newConn->bytesReceived = 0;
 }
 
 TcpServerSession_t* GetFreeSession() {
@@ -61,14 +63,12 @@ void SetFreeSession(TcpServerSession_t* newSess) {
 }
 
 
-void InitApp(TcpServerAppOptions_t* options) {
-
-    theApp.appOptions = *options;
+void InitApp() {
 
     theApp.freeSessionPool = AllocEmptySessionPool();
     theApp.activeSessionPool = AllocEmptySessionPool();
 
-    for (int i = 0; i < theApp.appOptions.maxActiveSessions; i++) {
+    for (int i = 0; i < appOptions.maxActiveSessions; i++) {
         TcpServerSession_t* aSession = AllocSession (TcpServerSession_t);
         InitSession (aSession);
         AddToSessionPool (theApp.freeSessionPool, aSession);
@@ -76,9 +76,9 @@ void InitApp(TcpServerAppOptions_t* options) {
 
     theApp.errorSessionCount = 0;
     theApp.errorSessionArr = CreateSessionArray (TcpServerSession_t
-                                , theApp.appOptions.maxErrorSessions); 
+                                , appOptions.maxErrorSessions); 
 
-    theApp.EventArr = CreateEventArray(theApp.appOptions.maxEvents);
+    theApp.EventArr = CreateEventArray(appOptions.maxEvents);
 
     memset(&theApp.appConnStats, 0, sizeof (TcpServerConnStats_t));
 
@@ -95,7 +95,8 @@ void CleanupApp() {
 
 int main(int argc, char** argv)
 {
-    InitApp(&appOptions);
+    InitApp();
+
     TcpServerConnStats_t* appConnStats = &theApp.appConnStats;
     // TcpServerAppStats_t* appStats = &theApp.appStats;
 
@@ -107,6 +108,8 @@ int main(int argc, char** argv)
     //hard coded
 
     TcpServerListener_t serverListener;
+    serverListener.socketType = APP_SOCKET_TYPE_LISTENER;
+
     TcpServerConnStats_t* groupConnStats = &theApp.appGroupConnStats[0];
     serverListener.socketFd = TcpListenStart(0
                                 , (struct sockaddr*) &serverAddr
@@ -121,16 +124,36 @@ int main(int argc, char** argv)
     while (true) {
 
         int eCount = GetIOEvents(theApp.eventQId, theApp.EventArr
-                                , theApp.appOptions.maxEvents);
+                                , appOptions.maxEvents);
 
         if (eCount > 0){
             for(int eIndex = 0; eIndex < eCount; eIndex++) {
 
+                GetIOEventData(theApp.EventArr[eIndex]);
+
                 if (IsReadEventSet(theApp.EventArr[eIndex])) {
-                    int newSocketFd = accept(serverListener.socketFd, NULL, NULL);
-                    int flags = fcntl(newSocketFd, F_GETFL, 0);
-                    fcntl(newSocketFd, F_SETFL, flags | O_NONBLOCK);
-                    close (newSocketFd);
+
+                    
+                    int newSocketFd = accept(serverListener.socketFd
+                                            , NULL
+                                            , NULL);
+
+                    TcpServerSession_t* newSess = GetFreeSession ();
+
+                    if (newSess == NULL) {
+                        appStats->dbgNoFreeSession++;
+                        close(newSocketFd);      
+                    }else {
+                        int flags = fcntl(newSocketFd, F_GETFL, 0);
+                        fcntl(newSocketFd, F_SETFL, flags | O_NONBLOCK);
+
+                        TcpServerConnection_t* newConn = &newSess->tcConn;
+                        newConn->socketType = APP_SOCKET_TYPE_CONNECTION;
+
+                        RegisterForReadEvent(theApp.eventQId
+                                            , newConn->socketFd
+                                            , newConn);
+                    }
                 }
             }
         }

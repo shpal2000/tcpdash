@@ -212,3 +212,25 @@ int TcpListenStart(int isIpv6
 
     return socket_fd;
 }
+
+int TcpWrite(int fd
+                , const char* dataBuffer
+                , int dataLen
+                , void* aStats
+                , void* bStats
+                , void* cState) {
+    
+    ResetErrno();
+    InitSSLastErr(cState, TD_PROGRAM_ERROR_TcpWrite);
+
+    int bytesSent = send(fd, dataBuffer, dataLen, 0);
+
+    if (bytesSent < 0){
+        SetSSLastErr(cState, TD_SOCKET_WRITE_ERROR);
+        SaveErrno(cState);
+    }else {
+        SetSSLastErr(cState, TD_NO_ERROR);
+    }
+
+    return bytesSent;
+}

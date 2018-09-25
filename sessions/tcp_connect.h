@@ -16,4 +16,11 @@ int TcpListenStart(int isIpv6
                     , void* aStats
                     , void* bStats
                     , void* cState);
+
+int TcpWrite(int fd
+                , const char* dataBuff
+                , int dataLen
+                , void* aStats
+                , void* bStats
+                , void* cState);
 #endif

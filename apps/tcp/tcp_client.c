@@ -29,8 +29,9 @@ struct sockaddr_in remoteAddr;
 TcpClientAppOptions_t appOptions = {  .maxEvents = 1000
                         , .maxActiveSessions = 25000
                         , .maxErrorSessions = 1000
-                        , .maxSessions = 100000
-                        , .connectionPerSec = 2000 };
+                        , .maxSessions = 5
+                        , .connectionPerSec = 2000
+                        , .csDataLen = 1500};
 
 int tcp_client_fifo;
 char statsString[120];
@@ -51,6 +52,7 @@ void InitSession(TcpClientSession_t* newSess) {
     newConn->remoteAddress = NULL;
     
     newConn->tcSess = newSess;
+    newConn->bytesSent = 0;
 }
 
 void SetSessionAddress(TcpClientConnection_t* newConn
@@ -83,7 +85,7 @@ void SetFreeSession(TcpClientSession_t* newSess) {
 }
 
 void StoreErrSession(TcpClientSession_t* aSession) {
-    if (theApp.errorSessionCount < theApp.appOptions.maxErrorSessions) {
+    if (theApp.errorSessionCount < appOptions.maxErrorSessions) {
 
         TcpClientSession_t* errSession 
                 = &theApp.errorSessionArr[theApp.errorSessionCount];
@@ -115,14 +117,12 @@ void DumpErrSessions() {
     }
 }
 
-void InitApp(TcpClientAppOptions_t* options) {
-
-    theApp.appOptions = *options;
+void InitApp() {
 
     theApp.freeSessionPool = AllocEmptySessionPool();
     theApp.activeSessionPool = AllocEmptySessionPool();
 
-    for (int i = 0; i < theApp.appOptions.maxActiveSessions; i++) {
+    for (int i = 0; i < appOptions.maxActiveSessions; i++) {
 
         TcpClientSession_t* aSession 
                     = AllocSession (TcpClientSession_t);
@@ -135,15 +135,17 @@ void InitApp(TcpClientAppOptions_t* options) {
     theApp.errorSessionCount = 0;
     
     theApp.errorSessionArr = CreateSessionArray (TcpClientSession_t
-                                , theApp.appOptions.maxErrorSessions); 
+                                , appOptions.maxErrorSessions); 
 
-    theApp.EventArr = CreateEventArray(theApp.appOptions.maxEvents);
+    theApp.EventArr = CreateEventArray(appOptions.maxEvents);
 
     memset(&theApp.appConnStats, 0, sizeof (TcpClientConnStats_t));
 
     theApp.eventQId = CreateEventQ();
 
     theApp.timerWheel = CreateTimerWheel();
+
+    theApp.sendBuffer =  malloc(appOptions.csDataLen);
 }
 
 char* GetStatsString() {
@@ -181,7 +183,7 @@ int main(int argc, char** argv)
     //tcp_client_fifo = open("/tmp/tcp_client", O_WRONLY);
     //hardcoded
 
-    InitApp(&appOptions);
+    InitApp();
     TcpClientConnStats_t* appConnStats = &theApp.appConnStats;
     TcpClientAppStats_t* appStats = &theApp.appStats;
 
@@ -202,20 +204,26 @@ int main(int argc, char** argv)
 
     while (true) {
 
-        if ( (GetSStats(appConnStats, tcpConnInitFail) == appOptions.maxErrorSessions) 
-                || (GetSStats(appConnStats, tcpConnInit) == appOptions.maxSessions 
-                        && IsSessionPoolEmpty (theApp.activeSessionPool)) ){
+        if ( (GetSStats(appConnStats, tcpConnInitFail) 
+                    == appOptions.maxErrorSessions) 
+                || (GetSStats(appConnStats, tcpConnInit) 
+                    == appOptions.maxSessions 
+                && IsSessionPoolEmpty (theApp.activeSessionPool)) ){
             break;
         }
 
-        if (GetSStats(appConnStats, tcpConnInit) < appOptions.maxSessions) {
+        if (GetSStats(appConnStats, tcpConnInit) 
+                < appOptions.maxSessions) {
  
-            int connectionBurst = (TimeElapsedTimerWheel(theApp.timerWheel) 
-                                    * theApp.appOptions.connectionPerSec) 
-                                    - GetSStats(appConnStats, tcpConnInit);
+            int connectionBurst 
+                = (TimeElapsedTimerWheel(theApp.timerWheel) 
+                    * appOptions.connectionPerSec) 
+                    - GetSStats(appConnStats, tcpConnInit);
 
             while (connectionBurst-- > 0) {
+                
                 TcpClientSession_t* newSess = GetFreeSession ();
+
                 if (newSess == NULL) {
                     appStats->dbgNoFreeSession++;      
                 }else {
@@ -223,10 +231,12 @@ int main(int argc, char** argv)
                     TcpClientConnection_t* newConn = &newSess->tcConn;
 
                     SetSessionAddress(newConn, 0
-                                        , (struct sockaddr*) &localAddr
-                                        , (struct sockaddr*) &remoteAddr);
+                                , (struct sockaddr*) &localAddr
+                                , (struct sockaddr*) &remoteAddr);
 
-                    TcpClientConnStats_t* groupConnStats = &theApp.appGroupConnStats[0]; 
+                    TcpClientConnStats_t* groupConnStats 
+                                        = &theApp.appGroupConnStats[0]; 
+
                     newSess->groupConnStats = groupConnStats;
 
                     SetAppState (newConn, APP_STATE_CONNECTION_IN_PROGRESS);
@@ -239,31 +249,33 @@ int main(int argc, char** argv)
 
                     //hard coded 
 
+                    IncSStats2(appConnStats
+                                , groupConnStats
+                                , tcpConnInit);
+
                     newConn->socketFd 
-                            = TcpNewConnection(newConn->isIpv6, 
-                                            newConn->localAddress, 
-                                            newConn->remoteAddress,
-                                            appConnStats,
-                                            groupConnStats,
-                                            newConn);
+                        = TcpNewConnection(newConn->isIpv6, 
+                                        newConn->localAddress, 
+                                        newConn->remoteAddress,
+                                        appConnStats,
+                                        groupConnStats,
+                                        newConn);
+
 
                     if ( GetSSLastErr (newConn) ) {
-                        if (GetSSLastErr (newConn) == TD_SOCKET_CONNECT_FAILED_IMMEDIATE
+                        if (GetSSLastErr (newConn) 
+                            == TD_SOCKET_CONNECT_FAILED_IMMEDIATE
                             && GetErrno(newConn) == EADDRNOTAVAIL) {
                                 IncSStats2(appConnStats
                                         , groupConnStats
                                         , tcpConnInitFailEaddrNotAvail);
-
-                            } else {
-                            IncSStats2(appConnStats, groupConnStats, tcpConnInit);
-                            IncSStats2(appConnStats
-                                        , groupConnStats
-                                        , tcpConnInitFail);
-                            StoreErrSession(newSess);
-                            }
+                        }
+                        IncSStats2(appConnStats
+                                    , groupConnStats
+                                    , tcpConnInitFail);
+                        StoreErrSession(newSess);
                         SetFreeSession (newSess);
                     } else {
-                        IncSStats2(appConnStats, groupConnStats, tcpConnInit);
                         RegisterForWriteEvent(theApp.eventQId
                                         , newConn->socketFd
                                         , newConn);
@@ -273,12 +285,13 @@ int main(int argc, char** argv)
         }
 
         int eCount = GetIOEvents(theApp.eventQId, theApp.EventArr
-                                    , theApp.appOptions.maxEvents);
+                                    , appOptions.maxEvents);
         if (eCount > 0){
             for(int eIndex = 0; eIndex < eCount; eIndex++) {
 
                 TcpClientConnection_t* newConn 
-                    = (TcpClientConnection_t*) GetIOEventData(theApp.EventArr[eIndex]);
+                            = (TcpClientConnection_t*)
+                                GetIOEventData(theApp.EventArr[eIndex]);
 
                 TcpClientSession_t* newSess = newConn->tcSess;
                 
@@ -286,31 +299,67 @@ int main(int argc, char** argv)
 
                 if (IsWriteEventSet(theApp.EventArr[eIndex])) {
                     if ( GetAppState(newConn) == APP_STATE_CONNECTION_IN_PROGRESS ) {
-                        if ( IsNewTcpConnectionComplete(newConn->socketFd) ){
-                            IncSStats2(appConnStats, groupConnStats, tcpConnInitSuccess);
-                            SetAppState (newConn, APP_STATE_CONNECTION_ESTABLISHED);
-                            SetSS1(newConn, STATE_TCP_CONN_ESTABLISHED);
-                            close(newConn->socketFd);
-                            SetSS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
-                            SetAppState (newConn, APP_STATE_CONNECTION_CLOSED);
 
-                            SetFreeSession (newSess);
+                        if ( IsNewTcpConnectionComplete(newConn->socketFd) ){
+                            
+                            IncSStats2(appConnStats
+                                        , groupConnStats
+                                        , tcpConnInitSuccess);
+
+                            SetAppState (newConn
+                                        , APP_STATE_CONNECTION_ESTABLISHED);
+
+                            SetSS1(newConn, STATE_TCP_CONN_ESTABLISHED);
                         }else{
-                            IncSStats2(appConnStats, groupConnStats, tcpConnInitFail);
+                            IncSStats2(appConnStats
+                                        , groupConnStats
+                                        , tcpConnInitFail);
+
                             close(newConn->socketFd);
+
                             SetSS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
 
                             SetFreeSession (newSess);
                             //to capture the error ?
                         }
-                        // if ( (time(NULL) - epochSinceSeconds) >= 5) {
-                        //     GetStatsString();
-                        //     ignoreRet = write(tcp_client_fifo
-                        //             , statsString
-                        //             , strlen(statsString));
-                        //     ignoreRet += 1;
-                        //     epochSinceSeconds = time(NULL);
-                        // }
+                    } else if ( GetAppState(newConn) == 
+                                     APP_STATE_CONNECTION_ESTABLISHED 
+                                && newConn->bytesSent < 
+                                    appOptions.csDataLen ) {
+
+                        int bytesToSend 
+                            = appOptions.csDataLen - newConn->bytesSent;
+
+                        const char* sendBuffer
+                            = &theApp.sendBuffer[newConn->bytesSent];
+
+                        int bytesSent 
+                            = TcpWrite (newConn->socketFd
+                                        , sendBuffer
+                                        , bytesToSend
+                                        , appConnStats
+                                        , groupConnStats
+                                        , newConn);
+
+                        if (GetSSLastErr (newConn)) {
+                            close(newConn->socketFd);
+
+                            SetSS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
+
+                            StoreErrSession(newSess);
+
+                            SetFreeSession (newSess);
+                        }else {
+                            newConn->bytesSent += bytesSent;
+
+                            if (newConn->bytesSent == appOptions.csDataLen) {
+                                close(newConn->socketFd);
+
+                                SetSS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
+
+                                SetFreeSession (newSess);
+                            }
+                        }
                     }
                 }
             }
