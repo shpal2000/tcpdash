@@ -234,3 +234,25 @@ int TcpWrite(int fd
 
     return bytesSent;
 }
+
+int TcpRead(int fd
+                , char* dataBuffer
+                , int dataLen
+                , void* aStats
+                , void* bStats
+                , void* cState) {
+    
+    ResetErrno();
+    InitSSLastErr(cState, TD_PROGRAM_ERROR_TcpRead);
+
+    int bytesRead = recv(fd, dataBuffer, dataLen, 0);
+
+    if (bytesRead < 0){
+        SetSSLastErr(cState, TD_SOCKET_READ_ERROR);
+        SaveErrno(cState);
+    }else {
+        SetSSLastErr(cState, TD_NO_ERROR);
+    }
+
+    return bytesRead;
+}

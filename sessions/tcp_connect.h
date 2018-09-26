@@ -23,4 +23,11 @@ int TcpWrite(int fd
                 , void* aStats
                 , void* bStats
                 , void* cState);
+
+int TcpRead(int fd
+                , char* dataBuffer
+                , int dataLen
+                , void* aStats
+                , void* bStats
+                , void* cState);
 #endif

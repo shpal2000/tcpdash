@@ -100,7 +100,10 @@ void DumpSStats(void* aStats);
 #define TD_SOCKET_LISTEN_FAILED                             7
 #define TD_SOCKET_REUSE_FAILED                              8
 #define TD_PROGRAM_ERROR_TcpWrite                           9
-#define TD_SOCKET_WRITE_ERROR                              10
+#define TD_SOCKET_WRITE_ERROR                               10
+#define TD_PROGRAM_ERROR_TcpRead                            11
+#define TD_SOCKET_READ_ERROR                                12
+
 
 #define STATE_TCP_SOCK_CREATE                               0x0000000000000001
 #define STATE_TCP_SOCK_REUSE                                0x0000000000000002
