@@ -11,14 +11,16 @@
 
 #include "sessions.h"
 
-void RegisterForWriteEvent(int pollId, int fd, void* data) {
+int RegisterForWriteEvent(int pollId, int fd, void* data) {
+    ResetErrno();
     struct epoll_event setEvent;
     setEvent.events = EPOLLOUT;
     setEvent.data.ptr = data;
-    epoll_ctl(pollId, EPOLL_CTL_ADD, fd, &setEvent);
+    return epoll_ctl(pollId, EPOLL_CTL_ADD, fd, &setEvent);
 }
 
 void RegisterForReadEvent(int pollId, int fd, void* data) {
+    ResetErrno();
     struct epoll_event setEvent;
     setEvent.events = EPOLLIN;
     setEvent.data.ptr = data;

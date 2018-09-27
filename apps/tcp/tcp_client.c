@@ -161,15 +161,17 @@ void InitApp() {
 char* GetStatsString() {
 
     sprintf (statsString, 
-                        "%" PRIu64 
-                        ", %" PRIu64 
-                        ", %" PRIu64 
-                        ", %" PRIu64 
+                        "%" PRIu64 "\n" 
+                        "%" PRIu64 "\n"
+                        "%" PRIu64 "\n"
+                        "%" PRIu64 "\n"
+                        "%" PRIu64 "\n"
                         "\n"
         , GetSStats(theApp.appConnStats, tcpConnInit)
         , GetSStats(theApp.appConnStats, tcpConnInitSuccess)
         , GetSStats(theApp.appConnStats, tcpConnInitFail)
         , GetSStats(theApp.appConnStats, tcpConnInitFailEaddrNotAvail)
+        , GetSStats(theApp.appConnStats, tcpConnRegisterForWriteEventFail)
         );
 
     return statsString;
@@ -274,7 +276,7 @@ int main(int argc, char** argv)
 
                     if ( GetSSLastErr (newConn) ) {
                         if (GetSSLastErr (newConn) 
-                            == TD_SOCKET_CONNECT_FAILED_IMMEDIATE
+                                == TD_SOCKET_CONNECT_FAILED_IMMEDIATE
                             && GetErrno(newConn) == EADDRNOTAVAIL) {
                                 IncSStats2(appConnStats
                                         , groupConnStats
@@ -286,9 +288,17 @@ int main(int argc, char** argv)
                         StoreErrSession(newSess);
                         SetFreeSession (newSess);
                     } else {
-                        RegisterForWriteEvent(theApp.eventQId
+                        if ( RegisterForWriteEvent(theApp.eventQId
                                         , newConn->socketFd
-                                        , newConn);
+                                        , newConn)){
+
+                            SaveErrno(newConn);                
+                            IncSStats2(appConnStats
+                                    , groupConnStats
+                                    , tcpConnRegisterForWriteEventFail);
+                            StoreErrSession(newSess);
+                            SetFreeSession (newSess);
+                        }
                     }
                 }
             }

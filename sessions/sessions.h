@@ -26,6 +26,8 @@ typedef struct CommonConnStats{
     uint64_t tcpConnInitProgress;
 
     uint64_t programErrorTcpNewConnection;    
+    uint64_t tcpConnRegisterForWriteEventFail;
+    uint64_t tcpConnRegisterForReadEventFail;
 } CommonConnStats_t;
 
 typedef struct CommonConnState{
@@ -84,7 +86,7 @@ static inline void SetSSLastErr(void* aSession, uint16_t err) {
 
 #define GetErrno(__aSession) ((CommonConnState_t*)__aSession)->sysErrno
 
-void RegisterForWriteEvent(int pollId, int fd, void* data);
+int RegisterForWriteEvent(int pollId, int fd, void* data);
 void RegisterForReadEvent(int pollId, int fd, void* data);
 
 
