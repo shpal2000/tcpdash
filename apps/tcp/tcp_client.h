@@ -40,9 +40,9 @@ typedef struct TcpClientSession{
 
 typedef struct TcpClientApp {
     
-    TcpClientAppStats_t appStats;
-    TcpClientConnStats_t appConnStats;
-    TcpClientConnStats_t appGroupConnStats[1];
+    TcpClientAppStats_t* appStats;
+    TcpClientConnStats_t* appConnStats;
+    TcpClientConnStats_t* appGroupConnStats;
 
     SessionPool_t* freeSessionPool;
     SessionPool_t* activeSessionPool;

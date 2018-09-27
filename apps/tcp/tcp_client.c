@@ -50,9 +50,14 @@ void InitSession(TcpClientSession_t* newSess) {
     newConn->isIpv6 = 0;
     newConn->localAddress = NULL;
     newConn->remoteAddress = NULL;
-    
-    newConn->tcSess = newSess;
     newConn->bytesSent = 0;
+}
+
+void InitSessionInitApp(TcpClientSession_t* newSess) {
+
+    newSess->tcConn.tcSess = newSess;
+
+    InitSession(newSess); 
 }
 
 void SetSessionAddress(TcpClientConnection_t* newConn
@@ -127,24 +132,29 @@ void InitApp() {
         TcpClientSession_t* aSession 
                     = AllocSession (TcpClientSession_t);
 
-        InitSession (aSession);
+        InitSessionInitApp (aSession);
 
         AddToSessionPool (theApp.freeSessionPool, aSession);
     }
 
     theApp.errorSessionCount = 0;
     
-    theApp.errorSessionArr = CreateSessionArray (TcpClientSession_t
+    theApp.errorSessionArr = CreateArray (TcpClientSession_t
                                 , appOptions.maxErrorSessions); 
 
     theApp.EventArr = CreateEventArray(appOptions.maxEvents);
 
-    memset(&theApp.appConnStats, 0, sizeof (TcpClientConnStats_t));
+    theApp.appConnStats = CreateStruct0 (TcpClientConnStats_t);
+
+    theApp.appStats = CreateStruct0 (TcpClientAppStats_t);
+
+    theApp.appGroupConnStats = CreateArray (TcpClientConnStats_t, 1);
 
     theApp.eventQId = CreateEventQ();
 
     theApp.timerWheel = CreateTimerWheel();
 
+    //malloc ???
     theApp.sendBuffer =  malloc(appOptions.csDataLen);
 }
 
@@ -156,10 +166,10 @@ char* GetStatsString() {
                         ", %" PRIu64 
                         ", %" PRIu64 
                         "\n"
-        , GetSStats(&theApp.appConnStats, tcpConnInit)
-        , GetSStats(&theApp.appConnStats, tcpConnInitSuccess)
-        , GetSStats(&theApp.appConnStats, tcpConnInitFail)
-        , GetSStats(&theApp.appConnStats, tcpConnInitFailEaddrNotAvail)
+        , GetSStats(theApp.appConnStats, tcpConnInit)
+        , GetSStats(theApp.appConnStats, tcpConnInitSuccess)
+        , GetSStats(theApp.appConnStats, tcpConnInitFail)
+        , GetSStats(theApp.appConnStats, tcpConnInitFailEaddrNotAvail)
         );
 
     return statsString;
@@ -170,8 +180,8 @@ void CleanupApp() {
 
     DeleteTimerWheel(theApp.timerWheel);
 
-//    DumpSStats(&theApp.appConnStats);
     GetStatsString();
+
     puts(statsString);
 
     DumpErrSessions();
@@ -184,20 +194,20 @@ int main(int argc, char** argv)
     //hardcoded
 
     InitApp();
-    TcpClientConnStats_t* appConnStats = &theApp.appConnStats;
-    TcpClientAppStats_t* appStats = &theApp.appStats;
+    TcpClientConnStats_t* appConnStats = theApp.appConnStats;
+    TcpClientAppStats_t* appStats = theApp.appStats;
 
-                //hard coded
-                int srcPort = 10000;
-                memset(&localAddr, 0, sizeof(localAddr));
-                localAddr.sin_family = AF_INET;
-                inet_pton(AF_INET, srcIp, &(localAddr.sin_addr));
-                localAddr.sin_port = htons(srcPort);
-                memset(&remoteAddr, 0, sizeof(remoteAddr));
-                remoteAddr.sin_family = AF_INET;
-                remoteAddr.sin_port = htons(dstPort);
-                inet_pton(AF_INET, dstIp, &(remoteAddr.sin_addr));
-                //hard coded 
+    //hard coded
+    int srcPort = 10000;
+    memset(&localAddr, 0, sizeof(localAddr));
+    localAddr.sin_family = AF_INET;
+    inet_pton(AF_INET, srcIp, &(localAddr.sin_addr));
+    localAddr.sin_port = htons(srcPort);
+    memset(&remoteAddr, 0, sizeof(remoteAddr));
+    remoteAddr.sin_family = AF_INET;
+    remoteAddr.sin_port = htons(dstPort);
+    inet_pton(AF_INET, dstIp, &(remoteAddr.sin_addr));
+    //hard coded 
 
     time_t epochSinceSeconds = time(NULL);
     printf("%ld - -\n", epochSinceSeconds);

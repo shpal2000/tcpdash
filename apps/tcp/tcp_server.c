@@ -81,14 +81,14 @@ void InitApp() {
 
     theApp.errorSessionCount = 0;
 
-    theApp.errorSessionArr = CreateSessionArray (TcpServerSession_t
+    theApp.errorSessionArr = CreateArray (TcpServerSession_t
                                 , appOptions.maxErrorSessions); 
 
 
-    theApp.serverSessionArr = CreateSessionArray (TcpServerSession_t
+    theApp.serverSessionArr = CreateArray (TcpServerSession_t
                                 , appOptions.serverCount);
      
-    theApp.appGroupConnStats = CreateSessionArray (TcpServerConnStats_t
+    theApp.appGroupConnStats = CreateArray (TcpServerConnStats_t
                                 , appOptions.serverCount);
     
     for (int i = 0; i < appOptions.serverCount; i++) {
