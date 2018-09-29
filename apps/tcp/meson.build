@@ -6,15 +6,15 @@ glib_dep = dependency('glib-2.0')
 
 incdir = include_directories('../..')
 
-executable('tcp_client.exe'
-            , sources : tcp_client_src
-            , include_directories : incdir
-            , dependencies : glib_dep
-            , link_with : sessionslib)
+tcp_client_lib =  static_library('tcp_client'
+                    , sources : tcp_client_src
+                    , include_directories : incdir
+                    , dependencies : glib_dep
+                    , link_with : sessionslib)
 
-executable('tcp_server.exe'
-            , sources : tcp_server_src
-            , include_directories : incdir
-            , dependencies : glib_dep
-            , link_with : sessionslib)
+tcp_server_lib = static_library('tcp_server'
+                    , sources : tcp_server_src
+                    , include_directories : incdir
+                    , dependencies : glib_dep
+                    , link_with : sessionslib)
 

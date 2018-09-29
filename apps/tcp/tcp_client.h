@@ -39,7 +39,7 @@ typedef struct TcpClientSession{
 } TcpClientSession_t;
 
 typedef struct TcpClientApp {
-    
+
     TcpClientAppStats_t* appStats;
     TcpClientConnStats_t* appConnStats;
     TcpClientConnStats_t* appGroupConnStats;
