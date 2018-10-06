@@ -1,6 +1,8 @@
 #ifndef __TCP_SERVER_APP_H
 #define __TCP_SERVER_APP_H
 
+#include "tcpdash.h"
+
 #define APP_STATE_INIT                               0
 #define APP_STATE_CONNECTION_IN_PROGRESS             1
 #define APP_STATE_CONNECTION_ESTABLISHED             2

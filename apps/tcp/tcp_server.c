@@ -11,10 +11,6 @@
 #include <fcntl.h>
 #include <time.h>
 
-
-#include "sessions/sessions.h"
-#include "sessions/tcp_connect.h"
-#include "logging/logs.h"
 #include "tcp_server.h"
 
 TcpServerApp_t theApp;
