@@ -3,6 +3,7 @@
 
 #include <gmodule.h>
 #include <sys/epoll.h>
+#include "utils/resource.h"
 
 typedef struct CommonConnStats{
 
@@ -123,8 +124,6 @@ void DumpSStats(void* aStats);
 #define AddToSessionPool(__pool,__session) g_queue_push_tail (__pool,__session)
 #define RemoveFromSessionPool(__pool,__session) g_queue_remove (__pool,__session)
 
-#define CreateArray(__type,__count) g_new(__type, __count)
-#define CreateStruct0(__type) g_slice_new0(__type) 
 #define AllocEmptySessionPool() g_queue_new()
 #define CreateEventArray(__count) g_new(struct epoll_event, __count)
 #define GetAnySesionFromPool(__pool) g_queue_pop_head(__pool)

@@ -1,6 +1,6 @@
 project('tcpdash', 'c')
 
-add_global_arguments('-std=c99', language : 'c')
+add_global_arguments('-std=gnu99', language : 'c')
 
 subdir('sessions')
 subdir('lab')
