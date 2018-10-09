@@ -10,24 +10,12 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
+#include <sys/mman.h>
 
 #include "tcp_client.h"
 
 TcpClientApp_t* AppObj;
 TcpClientAppInterface_t* AppIface;
-
-//hard coded
-char* srcIp = "12.20.50.1";
-char* dstIp = "12.20.60.1";
-int dstPort = 8081;
-struct sockaddr_in localAddr;
-struct sockaddr_in remoteAddr;
-
-
-
-//hard coded
-
-
 
 void InitSession(TcpClientSession_t* newSess) {
 
@@ -185,14 +173,6 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
 
     //hard coded
     int srcPort = 10000;
-    memset(&localAddr, 0, sizeof(localAddr));
-    localAddr.sin_family = AF_INET;
-    inet_pton(AF_INET, srcIp, &(localAddr.sin_addr));
-    localAddr.sin_port = htons(srcPort);
-    memset(&remoteAddr, 0, sizeof(remoteAddr));
-    remoteAddr.sin_family = AF_INET;
-    remoteAddr.sin_port = htons(dstPort);
-    inet_pton(AF_INET, dstIp, &(remoteAddr.sin_addr));
     //hard coded 
 
     time_t epochSinceSeconds = time(NULL);
@@ -232,9 +212,15 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
 
                     TcpClientConnection_t* newConn = &newSess->tcConn;
 
+                    struct sockaddr_in* nextClientAddr 
+                        = &(AppIface->csGroupArr[0].clientAddrArr[0].inAddr); 
+
+                    struct sockaddr_in* nextServerAddr 
+                        = &(AppIface->csGroupArr[0].serverAddr.inAddr); 
+
                     SetSessionAddress(newConn, 0
-                                , (struct sockaddr*) &localAddr
-                                , (struct sockaddr*) &remoteAddr);
+                                , (struct sockaddr*) nextClientAddr
+                                , (struct sockaddr*) nextServerAddr);
 
                     TcpClientAppConnStats_t* groupConnStats 
                                         = &AppIface->csGroupArr[0].cStats; 
@@ -244,11 +230,10 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
                     SetAppState (newConn, APP_STATE_CONNECTION_IN_PROGRESS);
 
                     //hard coded
-                    localAddr.sin_port = htons(srcPort++);
+                    nextClientAddr->sin_port = htons(srcPort++);
                     if (srcPort == 60000) {
                         srcPort = 10000;
                     }
-
                     //hard coded 
 
                     IncSStats2(appConnStats
@@ -385,3 +370,42 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
     AppIface->isRunning = 0;
 }
 
+TcpClientAppInterface_t* CreateTcpClienAppInterface(int csGroupCount
+                                            , int* clientAddrCounts)
+{
+    TcpClientAppInterface_t* iFace 
+        = (TcpClientAppInterface_t*) mmap(NULL
+            , sizeof (TcpClientAppInterface_t)
+            , PROT_READ | PROT_WRITE
+            , MAP_SHARED | MAP_ANONYMOUS
+            , -1
+            , 0);
+
+    iFace->csGroupCount = csGroupCount;
+    iFace->csGroupArr 
+        = (TcpClientAppConnGroup_t*) mmap(NULL
+            , sizeof (TcpClientAppConnGroup_t) * iFace->csGroupCount
+            , PROT_READ | PROT_WRITE
+            , MAP_SHARED | MAP_ANONYMOUS
+            , -1
+            , 0);
+
+    for (int i = 0; i < iFace->csGroupCount; i++) {
+        TcpClientAppConnGroup_t* csGroup = &iFace->csGroupArr[i];
+        csGroup->clientAddrCount = clientAddrCounts[i];
+        csGroup->clientAddrArr
+            = (SockAddr_t*) mmap(NULL
+                , sizeof (SockAddr_t)
+                , PROT_READ | PROT_WRITE
+                , MAP_SHARED | MAP_ANONYMOUS
+                , -1
+                , 0);
+    }
+
+    return iFace;
+}
+
+void DeleteTcpClienAppInterface (TcpClientAppInterface_t* iFace)
+{
+    //todo
+}
