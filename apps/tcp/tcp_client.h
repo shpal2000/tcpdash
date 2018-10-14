@@ -19,9 +19,10 @@ typedef struct TcpClientAppStats {
 } TcpClientAppStats_t;
 
 typedef struct TcpClientAppConnGroup {
+    int isIpv6;
     uint32_t clientAddrCount;
     SockAddr_t* clientAddrArr;
-    PortBindQ_t* clientPortBindArr;  
+    LocalPortPool_t* LocalPortPoolArr;  
     SockAddr_t serverAddr;
     TcpClientAppConnStats_t cStats;
 } TcpClientAppConnGroup_t;
@@ -63,7 +64,7 @@ typedef struct TcpClientConnection{
     int isIpv6;
     struct sockaddr* localAddress;
     struct sockaddr* remoteAddress;
-    PortBindQ_t* clientPortBindQ;
+    LocalPortPool_t* localPortPool;
     struct TcpClientSession* tcSess;
     uint32_t bytesSent;
 } TcpClientConnection_t;
@@ -81,7 +82,7 @@ typedef struct TcpClientApp {
     SessionPool_t* activeSessionPool;
 
     struct epoll_event* EventArr;
-    int eventQId;
+    int eventQ;
     uint32_t errorSessionCount;
     TcpClientSession_t* errorSessionArr;
     TimerWheel_t* timerWheel;

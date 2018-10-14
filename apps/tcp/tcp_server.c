@@ -99,14 +99,14 @@ void InitApp() {
 
     memset(&theApp.appConnStats, 0, sizeof (TcpServerConnStats_t));
 
-    theApp.eventQId = CreateEventQ();
+    theApp.eventQ = CreateEventQ();
 
     theApp.readBufLen = 2000;
     theApp.readBuffer = malloc(theApp.readBufLen);
 }
 
 void CleanupApp() {
-    DeleteEventQ(theApp.eventQId);
+    DeleteEventQ(theApp.eventQ);
 
 //    DumpSStats(&theApp.appConnStats);
 
@@ -136,12 +136,12 @@ int main(int argc, char** argv)
                                 , groupConnStats
                                 , &srvSess->tcConn);
 
-    RegisterForReadEvent(theApp.eventQId
+    RegisterForReadEvent(theApp.eventQ
                             , srvSess->tcConn.socketFd
                             , &srvSess->tcConn);
     while (true) {
 
-        int eCount = GetIOEvents(theApp.eventQId, theApp.EventArr
+        int eCount = GetIOEvents(theApp.eventQ, theApp.EventArr
                                 , appOptions.maxEvents);
 
         if (eCount > 0){
@@ -180,7 +180,7 @@ int main(int argc, char** argv)
 
                                 newSess->tcConn.socketFd = newSocketFd;
 
-                                RegisterForReadEvent(theApp.eventQId
+                                RegisterForReadEvent(theApp.eventQ
                                                     , newSess->tcConn.socketFd
                                                     , &newSess->tcConn);
                             }

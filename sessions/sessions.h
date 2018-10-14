@@ -41,7 +41,7 @@ typedef struct CommonConnState{
     int appState;                                                                  
 } CommonConnState_t;
 
-typedef GQueue PortBindQ_t;
+typedef GQueue LocalPortPool_t;
 typedef GQueue SessionPool_t;
 
 typedef GTimer TimerWheel_t;
@@ -149,6 +149,8 @@ void DumpSStats(void* aStats);
 #define InitPortBindQ(__bindq) g_queue_init(__bindq)
 #define IsPortBindQEmpty(__bindq) g_queue_is_empty(__bindq)
 #define GetFromPortBindQ(__bindq) GPOINTER_TO_INT(g_queue_pop_head(__bindq))
-#define AddToPortBindQ(__bindq,__port) g_queue_push_tail (__bindq,GINT_TO_POINTER(__port))
+#define AddToLocalPortPool(__bindq,__port) g_queue_push_tail (__bindq,GINT_TO_POINTER(__port))
+
+#define TdMalloc(__size) malloc(__size)
 #endif
 

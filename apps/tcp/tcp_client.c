@@ -89,15 +89,28 @@ void DumpErrSessions() {
             TcpClientConnection_t* newConn 
                     = &newSess->tcConn;
 
-            struct sockaddr_in* localAddress 
-                = (struct sockaddr_in*)newConn->localAddress;
-            struct sockaddr_in* remoteAddress 
-                = (struct sockaddr_in*)newConn->remoteAddress;
-            char srcAddr[INET_ADDRSTRLEN];
-            char dstAddr[INET_ADDRSTRLEN];
-            
-            inet_ntop(AF_INET, &(localAddress->sin_addr), srcAddr, INET_ADDRSTRLEN);
-            inet_ntop(AF_INET, &(remoteAddress->sin_addr), dstAddr, INET_ADDRSTRLEN);
+            char srcAddr[INET6_ADDRSTRLEN];
+            char dstAddr[INET6_ADDRSTRLEN];
+            uint16_t localPort, remotePort;
+            if (newConn->isIpv6){
+                struct sockaddr_in6* localAddress 
+                    = (struct sockaddr_in6*)newConn->localAddress;
+                struct sockaddr_in6* remoteAddress 
+                    = (struct sockaddr_in6*)newConn->remoteAddress;
+                inet_ntop(AF_INET6, &(localAddress->sin6_addr), srcAddr, INET6_ADDRSTRLEN);
+                inet_ntop(AF_INET6, &(remoteAddress->sin6_addr), dstAddr, INET6_ADDRSTRLEN);
+                localPort = ntohs(localAddress->sin6_port);
+                remotePort = ntohs(remoteAddress->sin6_port);
+            } else {
+                struct sockaddr_in* localAddress 
+                    = (struct sockaddr_in*)newConn->localAddress;
+                struct sockaddr_in* remoteAddress 
+                    = (struct sockaddr_in*)newConn->remoteAddress;
+                inet_ntop(AF_INET, &(localAddress->sin_addr), srcAddr, INET_ADDRSTRLEN);
+                inet_ntop(AF_INET, &(remoteAddress->sin_addr), dstAddr, INET_ADDRSTRLEN);
+                localPort = ntohs(localAddress->sin_port);
+                remotePort = ntohs(remoteAddress->sin_port);
+            }
 
             printf ("SS1 = %#018" PRIx64 
                     ", Err = %d" 
@@ -107,8 +120,8 @@ void DumpErrSessions() {
                     , GetSS1(newConn)
                     , GetSSLastErr(newConn)
                     , GetErrno(newConn) 
-                    , srcAddr, ntohs(localAddress->sin_port)
-                    , dstAddr, ntohs(remoteAddress->sin_port)); 
+                    , srcAddr, localPort
+                    , dstAddr, remotePort); 
         }
     }
 }
@@ -135,12 +148,11 @@ void InitApp() {
 
     AppObj->EventArr = CreateEventArray(AppIface->maxEvents);
 
-    AppObj->eventQId = CreateEventQ();
+    AppObj->eventQ = CreateEventQ();
 
     AppObj->timerWheel = CreateTimerWheel();
 
-    //malloc ???
-    AppObj->sendBuffer =  malloc(AppIface->csDataLen);
+    AppObj->sendBuffer =  TdMalloc(AppIface->csDataLen);
 }
 
 void DumpTcpClientAppStats(TcpClientAppConnStats_t* appConnStats) {
@@ -166,7 +178,7 @@ void DumpTcpClientAppStats(TcpClientAppConnStats_t* appConnStats) {
 
 void CleanupApp() {
 
-    DeleteEventQ(AppObj->eventQId);
+    DeleteEventQ(AppObj->eventQ);
 
     DeleteTimerWheel(AppObj->timerWheel);
 
@@ -175,9 +187,14 @@ void CleanupApp() {
     DumpErrSessions();
 }
 
-void ReleaseBindPort(TcpClientConnection_t* newConn){
-    AddToPortBindQ (newConn->clientPortBindQ
-                    , ((struct sockaddr_in*)newConn->localAddress)->sin_port);
+void ReleaseLocalPort(TcpClientConnection_t* newConn){
+    if (newConn->isIpv6) {
+        AddToLocalPortPool (newConn->localPortPool
+            , ((struct sockaddr_in6*)newConn->localAddress)->sin6_port);
+    } else {
+        AddToLocalPortPool (newConn->localPortPool
+            , ((struct sockaddr_in*)newConn->localAddress)->sin_port);
+    }
 }
 
 void TcpClienAppRun(TcpClientAppInterface_t* appIface)
@@ -189,10 +206,7 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
     TcpClientAppConnStats_t* appConnStats = &AppIface->appConnStats;
     TcpClientAppStats_t* appStats = &AppIface->appStats;
 
-    //hard coded
-    int clientAddIndex = 0;
-    //hard coded 
-
+    int clientAddrIndex = 0;
     time_t epochSinceSeconds = time(NULL);
     printf("%ld - -\n", epochSinceSeconds);
 
@@ -231,32 +245,35 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
                 }else {
 
                     TcpClientConnection_t* newConn = &newSess->tcConn;
-                    
+
+                    int isIpv6 = AppIface->csGroupArr[0].isIpv6;
+
                     SockAddr_t* clientAddrArr 
                         = AppIface->csGroupArr[0].clientAddrArr;
                                         
-                    struct sockaddr_in* nextClientAddr 
-                        = &(clientAddrArr[clientAddIndex].inAddr);
+                    struct sockaddr* nextClientAddr 
+                        = &(clientAddrArr[clientAddrIndex]);
 
-                    PortBindQ_t*clientPortBindArr 
-                        = AppIface->csGroupArr[0].clientPortBindArr;
+                    LocalPortPool_t*LocalPortPoolArr 
+                        = AppIface->csGroupArr[0].LocalPortPoolArr;
 
-                    newConn->clientPortBindQ = &clientPortBindArr[clientAddIndex];
+                    newConn->localPortPool = &LocalPortPoolArr[clientAddrIndex];
 
-                    int nextSrcPort = GetFromPortBindQ(newConn->clientPortBindQ);
+                    int nextSrcPort = GetFromPortBindQ(newConn->localPortPool);
                     // ??? error handling 
 
-                    clientAddIndex++;
-                    if (clientAddIndex == AppIface->csGroupArr[0].clientAddrCount) {
-                        clientAddIndex = 0;
+                    clientAddrIndex++;
+                    if (clientAddrIndex == AppIface->csGroupArr[0].clientAddrCount) {
+                        clientAddrIndex = 0;
                     }
 
-                    struct sockaddr_in* nextServerAddr 
-                        = &(AppIface->csGroupArr[0].serverAddr.inAddr); 
+                    struct sockaddr* nextServerAddr 
+                        = &(AppIface->csGroupArr[0].serverAddr); 
 
-                    SetSessionAddress(newConn, 0
-                                , (struct sockaddr*) nextClientAddr
-                                , (struct sockaddr*) nextServerAddr);
+                    SetSessionAddress(newConn
+                                        , isIpv6
+                                        , nextClientAddr
+                                        , nextServerAddr);
 
                     TcpClientAppConnStats_t* groupConnStats 
                                         = &AppIface->csGroupArr[0].cStats; 
@@ -264,7 +281,6 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
                     newSess->groupConnStats = groupConnStats;
 
                     SetAppState (newConn, APP_STATE_CONNECTION_IN_PROGRESS);
-
 
                     nextClientAddr->sin_port = nextSrcPort;
 
@@ -294,10 +310,10 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
                                         , tcpConnInitFail);
                             StoreErrSession (newSess);
                             SetFreeSession (newSess);
-                            ReleaseBindPort (newConn);
+                            ReleaseLocalPort (newConn);
                         //}
                     } else {
-                        if ( RegisterForWriteEvent(AppObj->eventQId
+                        if ( RegisterForWriteEvent(AppObj->eventQ
                                         , newConn->socketFd
                                         , newConn)){
 
@@ -307,14 +323,14 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
                                     , tcpConnRegisterForWriteEventFail);
                             StoreErrSession(newSess);
                             SetFreeSession (newSess);
-                            ReleaseBindPort (newConn);
+                            ReleaseLocalPort (newConn);
                         }
                     }
                 }
             }
         }
 
-        int eCount = GetIOEvents(AppObj->eventQId, AppObj->EventArr
+        int eCount = GetIOEvents(AppObj->eventQ, AppObj->EventArr
                                     , AppIface->maxEvents);
         if (eCount > 0){
             for(int eIndex = 0; eIndex < eCount; eIndex++) {
@@ -347,7 +363,7 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
                                         , tcpConnInitFail);
 
                             close(newConn->socketFd);
-                            ReleaseBindPort (newConn);
+                            ReleaseLocalPort (newConn);
 
                             SetSS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
 
@@ -375,7 +391,7 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
 
                         if (GetSSLastErr (newConn)) {
                             close(newConn->socketFd);
-                            ReleaseBindPort (newConn);
+                            ReleaseLocalPort (newConn);
 
                             SetSS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
 
@@ -387,7 +403,7 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
 
                             if (newConn->bytesSent == AppIface->csDataLen) {
                                 close(newConn->socketFd);
-                                ReleaseBindPort (newConn);
+                                ReleaseLocalPort (newConn);
 
                                 SetSS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
 
@@ -438,9 +454,9 @@ TcpClientAppInterface_t* CreateTcpClienAppInterface(int csGroupCount
                 , MAP_SHARED | MAP_ANONYMOUS
                 , -1
                 , 0);
-        csGroup->clientPortBindArr 
-            = (PortBindQ_t*) mmap(NULL
-                , sizeof (PortBindQ_t) * csGroup->clientAddrCount
+        csGroup->LocalPortPoolArr 
+            = (LocalPortPool_t*) mmap(NULL
+                , sizeof (LocalPortPool_t) * csGroup->clientAddrCount
                 , PROT_READ | PROT_WRITE
                 , MAP_SHARED | MAP_ANONYMOUS
                 , -1
@@ -448,7 +464,7 @@ TcpClientAppInterface_t* CreateTcpClienAppInterface(int csGroupCount
         for (int cIndex = 0
                 ; cIndex < csGroup->clientAddrCount
                 ; cIndex++) {
-            InitPortBindQ(&csGroup->clientPortBindArr[cIndex]);
+            InitPortBindQ(&csGroup->LocalPortPoolArr[cIndex]);
         }
     }
 

@@ -73,9 +73,9 @@ int main(int argc, char** argv)
             inet_pton(AF_INET
                         , srcIps[cIndex]
                         , &(localAddr->sin_addr));
-            PortBindQ_t* portQ = &csGroup->clientPortBindArr[cIndex];
+            LocalPortPool_t* portQ = &csGroup->LocalPortPoolArr[cIndex];
             for (int srcPort = 5000; srcPort <= 65000; srcPort++) {
-                AddToPortBindQ(portQ, htons(srcPort));
+                AddToLocalPortPool(portQ, htons(srcPort));
             }
         }
         struct sockaddr_in* remoteAddr 
