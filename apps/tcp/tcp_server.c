@@ -16,7 +16,7 @@
 TcpServerApp_t theApp;
 
 //hard coded
-char* serverIp = "12.20.60.1";
+char* serverIp = "12.20.60.2";
 int serverPort = 8081;
 struct sockaddr_in serverAddr;
 
@@ -164,6 +164,10 @@ int main(int argc, char** argv)
                             int flags = fcntl(newSocketFd, F_GETFL, 0);
                             //do error handling ??? 
                             fcntl(newSocketFd, F_SETFL, flags | O_NONBLOCK);
+                            
+                            //do error handling ??? 
+                            setsockopt(newSocketFd, SOL_SOCKET
+                                , SO_REUSEADDR, &(int){ 1 }, sizeof(int));
 
                             TcpServerSession_t* newSess = GetFreeSession ();
 

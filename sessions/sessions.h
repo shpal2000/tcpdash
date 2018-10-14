@@ -1,6 +1,7 @@
 #ifndef __TD_SESSIONS_H
 #define __TD_SESSIONS_H
 
+#include <glib.h>
 #include <gmodule.h>
 #include <sys/epoll.h>
 #include "utils/resource.h"
@@ -40,6 +41,7 @@ typedef struct CommonConnState{
     int appState;                                                                  
 } CommonConnState_t;
 
+typedef GQueue PortBindQ_t;
 typedef GQueue SessionPool_t;
 
 typedef GTimer TimerWheel_t;
@@ -142,5 +144,11 @@ void DumpSStats(void* aStats);
 #define CreateTimerWheel() g_timer_new()
 #define DeleteTimerWheel(__timer) g_timer_destroy(__timer)
 #define TimeElapsedTimerWheel(__timer) g_timer_elapsed(__timer, NULL)
-#endif 
+
+#define AllocEmptyPortBindQ() g_queue_new()
+#define InitPortBindQ(__bindq) g_queue_init(__bindq)
+#define IsPortBindQEmpty(__bindq) g_queue_is_empty(__bindq)
+#define GetFromPortBindQ(__bindq) GPOINTER_TO_INT(g_queue_pop_head(__bindq))
+#define AddToPortBindQ(__bindq,__port) g_queue_push_tail (__bindq,GINT_TO_POINTER(__port))
+#endif
 

@@ -21,6 +21,7 @@ typedef struct TcpClientAppStats {
 typedef struct TcpClientAppConnGroup {
     uint32_t clientAddrCount;
     SockAddr_t* clientAddrArr;
+    PortBindQ_t* clientPortBindArr;  
     SockAddr_t serverAddr;
     TcpClientAppConnStats_t cStats;
 } TcpClientAppConnGroup_t;
@@ -49,6 +50,8 @@ TcpClientAppInterface_t* CreateTcpClienAppInterface(int csGroupCount
 
 void DeleteTcpClienAppInterface(TcpClientAppInterface_t* iFace);
 
+void DumpTcpClientAppStats(TcpClientAppConnStats_t* appConnStats);
+
 #define APP_STATE_INIT                               0
 #define APP_STATE_CONNECTION_IN_PROGRESS             1
 #define APP_STATE_CONNECTION_ESTABLISHED             2
@@ -60,6 +63,7 @@ typedef struct TcpClientConnection{
     int isIpv6;
     struct sockaddr* localAddress;
     struct sockaddr* remoteAddress;
+    PortBindQ_t* clientPortBindQ;
     struct TcpClientSession* tcSess;
     uint32_t bytesSent;
 } TcpClientConnection_t;
