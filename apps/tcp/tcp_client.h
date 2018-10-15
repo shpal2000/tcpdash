@@ -19,7 +19,6 @@ typedef struct TcpClientAppStats {
 } TcpClientAppStats_t;
 
 typedef struct TcpClientAppConnGroup {
-    int isIpv6;
     uint32_t clientAddrCount;
     SockAddr_t* clientAddrArr;
     LocalPortPool_t* LocalPortPoolArr;  
@@ -61,7 +60,6 @@ void DumpTcpClientAppStats(TcpClientAppConnStats_t* appConnStats);
 typedef struct TcpClientConnection{
     CommonConnState_t ccState; 
     int socketFd;
-    int isIpv6;
     struct sockaddr* localAddress;
     struct sockaddr* remoteAddress;
     LocalPortPool_t* localPortPool;

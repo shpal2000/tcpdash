@@ -24,7 +24,6 @@ void InitSession(TcpClientSession_t* newSess) {
     SSInit(newConn);
 
     newConn->socketFd = 0;
-    newConn->isIpv6 = 0;
     newConn->localAddress = NULL;
     newConn->remoteAddress = NULL;
     newConn->bytesSent = 0;
@@ -35,16 +34,6 @@ void InitSessionInitApp(TcpClientSession_t* newSess) {
     newSess->tcConn.tcSess = newSess;
 
     InitSession(newSess); 
-}
-
-void SetSessionAddress(TcpClientConnection_t* newConn
-                        , int isIpv6
-                        , struct sockaddr* localAddr
-                        , struct sockaddr* remoteAddr) 
-{
-    newConn->isIpv6 = isIpv6;
-    newConn->localAddress = localAddr;
-    newConn->remoteAddress = remoteAddr;
 }
 
 TcpClientSession_t* GetFreeSession() {
@@ -92,7 +81,7 @@ void DumpErrSessions() {
             char srcAddr[INET6_ADDRSTRLEN];
             char dstAddr[INET6_ADDRSTRLEN];
             uint16_t localPort, remotePort;
-            if (newConn->isIpv6){
+            if (IsIpv6(newConn->localAddress)){
                 struct sockaddr_in6* localAddress 
                     = (struct sockaddr_in6*)newConn->localAddress;
                 struct sockaddr_in6* remoteAddress 
@@ -187,8 +176,16 @@ void CleanupApp() {
     DumpErrSessions();
 }
 
+int AllocLocalPort(TcpClientConnection_t* newConn){
+    int nextSrcPort = GetFromPortBindQ(newConn->localPortPool);
+    if (nextSrcPort) {
+        SetSockPort(newConn->localAddress, nextSrcPort);
+    }
+    return nextSrcPort; 
+}
+
 void ReleaseLocalPort(TcpClientConnection_t* newConn){
-    if (newConn->isIpv6) {
+    if (IsIpv6(newConn->localAddress)) {
         AddToLocalPortPool (newConn->localPortPool
             , ((struct sockaddr_in6*)newConn->localAddress)->sin6_port);
     } else {
@@ -246,12 +243,10 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
 
                     TcpClientConnection_t* newConn = &newSess->tcConn;
 
-                    int isIpv6 = AppIface->csGroupArr[0].isIpv6;
-
                     SockAddr_t* clientAddrArr 
                         = AppIface->csGroupArr[0].clientAddrArr;
                                         
-                    struct sockaddr* nextClientAddr 
+                    SockAddr_t* nextClientAddr 
                         = &(clientAddrArr[clientAddrIndex]);
 
                     LocalPortPool_t*LocalPortPoolArr 
@@ -259,21 +254,22 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
 
                     newConn->localPortPool = &LocalPortPoolArr[clientAddrIndex];
 
-                    int nextSrcPort = GetFromPortBindQ(newConn->localPortPool);
-                    // ??? error handling 
-
                     clientAddrIndex++;
                     if (clientAddrIndex == AppIface->csGroupArr[0].clientAddrCount) {
                         clientAddrIndex = 0;
                     }
 
-                    struct sockaddr* nextServerAddr 
+                    SockAddr_t* nextServerAddr 
                         = &(AppIface->csGroupArr[0].serverAddr); 
 
-                    SetSessionAddress(newConn
-                                        , isIpv6
-                                        , nextClientAddr
-                                        , nextServerAddr);
+                    newConn->localAddress 
+                        = (struct sockaddr*)nextClientAddr;
+
+                    newConn->remoteAddress 
+                        = (struct sockaddr*)nextServerAddr;
+
+                    AllocLocalPort(newConn);
+                    // ??? error handling
 
                     TcpClientAppConnStats_t* groupConnStats 
                                         = &AppIface->csGroupArr[0].cStats; 
@@ -282,15 +278,12 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
 
                     SetAppState (newConn, APP_STATE_CONNECTION_IN_PROGRESS);
 
-                    nextClientAddr->sin_port = nextSrcPort;
-
                     IncSStats2(appConnStats
                                 , groupConnStats
                                 , tcpConnInit);
 
                     newConn->socketFd 
-                        = TcpNewConnection(newConn->isIpv6, 
-                                        newConn->localAddress, 
+                        = TcpNewConnection(newConn->localAddress, 
                                         newConn->remoteAddress,
                                         appConnStats,
                                         groupConnStats,
@@ -368,7 +361,7 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
                             SetSS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
 
                             SetFreeSession (newSess);
-                            //to capture the error ?
+                            // ??? error handling
                         }
                     } else if ( GetAppState(newConn) == 
                                      APP_STATE_CONNECTION_ESTABLISHED 

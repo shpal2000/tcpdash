@@ -17,14 +17,13 @@
  *         
  *  Supports both IPv4 and IPv6 internet address
  *
- *  @param isIpv6 0 : ipv4; else ipv6
- *  @param localAddress local socket address pointer
- *  @param remoteAddress remote socket address pointer
+ *  @param IsIpv6(ddr) 0 : ipv4; else ilApv6
+ *  @param ddr local socket address pointer
+ *  @param rAddr remote socket address pointer
  *  @return file descriptor of newly created tcp socket; -1 for error
  */
-int TcpNewConnection(int isIpv6 
-                        , struct sockaddr* localAddress
-                        , struct sockaddr* remoteAddress
+int TcpNewConnection(struct sockaddr* lAddr
+                        , struct sockaddr* rAddr
                         , void* aStats
                         , void* bStats
                         , void* cState){
@@ -34,7 +33,7 @@ int TcpNewConnection(int isIpv6
 
     //create socket
     int socket_fd = -1;
-    if (isIpv6){
+    if (IsIpv6(lAddr)){
         socket_fd = socket(AF_INET6 , SOCK_STREAM | SOCK_NONBLOCK , 0);
     }else{
         socket_fd = socket(AF_INET , SOCK_STREAM | SOCK_NONBLOCK , 0);
@@ -59,21 +58,21 @@ int TcpNewConnection(int isIpv6
             SetSS1(cState, STATE_TCP_SOCK_REUSE);
             //bind local socket
             int bind_status = -1;
-            if (isIpv6){
-                bind_status = bind(socket_fd, localAddress, sizeof(struct sockaddr_in6));
+            if (IsIpv6(lAddr)){
+                bind_status = bind(socket_fd, lAddr, sizeof(struct sockaddr_in6));
             }else{
-                bind_status = bind(socket_fd, localAddress, sizeof(struct sockaddr_in));
+                bind_status = bind(socket_fd, lAddr, sizeof(struct sockaddr_in));
             }
 
             if (bind_status == -1){
-                if (isIpv6){
+                if (IsIpv6(lAddr)){
                     IncSStats2(aStats, bStats, socketBindIpv6Fail);
                 }else{
                     IncSStats2(aStats, bStats, socketBindIpv4Fail);
                 }
                 SetSSLastErr(cState, TD_SOCKET_BIND_FAILED);
             }else{
-                if (isIpv6){
+                if (IsIpv6(lAddr)){
                     IncSStats2(aStats, bStats, socketBindIpv6);
                 }else{
                     IncSStats2(aStats, bStats, socketBindIpv4);
@@ -82,13 +81,13 @@ int TcpNewConnection(int isIpv6
 
                 //connect socket
                 int connect_status = -1;
-                if (isIpv6){
+                if (IsIpv6(lAddr)){
                     connect_status = connect(socket_fd
-                                    , remoteAddress
+                                    , rAddr
                                     , sizeof(struct sockaddr_in6));
                 }else{
                     connect_status = connect(socket_fd
-                                        , remoteAddress
+                                        , rAddr
                                         , sizeof(struct sockaddr_in));
                 }
                 SetSS1(cState, STATE_TCP_CONN_INIT);
@@ -139,8 +138,7 @@ int IsNewTcpConnectionComplete(int fd){
     return 0;
 }
 
-int TcpListenStart(int isIpv6 
-                    , struct sockaddr* localAddress
+int TcpListenStart(struct sockaddr* lAddr
                     , int listenQLen
                     , void* aStats
                     , void* bStats
@@ -151,7 +149,7 @@ int TcpListenStart(int isIpv6
 
     //create socket
     int socket_fd = -1;
-    if (isIpv6){
+    if (IsIpv6(lAddr)){
         socket_fd = socket(AF_INET6 , SOCK_STREAM | SOCK_NONBLOCK , 0);
     }else{
         socket_fd = socket(AF_INET , SOCK_STREAM | SOCK_NONBLOCK , 0);
@@ -166,21 +164,21 @@ int TcpListenStart(int isIpv6
 
         //bind local socket
         int bind_status = -1;
-        if (isIpv6){
-            bind_status = bind(socket_fd, localAddress, sizeof(struct sockaddr_in6));
+        if (IsIpv6(lAddr)){
+            bind_status = bind(socket_fd, lAddr, sizeof(struct sockaddr_in6));
         }else{
-            bind_status = bind(socket_fd, localAddress, sizeof(struct sockaddr_in));
+            bind_status = bind(socket_fd, lAddr, sizeof(struct sockaddr_in));
         }
 
         if (bind_status == -1){
-            if (isIpv6){
+            if (IsIpv6(lAddr)){
                 IncSStats2(aStats, bStats, socketBindIpv6Fail);
             }else{
                 IncSStats2(aStats, bStats, socketBindIpv4Fail);
             }
             SetSSLastErr(cState, TD_SOCKET_BIND_FAILED);
         }else{
-            if (isIpv6){
+            if (IsIpv6(lAddr)){
                 IncSStats2(aStats, bStats, socketBindIpv6);
             }else{
                 IncSStats2(aStats, bStats, socketBindIpv4);

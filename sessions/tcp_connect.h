@@ -1,8 +1,7 @@
 #ifndef __TCP_CONNECT_H
 
 #define __TCP_CONNECT_H
-int TcpNewConnection(int isIpv6 
-                        , struct sockaddr* localAddress
+int TcpNewConnection(struct sockaddr* localAddress
                         , struct sockaddr* remoteAddress
                         , void* aStats
                         , void* bStats
@@ -10,8 +9,7 @@ int TcpNewConnection(int isIpv6
 
 int IsNewTcpConnectionComplete(int fd);
 
-int TcpListenStart(int isIpv6 
-                    , struct sockaddr* localAddress
+int TcpListenStart(struct sockaddr* localAddress
                     , int listenQLen
                     , void* aStats
                     , void* bStats

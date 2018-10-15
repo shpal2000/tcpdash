@@ -129,8 +129,7 @@ int main(int argc, char** argv)
 
     TcpServerSession_t* srvSess = &theApp.serverSessionArr[0];
     TcpServerConnStats_t* groupConnStats = &theApp.appGroupConnStats[0];
-    srvSess->tcConn.socketFd = TcpListenStart(0
-                                , (struct sockaddr*) &serverAddr
+    srvSess->tcConn.socketFd = TcpListenStart((struct sockaddr*) &serverAddr
                                 , 1000
                                 , appConnStats
                                 , groupConnStats

@@ -152,5 +152,8 @@ void DumpSStats(void* aStats);
 #define AddToLocalPortPool(__bindq,__port) g_queue_push_tail (__bindq,GINT_TO_POINTER(__port))
 
 #define TdMalloc(__size) malloc(__size)
+
+#define IsIpv6(__saddr) (((struct sockaddr*)__saddr)->sa_family == AF_INET6)
+#define SetSockPort(__laddr,__lport)if (IsIpv6(__laddr)) ((struct sockaddr_in6*)__laddr)->sin6_port=__lport;else ((struct sockaddr_in*)__laddr)->sin_port=__lport
 #endif
 
