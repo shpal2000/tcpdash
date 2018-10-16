@@ -21,6 +21,7 @@ typedef struct TcpClientAppStats {
 typedef struct TcpClientAppConnGroup {
     uint32_t clientAddrCount;
     SockAddr_t* clientAddrArr;
+    uint32_t nextClientAddrIndex;
     LocalPortPool_t* LocalPortPoolArr;  
     SockAddr_t serverAddr;
     TcpClientAppConnStats_t cStats;
@@ -40,6 +41,7 @@ typedef struct TcpClientAppInterface {
     TcpClientAppConnStats_t appConnStats;
 
     uint32_t csGroupCount;
+    uint32_t nextCsGroupIndex;
     TcpClientAppConnGroup_t* csGroupArr;
 } TcpClientAppInterface_t;
 

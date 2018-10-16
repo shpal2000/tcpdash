@@ -91,7 +91,7 @@ static inline void SetSSLastErr(void* aSession, uint16_t err) {
 
 int RegisterForWriteEvent(int pollId, int fd, void* data);
 void RegisterForReadEvent(int pollId, int fd, void* data);
-
+void UnRegisterForEvent(int pollId, int fd);
 
 void DumpSStats(void* aStats);
 #define TD_NO_ERROR                                         0

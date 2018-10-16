@@ -176,14 +176,6 @@ void CleanupApp() {
     DumpErrSessions();
 }
 
-int AllocLocalPort(TcpClientConnection_t* newConn){
-    int nextSrcPort = GetFromPortBindQ(newConn->localPortPool);
-    if (nextSrcPort) {
-        SetSockPort(newConn->localAddress, nextSrcPort);
-    }
-    return nextSrcPort; 
-}
-
 void ReleaseLocalPort(TcpClientConnection_t* newConn){
     if (IsIpv6(newConn->localAddress)) {
         AddToLocalPortPool (newConn->localPortPool
@@ -192,6 +184,44 @@ void ReleaseLocalPort(TcpClientConnection_t* newConn){
         AddToLocalPortPool (newConn->localPortPool
             , ((struct sockaddr_in*)newConn->localAddress)->sin_port);
     }
+}
+
+int PrepNewConnection(TcpClientConnection_t* newConn){
+    
+    int status = 0;
+
+    TcpClientAppConnGroup_t* csGroup 
+        = &AppIface->csGroupArr[AppIface->nextCsGroupIndex];
+
+    newConn->localAddress 
+        = (struct sockaddr*)&(csGroup->clientAddrArr[csGroup->nextClientAddrIndex]);
+
+    newConn->remoteAddress 
+        = (struct sockaddr*)&(csGroup->serverAddr);
+
+    newConn->tcSess->groupConnStats = &csGroup->cStats;
+
+    newConn->localPortPool 
+        = &csGroup->LocalPortPoolArr[csGroup->nextClientAddrIndex];
+
+    int nextSrcPort = GetFromPortBindQ(newConn->localPortPool);
+    if (nextSrcPort) {
+        SetSockPort(newConn->localAddress, nextSrcPort);
+    }else{
+        status = -1;
+    }
+
+    AppIface->nextCsGroupIndex += 1;
+    if (AppIface->nextCsGroupIndex == AppIface->csGroupCount){
+        AppIface->nextCsGroupIndex = 0;
+    }
+     
+    csGroup->nextClientAddrIndex += 1;
+    if (csGroup->nextClientAddrIndex == csGroup->clientAddrCount) {
+        csGroup->nextClientAddrIndex = 0;
+    }
+
+    return status;
 }
 
 void TcpClienAppRun(TcpClientAppInterface_t* appIface)
@@ -203,7 +233,6 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
     TcpClientAppConnStats_t* appConnStats = &AppIface->appConnStats;
     TcpClientAppStats_t* appStats = &AppIface->appStats;
 
-    int clientAddrIndex = 0;
     time_t epochSinceSeconds = time(NULL);
     printf("%ld - -\n", epochSinceSeconds);
 
@@ -243,38 +272,10 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
 
                     TcpClientConnection_t* newConn = &newSess->tcConn;
 
-                    SockAddr_t* clientAddrArr 
-                        = AppIface->csGroupArr[0].clientAddrArr;
-                                        
-                    SockAddr_t* nextClientAddr 
-                        = &(clientAddrArr[clientAddrIndex]);
+                    PrepNewConnection(newConn);
+                    // ??? error handling 
 
-                    LocalPortPool_t*LocalPortPoolArr 
-                        = AppIface->csGroupArr[0].LocalPortPoolArr;
-
-                    newConn->localPortPool = &LocalPortPoolArr[clientAddrIndex];
-
-                    clientAddrIndex++;
-                    if (clientAddrIndex == AppIface->csGroupArr[0].clientAddrCount) {
-                        clientAddrIndex = 0;
-                    }
-
-                    SockAddr_t* nextServerAddr 
-                        = &(AppIface->csGroupArr[0].serverAddr); 
-
-                    newConn->localAddress 
-                        = (struct sockaddr*)nextClientAddr;
-
-                    newConn->remoteAddress 
-                        = (struct sockaddr*)nextServerAddr;
-
-                    AllocLocalPort(newConn);
-                    // ??? error handling
-
-                    TcpClientAppConnStats_t* groupConnStats 
-                                        = &AppIface->csGroupArr[0].cStats; 
-
-                    newSess->groupConnStats = groupConnStats;
+                    TcpClientAppConnStats_t* groupConnStats = newSess->groupConnStats;
 
                     SetAppState (newConn, APP_STATE_CONNECTION_IN_PROGRESS);
 
@@ -288,7 +289,6 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
                                         appConnStats,
                                         groupConnStats,
                                         newConn);
-
 
                     if ( GetSSLastErr (newConn) ) {
                         if (GetSSLastErr (newConn) 
@@ -354,7 +354,7 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
                             IncSStats2(appConnStats
                                         , groupConnStats
                                         , tcpConnInitFail);
-
+                            UnRegisterForEvent(AppObj->eventQ, newConn->socketFd);
                             close(newConn->socketFd);
                             ReleaseLocalPort (newConn);
 
@@ -383,6 +383,7 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
                                         , newConn);
 
                         if (GetSSLastErr (newConn)) {
+                            UnRegisterForEvent(AppObj->eventQ, newConn->socketFd);
                             close(newConn->socketFd);
                             ReleaseLocalPort (newConn);
 
@@ -395,6 +396,7 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
                             newConn->bytesSent += bytesSent;
 
                             if (newConn->bytesSent == AppIface->csDataLen) {
+                                UnRegisterForEvent(AppObj->eventQ, newConn->socketFd);
                                 close(newConn->socketFd);
                                 ReleaseLocalPort (newConn);
 
@@ -436,10 +438,11 @@ TcpClientAppInterface_t* CreateTcpClienAppInterface(int csGroupCount
             , MAP_SHARED | MAP_ANONYMOUS
             , -1
             , 0);
-
+    iFace->nextCsGroupIndex = 0;
     for (int gIndex = 0; gIndex < iFace->csGroupCount; gIndex++) {
         TcpClientAppConnGroup_t* csGroup = &iFace->csGroupArr[gIndex];
         csGroup->clientAddrCount = clientAddrCounts[gIndex];
+        csGroup->nextClientAddrIndex = 0;
         csGroup->clientAddrArr
             = (SockAddr_t*) mmap(NULL
                 , sizeof (SockAddr_t) * csGroup->clientAddrCount
