@@ -155,15 +155,25 @@ void OnConnectionError(TcpClientConnection_t* newConn){
 }
 
 void OnRegisterForWriteEventError(TcpClientConnection_t* newConn){
-    SaveErrno(newConn);
 
     IncSStats2(&AppIface->appConnStats
                 , newConn->tcSess->groupConnStats 
                 , tcpConnRegisterForWriteEventFail);    
 
+    close(newConn->socketFd);
     StoreErrSession (newConn->tcSess);
     SetFreeSession (newConn->tcSess);
     ReleasePort (newConn);
+}
+
+void OnAssignSocketLocalPortError(TcpClientConnection_t* newConn){
+    
+    IncSStats2(&AppIface->appConnStats
+                , newConn->tcSess->groupConnStats 
+                , tcpLocalPortAssignFail);    
+
+    StoreErrSession (newConn->tcSess);
+    SetFreeSession (newConn->tcSess);
 }
 
 void InitApp() {
@@ -227,9 +237,9 @@ void CleanupApp() {
     DumpErrSessions();
 }
 
-int PrepConnection(TcpClientConnection_t* newConn){
-    
-    int status = 0;
+TcpClientConnection_t* PrepNextConnection(TcpClientSession_t* newSess){
+
+    TcpClientConnection_t* newConn = &newSess->tcConn; 
 
     TcpClientAppConnGroup_t* csGroup 
         = &AppIface->csGroupArr[AppIface->nextCsGroupIndex];
@@ -245,13 +255,6 @@ int PrepConnection(TcpClientConnection_t* newConn){
     newConn->localPortPool 
         = &csGroup->LocalPortPoolArr[csGroup->nextClientAddrIndex];
 
-    int nextSrcPort = GetPortFromPool(newConn->localPortPool);
-    if (nextSrcPort) {
-        SetSockPort(newConn->localAddress, nextSrcPort);
-    }else{
-        status = -1;
-    }
-
     AppIface->nextCsGroupIndex += 1;
     if (AppIface->nextCsGroupIndex == AppIface->csGroupCount){
         AppIface->nextCsGroupIndex = 0;
@@ -262,7 +265,7 @@ int PrepConnection(TcpClientConnection_t* newConn){
         csGroup->nextClientAddrIndex = 0;
     }
 
-    return status;
+    return newConn;
 }
 
 void TcpClienAppRun(TcpClientAppInterface_t* appIface)
@@ -311,32 +314,35 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
                 if (newSess == NULL) {
                     appStats->dbgNoFreeSession++;      
                 }else {
+                    
+                    TcpClientConnection_t* newConn = PrepNextConnection(newSess);
 
-                    TcpClientConnection_t* newConn = &newSess->tcConn;
+                    if ( AssignSocketLocalPort(newConn->localAddress
+                                                , newConn->localPortPool
+                                                , newConn) ) {
+                        OnAssignSocketLocalPortError(newConn);
+                    }else{
+                        SetAppState (newConn, APP_STATE_CONNECTION_IN_PROGRESS);
 
-                    PrepConnection(newConn);
-                    // ??? error handling 
+                        IncSStats2(&AppIface->appConnStats
+                                    , newConn->tcSess->groupConnStats 
+                                    , tcpConnInit);
 
-                    SetAppState (newConn, APP_STATE_CONNECTION_IN_PROGRESS);
+                        newConn->socketFd 
+                            = TcpNewConnection(newConn->localAddress
+                                                , newConn->remoteAddress
+                                                , &AppIface->appConnStats
+                                                , newSess->groupConnStats
+                                                , newConn);
 
-                    IncSStats2(&AppIface->appConnStats
-                                , newConn->tcSess->groupConnStats 
-                                , tcpConnInit);
-
-                    newConn->socketFd 
-                        = TcpNewConnection(newConn->localAddress
-                                            , newConn->remoteAddress
-                                            , &AppIface->appConnStats
-                                            , newSess->groupConnStats
-                                            , newConn);
-
-                    if ( GetSSLastErr (newConn) ) {
-                        OnConnectionError(newConn);
-                    } else {
-                        if ( RegisterForWriteEvent(AppObj->eventQ
-                                                    , newConn->socketFd
-                                                    , newConn)){
-                            OnRegisterForWriteEventError(newConn);
+                        if ( GetSSLastErr (newConn) ) {
+                            OnConnectionError(newConn);
+                        } else {
+                            if ( RegisterForWriteEvent(AppObj->eventQ
+                                                        , newConn->socketFd
+                                                        , newConn)){
+                                OnRegisterForWriteEventError(newConn);
+                            }
                         }
                     }
                 }

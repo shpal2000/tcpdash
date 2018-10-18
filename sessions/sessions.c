@@ -47,6 +47,24 @@ int UnRegisterForEvent(int pollId, int fd, void* cState) {
     return status;
 }
 
+int AssignSocketLocalPort(struct sockaddr* localAddres
+                            , LocalPortPool_t* portPool
+                            , void* cState)
+{
+   InitSSLastErr(cState, TD_PROGRAM_ERROR_AssignSocketLocalPort);
+
+   int nextSrcPort = GetPortFromPool(portPool);
+   if (nextSrcPort) {
+       SetSockPort(localAddres, nextSrcPort);
+       SetSS1(cState, STATE_TCP_PORT_ASSIGNED);
+       SetSSLastErr(cState, TD_NO_ERROR);       
+       return 0;
+   }
+
+   SetSSLastErr(cState, TD_ASSIGN_PORT_FAILED);
+   return -1; 
+}
+
 void DumpSStats(void* aStats) {
     CommonConnStats_t* cStats = (CommonConnStats_t*) aStats;
     printf ("\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64"\n"

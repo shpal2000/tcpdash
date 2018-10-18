@@ -30,6 +30,7 @@ typedef struct CommonConnStats{
     uint64_t programErrorTcpNewConnection;    
     uint64_t tcpConnRegisterForWriteEventFail;
     uint64_t tcpConnRegisterForReadEventFail;
+    uint64_t tcpLocalPortAssignFail;
 } CommonConnStats_t;
 
 typedef struct CommonConnState{
@@ -92,6 +93,9 @@ static inline void SetSSLastErr(void* aSession, uint16_t err) {
 int RegisterForWriteEvent(int pollId, int fd, void* cState);
 int RegisterForReadEvent(int pollId, int fd, void* cState);
 int UnRegisterForEvent(int pollId, int fd, void* cState);
+int AssignSocketLocalPort(struct sockaddr* localAddres
+                            , LocalPortPool_t* portPool
+                            , void* cState);
 
 void DumpSStats(void* aStats);
 #define TD_NO_ERROR                                         0
@@ -108,18 +112,21 @@ void DumpSStats(void* aStats);
 #define TD_SOCKET_WRITE_ERROR                               10
 #define TD_PROGRAM_ERROR_TcpRead                            11
 #define TD_SOCKET_READ_ERROR                                12
+#define TD_ASSIGN_PORT_FAILED                               13
+#define TD_PROGRAM_ERROR_AssignSocketLocalPort              14
 
 
-#define STATE_TCP_SOCK_CREATE                               0x0000000000000001
-#define STATE_TCP_SOCK_REUSE                                0x0000000000000002
-#define STATE_TCP_SOCK_BIND                                 0x0000000000000004
-#define STATE_TCP_CONN_INIT                                 0x0000000000000008
-#define STATE_TCP_CONN_IN_PROGRESS                          0x0000000000000010
-#define STATE_TCP_CONN_IN_PROGRESS2                         0x0000000000000020
-#define STATE_TCP_CONN_ESTABLISHED                          0x0000000000000040
-#define STATE_TCP_SOCK_FD_CLOSE                             0x0000000000000080
-#define STATE_TCP_LISTENING                                 0x0000000000000100
-#define STATE_TCP_LISTEN_STOP                               0x0000000000000200
+#define STATE_TCP_PORT_ASSIGNED                             0x0000000000000001
+#define STATE_TCP_SOCK_CREATE                               0x0000000000000002
+#define STATE_TCP_SOCK_REUSE                                0x0000000000000004
+#define STATE_TCP_SOCK_BIND                                 0x0000000000000008
+#define STATE_TCP_CONN_INIT                                 0x0000000000000010
+#define STATE_TCP_CONN_IN_PROGRESS                          0x0000000000000020
+#define STATE_TCP_CONN_IN_PROGRESS2                         0x0000000000000040
+#define STATE_TCP_CONN_ESTABLISHED                          0x0000000000000080
+#define STATE_TCP_SOCK_FD_CLOSE                             0x0000000000000100
+#define STATE_TCP_LISTENING                                 0x0000000000000200
+#define STATE_TCP_LISTEN_STOP                               0x0000000000000400
 
 
 #define AllocSession(__type) g_slice_new(__type)
