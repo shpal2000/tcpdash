@@ -75,7 +75,7 @@ int main(int argc, char** argv)
                         , &(localAddr->sin_addr));
             LocalPortPool_t* portQ = &csGroup->LocalPortPoolArr[cIndex];
             for (int srcPort = 5000; srcPort <= 65000; srcPort++) {
-                AddToLocalPortPool(portQ, htons(srcPort));
+                SetPortToPool(portQ, htons(srcPort));
             }
         }
         struct sockaddr_in* remoteAddr 

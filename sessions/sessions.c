@@ -11,28 +11,40 @@
 
 #include "sessions.h"
 
-int RegisterForWriteEvent(int pollId, int fd, void* data) {
+int RegisterForWriteEvent(int pollId, int fd, void* cState) {
     ResetErrno();
     struct epoll_event setEvent;
     setEvent.events = EPOLLOUT;
-    setEvent.data.ptr = data;
-    return epoll_ctl(pollId, EPOLL_CTL_ADD, fd, &setEvent);
+    setEvent.data.ptr = cState;
+    int status = epoll_ctl(pollId, EPOLL_CTL_ADD, fd, &setEvent);
+    if (status) {
+       SaveErrno(cState); 
+    }
+    return status;
 }
 
-void RegisterForReadEvent(int pollId, int fd, void* data) {
+int RegisterForReadEvent(int pollId, int fd, void* cState) {
     ResetErrno();
     struct epoll_event setEvent;
     setEvent.events = EPOLLIN;
-    setEvent.data.ptr = data;
-    epoll_ctl(pollId, EPOLL_CTL_ADD, fd, &setEvent);
+    setEvent.data.ptr = cState;
+    int status = epoll_ctl(pollId, EPOLL_CTL_ADD, fd, &setEvent);
+    if (status) {
+       SaveErrno(cState); 
+    }
+    return status;
 }
 
-void UnRegisterForEvent(int pollId, int fd) {
+int UnRegisterForEvent(int pollId, int fd, void* cState) {
     ResetErrno();
     struct epoll_event setEvent;
     setEvent.events = EPOLLIN | EPOLLOUT;
     setEvent.data.ptr = NULL;
-    epoll_ctl(pollId, EPOLL_CTL_DEL, fd, &setEvent);
+    int status = epoll_ctl(pollId, EPOLL_CTL_DEL, fd, &setEvent);
+    if (status) {
+       SaveErrno(cState); 
+    }
+    return status;
 }
 
 void DumpSStats(void* aStats) {

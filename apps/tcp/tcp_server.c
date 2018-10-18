@@ -43,10 +43,10 @@ void InitSession(TcpServerSession_t* newSess) {
 TcpServerSession_t* GetFreeSession() {
 
     TcpServerSession_t* newSess 
-        = GetAnySesionFromPool (theApp.freeSessionPool);
+        = GetSesionFromPool (theApp.freeSessionPool);
 
     if (newSess != NULL) {
-        AddToSessionPool (theApp.activeSessionPool, newSess);
+        SetSessionToPool (theApp.activeSessionPool, newSess);
         InitSession(newSess);
     }
 
@@ -56,7 +56,7 @@ TcpServerSession_t* GetFreeSession() {
 void SetFreeSession(TcpServerSession_t* newSess) {
     
     RemoveFromSessionPool (theApp.activeSessionPool, newSess);
-    AddToSessionPool (theApp.freeSessionPool, newSess);
+    SetSessionToPool (theApp.freeSessionPool, newSess);
 }
 
 
@@ -72,7 +72,7 @@ void InitApp() {
         //additional one-time initialization
         aSession->sessionType = SESSION_TYPE_CONNECTION;
 
-        AddToSessionPool (theApp.freeSessionPool, aSession);
+        SetSessionToPool (theApp.freeSessionPool, aSession);
     }
 
     theApp.errorSessionCount = 0;

@@ -17,6 +17,9 @@
 TcpClientApp_t* AppObj;
 TcpClientAppInterface_t* AppIface;
 
+#define IncConnStats(__session,__stats) IncSStats2(&AppIface->appConnStats,__session->groupConnStats,__stats) 
+
+
 void InitSession(TcpClientSession_t* newSess) {
 
     TcpClientConnection_t* newConn = &newSess->tcConn; 
@@ -39,10 +42,10 @@ void InitSessionInitApp(TcpClientSession_t* newSess) {
 TcpClientSession_t* GetFreeSession() {
 
     TcpClientSession_t* newSess 
-        = GetAnySesionFromPool (AppObj->freeSessionPool);
+        = GetSesionFromPool (AppObj->freeSessionPool);
 
     if (newSess != NULL) {
-        AddToSessionPool (AppObj->activeSessionPool, newSess);
+        SetSessionToPool (AppObj->activeSessionPool, newSess);
         InitSession(newSess);
     }
 
@@ -52,7 +55,7 @@ TcpClientSession_t* GetFreeSession() {
 void SetFreeSession(TcpClientSession_t* newSess) {
     
     RemoveFromSessionPool (AppObj->activeSessionPool, newSess);
-    AddToSessionPool (AppObj->freeSessionPool, newSess);
+    SetSessionToPool (AppObj->freeSessionPool, newSess);
 }
 
 void StoreErrSession(TcpClientSession_t* aSession) {
@@ -115,6 +118,54 @@ void DumpErrSessions() {
     }
 }
 
+void ReleasePort(TcpClientConnection_t* newConn){
+    if (IsIpv6(newConn->localAddress)) {
+        SetPortToPool (newConn->localPortPool
+            , ((struct sockaddr_in6*)newConn->localAddress)->sin6_port);
+    } else {
+        SetPortToPool (newConn->localPortPool
+            , ((struct sockaddr_in*)newConn->localAddress)->sin_port);
+    }
+}
+
+void OnSessionError(TcpClientSession_t* newSess){
+    StoreErrSession (newSess);
+    SetFreeSession (newSess);
+    ReleasePort (&newSess->tcConn);
+}
+
+void OnConnectionError(TcpClientConnection_t* newConn){
+
+    if (GetSSLastErr (newConn) 
+            == TD_SOCKET_CONNECT_FAILED_IMMEDIATE
+        && GetErrno(newConn) == EADDRNOTAVAIL) {
+
+            IncSStats2(&AppIface->appConnStats
+                        , newConn->tcSess->groupConnStats 
+                        , tcpConnInitFailEaddrNotAvail);
+    }
+
+    IncSStats2(&AppIface->appConnStats
+                , newConn->tcSess->groupConnStats 
+                , tcpConnInitFail);
+
+    StoreErrSession (newConn->tcSess);
+    SetFreeSession (newConn->tcSess);
+    ReleasePort (newConn);
+}
+
+void OnRegisterForWriteEventError(TcpClientConnection_t* newConn){
+    SaveErrno(newConn);
+
+    IncSStats2(&AppIface->appConnStats
+                , newConn->tcSess->groupConnStats 
+                , tcpConnRegisterForWriteEventFail);    
+
+    StoreErrSession (newConn->tcSess);
+    SetFreeSession (newConn->tcSess);
+    ReleasePort (newConn);
+}
+
 void InitApp() {
 
     AppObj->freeSessionPool = AllocEmptySessionPool();
@@ -127,7 +178,7 @@ void InitApp() {
 
         InitSessionInitApp (aSession);
 
-        AddToSessionPool (AppObj->freeSessionPool, aSession);
+        SetSessionToPool (AppObj->freeSessionPool, aSession);
     }
 
     AppObj->errorSessionCount = 0;
@@ -176,17 +227,7 @@ void CleanupApp() {
     DumpErrSessions();
 }
 
-void ReleaseLocalPort(TcpClientConnection_t* newConn){
-    if (IsIpv6(newConn->localAddress)) {
-        AddToLocalPortPool (newConn->localPortPool
-            , ((struct sockaddr_in6*)newConn->localAddress)->sin6_port);
-    } else {
-        AddToLocalPortPool (newConn->localPortPool
-            , ((struct sockaddr_in*)newConn->localAddress)->sin_port);
-    }
-}
-
-int PrepNewConnection(TcpClientConnection_t* newConn){
+int PrepConnection(TcpClientConnection_t* newConn){
     
     int status = 0;
 
@@ -204,7 +245,7 @@ int PrepNewConnection(TcpClientConnection_t* newConn){
     newConn->localPortPool 
         = &csGroup->LocalPortPoolArr[csGroup->nextClientAddrIndex];
 
-    int nextSrcPort = GetFromPortBindQ(newConn->localPortPool);
+    int nextSrcPort = GetPortFromPool(newConn->localPortPool);
     if (nextSrcPort) {
         SetSockPort(newConn->localAddress, nextSrcPort);
     }else{
@@ -259,6 +300,7 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
             while (newConnectionInits > 0 
                     && GetSStats(appConnStats, tcpConnInit) 
                         < AppIface->maxSessions) {
+
                 newConnectionInits--;
 
                 lastConnectionInitTime 
@@ -272,51 +314,29 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
 
                     TcpClientConnection_t* newConn = &newSess->tcConn;
 
-                    PrepNewConnection(newConn);
+                    PrepConnection(newConn);
                     // ??? error handling 
-
-                    TcpClientAppConnStats_t* groupConnStats = newSess->groupConnStats;
 
                     SetAppState (newConn, APP_STATE_CONNECTION_IN_PROGRESS);
 
-                    IncSStats2(appConnStats
-                                , groupConnStats
+                    IncSStats2(&AppIface->appConnStats
+                                , newConn->tcSess->groupConnStats 
                                 , tcpConnInit);
 
                     newConn->socketFd 
-                        = TcpNewConnection(newConn->localAddress, 
-                                        newConn->remoteAddress,
-                                        appConnStats,
-                                        groupConnStats,
-                                        newConn);
+                        = TcpNewConnection(newConn->localAddress
+                                            , newConn->remoteAddress
+                                            , &AppIface->appConnStats
+                                            , newSess->groupConnStats
+                                            , newConn);
 
                     if ( GetSSLastErr (newConn) ) {
-                        if (GetSSLastErr (newConn) 
-                                == TD_SOCKET_CONNECT_FAILED_IMMEDIATE
-                            && GetErrno(newConn) == EADDRNOTAVAIL) {
-                                IncSStats2(appConnStats
-                                        , groupConnStats
-                                        , tcpConnInitFailEaddrNotAvail);
-                        }//else{
-                            IncSStats2(appConnStats
-                                        , groupConnStats
-                                        , tcpConnInitFail);
-                            StoreErrSession (newSess);
-                            SetFreeSession (newSess);
-                            ReleaseLocalPort (newConn);
-                        //}
+                        OnConnectionError(newConn);
                     } else {
                         if ( RegisterForWriteEvent(AppObj->eventQ
-                                        , newConn->socketFd
-                                        , newConn)){
-
-                            SaveErrno(newConn);                
-                            IncSStats2(appConnStats
-                                    , groupConnStats
-                                    , tcpConnRegisterForWriteEventFail);
-                            StoreErrSession(newSess);
-                            SetFreeSession (newSess);
-                            ReleaseLocalPort (newConn);
+                                                    , newConn->socketFd
+                                                    , newConn)){
+                            OnRegisterForWriteEventError(newConn);
                         }
                     }
                 }
@@ -334,29 +354,25 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
 
                 TcpClientSession_t* newSess = newConn->tcSess;
                 
-                TcpClientAppConnStats_t* groupConnStats = newSess->groupConnStats;
-
                 if (IsWriteEventSet(AppObj->EventArr[eIndex])) {
                     if ( GetAppState(newConn) 
                             == APP_STATE_CONNECTION_IN_PROGRESS ) {
 
                         if ( IsNewTcpConnectionComplete(newConn->socketFd) ){
                             
-                            IncSStats2(appConnStats
-                                        , groupConnStats
-                                        , tcpConnInitSuccess);
+                            IncConnStats(newSess, tcpConnInitSuccess);
 
                             SetAppState (newConn
                                         , APP_STATE_CONNECTION_ESTABLISHED);
 
                             SetSS1(newConn, STATE_TCP_CONN_ESTABLISHED);
                         }else{
-                            IncSStats2(appConnStats
-                                        , groupConnStats
-                                        , tcpConnInitFail);
-                            UnRegisterForEvent(AppObj->eventQ, newConn->socketFd);
+                            IncConnStats(newSess, tcpConnInitFail);
+                            UnRegisterForEvent(AppObj->eventQ
+                                            , newConn->socketFd
+                                            , newConn);
                             close(newConn->socketFd);
-                            ReleaseLocalPort (newConn);
+                            ReleasePort (newConn);
 
                             SetSS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
 
@@ -378,14 +394,14 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
                             = TcpWrite (newConn->socketFd
                                         , sendBuffer
                                         , bytesToSend
-                                        , appConnStats
-                                        , groupConnStats
+                                        , &AppIface->appConnStats
+                                        , newSess->groupConnStats
                                         , newConn);
 
                         if (GetSSLastErr (newConn)) {
-                            UnRegisterForEvent(AppObj->eventQ, newConn->socketFd);
+                            UnRegisterForEvent(AppObj->eventQ, newConn->socketFd, newConn);
                             close(newConn->socketFd);
-                            ReleaseLocalPort (newConn);
+                            ReleasePort (newConn);
 
                             SetSS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
 
@@ -396,9 +412,9 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
                             newConn->bytesSent += bytesSent;
 
                             if (newConn->bytesSent == AppIface->csDataLen) {
-                                UnRegisterForEvent(AppObj->eventQ, newConn->socketFd);
+                                UnRegisterForEvent(AppObj->eventQ, newConn->socketFd, newConn);
                                 close(newConn->socketFd);
-                                ReleaseLocalPort (newConn);
+                                ReleasePort (newConn);
 
                                 SetSS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
 

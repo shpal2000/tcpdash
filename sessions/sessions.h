@@ -89,9 +89,9 @@ static inline void SetSSLastErr(void* aSession, uint16_t err) {
 
 #define GetErrno(__aSession) ((CommonConnState_t*)__aSession)->sysErrno
 
-int RegisterForWriteEvent(int pollId, int fd, void* data);
-void RegisterForReadEvent(int pollId, int fd, void* data);
-void UnRegisterForEvent(int pollId, int fd);
+int RegisterForWriteEvent(int pollId, int fd, void* cState);
+int RegisterForReadEvent(int pollId, int fd, void* cState);
+int UnRegisterForEvent(int pollId, int fd, void* cState);
 
 void DumpSStats(void* aStats);
 #define TD_NO_ERROR                                         0
@@ -123,12 +123,12 @@ void DumpSStats(void* aStats);
 
 
 #define AllocSession(__type) g_slice_new(__type)
-#define AddToSessionPool(__pool,__session) g_queue_push_tail (__pool,__session)
+#define SetSessionToPool(__pool,__session) g_queue_push_tail (__pool,__session)
 #define RemoveFromSessionPool(__pool,__session) g_queue_remove (__pool,__session)
 
 #define AllocEmptySessionPool() g_queue_new()
 #define CreateEventArray(__count) g_new(struct epoll_event, __count)
-#define GetAnySesionFromPool(__pool) g_queue_pop_head(__pool)
+#define GetSesionFromPool(__pool) g_queue_pop_head(__pool)
 #define IsSessionPoolEmpty(__pool) g_queue_is_empty(__pool)
 
 #define CreateEventQ() epoll_create(1)
@@ -148,8 +148,8 @@ void DumpSStats(void* aStats);
 #define AllocEmptyPortBindQ() g_queue_new()
 #define InitPortBindQ(__bindq) g_queue_init(__bindq)
 #define IsPortBindQEmpty(__bindq) g_queue_is_empty(__bindq)
-#define GetFromPortBindQ(__bindq) GPOINTER_TO_INT(g_queue_pop_head(__bindq))
-#define AddToLocalPortPool(__bindq,__port) g_queue_push_tail (__bindq,GINT_TO_POINTER(__port))
+#define GetPortFromPool(__bindq) GPOINTER_TO_INT(g_queue_pop_head(__bindq))
+#define SetPortToPool(__bindq,__port) g_queue_push_tail (__bindq,GINT_TO_POINTER(__port))
 
 #define TdMalloc(__size) malloc(__size)
 
