@@ -11,14 +11,17 @@
 
 #include "sessions.h"
 
-int RegisterForWriteEvent(int pollId, int fd, void* cState) {
+int RegisterForReadWriteEvent(int pollId, int fd, void* cState) {
     ResetErrno();
     struct epoll_event setEvent;
-    setEvent.events = EPOLLOUT;
+    setEvent.events = EPOLLIN | EPOLLOUT;
     setEvent.data.ptr = cState;
     int status = epoll_ctl(pollId, EPOLL_CTL_ADD, fd, &setEvent);
     if (status) {
        SaveErrno(cState); 
+    }else{
+        SetSS1(cState
+            , STATE_TCP_REGISTER_READ | STATE_TCP_REGISTER_WRITE);
     }
     return status;
 }
@@ -31,11 +34,27 @@ int RegisterForReadEvent(int pollId, int fd, void* cState) {
     int status = epoll_ctl(pollId, EPOLL_CTL_ADD, fd, &setEvent);
     if (status) {
        SaveErrno(cState); 
+    }else{
+        SetSS1(cState, STATE_TCP_REGISTER_READ);
     }
     return status;
 }
 
-int UnRegisterForEvent(int pollId, int fd, void* cState) {
+int RegisterForWriteEvent(int pollId, int fd, void* cState) {
+    ResetErrno();
+    struct epoll_event setEvent;
+    setEvent.events = EPOLLOUT;
+    setEvent.data.ptr = cState;
+    int status = epoll_ctl(pollId, EPOLL_CTL_ADD, fd, &setEvent);
+    if (status) {
+       SaveErrno(cState); 
+    }else{
+        SetSS1(cState, STATE_TCP_REGISTER_WRITE);
+    }
+    return status;
+}
+
+int UnRegisterForReadWriteEvent(int pollId, int fd, void* cState) {
     ResetErrno();
     struct epoll_event setEvent;
     setEvent.events = EPOLLIN | EPOLLOUT;
@@ -43,10 +62,40 @@ int UnRegisterForEvent(int pollId, int fd, void* cState) {
     int status = epoll_ctl(pollId, EPOLL_CTL_DEL, fd, &setEvent);
     if (status) {
        SaveErrno(cState); 
+    }else{
+        SetSS1(cState
+            , STATE_TCP_UNREGISTER_READ | STATE_TCP_UNREGISTER_WRITE);
     }
     return status;
 }
 
+int UnRegisterForReadEvent(int pollId, int fd, void* cState) {
+    ResetErrno();
+    struct epoll_event setEvent;
+    setEvent.events = EPOLLIN;
+    setEvent.data.ptr = NULL;
+    int status = epoll_ctl(pollId, EPOLL_CTL_DEL, fd, &setEvent);
+    if (status) {
+       SaveErrno(cState); 
+    }else{
+        SetSS1(cState, STATE_TCP_UNREGISTER_READ);
+    }
+    return status;
+}
+
+int UnRegisterForWriteEvent(int pollId, int fd, void* cState) {
+    ResetErrno();
+    struct epoll_event setEvent;
+    setEvent.events = EPOLLOUT;
+    setEvent.data.ptr = NULL;
+    int status = epoll_ctl(pollId, EPOLL_CTL_DEL, fd, &setEvent);
+    if (status) {
+       SaveErrno(cState); 
+    }else{
+        SetSS1(cState, STATE_TCP_UNREGISTER_WRITE);
+    }
+    return status;
+}
 int AssignSocketLocalPort(struct sockaddr* localAddres
                             , LocalPortPool_t* portPool
                             , void* cState)
@@ -77,4 +126,20 @@ void DumpSStats(void* aStats) {
                 , cStats->socketConnectEstablishFail
                 , cStats->socketConnectEstablishFail2
                 , cStats->programErrorTcpNewConnection);
+}
+
+void AddressToString(struct sockaddr* addr, char* str){
+
+   if IsIpv6(addr) {
+        inet_ntop(AF_INET6
+            , &( ((struct sockaddr_in6*)addr)->sin6_addr )
+            , str
+            , INET6_ADDRSTRLEN);
+   }else{
+        inet_ntop(AF_INET
+            , &( ((struct sockaddr_in*)addr)->sin_addr )
+            , str
+            , INET_ADDRSTRLEN);
+   }
+
 }

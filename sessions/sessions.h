@@ -30,6 +30,8 @@ typedef struct CommonConnStats{
     uint64_t programErrorTcpNewConnection;    
     uint64_t tcpConnRegisterForWriteEventFail;
     uint64_t tcpConnRegisterForReadEventFail;
+    uint64_t tcpConnUnRegisterForWriteEventFail;
+    uint64_t tcpConnUnRegisterForReadEventFail;
     uint64_t tcpLocalPortAssignFail;
 } CommonConnStats_t;
 
@@ -90,12 +92,16 @@ static inline void SetSSLastErr(void* aSession, uint16_t err) {
 
 #define GetErrno(__aSession) ((CommonConnState_t*)__aSession)->sysErrno
 
-int RegisterForWriteEvent(int pollId, int fd, void* cState);
+int RegisterForReadWriteEvent(int pollId, int fd, void* cState);
 int RegisterForReadEvent(int pollId, int fd, void* cState);
-int UnRegisterForEvent(int pollId, int fd, void* cState);
+int RegisterForWriteEvent(int pollId, int fd, void* cState);
+int UnRegisterForReadWriteEvent(int pollId, int fd, void* cState);
+int UnRegisterForReadEvent(int pollId, int fd, void* cState);
+int UnRegisterForWriteEvent(int pollId, int fd, void* cState);
 int AssignSocketLocalPort(struct sockaddr* localAddres
                             , LocalPortPool_t* portPool
                             , void* cState);
+void AddressToString(struct sockaddr* addr, char* str);
 
 void DumpSStats(void* aStats);
 #define TD_NO_ERROR                                         0
@@ -127,7 +133,10 @@ void DumpSStats(void* aStats);
 #define STATE_TCP_SOCK_FD_CLOSE                             0x0000000000000100
 #define STATE_TCP_LISTENING                                 0x0000000000000200
 #define STATE_TCP_LISTEN_STOP                               0x0000000000000400
-
+#define STATE_TCP_REGISTER_WRITE                            0x0000000000000800
+#define STATE_TCP_REGISTER_READ                             0x0000000000001000
+#define STATE_TCP_UNREGISTER_WRITE                          0x0000000000002000
+#define STATE_TCP_UNREGISTER_READ                           0x0000000000004000
 
 #define AllocSession(__type) g_slice_new(__type)
 #define SetSessionToPool(__pool,__session) g_queue_push_tail (__pool,__session)
@@ -161,6 +170,9 @@ void DumpSStats(void* aStats);
 #define TdMalloc(__size) malloc(__size)
 
 #define IsIpv6(__saddr) (((struct sockaddr*)__saddr)->sa_family == AF_INET6)
+
 #define SetSockPort(__laddr,__lport)if (IsIpv6(__laddr)) ((struct sockaddr_in6*)__laddr)->sin6_port=__lport;else ((struct sockaddr_in*)__laddr)->sin_port=__lport
+
+#define GetSockPort(__laddr)(IsIpv6(__laddr)) ? ((struct sockaddr_in6*)__laddr)->sin6_port : ((struct sockaddr_in*)__laddr)->sin_port
 #endif
 

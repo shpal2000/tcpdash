@@ -17,9 +17,6 @@
 TcpClientApp_t* AppObj;
 TcpClientAppInterface_t* AppIface;
 
-#define IncConnStats(__session,__stats) IncSStats2(&AppIface->appConnStats,__session->groupConnStats,__stats) 
-
-
 void InitSession(TcpClientSession_t* newSess) {
 
     TcpClientConnection_t* newConn = &newSess->tcConn; 
@@ -66,13 +63,22 @@ void StoreErrSession(TcpClientSession_t* aSession) {
 
         *errSession =  *aSession;
 
+        errSession->tcConn.savedLocalPort 
+            = ntohs(GetSockPort(errSession->tcConn.localAddress));
+
+        errSession->tcConn.savedRemotePort 
+            = ntohs(GetSockPort(errSession->tcConn.remoteAddress));
+
         AppObj->errorSessionCount++;
     }
 }
 
 void DumpErrSessions() {
-    if (AppObj->errorSessionCount) 
-    {
+    if (AppObj->errorSessionCount) {
+
+        char srcAddr[INET6_ADDRSTRLEN];
+        char dstAddr[INET6_ADDRSTRLEN];
+
         for (int i = 0; i < AppObj->errorSessionCount; i++) {
 
             TcpClientSession_t* newSess 
@@ -81,28 +87,9 @@ void DumpErrSessions() {
             TcpClientConnection_t* newConn 
                     = &newSess->tcConn;
 
-            char srcAddr[INET6_ADDRSTRLEN];
-            char dstAddr[INET6_ADDRSTRLEN];
-            uint16_t localPort, remotePort;
-            if (IsIpv6(newConn->localAddress)){
-                struct sockaddr_in6* localAddress 
-                    = (struct sockaddr_in6*)newConn->localAddress;
-                struct sockaddr_in6* remoteAddress 
-                    = (struct sockaddr_in6*)newConn->remoteAddress;
-                inet_ntop(AF_INET6, &(localAddress->sin6_addr), srcAddr, INET6_ADDRSTRLEN);
-                inet_ntop(AF_INET6, &(remoteAddress->sin6_addr), dstAddr, INET6_ADDRSTRLEN);
-                localPort = ntohs(localAddress->sin6_port);
-                remotePort = ntohs(remoteAddress->sin6_port);
-            } else {
-                struct sockaddr_in* localAddress 
-                    = (struct sockaddr_in*)newConn->localAddress;
-                struct sockaddr_in* remoteAddress 
-                    = (struct sockaddr_in*)newConn->remoteAddress;
-                inet_ntop(AF_INET, &(localAddress->sin_addr), srcAddr, INET_ADDRSTRLEN);
-                inet_ntop(AF_INET, &(remoteAddress->sin_addr), dstAddr, INET_ADDRSTRLEN);
-                localPort = ntohs(localAddress->sin_port);
-                remotePort = ntohs(remoteAddress->sin_port);
-            }
+            AddressToString (newConn->localAddress, srcAddr);
+
+            AddressToString (newConn->remoteAddress, dstAddr);
 
             printf ("SS1 = %#018" PRIx64 
                     ", Err = %d" 
@@ -112,8 +99,8 @@ void DumpErrSessions() {
                     , GetSS1(newConn)
                     , GetSSLastErr(newConn)
                     , GetErrno(newConn) 
-                    , srcAddr, localPort
-                    , dstAddr, remotePort); 
+                    , srcAddr, newConn->savedLocalPort
+                    , dstAddr, newConn->savedRemotePort); 
         }
     }
 }
@@ -128,13 +115,7 @@ void ReleasePort(TcpClientConnection_t* newConn){
     }
 }
 
-void OnSessionError(TcpClientSession_t* newSess){
-    StoreErrSession (newSess);
-    SetFreeSession (newSess);
-    ReleasePort (&newSess->tcConn);
-}
-
-void OnConnectionError(TcpClientConnection_t* newConn){
+void OnConnectionInitError(TcpClientConnection_t* newConn){
 
     if (GetSSLastErr (newConn) 
             == TD_SOCKET_CONNECT_FAILED_IMMEDIATE
@@ -154,6 +135,38 @@ void OnConnectionError(TcpClientConnection_t* newConn){
     ReleasePort (newConn);
 }
 
+void OnConnectionEstablished(TcpClientConnection_t* newConn) {
+
+    IncSStats2(&AppIface->appConnStats
+            , newConn->tcSess->groupConnStats 
+            , tcpConnInitSuccess);
+
+    SetAppState (newConn, APP_STATE_CONNECTION_ESTABLISHED);
+
+    SetSS1 (newConn, STATE_TCP_CONN_ESTABLISHED);
+}
+
+void OnConnectionEstablishError(TcpClientConnection_t* newConn) {
+
+    IncSStats2(&AppIface->appConnStats
+        , newConn->tcSess->groupConnStats 
+        , tcpConnInitFail);
+
+    if ( UnRegisterForWriteEvent(AppObj->eventQ
+                                        , newConn->socketFd
+                                        , newConn) ){
+        IncSStats2(&AppIface->appConnStats
+            , newConn->tcSess->groupConnStats 
+            , tcpConnUnRegisterForWriteEventFail);        
+    }
+
+    close(newConn->socketFd);
+    SetSS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
+
+    StoreErrSession (newConn->tcSess);
+    SetFreeSession (newConn->tcSess);
+    ReleasePort (newConn);
+}
 void OnRegisterForWriteEventError(TcpClientConnection_t* newConn){
 
     IncSStats2(&AppIface->appConnStats
@@ -161,6 +174,8 @@ void OnRegisterForWriteEventError(TcpClientConnection_t* newConn){
                 , tcpConnRegisterForWriteEventFail);    
 
     close(newConn->socketFd);
+    SetSS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
+    
     StoreErrSession (newConn->tcSess);
     SetFreeSession (newConn->tcSess);
     ReleasePort (newConn);
@@ -268,6 +283,20 @@ TcpClientConnection_t* PrepNextConnection(TcpClientSession_t* newSess){
     return newConn;
 }
 
+int AppRunContinue() {
+    TcpClientAppConnStats_t* appConnStats = &AppIface->appConnStats;
+
+    if ( (GetSStats(appConnStats, tcpConnInitFail) 
+                == AppIface->maxErrorSessions) 
+            || (GetSStats(appConnStats, tcpConnInit) 
+                == AppIface->maxSessions 
+            && IsSessionPoolEmpty (AppObj->activeSessionPool)) ){
+        return 1;
+    }
+
+    return 0;
+}
+
 void TcpClienAppRun(TcpClientAppInterface_t* appIface)
 {
     AppObj = CreateStruct0 (TcpClientApp_t);
@@ -282,15 +311,7 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
 
     double lastConnectionInitTime = TimeElapsedTimerWheel(AppObj->timerWheel);
 
-    while (true) {
-
-        if ( (GetSStats(appConnStats, tcpConnInitFail) 
-                    == AppIface->maxErrorSessions) 
-                || (GetSStats(appConnStats, tcpConnInit) 
-                    == AppIface->maxSessions 
-                && IsSessionPoolEmpty (AppObj->activeSessionPool)) ){
-            break;
-        }
+    while (AppRunContinue()) {
 
         if (GetSStats(appConnStats, tcpConnInit) 
                 < AppIface->maxSessions) {
@@ -336,11 +357,11 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
                                                 , newConn);
 
                         if ( GetSSLastErr (newConn) ) {
-                            OnConnectionError(newConn);
+                            OnConnectionInitError(newConn);
                         } else {
                             if ( RegisterForWriteEvent(AppObj->eventQ
-                                                        , newConn->socketFd
-                                                        , newConn)){
+                                                    , newConn->socketFd
+                                                    , newConn)){
                                 OnRegisterForWriteEventError(newConn);
                             }
                         }
@@ -349,14 +370,14 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
             }
         }
 
-        int eCount = GetIOEvents(AppObj->eventQ, AppObj->EventArr
+        int eCount = GetIOEvents(AppObj->eventQ
+                                    , AppObj->EventArr
                                     , AppIface->maxEvents);
         if (eCount > 0){
             for(int eIndex = 0; eIndex < eCount; eIndex++) {
 
                 TcpClientConnection_t* newConn 
-                            = (TcpClientConnection_t*)
-                                GetIOEventData(AppObj->EventArr[eIndex]);
+                    = (TcpClientConnection_t*) GetIOEventData(AppObj->EventArr[eIndex]);
 
                 TcpClientSession_t* newSess = newConn->tcSess;
                 
@@ -365,25 +386,9 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
                             == APP_STATE_CONNECTION_IN_PROGRESS ) {
 
                         if ( IsNewTcpConnectionComplete(newConn->socketFd) ){
-                            
-                            IncConnStats(newSess, tcpConnInitSuccess);
-
-                            SetAppState (newConn
-                                        , APP_STATE_CONNECTION_ESTABLISHED);
-
-                            SetSS1(newConn, STATE_TCP_CONN_ESTABLISHED);
+                            OnConnectionEstablished(newConn);
                         }else{
-                            IncConnStats(newSess, tcpConnInitFail);
-                            UnRegisterForEvent(AppObj->eventQ
-                                            , newConn->socketFd
-                                            , newConn);
-                            close(newConn->socketFd);
-                            ReleasePort (newConn);
-
-                            SetSS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
-
-                            SetFreeSession (newSess);
-                            // ??? error handling
+                            OnConnectionEstablishError(newConn);
                         }
                     } else if ( GetAppState(newConn) == 
                                      APP_STATE_CONNECTION_ESTABLISHED 
@@ -405,7 +410,7 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
                                         , newConn);
 
                         if (GetSSLastErr (newConn)) {
-                            UnRegisterForEvent(AppObj->eventQ, newConn->socketFd, newConn);
+                            UnRegisterForReadWriteEvent(AppObj->eventQ, newConn->socketFd, newConn);
                             close(newConn->socketFd);
                             ReleasePort (newConn);
 
@@ -418,7 +423,7 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
                             newConn->bytesSent += bytesSent;
 
                             if (newConn->bytesSent == AppIface->csDataLen) {
-                                UnRegisterForEvent(AppObj->eventQ, newConn->socketFd, newConn);
+                                UnRegisterForReadWriteEvent(AppObj->eventQ, newConn->socketFd, newConn);
                                 close(newConn->socketFd);
                                 ReleasePort (newConn);
 

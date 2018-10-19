@@ -62,6 +62,8 @@ void DumpTcpClientAppStats(TcpClientAppConnStats_t* appConnStats);
 typedef struct TcpClientConnection{
     CommonConnState_t ccState; 
     int socketFd;
+    uint16_t savedLocalPort;
+    uint16_t savedRemotePort;
     struct sockaddr* localAddress;
     struct sockaddr* remoteAddress;
     LocalPortPool_t* localPortPool;
