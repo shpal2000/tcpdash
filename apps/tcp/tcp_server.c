@@ -108,7 +108,7 @@ void InitApp() {
 void CleanupApp() {
     DeleteEventQ(theApp.eventQ);
 
-//    DumpSStats(&theApp.appConnStats);
+//    DumpCStats(&theApp.appConnStats);
 
     // DumpErrSessions();
 }
@@ -198,14 +198,14 @@ int main(int argc, char** argv)
                                     , groupConnStats
                                     , newConn);
                     
-                    if (GetSSLastErr (newConn)) {
+                    if (GetConnLastErr (newConn)) {
                         close(newConn->socketFd);
-                        SetSS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
+                        SetCS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
                         // error handling ???
                     } else {
                         if (bytesReceived == 0) {
                            close(newConn->socketFd);
-                           SetSS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
+                           SetCS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
                            SetFreeSession (newConn->tcSess); 
                         } else {
                             newConn->bytesReceived += bytesReceived;   

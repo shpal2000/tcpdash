@@ -26,13 +26,16 @@ typedef struct CommonConnStats{
     uint64_t tcpConnInitFail;
     uint64_t tcpConnInitFailEaddrNotAvail;
     uint64_t tcpConnInitProgress;
+    uint64_t tcpWriteFail;
 
-    uint64_t programErrorTcpNewConnection;    
+    uint64_t appDataWriteComplete;
+
     uint64_t tcpConnRegisterForWriteEventFail;
     uint64_t tcpConnRegisterForReadEventFail;
     uint64_t tcpConnUnRegisterForWriteEventFail;
     uint64_t tcpConnUnRegisterForReadEventFail;
     uint64_t tcpLocalPortAssignFail;
+
 } CommonConnStats_t;
 
 typedef struct CommonConnState{
@@ -55,42 +58,44 @@ static inline void SSInit(void* cState) {
     ((CommonConnState_t*)cState)->state2 = 0;
     ((CommonConnState_t*)cState)->lastErr = 0;
     ((CommonConnState_t*)cState)->lastErrCount = 0;
+    ((CommonConnState_t*)cState)->sysErrno = 0;
+    ((CommonConnState_t*)cState)->appState = 0;
 }
 
-#define SetAppState(__aSession, __state) ((CommonConnState_t*)__aSession)->appState = __state
+#define SetAppState(__aConn, __state) ((CommonConnState_t*)__aConn)->appState = __state
 
-#define GetAppState(__aSession) ((CommonConnState_t*)__aSession)->appState
+#define GetAppState(__aConn) ((CommonConnState_t*)__aConn)->appState
 
-#define SetSS1(__aSession, __state) ((CommonConnState_t*)__aSession)->state1 |= __state
+#define SetCS1(__aConn, __state) ((CommonConnState_t*)__aConn)->state1 |= __state
 
-#define SetSS2(__aSession, __state) ((CommonConnState_t*)__aSession)->state2 |= __state
+#define SetCS2(__aConn, __state) ((CommonConnState_t*)__aConn)->state2 |= __state
 
-#define GetSS1(__aSession) ((CommonConnState_t*)__aSession)->state1
+#define GetCS1(__aConn) ((CommonConnState_t*)__aConn)->state1
 
-#define GetSS2(__aSession) ((CommonConnState_t*)__aSession)->state2
+#define GetCS2(__aConn) ((CommonConnState_t*)__aConn)->state2
 
-#define InitSSLastErr(__aSession, __err) ((CommonConnState_t*)__aSession)->lastErr = __err
+#define InitConLastErr(__aConn, __err) ((CommonConnState_t*)__aConn)->lastErr = __err
 
-#define IncSStats(__aStats, __stat) ((CommonConnStats_t*)__aStats)->__stat++
+#define IncConnStats(__aStats, __stat) ((CommonConnStats_t*)__aStats)->__stat++
 
-#define IncSStats2(__aStats, __bStats, __stat) ((CommonConnStats_t*)__aStats)->__stat++;((CommonConnStats_t*)__bStats)->__stat++
+#define IncConnStats2(__aStats, __bStats, __stat) ((CommonConnStats_t*)__aStats)->__stat++;((CommonConnStats_t*)__bStats)->__stat++
 
-#define GetSStats(__aStats, __stat) ((CommonConnStats_t*)__aStats)->__stat
+#define GetConnStats(__aStats, __stat) ((CommonConnStats_t*)__aStats)->__stat
 
-static inline void SetSSLastErr(void* aSession, uint16_t err) {
+static inline void SetConnLastErr(void* aSession, uint16_t err) {
     ((CommonConnState_t*)aSession)->lastErr = err;
     ((CommonConnState_t*)aSession)->lastErrCount += 1;
 }
 
-#define GetSSLastErr(__aSession) ((CommonConnState_t*)__aSession)->lastErr
+#define GetConnLastErr(__aConn) ((CommonConnState_t*)__aConn)->lastErr
 
-#define GetSSLastErrCount(__aSession) ((CommonConnState_t*)__aSession)->lastErrCount
+#define GetConnLastErrCount(__aConn) ((CommonConnState_t*)__aConn)->lastErrCount
 
-#define CopySS(__dstSS, __srcSS) *((CommonConnState_t*)(__dstSS)) = *((CommonConnState_t*)(__srcSS))
+#define CopyCS(__dstCS, __srcCS) *((CommonConnState_t*)(__dstCS)) = *((CommonConnState_t*)(__srcCS))
 
-#define SaveErrno(__aSession) ((CommonConnState_t*)__aSession)->sysErrno = errno
+#define SaveErrno(__aConn) ((CommonConnState_t*)__aConn)->sysErrno = errno
 
-#define GetErrno(__aSession) ((CommonConnState_t*)__aSession)->sysErrno
+#define GetErrno(__aConn) ((CommonConnState_t*)__aConn)->sysErrno
 
 int RegisterForReadWriteEvent(int pollId, int fd, void* cState);
 int RegisterForReadEvent(int pollId, int fd, void* cState);
@@ -103,23 +108,18 @@ int AssignSocketLocalPort(struct sockaddr* localAddres
                             , void* cState);
 void AddressToString(struct sockaddr* addr, char* str);
 
-void DumpSStats(void* aStats);
+void DumpCStats(void* aStats);
 #define TD_NO_ERROR                                         0
 
 #define TD_SOCKET_CREATE_FAILED                             1
 #define TD_SOCKET_BIND_FAILED                               2
 #define TD_SOCKET_CONNECT_FAILED                            3
 #define TD_SOCKET_CONNECT_FAILED_IMMEDIATE                  4
-#define TD_PROGRAM_ERROR_TcpNewConnection                   5
-#define TD_PROGRAM_ERROR_TcpListenStart                     6
-#define TD_SOCKET_LISTEN_FAILED                             7
-#define TD_SOCKET_REUSE_FAILED                              8
-#define TD_PROGRAM_ERROR_TcpWrite                           9
-#define TD_SOCKET_WRITE_ERROR                               10
-#define TD_PROGRAM_ERROR_TcpRead                            11
-#define TD_SOCKET_READ_ERROR                                12
-#define TD_ASSIGN_PORT_FAILED                               13
-#define TD_PROGRAM_ERROR_AssignSocketLocalPort              14
+#define TD_SOCKET_LISTEN_FAILED                             5
+#define TD_SOCKET_REUSE_FAILED                              6
+#define TD_SOCKET_WRITE_ERROR                               7
+#define TD_SOCKET_READ_ERROR                                8
+#define TD_ASSIGN_PORT_FAILED                               9
 
 
 #define STATE_TCP_PORT_ASSIGNED                             0x0000000000000001

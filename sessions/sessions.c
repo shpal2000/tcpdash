@@ -20,7 +20,7 @@ int RegisterForReadWriteEvent(int pollId, int fd, void* cState) {
     if (status) {
        SaveErrno(cState); 
     }else{
-        SetSS1(cState
+        SetCS1(cState
             , STATE_TCP_REGISTER_READ | STATE_TCP_REGISTER_WRITE);
     }
     return status;
@@ -35,7 +35,7 @@ int RegisterForReadEvent(int pollId, int fd, void* cState) {
     if (status) {
        SaveErrno(cState); 
     }else{
-        SetSS1(cState, STATE_TCP_REGISTER_READ);
+        SetCS1(cState, STATE_TCP_REGISTER_READ);
     }
     return status;
 }
@@ -49,7 +49,7 @@ int RegisterForWriteEvent(int pollId, int fd, void* cState) {
     if (status) {
        SaveErrno(cState); 
     }else{
-        SetSS1(cState, STATE_TCP_REGISTER_WRITE);
+        SetCS1(cState, STATE_TCP_REGISTER_WRITE);
     }
     return status;
 }
@@ -63,7 +63,7 @@ int UnRegisterForReadWriteEvent(int pollId, int fd, void* cState) {
     if (status) {
        SaveErrno(cState); 
     }else{
-        SetSS1(cState
+        SetCS1(cState
             , STATE_TCP_UNREGISTER_READ | STATE_TCP_UNREGISTER_WRITE);
     }
     return status;
@@ -78,7 +78,7 @@ int UnRegisterForReadEvent(int pollId, int fd, void* cState) {
     if (status) {
        SaveErrno(cState); 
     }else{
-        SetSS1(cState, STATE_TCP_UNREGISTER_READ);
+        SetCS1(cState, STATE_TCP_UNREGISTER_READ);
     }
     return status;
 }
@@ -92,31 +92,29 @@ int UnRegisterForWriteEvent(int pollId, int fd, void* cState) {
     if (status) {
        SaveErrno(cState); 
     }else{
-        SetSS1(cState, STATE_TCP_UNREGISTER_WRITE);
+        SetCS1(cState, STATE_TCP_UNREGISTER_WRITE);
     }
     return status;
 }
+
 int AssignSocketLocalPort(struct sockaddr* localAddres
                             , LocalPortPool_t* portPool
-                            , void* cState)
-{
-   InitSSLastErr(cState, TD_PROGRAM_ERROR_AssignSocketLocalPort);
-
+                            , void* cState) {
    int nextSrcPort = GetPortFromPool(portPool);
    if (nextSrcPort) {
        SetSockPort(localAddres, nextSrcPort);
-       SetSS1(cState, STATE_TCP_PORT_ASSIGNED);
-       SetSSLastErr(cState, TD_NO_ERROR);       
+       SetCS1(cState, STATE_TCP_PORT_ASSIGNED);
+       SetConnLastErr(cState, TD_NO_ERROR);       
        return 0;
    }
 
-   SetSSLastErr(cState, TD_ASSIGN_PORT_FAILED);
+   SetConnLastErr(cState, TD_ASSIGN_PORT_FAILED);
    return -1; 
 }
 
-void DumpSStats(void* aStats) {
+void DumpCStats(void* aStats) {
     CommonConnStats_t* cStats = (CommonConnStats_t*) aStats;
-    printf ("\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64"\n"
+    printf ("\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n"
                 , cStats->socketCreate
                 , cStats->socketCreateFail
                 , cStats->socketBindIpv4
@@ -124,8 +122,7 @@ void DumpSStats(void* aStats) {
                 , cStats->socketBindIpv6
                 , cStats->socketBindIpv6Fail
                 , cStats->socketConnectEstablishFail
-                , cStats->socketConnectEstablishFail2
-                , cStats->programErrorTcpNewConnection);
+                , cStats->socketConnectEstablishFail2);
 }
 
 void AddressToString(struct sockaddr* addr, char* str){
