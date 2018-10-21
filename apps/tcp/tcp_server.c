@@ -14,8 +14,8 @@
 
 #include "tcp_server.h"
 
-static TcpServerApp_t* AppO;
-static TcpServerAppInterface_t* AppI;
+static TcpServer_t* AppO;
+static TcpServerInterface_t* AppI;
 
 static void InitSession(TcpServerSession_t* newSess
                     , int initApp
@@ -77,7 +77,7 @@ static void InitApp() {
 
     AppO->eventQ = CreateEventQ();
 
-    AppO->appGroupConnStats = CreateArray (TcpServerAppConnStats_t
+    AppO->appGroupConnStats = CreateArray (TcpServerConnStats_t
                                 , AppI->csGroupCount);
 
     AppO->serverSessionArr = CreateArray (TcpServerSession_t
@@ -97,9 +97,9 @@ static void CleanupApp() {
     DeleteEventQ(AppO->eventQ);
 }
 
-void TcpServerAppRun(TcpServerAppInterface_t* appIface){
+void TcpServerRun(TcpServerInterface_t* appIface){
 
-    AppO = CreateStruct0 (TcpServerApp_t);
+    AppO = CreateStruct0 (TcpServer_t);
     AppI = appIface;
     InitApp();
 
@@ -107,7 +107,7 @@ void TcpServerAppRun(TcpServerAppInterface_t* appIface){
     for (int i = 0; i < AppI->csGroupCount; i++) {
 
         TcpServerSession_t* srvSess = &AppO->serverSessionArr[i];
-        TcpServerAppConnGroup_t* csGroup = &AppI->csGroupArr[i];
+        TcpServerConnGroup_t* csGroup = &AppI->csGroupArr[i];
         
         TcpServerConnection_t* newConn = &srvSess->tcConn;
         newConn->localAddress = (struct sockaddr*) &(csGroup->serverAddr);
@@ -206,11 +206,11 @@ void TcpServerAppRun(TcpServerAppInterface_t* appIface){
     CleanupApp();
 }
 
-TcpServerAppInterface_t* CreateTcpServerAppInterface (int csGroupCount) {
+TcpServerInterface_t* CreateTcpServerInterface (int csGroupCount) {
 
-    TcpServerAppInterface_t* iFace 
-        = (TcpServerAppInterface_t*) mmap(NULL
-            , sizeof (TcpServerAppInterface_t)
+    TcpServerInterface_t* iFace 
+        = (TcpServerInterface_t*) mmap(NULL
+            , sizeof (TcpServerInterface_t)
             , PROT_READ | PROT_WRITE
             , MAP_SHARED | MAP_ANONYMOUS
             , -1
@@ -218,8 +218,8 @@ TcpServerAppInterface_t* CreateTcpServerAppInterface (int csGroupCount) {
 
     iFace->csGroupCount = csGroupCount;
     iFace->csGroupArr 
-        = (TcpServerAppConnGroup_t*) mmap(NULL
-            , sizeof (TcpServerAppConnGroup_t) * iFace->csGroupCount
+        = (TcpServerConnGroup_t*) mmap(NULL
+            , sizeof (TcpServerConnGroup_t) * iFace->csGroupCount
             , PROT_READ | PROT_WRITE
             , MAP_SHARED | MAP_ANONYMOUS
             , -1
@@ -228,7 +228,7 @@ TcpServerAppInterface_t* CreateTcpServerAppInterface (int csGroupCount) {
     return iFace;
 }
 
-void DeleteTcpServerAppInterface (TcpServerAppInterface_t* iFace)
+void DeleteTcpServerInterface (TcpServerInterface_t* iFace)
 {
     //todo
 }

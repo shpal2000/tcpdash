@@ -14,8 +14,8 @@
 
 #include "tcp_client.h"
 
-static TcpClientApp_t* AppO;
-static TcpClientAppInterface_t* AppI;
+static TcpClient_t* AppO;
+static TcpClientInterface_t* AppI;
 
 static void InitSession(TcpClientSession_t* newSess, int initApp) {
 
@@ -273,7 +273,7 @@ static void InitApp() {
     AppO->sendBuffer =  TdMalloc(AppI->csDataLen);
 }
 
-void DumpTcpClientAppStats(TcpClientAppConnStats_t* appConnStats) {
+void DumpTcpClientStats(TcpClientConnStats_t* appConnStats) {
     
     char statsString[120];
 
@@ -300,7 +300,7 @@ static void CleanupApp() {
 
     DeleteTimerWheel(AppO->timerWheel);
 
-    DumpTcpClientAppStats(&AppI->appConnStats);
+    DumpTcpClientStats(&AppI->appConnStats);
 
     DumpErrSessions();
 }
@@ -309,7 +309,7 @@ static TcpClientConnection_t* PrepNextConnection(TcpClientSession_t* newSess){
 
     TcpClientConnection_t* newConn = &newSess->tcConn; 
 
-    TcpClientAppConnGroup_t* csGroup 
+    TcpClientConnGroup_t* csGroup 
         = &AppI->csGroupArr[AppI->nextCsGroupIndex];
 
     newConn->localAddress 
@@ -337,7 +337,7 @@ static TcpClientConnection_t* PrepNextConnection(TcpClientSession_t* newSess){
 }
 
 static int AppRunContinue() {
-    TcpClientAppConnStats_t* appConnStats = &AppI->appConnStats;
+    TcpClientConnStats_t* appConnStats = &AppI->appConnStats;
 
     if ( (GetConnStats(appConnStats, tcpConnInitFail) 
                 == AppI->maxErrorSessions) 
@@ -350,9 +350,9 @@ static int AppRunContinue() {
     return 1;
 }
 
-void TcpClientAppRun(TcpClientAppInterface_t* appIface)
+void TcpClientRun(TcpClientInterface_t* appIface)
 {
-    AppO = CreateStruct0 (TcpClientApp_t);
+    AppO = CreateStruct0 (TcpClient_t);
     AppI = appIface;
     InitApp();
 
@@ -481,12 +481,12 @@ void TcpClientAppRun(TcpClientAppInterface_t* appIface)
     AppI->isRunning = 0;
 }
 
-TcpClientAppInterface_t* CreateTcpClientAppInterface(int csGroupCount
+TcpClientInterface_t* CreateTcpClientInterface(int csGroupCount
                                             , int* clientAddrCounts)
 {
-    TcpClientAppInterface_t* iFace 
-        = (TcpClientAppInterface_t*) mmap(NULL
-            , sizeof (TcpClientAppInterface_t)
+    TcpClientInterface_t* iFace 
+        = (TcpClientInterface_t*) mmap(NULL
+            , sizeof (TcpClientInterface_t)
             , PROT_READ | PROT_WRITE
             , MAP_SHARED | MAP_ANONYMOUS
             , -1
@@ -494,15 +494,15 @@ TcpClientAppInterface_t* CreateTcpClientAppInterface(int csGroupCount
 
     iFace->csGroupCount = csGroupCount;
     iFace->csGroupArr 
-        = (TcpClientAppConnGroup_t*) mmap(NULL
-            , sizeof (TcpClientAppConnGroup_t) * iFace->csGroupCount
+        = (TcpClientConnGroup_t*) mmap(NULL
+            , sizeof (TcpClientConnGroup_t) * iFace->csGroupCount
             , PROT_READ | PROT_WRITE
             , MAP_SHARED | MAP_ANONYMOUS
             , -1
             , 0);
     iFace->nextCsGroupIndex = 0;
     for (int gIndex = 0; gIndex < iFace->csGroupCount; gIndex++) {
-        TcpClientAppConnGroup_t* csGroup = &iFace->csGroupArr[gIndex];
+        TcpClientConnGroup_t* csGroup = &iFace->csGroupArr[gIndex];
         csGroup->clientAddrCount = clientAddrCounts[gIndex];
         csGroup->nextClientAddrIndex = 0;
         csGroup->clientAddrArr
@@ -529,7 +529,7 @@ TcpClientAppInterface_t* CreateTcpClientAppInterface(int csGroupCount
     return iFace;
 }
 
-void DeleteTcpClientAppInterface (TcpClientAppInterface_t* iFace)
+void DeleteTcpClientInterface (TcpClientInterface_t* iFace)
 {
     //todo
 }

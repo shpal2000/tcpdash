@@ -25,7 +25,7 @@
 #define TCP_CLIENT_APP_MAX_EVENTS APP_MAX_EVENTS
 #define TCP_SERVER_APP_MAX_EVENTS APP_MAX_EVENTS
 
-void TcpClientRun(){
+void TcpClientMain(){
     char* srcIps[] = {"12.20.50.2"
                     , "12.20.50.3"
                     , "12.20.50.4"
@@ -49,21 +49,21 @@ void TcpClientRun(){
     int dstPort = 8081;
 
     int csGroupClientAddrCountArr[1] = {19};
-    TcpClientAppInterface_t* tcpClientAppI 
-        = CreateTcpClientAppInterface(1, csGroupClientAddrCountArr); 
+    TcpClientInterface_t* TcpClientI 
+        = CreateTcpClientInterface(1, csGroupClientAddrCountArr); 
 
-    tcpClientAppI->isRunning = 1; 
-    tcpClientAppI->maxEvents = TCP_CLIENT_APP_MAX_EVENTS;
-    tcpClientAppI->maxActiveSessions = 100000;
-    tcpClientAppI->maxErrorSessions = 40;
-    tcpClientAppI->maxSessions = 1000000;
-    tcpClientAppI->connectionPerSec = 33000;
-    tcpClientAppI->csDataLen = 1500;
+    TcpClientI->isRunning = 1; 
+    TcpClientI->maxEvents = TCP_CLIENT_APP_MAX_EVENTS;
+    TcpClientI->maxActiveSessions = 100000;
+    TcpClientI->maxErrorSessions = 40;
+    TcpClientI->maxSessions = 1000000;
+    TcpClientI->connectionPerSec = 33000;
+    TcpClientI->csDataLen = 1500;
 
-    for (int gIndex = 0; gIndex < tcpClientAppI->csGroupCount; gIndex++) {
+    for (int gIndex = 0; gIndex < TcpClientI->csGroupCount; gIndex++) {
 
-        TcpClientAppConnGroup_t* csGroup 
-            = &tcpClientAppI->csGroupArr[gIndex];
+        TcpClientConnGroup_t* csGroup 
+            = &TcpClientI->csGroupArr[gIndex];
 
         for (int cIndex = 0
                 ; cIndex < csGroup->clientAddrCount
@@ -90,7 +90,7 @@ void TcpClientRun(){
         remoteAddr->sin_port = htons(dstPort);
     }
 
-    // TcpClientAppRun(tcpClientAppI);
+    // TcpClientRun(TcpClientI);
 
     int forkPid = fork();
 
@@ -99,11 +99,11 @@ void TcpClientRun(){
     }
 
     if (forkPid == 0) {
-        TcpClientAppRun(tcpClientAppI);
+        TcpClientRun(TcpClientI);
     }else{
-        while (tcpClientAppI->isRunning) {
+        while (TcpClientI->isRunning) {
             sleep(2);
-            DumpTcpClientAppStats(&tcpClientAppI->appConnStats); 
+            DumpTcpClientStats(&TcpClientI->appConnStats); 
         }
 
         int status;
@@ -111,23 +111,23 @@ void TcpClientRun(){
     }
 }
 
-void TcpServerRun() {
+void TcpServerMain() {
     char* dstIp = "12.20.60.2";
     int dstPort = 8081;
 
-    TcpServerAppInterface_t* tcpServerAppI 
-        = CreateTcpServerAppInterface(1); 
+    TcpServerInterface_t* TcpServerI 
+        = CreateTcpServerInterface(1); 
 
-    tcpServerAppI->isRunning = 1; 
-    tcpServerAppI->maxEvents = TCP_SERVER_APP_MAX_EVENTS;
-    tcpServerAppI->maxActiveSessions = 100000;
-    tcpServerAppI->maxErrorSessions = 40;
-    tcpServerAppI->csDataLen = 1500;
+    TcpServerI->isRunning = 1; 
+    TcpServerI->maxEvents = TCP_SERVER_APP_MAX_EVENTS;
+    TcpServerI->maxActiveSessions = 100000;
+    TcpServerI->maxErrorSessions = 40;
+    TcpServerI->csDataLen = 1500;
 
-    for (int gIndex = 0; gIndex < tcpServerAppI->csGroupCount; gIndex++) {
+    for (int gIndex = 0; gIndex < TcpServerI->csGroupCount; gIndex++) {
 
-        TcpServerAppConnGroup_t* csGroup 
-            = &tcpServerAppI->csGroupArr[gIndex];
+        TcpServerConnGroup_t* csGroup 
+            = &TcpServerI->csGroupArr[gIndex];
 
         struct sockaddr_in* remoteAddr 
             = &(csGroup->serverAddr.inAddr);
@@ -142,15 +142,15 @@ void TcpServerRun() {
         remoteAddr->sin_port = htons(dstPort);
     }
 
-    TcpServerAppRun(tcpServerAppI);
+    TcpServerRun(TcpServerI);
 }
 
 int main(int argc, char** argv)
 {
     if (strcmp (argv[1], "TcpClient") == 0){
-        TcpClientRun();
+        TcpClientMain();
     }else if (strcmp (argv[1], "TcpServer") == 0) {
-        TcpServerRun();
+        TcpServerMain();
     }
 
     return 0;

@@ -5,20 +5,20 @@
 #include "sessions/tcp_connect.h"
 #include "logging/logs.h"
 
-typedef struct TcpServerAppConnStats {
+typedef struct TcpServerConnStats {
     CommonConnStats_t connStats;
-} TcpServerAppConnStats_t;
+} TcpServerConnStats_t;
 
-typedef struct TcpServerAppStats {
+typedef struct TcpServerStats {
     uint64_t dbgNoFreeSession;  
-} TcpServerAppStats_t;
+} TcpServerStats_t;
 
-typedef struct TcpServerAppConnGroup {
+typedef struct TcpServerConnGroup {
     SockAddr_t serverAddr;
-    TcpServerAppConnStats_t cStats;
-} TcpServerAppConnGroup_t;
+    TcpServerConnStats_t cStats;
+} TcpServerConnGroup_t;
 
-typedef struct TcpServerAppInterface {
+typedef struct TcpServerInterface {
     uint32_t isRunning;
     uint32_t maxEvents;
 
@@ -26,20 +26,20 @@ typedef struct TcpServerAppInterface {
     uint32_t maxErrorSessions;
     uint32_t csDataLen;
 
-    TcpServerAppStats_t appStats;
-    TcpServerAppConnStats_t appConnStats;
+    TcpServerStats_t appStats;
+    TcpServerConnStats_t appConnStats;
 
     uint32_t csGroupCount;
-    TcpServerAppConnGroup_t* csGroupArr;
-} TcpServerAppInterface_t;
+    TcpServerConnGroup_t* csGroupArr;
+} TcpServerInterface_t;
 
-void TcpServerAppRun(TcpServerAppInterface_t* appIface);
+void TcpServerRun(TcpServerInterface_t* appIface);
 
-TcpServerAppInterface_t* CreateTcpServerAppInterface(int csGroupCount);
+TcpServerInterface_t* CreateTcpServerInterface(int csGroupCount);
 
-void DeleteTcpServerAppInterface (TcpServerAppInterface_t* iFace);
+void DeleteTcpServerInterface (TcpServerInterface_t* iFace);
 
-void DumpTcpServerAppStats(TcpServerAppConnStats_t* appConnStats);
+void DumpTcpServerStats(TcpServerConnStats_t* appConnStats);
 
 #define APP_STATE_INIT                               0
 #define APP_STATE_CONNECTION_IN_PROGRESS             1
@@ -62,13 +62,13 @@ typedef struct TcpServerConnection{
 
 typedef struct TcpServerSession{
     TcpServerConnection_t tcConn; 
-    TcpServerAppConnStats_t* groupConnStats;
+    TcpServerConnStats_t* groupConnStats;
     int sessionType;
 } TcpServerSession_t;
 
-typedef struct TcpServerApp {
+typedef struct TcpServer {
 
-    TcpServerAppConnStats_t* appGroupConnStats;
+    TcpServerConnStats_t* appGroupConnStats;
 
     SessionPool_t* freeSessionPool;
     SessionPool_t* activeSessionPool;
@@ -82,6 +82,6 @@ typedef struct TcpServerApp {
     TcpServerSession_t* serverSessionArr;
 
     char* readBuffer;
-} TcpServerApp_t;
+} TcpServer_t;
 
 #endif
