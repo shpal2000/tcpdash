@@ -5,11 +5,6 @@
 #include "sessions/tcp_connect.h"
 #include "logging/logs.h"
 
-typedef union SockAddr {
-    struct sockaddr_in inAddr;
-    struct sockaddr_in6 in6Addr;
-} SockAddr_t;
-
 typedef struct TcpClientAppConnStats {
     CommonConnStats_t connStats;
 } TcpClientAppConnStats_t;
@@ -45,7 +40,7 @@ typedef struct TcpClientAppInterface {
     TcpClientAppConnGroup_t* csGroupArr;
 } TcpClientAppInterface_t;
 
-void TcpClienAppRun(TcpClientAppInterface_t* appIface);
+void TcpClientAppRun(TcpClientAppInterface_t* appIface);
 
 TcpClientAppInterface_t* CreateTcpClienAppInterface(int csGroupCount
                                             , int* clientAddrCounts);
@@ -85,9 +80,12 @@ typedef struct TcpClientApp {
 
     struct epoll_event* EventArr;
     int eventQ;
+
     uint32_t errorSessionCount;
     TcpClientSession_t* errorSessionArr;
+    
     TimerWheel_t* timerWheel;
+    
     char* sendBuffer; 
 } TcpClientApp_t;
 

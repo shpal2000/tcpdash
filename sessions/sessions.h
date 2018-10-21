@@ -6,6 +6,11 @@
 #include <sys/epoll.h>
 #include "utils/resource.h"
 
+typedef union SockAddr {
+    struct sockaddr_in inAddr;
+    struct sockaddr_in6 in6Addr;
+} SockAddr_t;
+
 typedef struct CommonConnStats{
 
     uint64_t socketCreate;    
@@ -52,7 +57,7 @@ typedef GQueue SessionPool_t;
 
 typedef GTimer TimerWheel_t;
 
-static inline void SSInit(void* cState) {
+static inline void CSInit(void* cState) {
 
     ((CommonConnState_t*)cState)->state1 = 0;
     ((CommonConnState_t*)cState)->state2 = 0;

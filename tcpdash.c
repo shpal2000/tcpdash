@@ -19,7 +19,7 @@
 #include "tcpdash.h"
 
 #include "apps/tcp/tcp_client.h"
-#include "apps/tcp/tcp_server.h"
+// #include "apps/tcp/tcp_server.h"
 
 #define APP_MAX_EVENTS 1000
 #define TCP_CLIENT_APP_MAX_EVENTS APP_MAX_EVENTS
@@ -88,7 +88,7 @@ int main(int argc, char** argv)
         remoteAddr->sin_port = htons(dstPort);
     }
 
-    // TcpClienAppRun(tcpClientAppI);
+    // TcpClientAppRun(tcpClientAppI);
 
     int forkPid = fork();
 
@@ -97,7 +97,7 @@ int main(int argc, char** argv)
     }
 
     if (forkPid == 0) {
-        TcpClienAppRun(tcpClientAppI);
+        TcpClientAppRun(tcpClientAppI);
     }else{
         while (tcpClientAppI->isRunning) {
             sleep(2);

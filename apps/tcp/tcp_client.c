@@ -14,14 +14,18 @@
 
 #include "tcp_client.h"
 
-TcpClientApp_t* AppObj;
-TcpClientAppInterface_t* AppIface;
+TcpClientApp_t* AppO;
+TcpClientAppInterface_t* AppI;
 
-void InitSession(TcpClientSession_t* newSess) {
+void InitSession(TcpClientSession_t* newSess, int initApp) {
 
     TcpClientConnection_t* newConn = &newSess->tcConn; 
     
-    SSInit(newConn);
+    if (initApp) {
+        newSess->tcConn.tcSess = newSess;
+    }
+
+    CSInit(newConn);
 
     newConn->socketFd = 0;
     newConn->localAddress = NULL;
@@ -29,21 +33,14 @@ void InitSession(TcpClientSession_t* newSess) {
     newConn->bytesSent = 0;
 }
 
-void InitSessionInitApp(TcpClientSession_t* newSess) {
-
-    newSess->tcConn.tcSess = newSess;
-
-    InitSession(newSess); 
-}
-
 TcpClientSession_t* GetFreeSession() {
 
     TcpClientSession_t* newSess 
-        = GetSesionFromPool (AppObj->freeSessionPool);
+        = GetSesionFromPool (AppO->freeSessionPool);
 
     if (newSess != NULL) {
-        SetSessionToPool (AppObj->activeSessionPool, newSess);
-        InitSession(newSess);
+        SetSessionToPool (AppO->activeSessionPool, newSess);
+        InitSession(newSess, 0);
     }
 
     return newSess;
@@ -51,15 +48,15 @@ TcpClientSession_t* GetFreeSession() {
 
 void SetFreeSession(TcpClientSession_t* newSess) {
     
-    RemoveFromSessionPool (AppObj->activeSessionPool, newSess);
-    SetSessionToPool (AppObj->freeSessionPool, newSess);
+    RemoveFromSessionPool (AppO->activeSessionPool, newSess);
+    SetSessionToPool (AppO->freeSessionPool, newSess);
 }
 
 void StoreErrSession(TcpClientSession_t* aSession) {
-    if (AppObj->errorSessionCount < AppIface->maxErrorSessions) {
+    if (AppO->errorSessionCount < AppI->maxErrorSessions) {
 
         TcpClientSession_t* errSession 
-                = &AppObj->errorSessionArr[AppObj->errorSessionCount];
+                = &AppO->errorSessionArr[AppO->errorSessionCount];
 
         *errSession =  *aSession;
 
@@ -69,20 +66,20 @@ void StoreErrSession(TcpClientSession_t* aSession) {
         errSession->tcConn.savedRemotePort 
             = ntohs(GetSockPort(errSession->tcConn.remoteAddress));
 
-        AppObj->errorSessionCount++;
+        AppO->errorSessionCount++;
     }
 }
 
 void DumpErrSessions() {
-    if (AppObj->errorSessionCount) {
+    if (AppO->errorSessionCount) {
 
         char srcAddr[INET6_ADDRSTRLEN];
         char dstAddr[INET6_ADDRSTRLEN];
 
-        for (int i = 0; i < AppObj->errorSessionCount; i++) {
+        for (int i = 0; i < AppO->errorSessionCount; i++) {
 
             TcpClientSession_t* newSess 
-                    = &AppObj->errorSessionArr[i];
+                    = &AppO->errorSessionArr[i];
 
             TcpClientConnection_t* newConn 
                     = &newSess->tcConn;
@@ -117,7 +114,7 @@ void ReleasePort(TcpClientConnection_t* newConn){
 
 void OnAssignSocketLocalPortError(TcpClientConnection_t* newConn){
     
-    IncConnStats2(&AppIface->appConnStats
+    IncConnStats2(&AppI->appConnStats
                 , newConn->tcSess->groupConnStats 
                 , tcpLocalPortAssignFail);    
 
@@ -131,12 +128,12 @@ void OnConnectionInitError(TcpClientConnection_t* newConn){
             == TD_SOCKET_CONNECT_FAILED_IMMEDIATE
         && GetErrno(newConn) == EADDRNOTAVAIL) {
 
-            IncConnStats2(&AppIface->appConnStats
+            IncConnStats2(&AppI->appConnStats
                         , newConn->tcSess->groupConnStats 
                         , tcpConnInitFailEaddrNotAvail);
     }
 
-    IncConnStats2(&AppIface->appConnStats
+    IncConnStats2(&AppI->appConnStats
                 , newConn->tcSess->groupConnStats 
                 , tcpConnInitFail);
 
@@ -147,7 +144,7 @@ void OnConnectionInitError(TcpClientConnection_t* newConn){
 
 void OnConnectionEstablished(TcpClientConnection_t* newConn) {
 
-    IncConnStats2(&AppIface->appConnStats
+    IncConnStats2(&AppI->appConnStats
             , newConn->tcSess->groupConnStats 
             , tcpConnInitSuccess);
 
@@ -158,15 +155,15 @@ void OnConnectionEstablished(TcpClientConnection_t* newConn) {
 
 void OnConnectionEstablishError(TcpClientConnection_t* newConn) {
 
-    IncConnStats2(&AppIface->appConnStats
+    IncConnStats2(&AppI->appConnStats
         , newConn->tcSess->groupConnStats 
         , tcpConnInitFail);
 
-    int unRegisterStatus = UnRegisterForWriteEvent(AppObj->eventQ
+    int unRegisterStatus = UnRegisterForWriteEvent(AppO->eventQ
                                                 , newConn->socketFd
                                                 , newConn);
     if (unRegisterStatus){
-        IncConnStats2(&AppIface->appConnStats
+        IncConnStats2(&AppI->appConnStats
             , newConn->tcSess->groupConnStats 
             , tcpConnUnRegisterForWriteEventFail);        
     }
@@ -183,7 +180,7 @@ void OnConnectionEstablishError(TcpClientConnection_t* newConn) {
 
 void OnRegisterForWriteEventError(TcpClientConnection_t* newConn){
 
-    IncConnStats2(&AppIface->appConnStats
+    IncConnStats2(&AppI->appConnStats
                 , newConn->tcSess->groupConnStats 
                 , tcpConnRegisterForWriteEventFail);    
 
@@ -197,15 +194,15 @@ void OnRegisterForWriteEventError(TcpClientConnection_t* newConn){
 
 void OnWriteError(TcpClientConnection_t* newConn) {
 
-    IncConnStats2(&AppIface->appConnStats
+    IncConnStats2(&AppI->appConnStats
         , newConn->tcSess->groupConnStats 
         , tcpWriteFail);
 
-    int unRegisterStatus = UnRegisterForWriteEvent(AppObj->eventQ
+    int unRegisterStatus = UnRegisterForWriteEvent(AppO->eventQ
                                                 , newConn->socketFd
                                                 , newConn);
     if (unRegisterStatus){
-        IncConnStats2(&AppIface->appConnStats
+        IncConnStats2(&AppI->appConnStats
             , newConn->tcSess->groupConnStats 
             , tcpConnUnRegisterForWriteEventFail);        
     }
@@ -222,15 +219,15 @@ void OnWriteError(TcpClientConnection_t* newConn) {
 
 void OnAppDataWriteComplete(TcpClientConnection_t* newConn) {
 
-    IncConnStats2(&AppIface->appConnStats
+    IncConnStats2(&AppI->appConnStats
         , newConn->tcSess->groupConnStats 
         , appDataWriteComplete);
 
-    int unRegisterStatus = UnRegisterForWriteEvent(AppObj->eventQ
+    int unRegisterStatus = UnRegisterForWriteEvent(AppO->eventQ
                                                 , newConn->socketFd
                                                 , newConn);
     if (unRegisterStatus){
-        IncConnStats2(&AppIface->appConnStats
+        IncConnStats2(&AppI->appConnStats
             , newConn->tcSess->groupConnStats 
             , tcpConnUnRegisterForWriteEventFail);        
     }
@@ -249,31 +246,31 @@ void OnAppDataWriteComplete(TcpClientConnection_t* newConn) {
 
 void InitApp() {
 
-    AppObj->freeSessionPool = AllocEmptySessionPool();
-    AppObj->activeSessionPool = AllocEmptySessionPool();
+    AppO->freeSessionPool = AllocEmptySessionPool();
+    AppO->activeSessionPool = AllocEmptySessionPool();
 
-    for (int i = 0; i < AppIface->maxActiveSessions; i++) {
+    for (int i = 0; i < AppI->maxActiveSessions; i++) {
 
         TcpClientSession_t* aSession 
-                    = AllocSession (TcpClientSession_t);
+            = AllocSession (TcpClientSession_t);
 
-        InitSessionInitApp (aSession);
+        InitSession (aSession, 1);
 
-        SetSessionToPool (AppObj->freeSessionPool, aSession);
+        SetSessionToPool (AppO->freeSessionPool, aSession);
     }
 
-    AppObj->errorSessionCount = 0;
+    AppO->errorSessionCount = 0;
     
-    AppObj->errorSessionArr = CreateArray (TcpClientSession_t
-                                , AppIface->maxErrorSessions); 
+    AppO->errorSessionArr = CreateArray (TcpClientSession_t
+                                , AppI->maxErrorSessions); 
 
-    AppObj->EventArr = CreateEventArray(AppIface->maxEvents);
+    AppO->EventArr = CreateEventArray(AppI->maxEvents);
 
-    AppObj->eventQ = CreateEventQ();
+    AppO->eventQ = CreateEventQ();
 
-    AppObj->timerWheel = CreateTimerWheel();
+    AppO->timerWheel = CreateTimerWheel();
 
-    AppObj->sendBuffer =  TdMalloc(AppIface->csDataLen);
+    AppO->sendBuffer =  TdMalloc(AppI->csDataLen);
 }
 
 void DumpTcpClientAppStats(TcpClientAppConnStats_t* appConnStats) {
@@ -299,11 +296,11 @@ void DumpTcpClientAppStats(TcpClientAppConnStats_t* appConnStats) {
 
 void CleanupApp() {
 
-    DeleteEventQ(AppObj->eventQ);
+    DeleteEventQ(AppO->eventQ);
 
-    DeleteTimerWheel(AppObj->timerWheel);
+    DeleteTimerWheel(AppO->timerWheel);
 
-    DumpTcpClientAppStats(&AppIface->appConnStats);
+    DumpTcpClientAppStats(&AppI->appConnStats);
 
     DumpErrSessions();
 }
@@ -313,7 +310,7 @@ TcpClientConnection_t* PrepNextConnection(TcpClientSession_t* newSess){
     TcpClientConnection_t* newConn = &newSess->tcConn; 
 
     TcpClientAppConnGroup_t* csGroup 
-        = &AppIface->csGroupArr[AppIface->nextCsGroupIndex];
+        = &AppI->csGroupArr[AppI->nextCsGroupIndex];
 
     newConn->localAddress 
         = (struct sockaddr*)&(csGroup->clientAddrArr[csGroup->nextClientAddrIndex]);
@@ -326,9 +323,9 @@ TcpClientConnection_t* PrepNextConnection(TcpClientSession_t* newSess){
     newConn->localPortPool 
         = &csGroup->LocalPortPoolArr[csGroup->nextClientAddrIndex];
 
-    AppIface->nextCsGroupIndex += 1;
-    if (AppIface->nextCsGroupIndex == AppIface->csGroupCount){
-        AppIface->nextCsGroupIndex = 0;
+    AppI->nextCsGroupIndex += 1;
+    if (AppI->nextCsGroupIndex == AppI->csGroupCount){
+        AppI->nextCsGroupIndex = 0;
     }
      
     csGroup->nextClientAddrIndex += 1;
@@ -340,56 +337,53 @@ TcpClientConnection_t* PrepNextConnection(TcpClientSession_t* newSess){
 }
 
 int AppRunContinue() {
-    TcpClientAppConnStats_t* appConnStats = &AppIface->appConnStats;
+    TcpClientAppConnStats_t* appConnStats = &AppI->appConnStats;
 
     if ( (GetConnStats(appConnStats, tcpConnInitFail) 
-                == AppIface->maxErrorSessions) 
+                == AppI->maxErrorSessions) 
             || (GetConnStats(appConnStats, tcpConnInit) 
-                == AppIface->maxSessions 
-            && IsSessionPoolEmpty (AppObj->activeSessionPool)) ){
+                == AppI->maxSessions 
+            && IsSessionPoolEmpty (AppO->activeSessionPool)) ){
         return 0;
     }
 
     return 1;
 }
 
-void TcpClienAppRun(TcpClientAppInterface_t* appIface)
+void TcpClientAppRun(TcpClientAppInterface_t* appIface)
 {
-    AppObj = CreateStruct0 (TcpClientApp_t);
-    AppIface = appIface;
-
+    AppO = CreateStruct0 (TcpClientApp_t);
+    AppI = appIface;
     InitApp();
-    TcpClientAppConnStats_t* appConnStats = &AppIface->appConnStats;
-    TcpClientAppStats_t* appStats = &AppIface->appStats;
 
     time_t epochSinceSeconds = time(NULL);
     printf("%ld - -\n", epochSinceSeconds);
 
-    double lastConnectionInitTime = TimeElapsedTimerWheel(AppObj->timerWheel);
+    double lastConnectionInitTime = TimeElapsedTimerWheel(AppO->timerWheel);
 
     while (AppRunContinue()) {
 
-        if (GetConnStats(appConnStats, tcpConnInit) 
-                < AppIface->maxSessions) {
+        if (GetConnStats(&AppI->appConnStats, tcpConnInit) 
+                < AppI->maxSessions) {
  
             int newConnectionInits 
-                = ((TimeElapsedTimerWheel(AppObj->timerWheel)
+                = ((TimeElapsedTimerWheel(AppO->timerWheel)
                         - lastConnectionInitTime)
-                    * AppIface->connectionPerSec);
+                    * AppI->connectionPerSec);
 
             while (newConnectionInits > 0 
-                    && GetConnStats(appConnStats, tcpConnInit) 
-                        < AppIface->maxSessions) {
+                    && GetConnStats(&AppI->appConnStats, tcpConnInit) 
+                        < AppI->maxSessions) {
 
                 newConnectionInits--;
 
                 lastConnectionInitTime 
-                        = TimeElapsedTimerWheel(AppObj->timerWheel);
+                        = TimeElapsedTimerWheel(AppO->timerWheel);
 
                 TcpClientSession_t* newSess = GetFreeSession ();
 
                 if (newSess == NULL) {
-                    appStats->dbgNoFreeSession++;      
+                    AppI->appStats.dbgNoFreeSession++;      
                 }else {
                     
                     TcpClientConnection_t* newConn = PrepNextConnection(newSess);
@@ -401,21 +395,21 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
                     }else{
                         SetAppState (newConn, APP_STATE_CONNECTION_IN_PROGRESS);
 
-                        IncConnStats2(&AppIface->appConnStats
+                        IncConnStats2(&AppI->appConnStats
                                     , newConn->tcSess->groupConnStats 
                                     , tcpConnInit);
 
                         newConn->socketFd 
                             = TcpNewConnection(newConn->localAddress
                                                 , newConn->remoteAddress
-                                                , &AppIface->appConnStats
+                                                , &AppI->appConnStats
                                                 , newSess->groupConnStats
                                                 , newConn);
 
                         if ( GetConnLastErr (newConn) ) {
                             OnConnectionInitError(newConn);
                         } else {
-                            if ( RegisterForWriteEvent(AppObj->eventQ
+                            if ( RegisterForWriteEvent(AppO->eventQ
                                                     , newConn->socketFd
                                                     , newConn)){
                                 OnRegisterForWriteEventError(newConn);
@@ -426,18 +420,18 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
             }
         }
 
-        int eCount = GetIOEvents(AppObj->eventQ
-                                    , AppObj->EventArr
-                                    , AppIface->maxEvents);
+        int eCount = GetIOEvents(AppO->eventQ
+                                    , AppO->EventArr
+                                    , AppI->maxEvents);
         if (eCount > 0){
             for(int eIndex = 0; eIndex < eCount; eIndex++) {
 
                 TcpClientConnection_t* newConn 
-                    = (TcpClientConnection_t*) GetIOEventData(AppObj->EventArr[eIndex]);
+                    = (TcpClientConnection_t*) GetIOEventData(AppO->EventArr[eIndex]);
 
                 TcpClientSession_t* newSess = newConn->tcSess;
                 
-                if (IsWriteEventSet(AppObj->EventArr[eIndex])) {
+                if (IsWriteEventSet(AppO->EventArr[eIndex])) {
                     if ( GetAppState(newConn) 
                             == APP_STATE_CONNECTION_IN_PROGRESS ) {
 
@@ -449,19 +443,19 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
                     } else if ( GetAppState(newConn) == 
                                      APP_STATE_CONNECTION_ESTABLISHED 
                                 && newConn->bytesSent < 
-                                    AppIface->csDataLen ) {
+                                    AppI->csDataLen ) {
 
                         int bytesToSend 
-                            = AppIface->csDataLen - newConn->bytesSent;
+                            = AppI->csDataLen - newConn->bytesSent;
 
                         const char* sendBuffer
-                            = &AppObj->sendBuffer[newConn->bytesSent];
+                            = &AppO->sendBuffer[newConn->bytesSent];
 
                         int bytesSent 
                             = TcpWrite (newConn->socketFd
                                         , sendBuffer
                                         , bytesToSend
-                                        , &AppIface->appConnStats
+                                        , &AppI->appConnStats
                                         , newSess->groupConnStats
                                         , newConn);
 
@@ -469,7 +463,7 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
                             OnWriteError(newConn);
                         }else {
                             newConn->bytesSent += bytesSent;
-                            if (newConn->bytesSent == AppIface->csDataLen) {
+                            if (newConn->bytesSent == AppI->csDataLen) {
                                 OnAppDataWriteComplete(newConn);
                             }
                         }
@@ -484,7 +478,7 @@ void TcpClienAppRun(TcpClientAppInterface_t* appIface)
 
     CleanupApp();
     
-    AppIface->isRunning = 0;
+    AppI->isRunning = 0;
 }
 
 TcpClientAppInterface_t* CreateTcpClienAppInterface(int csGroupCount
