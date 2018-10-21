@@ -10,13 +10,14 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
+#include <sys/mman.h>
 
 #include "tcp_server.h"
 
-TcpClientApp_t* AppO;
-TcpClientAppInterface_t* AppI;
+static TcpServerApp_t* AppO;
+static TcpServerAppInterface_t* AppI;
 
-void InitSession(TcpServerSession_t* newSess
+static void InitSession(TcpServerSession_t* newSess
                     , int initApp
                     , int sessionType) {
 
@@ -33,7 +34,7 @@ void InitSession(TcpServerSession_t* newSess
     newConn->bytesReceived = 0;
 }
 
-TcpServerSession_t* GetFreeSession() {
+static TcpServerSession_t* GetFreeSession() {
 
     TcpServerSession_t* newSess 
         = GetSesionFromPool (AppO->freeSessionPool);
@@ -46,13 +47,13 @@ TcpServerSession_t* GetFreeSession() {
     return newSess;
 }
 
-void SetFreeSession(TcpServerSession_t* newSess) {
+static void SetFreeSession(TcpServerSession_t* newSess) {
     
     RemoveFromSessionPool (AppO->activeSessionPool, newSess);
     SetSessionToPool (AppO->freeSessionPool, newSess);
 }
 
-void InitApp() {
+static void InitApp() {
 
     AppO->freeSessionPool = AllocEmptySessionPool();
     AppO->activeSessionPool = AllocEmptySessionPool();
@@ -76,7 +77,7 @@ void InitApp() {
 
     AppO->eventQ = CreateEventQ();
 
-    AppO->appGroupConnStats = CreateArray (TcpServerConnStats_t
+    AppO->appGroupConnStats = CreateArray (TcpServerAppConnStats_t
                                 , AppI->csGroupCount);
 
     AppO->serverSessionArr = CreateArray (TcpServerSession_t
@@ -92,7 +93,7 @@ void InitApp() {
     AppO->readBuffer = TdMalloc(AppI->csDataLen);
 }
 
-void CleanupApp() {
+static void CleanupApp() {
     DeleteEventQ(AppO->eventQ);
 }
 
@@ -158,7 +159,7 @@ void TcpServerAppRun(TcpServerAppInterface_t* appIface){
 
                             if (newSess == NULL) {
 
-                                AppI->appStats->dbgNoFreeSession++;
+                                AppI->appStats.dbgNoFreeSession++;
 
                                 close(newSocketFd);      
                             }else {
@@ -179,9 +180,9 @@ void TcpServerAppRun(TcpServerAppInterface_t* appIface){
                     int bytesReceived 
                         = TcpRead (newConn->socketFd
                                     , AppO->readBuffer
-                                    , AppO->readBufLen
+                                    , AppI->csDataLen
                                     , &AppI->appConnStats
-                                    , groupConnStats
+                                    , newConn->tcSess->groupConnStats
                                     , newConn);
                     
                     if (GetConnLastErr (newConn)) {
@@ -203,8 +204,6 @@ void TcpServerAppRun(TcpServerAppInterface_t* appIface){
     }
 
     CleanupApp();
-
-    return 0;
 }
 
 TcpServerAppInterface_t* CreateTcpServerAppInterface (int csGroupCount) {
@@ -227,4 +226,9 @@ TcpServerAppInterface_t* CreateTcpServerAppInterface (int csGroupCount) {
             , 0);
 
     return iFace;
+}
+
+void DeleteTcpServerAppInterface (TcpServerAppInterface_t* iFace)
+{
+    //todo
 }

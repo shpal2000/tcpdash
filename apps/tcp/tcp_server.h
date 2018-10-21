@@ -24,8 +24,6 @@ typedef struct TcpServerAppInterface {
 
     uint32_t maxActiveSessions;
     uint32_t maxErrorSessions;
-    uint64_t maxSessions;
-    uint32_t connectionPerSec;
     uint32_t csDataLen;
 
     TcpServerAppStats_t appStats;
@@ -35,9 +33,11 @@ typedef struct TcpServerAppInterface {
     TcpServerAppConnGroup_t* csGroupArr;
 } TcpServerAppInterface_t;
 
-void TcpServerAppRun(TcpServertAppInterface_t* appIface);
+void TcpServerAppRun(TcpServerAppInterface_t* appIface);
 
 TcpServerAppInterface_t* CreateTcpServerAppInterface(int csGroupCount);
+
+void DeleteTcpServerAppInterface (TcpServerAppInterface_t* iFace);
 
 void DumpTcpServerAppStats(TcpServerAppConnStats_t* appConnStats);
 

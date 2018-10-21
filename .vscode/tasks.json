@@ -4,11 +4,14 @@
         {
             "label": "build",
             "type": "shell",
-            "command": "plink user@10.116.0.61 -pw pass 'cd tcpdash;cmake -H. -Bbuild;cmake --build build -- -j3'",
+            "command": "plink user@10.116.6.3 -pw pass 'ninja -C tcpdash2/build/'",
             "args": [],
             "problemMatcher": {
-                "owner": "cpp",
-                "fileLocation": ["relative", "${workspaceFolder}"],
+                "owner": "c",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}"
+                ],
                 "pattern": {
                     "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
                     "file": 1,
@@ -17,6 +20,10 @@
                     "severity": 4,
                     "message": 5
                 }
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
             }
         }
     ]

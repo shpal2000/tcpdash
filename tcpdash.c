@@ -19,13 +19,13 @@
 #include "tcpdash.h"
 
 #include "apps/tcp/tcp_client.h"
-// #include "apps/tcp/tcp_server.h"
+#include "apps/tcp/tcp_server.h"
 
 #define APP_MAX_EVENTS 1000
 #define TCP_CLIENT_APP_MAX_EVENTS APP_MAX_EVENTS
+#define TCP_SERVER_APP_MAX_EVENTS APP_MAX_EVENTS
 
-int main(int argc, char** argv)
-{
+void TcpClientRun(){
     char* srcIps[] = {"12.20.50.2"
                     , "12.20.50.3"
                     , "12.20.50.4"
@@ -50,7 +50,7 @@ int main(int argc, char** argv)
 
     int csGroupClientAddrCountArr[1] = {19};
     TcpClientAppInterface_t* tcpClientAppI 
-        = CreateTcpClienAppInterface(1, csGroupClientAddrCountArr); 
+        = CreateTcpClientAppInterface(1, csGroupClientAddrCountArr); 
 
     tcpClientAppI->isRunning = 1; 
     tcpClientAppI->maxEvents = TCP_CLIENT_APP_MAX_EVENTS;
@@ -61,8 +61,10 @@ int main(int argc, char** argv)
     tcpClientAppI->csDataLen = 1500;
 
     for (int gIndex = 0; gIndex < tcpClientAppI->csGroupCount; gIndex++) {
+
         TcpClientAppConnGroup_t* csGroup 
-            = &tcpClientAppI->csGroupArr[gIndex]; 
+            = &tcpClientAppI->csGroupArr[gIndex];
+
         for (int cIndex = 0
                 ; cIndex < csGroup->clientAddrCount
                 ; cIndex++) { 
@@ -106,6 +108,49 @@ int main(int argc, char** argv)
 
         int status;
         wait(&status);
+    }
+}
+
+void TcpServerRun() {
+    char* dstIp = "12.20.60.2";
+    int dstPort = 8081;
+
+    TcpServerAppInterface_t* tcpServerAppI 
+        = CreateTcpServerAppInterface(1); 
+
+    tcpServerAppI->isRunning = 1; 
+    tcpServerAppI->maxEvents = TCP_SERVER_APP_MAX_EVENTS;
+    tcpServerAppI->maxActiveSessions = 100000;
+    tcpServerAppI->maxErrorSessions = 40;
+    tcpServerAppI->csDataLen = 1500;
+
+    for (int gIndex = 0; gIndex < tcpServerAppI->csGroupCount; gIndex++) {
+
+        TcpServerAppConnGroup_t* csGroup 
+            = &tcpServerAppI->csGroupArr[gIndex];
+
+        struct sockaddr_in* remoteAddr 
+            = &(csGroup->serverAddr.inAddr);
+
+        memset(remoteAddr, 0, sizeof(SockAddr_t));
+
+        remoteAddr->sin_family = AF_INET;
+        inet_pton(AF_INET
+                    , dstIp
+                    , &(remoteAddr->sin_addr));
+
+        remoteAddr->sin_port = htons(dstPort);
+    }
+
+    TcpServerAppRun(tcpServerAppI);
+}
+
+int main(int argc, char** argv)
+{
+    if (strcmp (argv[1], "TcpClient") == 0){
+        TcpClientRun();
+    }else if (strcmp (argv[1], "TcpServer") == 0) {
+        TcpServerRun();
     }
 
     return 0;

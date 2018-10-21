@@ -42,10 +42,10 @@ typedef struct TcpClientAppInterface {
 
 void TcpClientAppRun(TcpClientAppInterface_t* appIface);
 
-TcpClientAppInterface_t* CreateTcpClienAppInterface(int csGroupCount
+TcpClientAppInterface_t* CreateTcpClientAppInterface(int csGroupCount
                                             , int* clientAddrCounts);
 
-void DeleteTcpClienAppInterface(TcpClientAppInterface_t* iFace);
+void DeleteTcpClientAppInterface(TcpClientAppInterface_t* iFace);
 
 void DumpTcpClientAppStats(TcpClientAppConnStats_t* appConnStats);
 
