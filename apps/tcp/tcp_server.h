@@ -73,7 +73,7 @@ typedef struct TcpServer {
     SessionPool_t* freeSessionPool;
     SessionPool_t* activeSessionPool;
 
-    struct epoll_event* EventArr;
+    PollEvent_t* EventArr;
     int eventQ;
 
     uint32_t errorSessionCount;

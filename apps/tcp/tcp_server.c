@@ -73,12 +73,10 @@ static void InitApp() {
     AppO->errorSessionArr = CreateArray (TcpServerSession_t
                                 , AppI->maxErrorSessions); 
      
-    AppO->EventArr = CreateEventArray(AppI->maxEvents);
+    AppO->EventArr = CreateArray(PollEvent_t
+                            , AppI->maxEvents);
 
     AppO->eventQ = CreateEventQ();
-
-    AppO->appGroupConnStats = CreateArray (TcpServerConnStats_t
-                                , AppI->csGroupCount);
 
     AppO->serverSessionArr = CreateArray (TcpServerSession_t
                                 , AppI->csGroupCount);

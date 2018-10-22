@@ -264,7 +264,8 @@ static void InitApp() {
     AppO->errorSessionArr = CreateArray (TcpClientSession_t
                                 , AppI->maxErrorSessions); 
 
-    AppO->EventArr = CreateEventArray(AppI->maxEvents);
+    AppO->EventArr = CreateArray(PollEvent_t
+                                , AppI->maxEvents);
 
     AppO->eventQ = CreateEventQ();
 

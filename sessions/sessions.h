@@ -52,6 +52,7 @@ typedef struct CommonConnState{
     int appState;                                                                  
 } CommonConnState_t;
 
+typedef struct epoll_event PollEvent_t;
 typedef GQueue LocalPortPool_t;
 typedef GQueue SessionPool_t;
 
@@ -148,7 +149,6 @@ void DumpCStats(void* aStats);
 #define RemoveFromSessionPool(__pool,__session) g_queue_remove (__pool,__session)
 
 #define AllocEmptySessionPool() g_queue_new()
-#define CreateEventArray(__count) g_new(struct epoll_event, __count)
 #define GetSesionFromPool(__pool) g_queue_pop_head(__pool)
 #define IsSessionPoolEmpty(__pool) g_queue_is_empty(__pool)
 
