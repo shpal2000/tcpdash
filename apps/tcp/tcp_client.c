@@ -428,7 +428,8 @@ void TcpClientRun(TcpClientInterface_t* appIface)
             for(int eIndex = 0; eIndex < eCount; eIndex++) {
 
                 TcpClientConnection_t* newConn 
-                    = (TcpClientConnection_t*) GetIOEventData(AppO->EventArr[eIndex]);
+                    = (TcpClientConnection_t*) 
+                        GetIOEventData(AppO->EventArr[eIndex]);
 
                 TcpClientSession_t* newSess = newConn->tcSess;
                 

@@ -53,6 +53,24 @@ static void SetFreeSession(TcpServerSession_t* newSess) {
     SetSessionToPool (AppO->freeSessionPool, newSess);
 }
 
+static void StoreErrSession(TcpServerSession_t* aSession) {
+    if (AppO->errorSessionCount < AppI->maxErrorSessions) {
+
+        TcpServerSession_t* errSession 
+                = &AppO->errorSessionArr[AppO->errorSessionCount];
+
+        *errSession =  *aSession;
+
+        errSession->tcConn.savedLocalPort 
+            = ntohs(GetSockPort(errSession->tcConn.localAddress));
+
+        errSession->tcConn.savedRemotePort 
+            = ntohs(GetSockPort(&errSession->tcConn.remoteAddress));
+
+        AppO->errorSessionCount++;
+    }
+}
+
 static void InitApp() {
 
     AppO->freeSessionPool = AllocEmptySessionPool();
@@ -95,12 +113,32 @@ static void CleanupApp() {
     DeleteEventQ(AppO->eventQ);
 }
 
+static void OnListenStartError(TcpServerConnection_t* newConn) {
+
+    IncConnStats2(&AppI->appConnStats
+            , newConn->tcSess->groupConnStats 
+            , tcpListenStartFail);
+
+    StoreErrSession (newConn->tcSess); 
+}
+
+static void OnRegisterForListenerReadEventError(TcpServerConnection_t* newConn){
+
+    IncConnStats2(&AppI->appConnStats
+                , newConn->tcSess->groupConnStats 
+                , tcpConnRegisterForListenerReadEventFail);    
+
+    close(newConn->socketFd);
+    SetCS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
+    
+    StoreErrSession (newConn->tcSess);
+}
+
 void TcpServerRun(TcpServerInterface_t* appIface){
 
     AppO = CreateStruct0 (TcpServer_t);
     AppI = appIface;
     InitApp();
-
 
     for (int i = 0; i < AppI->csGroupCount; i++) {
 
@@ -108,25 +146,31 @@ void TcpServerRun(TcpServerInterface_t* appIface){
         TcpServerConnGroup_t* csGroup = &AppI->csGroupArr[i];
         
         TcpServerConnection_t* newConn = &srvSess->tcConn;
-        newConn->localAddress = (struct sockaddr*) &(csGroup->serverAddr);
+        newConn->localAddress = &(csGroup->serverAddr);
         newConn->tcSess->groupConnStats = &csGroup->cStats;
 
         newConn->socketFd 
-            = TcpListenStart(newConn->localAddress
+            = TcpListenStart((struct sockaddr*)newConn->localAddress
                                 , 1000
                                 , &AppI->appConnStats
                                 , srvSess->groupConnStats
                                 , newConn);
-
-        RegisterForReadEvent(AppO->eventQ
-                                , newConn->socketFd
-                                , newConn);
+        if ( GetConnLastErr (newConn) ) {
+            OnListenStartError(newConn);
+        } else { 
+            if ( RegisterForReadEvent(AppO->eventQ
+                                    , newConn->socketFd
+                                    , newConn) ) {
+                OnRegisterForListenerReadEventError(newConn);
+            }
+        }
     }
 
     while (true) {
 
-        int eCount = GetIOEvents(AppO->eventQ, AppO->EventArr
-                                , AppI->maxEvents);
+        int eCount = GetIOEvents(AppO->eventQ
+                                    , AppO->EventArr
+                                    , AppI->maxEvents);
 
         if (eCount > 0){
             for(int eIndex = 0; eIndex < eCount; eIndex++) {
@@ -136,40 +180,39 @@ void TcpServerRun(TcpServerInterface_t* appIface){
                                 GetIOEventData(AppO->EventArr[eIndex]);
                 
                 if (newConn->tcSess->sessionType == SESSION_TYPE_LISTENER){
-
+                    
                     if (IsReadEventSet(AppO->EventArr[eIndex])) {
+                        
+                        TcpServerSession_t* newSess = GetFreeSession ();
+                        if (newSess == NULL){
+                            AppI->appStats.dbgNoFreeSession++;
+                        }else {
+                            TcpServerConnection_t* lSockConn = newConn;
+                            newConn = &newSess->tcConn;
 
-                        int newSocketFd = accept(newConn->socketFd
-                                                , NULL
-                                                , NULL);
+                            socklen_t addrLen = sizeof (SockAddr_t);
+                            newConn->socketFd = accept(lSockConn->socketFd
+                                                    , GetSockAddr(newConn->remoteAddress)
+                                                    , &addrLen);
+                            newConn->localAddress = lSockConn->localAddress;
 
-                        if ( newSocketFd > 0 ){
+                            if ( newConn->socketFd > 0 ){
 
-                            int flags = fcntl(newSocketFd, F_GETFL, 0);
-                            //do error handling ??? 
-                            fcntl(newSocketFd, F_SETFL, flags | O_NONBLOCK);
-                            
-                            //do error handling ??? 
-                            setsockopt(newSocketFd, SOL_SOCKET
-                                , SO_REUSEADDR, &(int){ 1 }, sizeof(int));
-
-                            TcpServerSession_t* newSess = GetFreeSession ();
-
-                            if (newSess == NULL) {
-
-                                AppI->appStats.dbgNoFreeSession++;
-
-                                close(newSocketFd);      
-                            }else {
-
-                                newSess->tcConn.socketFd = newSocketFd;
+                                int flags = fcntl(newConn->socketFd, F_GETFL, 0);
+                                //do error handling ??? 
+                                fcntl(newConn->socketFd, F_SETFL, flags | O_NONBLOCK);
+                                
+                                //do error handling ??? 
+                                setsockopt(newConn->socketFd, SOL_SOCKET
+                                    , SO_REUSEADDR, &(int){ 1 }, sizeof(int));
 
                                 RegisterForReadEvent(AppO->eventQ
-                                                    , newSess->tcConn.socketFd
-                                                    , &newSess->tcConn);
+                                                    , newConn->socketFd
+                                                    , newConn);
+
+                            } else { //do error handling ???
+                                
                             }
-                        } else { //do error handling ???
-                            
                         }
                     }else { //do error handling ???
 

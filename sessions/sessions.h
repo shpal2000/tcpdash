@@ -33,10 +33,14 @@ typedef struct CommonConnStats{
     uint64_t tcpConnInitProgress;
     uint64_t tcpWriteFail;
 
+    uint64_t tcpListenStart;
+    uint64_t tcpListenStop;
+    uint64_t tcpListenStartFail;
     uint64_t appDataWriteComplete;
 
     uint64_t tcpConnRegisterForWriteEventFail;
     uint64_t tcpConnRegisterForReadEventFail;
+    uint64_t tcpConnRegisterForListenerReadEventFail;
     uint64_t tcpConnUnRegisterForWriteEventFail;
     uint64_t tcpConnUnRegisterForReadEventFail;
     uint64_t tcpLocalPortAssignFail;
@@ -179,5 +183,7 @@ void DumpCStats(void* aStats);
 #define SetSockPort(__laddr,__lport)if (IsIpv6(__laddr)) ((struct sockaddr_in6*)__laddr)->sin6_port=__lport;else ((struct sockaddr_in*)__laddr)->sin_port=__lport
 
 #define GetSockPort(__laddr)(IsIpv6(__laddr)) ? ((struct sockaddr_in6*)__laddr)->sin6_port : ((struct sockaddr_in*)__laddr)->sin_port
+
+#define GetSockAddr(__laddr) ((struct sockaddr*)&(__laddr))
 #endif
 

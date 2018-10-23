@@ -54,8 +54,8 @@ typedef struct TcpServerConnection{
     int socketFd;
     uint16_t savedLocalPort;
     uint16_t savedRemotePort;
-    struct sockaddr* localAddress;
-    struct sockaddr* remoteAddress;
+    SockAddr_t* localAddress;
+    SockAddr_t remoteAddress;
     struct TcpServerSession* tcSess;
     uint32_t bytesReceived;
 } TcpServerConnection_t;
@@ -67,8 +67,6 @@ typedef struct TcpServerSession{
 } TcpServerSession_t;
 
 typedef struct TcpServer {
-
-    TcpServerConnStats_t* appGroupConnStats;
 
     SessionPool_t* freeSessionPool;
     SessionPool_t* activeSessionPool;
