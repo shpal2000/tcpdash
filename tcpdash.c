@@ -26,7 +26,7 @@
 #define TCP_SERVER_APP_MAX_EVENTS APP_MAX_EVENTS
 
 void TcpClientMain(){
-    char* srcIps[] = {"12.20.50.2"
+        char* srcIpGroup1[] = {"12.20.50.2"
                     , "12.20.50.3"
                     , "12.20.50.4"
                     , "12.20.50.5"
@@ -35,8 +35,9 @@ void TcpClientMain(){
                     , "12.20.50.8"
                     , "12.20.50.9"
                     , "12.20.50.10"
-                    , "12.20.50.11"
-                    , "12.20.50.12"
+                    , "12.20.50.11"};
+
+        char* srcIpGroup2 [] = {"12.20.50.12"
                     , "12.20.50.13"
                     , "12.20.50.14"
                     , "12.20.50.15"
@@ -45,12 +46,18 @@ void TcpClientMain(){
                     , "12.20.50.18"
                     , "12.20.50.19"
                     , "12.20.50.20"};
-    char* dstIp = "12.20.60.2";
+
+        char** srcIpGroups[2];
+        srcIpGroups[0] = srcIpGroup1;
+        srcIpGroups[1] = srcIpGroup2;
+        
+
+    char* dstIpGroups[2] = { "12.20.60.2", "12.20.60.3" };
     int dstPort = 8081;
 
-    int csGroupClientAddrCountArr[1] = {19};
+    int csGroupClientAddrCountArr[2] = {10, 9};
     TcpClientInterface_t* TcpClientI 
-        = CreateTcpClientInterface(1, csGroupClientAddrCountArr); 
+        = CreateTcpClientInterface(2, csGroupClientAddrCountArr); 
 
     TcpClientI->isRunning = 1; 
     TcpClientI->maxEvents = TCP_CLIENT_APP_MAX_EVENTS;
@@ -73,7 +80,7 @@ void TcpClientMain(){
             memset(localAddr, 0, sizeof(SockAddr_t));
             localAddr->sin_family = AF_INET;
             inet_pton(AF_INET
-                        , srcIps[cIndex]
+                        , srcIpGroups[gIndex][cIndex]
                         , &(localAddr->sin_addr));
             LocalPortPool_t* portQ = &csGroup->LocalPortPoolArr[cIndex];
             for (int srcPort = 5000; srcPort <= 65000; srcPort++) {
@@ -85,7 +92,7 @@ void TcpClientMain(){
         memset(remoteAddr, 0, sizeof(SockAddr_t));
         remoteAddr->sin_family = AF_INET;
         inet_pton(AF_INET
-                    , dstIp
+                    , dstIpGroups[gIndex]
                     , &(remoteAddr->sin_addr));
         remoteAddr->sin_port = htons(dstPort);
     }
@@ -112,11 +119,11 @@ void TcpClientMain(){
 }
 
 void TcpServerMain() {
-    char* dstIp = "12.20.60.2";
+    char* dstIpGroups[2] = { "12.20.60.2", "12.20.60.3" };
     int dstPort = 8081;
 
     TcpServerInterface_t* TcpServerI 
-        = CreateTcpServerInterface(1); 
+        = CreateTcpServerInterface(2); 
 
     TcpServerI->isRunning = 1; 
     TcpServerI->maxEvents = TCP_SERVER_APP_MAX_EVENTS;
@@ -136,7 +143,7 @@ void TcpServerMain() {
 
         remoteAddr->sin_family = AF_INET;
         inet_pton(AF_INET
-                    , dstIp
+                    , dstIpGroups[gIndex]
                     , &(remoteAddr->sin_addr));
 
         remoteAddr->sin_port = htons(dstPort);
