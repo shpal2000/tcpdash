@@ -59,8 +59,8 @@ typedef struct TcpClientConnection{
     int socketFd;
     uint16_t savedLocalPort;
     uint16_t savedRemotePort;
-    struct sockaddr* localAddress;
-    struct sockaddr* remoteAddress;
+    SockAddr_t* localAddress;
+    SockAddr_t* remoteAddress;
     LocalPortPool_t* localPortPool;
     struct TcpClientSession* tcSess;
     uint32_t bytesSent;

@@ -150,7 +150,7 @@ void TcpServerRun(TcpServerInterface_t* appIface){
         newConn->tcSess->groupConnStats = &csGroup->cStats;
 
         newConn->socketFd 
-            = TcpListenStart((struct sockaddr*)newConn->localAddress
+            = TcpListenStart(newConn->localAddress
                                 , 1000
                                 , &AppI->appConnStats
                                 , srvSess->groupConnStats

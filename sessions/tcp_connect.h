@@ -1,15 +1,15 @@
 #ifndef __TCP_CONNECT_H
 
 #define __TCP_CONNECT_H
-int TcpNewConnection(struct sockaddr* localAddress
-                        , struct sockaddr* remoteAddress
+int TcpNewConnection(SockAddr_t* localAddress
+                        , SockAddr_t* remoteAddress
                         , void* aStats
                         , void* bStats
                         , void* cState);
 
 int IsNewTcpConnectionComplete(int fd);
 
-int TcpListenStart(struct sockaddr* localAddress
+int TcpListenStart(SockAddr_t* localAddress
                     , int listenQLen
                     , void* aStats
                     , void* bStats

@@ -22,8 +22,8 @@
  *  @param rAddr remote socket address pointer
  *  @return file descriptor of newly created tcp socket; -1 for error
  */
-int TcpNewConnection(struct sockaddr* lAddr
-                        , struct sockaddr* rAddr
+int TcpNewConnection(SockAddr_t* lAddr
+                        , SockAddr_t* rAddr
                         , void* aStats
                         , void* bStats
                         , void* cState){
@@ -58,9 +58,9 @@ int TcpNewConnection(struct sockaddr* lAddr
             //bind local socket
             int bind_status = -1;
             if (IsIpv6(lAddr)){
-                bind_status = bind(socket_fd, lAddr, sizeof(struct sockaddr_in6));
+                bind_status = bind(socket_fd, (struct sockaddr*)lAddr, sizeof(struct sockaddr_in6));
             }else{
-                bind_status = bind(socket_fd, lAddr, sizeof(struct sockaddr_in));
+                bind_status = bind(socket_fd, (struct sockaddr*)lAddr, sizeof(struct sockaddr_in));
             }
 
             if (bind_status == -1){
@@ -82,11 +82,11 @@ int TcpNewConnection(struct sockaddr* lAddr
                 int connect_status = -1;
                 if (IsIpv6(lAddr)){
                     connect_status = connect(socket_fd
-                                    , rAddr
+                                    , (struct sockaddr*)rAddr
                                     , sizeof(struct sockaddr_in6));
                 }else{
                     connect_status = connect(socket_fd
-                                        , rAddr
+                                        , (struct sockaddr*)rAddr
                                         , sizeof(struct sockaddr_in));
                 }
                 SetCS1(cState, STATE_TCP_CONN_INIT);
@@ -137,7 +137,7 @@ int IsNewTcpConnectionComplete(int fd){
     return 0;
 }
 
-int TcpListenStart(struct sockaddr* lAddr
+int TcpListenStart(SockAddr_t* lAddr
                     , int listenQLen
                     , void* aStats
                     , void* bStats
@@ -163,9 +163,9 @@ int TcpListenStart(struct sockaddr* lAddr
         //bind local socket
         int bind_status = -1;
         if (IsIpv6(lAddr)){
-            bind_status = bind(socket_fd, lAddr, sizeof(struct sockaddr_in6));
+            bind_status = bind(socket_fd, (struct sockaddr*)lAddr, sizeof(struct sockaddr_in6));
         }else{
-            bind_status = bind(socket_fd, lAddr, sizeof(struct sockaddr_in));
+            bind_status = bind(socket_fd, (struct sockaddr*)lAddr, sizeof(struct sockaddr_in));
         }
 
         if (bind_status == -1){

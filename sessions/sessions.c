@@ -97,7 +97,7 @@ int UnRegisterForWriteEvent(int pollId, int fd, void* cState) {
     return status;
 }
 
-int AssignSocketLocalPort(struct sockaddr* localAddres
+int AssignSocketLocalPort(SockAddr_t* localAddres
                             , LocalPortPool_t* portPool
                             , void* cState) {
    int nextSrcPort = GetPortFromPool(portPool);
@@ -125,7 +125,7 @@ void DumpCStats(void* aStats) {
                 , cStats->socketConnectEstablishFail2);
 }
 
-void AddressToString(struct sockaddr* addr, char* str){
+void AddressToString(SockAddr_t* addr, char* str){
 
    if IsIpv6(addr) {
         inet_ntop(AF_INET6

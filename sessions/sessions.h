@@ -113,10 +113,10 @@ int RegisterForWriteEvent(int pollId, int fd, void* cState);
 int UnRegisterForReadWriteEvent(int pollId, int fd, void* cState);
 int UnRegisterForReadEvent(int pollId, int fd, void* cState);
 int UnRegisterForWriteEvent(int pollId, int fd, void* cState);
-int AssignSocketLocalPort(struct sockaddr* localAddres
+int AssignSocketLocalPort(SockAddr_t* localAddres
                             , LocalPortPool_t* portPool
                             , void* cState);
-void AddressToString(struct sockaddr* addr, char* str);
+void AddressToString(SockAddr_t* addr, char* str);
 
 void DumpCStats(void* aStats);
 #define TD_NO_ERROR                                         0

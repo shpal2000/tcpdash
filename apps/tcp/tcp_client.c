@@ -314,10 +314,10 @@ static TcpClientConnection_t* PrepNextConnection(TcpClientSession_t* newSess){
         = &AppI->csGroupArr[AppI->nextCsGroupIndex];
 
     newConn->localAddress 
-        = (struct sockaddr*)&(csGroup->clientAddrArr[csGroup->nextClientAddrIndex]);
+        = &(csGroup->clientAddrArr[csGroup->nextClientAddrIndex]);
 
     newConn->remoteAddress 
-        = (struct sockaddr*)&(csGroup->serverAddr);
+        = &(csGroup->serverAddr);
 
     newConn->tcSess->groupConnStats = &csGroup->cStats;
 
