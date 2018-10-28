@@ -120,7 +120,8 @@ int TcpNewConnection(SockAddr_t* lAddr
     return socket_fd;
 }
 
-int IsNewTcpConnectionComplete(int fd){
+int IsNewTcpConnectionComplete(int fd, void* cState){
+    ResetErrno();
     int socketErr;
     socklen_t socketErrBufLen = sizeof(int);
 
@@ -133,7 +134,8 @@ int IsNewTcpConnectionComplete(int fd){
     if ((retGetsockopt|socketErr) == 0){
         return 1;
     }
-
+    SaveErrno(cState);
+    SaveSockErrno(cState, socketErr);
     return 0;
 }
 

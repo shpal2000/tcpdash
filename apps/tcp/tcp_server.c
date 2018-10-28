@@ -151,7 +151,7 @@ void TcpServerRun(TcpServerInterface_t* appIface){
 
         newConn->socketFd 
             = TcpListenStart(newConn->localAddress
-                                , 1000
+                                , AppI->listenQLen 
                                 , &AppI->appConnStats
                                 , srvSess->groupConnStats
                                 , newConn);
@@ -170,7 +170,8 @@ void TcpServerRun(TcpServerInterface_t* appIface){
 
         int eCount = GetIOEvents(AppO->eventQ
                                     , AppO->EventArr
-                                    , AppI->maxEvents);
+                                    , AppI->maxEvents
+                                    , 0);
 
         if (eCount > 0){
             for(int eIndex = 0; eIndex < eCount; eIndex++) {

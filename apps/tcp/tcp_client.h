@@ -80,6 +80,7 @@ typedef struct TcpClient {
 
     PollEvent_t* EventArr;
     int eventQ;
+    int eventPTO;
 
     uint32_t errorSessionCount;
     TcpClientSession_t* errorSessionArr;

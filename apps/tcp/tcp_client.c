@@ -91,11 +91,13 @@ void DumpErrSessions() {
             printf ("SS1 = %#018" PRIx64 
                     ", Err = %d" 
                     ", SysErr = %d"
+                    ", SockErr = %d"
                     ", src = %s : %hu"
                     ", dst = %s : %hu\n"
                     , GetCS1(newConn)
                     , GetConnLastErr(newConn)
                     , GetErrno(newConn) 
+                    , GetSockErrno(newConn) 
                     , srcAddr, newConn->savedLocalPort
                     , dstAddr, newConn->savedRemotePort); 
         }
@@ -341,7 +343,7 @@ static int AppRunContinue() {
     TcpClientConnStats_t* appConnStats = &AppI->appConnStats;
 
     if ( (GetConnStats(appConnStats, tcpConnInitFail) 
-                == AppI->maxErrorSessions) 
+                >= AppI->maxErrorSessions) 
             || (GetConnStats(appConnStats, tcpConnInit) 
                 == AppI->maxSessions 
             && IsSessionPoolEmpty (AppO->activeSessionPool)) ){
@@ -372,9 +374,9 @@ void TcpClientRun(TcpClientInterface_t* appIface)
                         - lastConnectionInitTime)
                     * AppI->connectionPerSec);
 
-            while (newConnectionInits > 0 
-                    && GetConnStats(&AppI->appConnStats, tcpConnInit) 
-                        < AppI->maxSessions) {
+            while ( (newConnectionInits > 0) 
+                    && (GetConnStats(&AppI->appConnStats, tcpConnInit) 
+                        < AppI->maxSessions) ) {
 
                 newConnectionInits--;
 
@@ -394,7 +396,8 @@ void TcpClientRun(TcpClientInterface_t* appIface)
                                                 , newConn) ) {
                         OnAssignSocketLocalPortError(newConn);
                     }else{
-                        SetAppState (newConn, APP_STATE_CONNECTION_IN_PROGRESS);
+                        SetAppState (newConn
+                            , APP_STATE_CONNECTION_IN_PROGRESS);
 
                         IncConnStats2(&AppI->appConnStats
                                     , newConn->tcSess->groupConnStats 
@@ -423,8 +426,13 @@ void TcpClientRun(TcpClientInterface_t* appIface)
 
         int eCount = GetIOEvents(AppO->eventQ
                                     , AppO->EventArr
-                                    , AppI->maxEvents);
+                                    , AppI->maxEvents
+                                    , AppO->eventPTO);
         if (eCount > 0){
+            if (AppO->eventPTO > 0){
+                AppO->eventPTO--;
+            }
+
             for(int eIndex = 0; eIndex < eCount; eIndex++) {
 
                 TcpClientConnection_t* newConn 
@@ -437,7 +445,8 @@ void TcpClientRun(TcpClientInterface_t* appIface)
                     if ( GetAppState(newConn) 
                             == APP_STATE_CONNECTION_IN_PROGRESS ) {
 
-                        if ( IsNewTcpConnectionComplete(newConn->socketFd) ){
+                        if ( IsNewTcpConnectionComplete(newConn->socketFd
+                                , newConn) ){
                             OnConnectionEstablished(newConn);
                         }else{
                             OnConnectionEstablishError(newConn);
@@ -472,6 +481,8 @@ void TcpClientRun(TcpClientInterface_t* appIface)
                     }
                 }
             }
+        }else{
+            AppO->eventPTO++;
         }
     }
 

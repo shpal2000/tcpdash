@@ -22,8 +22,13 @@
 #include "apps/tcp/tcp_server.h"
 
 #define APP_MAX_EVENTS 1000
-#define TCP_CLIENT_APP_MAX_EVENTS APP_MAX_EVENTS
-#define TCP_SERVER_APP_MAX_EVENTS APP_MAX_EVENTS
+#define APP_MAX_LISTENQ_LENGTH 10000
+
+#define TCP_CLIENT_MAX_EVENTS APP_MAX_EVENTS
+
+#define TCP_SERVER_MAX_EVENTS APP_MAX_EVENTS
+#define TCP_SERVER_MAX_LISTENQ_LENGTH APP_MAX_LISTENQ_LENGTH
+
 
 void TcpClientMain(){
         char* srcIpGroup1[] = {"12.20.50.2"
@@ -35,7 +40,16 @@ void TcpClientMain(){
                     , "12.20.50.8"
                     , "12.20.50.9"
                     , "12.20.50.10"
-                    , "12.20.50.11"};
+                    , "12.20.50.11"
+                    , "12.20.50.12"
+                    , "12.20.50.13"
+                    , "12.20.50.14"
+                    , "12.20.50.15"
+                    , "12.20.50.16"
+                    , "12.20.50.17"
+                    , "12.20.50.18"
+                    , "12.20.50.19"
+                    , "12.20.50.20"};
 
         char* srcIpGroup2 [] = {"12.20.50.12"
                     , "12.20.50.13"
@@ -52,19 +66,20 @@ void TcpClientMain(){
         srcIpGroups[1] = srcIpGroup2;
         
 
-    char* dstIpGroups[2] = { "12.20.60.2", "12.20.60.3" };
+    // char* dstIpGroups[2] = { "12.20.60.2", "12.20.60.3" };
+    char* dstIpGroups[1] = { "12.20.60.2"};
     int dstPort = 8081;
 
-    int csGroupClientAddrCountArr[2] = {10, 9};
+    int csGroupClientAddrCountArr[1] = {19};
     TcpClientInterface_t* TcpClientI 
-        = CreateTcpClientInterface(2, csGroupClientAddrCountArr); 
+        = CreateTcpClientInterface(1, csGroupClientAddrCountArr); 
 
     TcpClientI->isRunning = 1; 
-    TcpClientI->maxEvents = TCP_CLIENT_APP_MAX_EVENTS;
+    TcpClientI->maxEvents = TCP_CLIENT_MAX_EVENTS;
     TcpClientI->maxActiveSessions = 100000;
     TcpClientI->maxErrorSessions = 40;
     TcpClientI->maxSessions = 1000000;
-    TcpClientI->connectionPerSec = 33000;
+    TcpClientI->connectionPerSec = 9000;
     TcpClientI->csDataLen = 1500;
 
     for (int gIndex = 0; gIndex < TcpClientI->csGroupCount; gIndex++) {
@@ -123,10 +138,11 @@ void TcpServerMain() {
     int dstPort = 8081;
 
     TcpServerInterface_t* TcpServerI 
-        = CreateTcpServerInterface(2); 
+        = CreateTcpServerInterface(1); 
 
     TcpServerI->isRunning = 1; 
-    TcpServerI->maxEvents = TCP_SERVER_APP_MAX_EVENTS;
+    TcpServerI->maxEvents = TCP_SERVER_MAX_EVENTS;
+    TcpServerI->listenQLen = TCP_SERVER_MAX_LISTENQ_LENGTH;
     TcpServerI->maxActiveSessions = 100000;
     TcpServerI->maxErrorSessions = 40;
     TcpServerI->csDataLen = 1500;

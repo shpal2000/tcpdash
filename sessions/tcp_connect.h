@@ -7,7 +7,7 @@ int TcpNewConnection(SockAddr_t* localAddress
                         , void* bStats
                         , void* cState);
 
-int IsNewTcpConnectionComplete(int fd);
+int IsNewTcpConnectionComplete(int fd, void* cState);
 
 int TcpListenStart(SockAddr_t* localAddress
                     , int listenQLen

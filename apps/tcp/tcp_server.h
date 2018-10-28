@@ -21,6 +21,7 @@ typedef struct TcpServerConnGroup {
 typedef struct TcpServerInterface {
     uint32_t isRunning;
     uint32_t maxEvents;
+    uint32_t listenQLen;
 
     uint32_t maxActiveSessions;
     uint32_t maxErrorSessions;

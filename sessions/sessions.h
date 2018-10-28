@@ -53,7 +53,8 @@ typedef struct CommonConnState{
     uint16_t lastErr;
     uint16_t lastErrCount;
     int sysErrno;
-    int appState;                                                                  
+    int appState;
+    int sockErrno;                                                              
 } CommonConnState_t;
 
 typedef struct epoll_event PollEvent_t;
@@ -105,7 +106,12 @@ static inline void SetConnLastErr(void* aSession, uint16_t err) {
 
 #define SaveErrno(__aConn) ((CommonConnState_t*)__aConn)->sysErrno = errno
 
+#define SaveSockErrno(__aConn, __sockErrno) ((CommonConnState_t*)__aConn)->sockErrno = __sockErrno
+
 #define GetErrno(__aConn) ((CommonConnState_t*)__aConn)->sysErrno
+
+#define GetSockErrno(__aConn) ((CommonConnState_t*)__aConn)->sockErrno
+
 
 int RegisterForReadWriteEvent(int pollId, int fd, void* cState);
 int RegisterForReadEvent(int pollId, int fd, void* cState);
@@ -155,10 +161,11 @@ void DumpCStats(void* aStats);
 #define AllocEmptySessionPool() g_queue_new()
 #define GetSesionFromPool(__pool) g_queue_pop_head(__pool)
 #define IsSessionPoolEmpty(__pool) g_queue_is_empty(__pool)
+#define GetSessionCount(__pool) g_queue_get_length(__pool)
 
 #define CreateEventQ() epoll_create(1)
 #define DeleteEventQ(__eventQId) close(__eventQId)
-#define GetIOEvents(__eventQId, __eventArray, __maxEvents) epoll_wait(__eventQId, __eventArray, __maxEvents, 0)
+#define GetIOEvents(__eventQId, __eventArray, __maxEvents, __to) epoll_wait(__eventQId, __eventArray, __maxEvents, __to)
 
 #define GetIOEventData(__event) __event.data.ptr
 #define IsWriteEventSet(__event) __event.events && EPOLLOUT 
