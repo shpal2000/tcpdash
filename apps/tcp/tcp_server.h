@@ -26,6 +26,7 @@ typedef struct TcpServerInterface {
     uint32_t maxActiveSessions;
     uint32_t maxErrorSessions;
     uint32_t csDataLen;
+    uint32_t scDataLen;
 
     TcpServerStats_t appStats;
     TcpServerConnStats_t appConnStats;
@@ -80,6 +81,7 @@ typedef struct TcpServer {
 
     TcpServerSession_t* serverSessionArr;
 
+    char* sendBuffer;
     char* readBuffer;
 } TcpServer_t;
 

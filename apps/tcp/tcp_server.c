@@ -106,6 +106,7 @@ static void InitApp() {
         InitSession (aSession, 1, SESSION_TYPE_LISTENER);
     }
 
+    AppO->sendBuffer = TdMalloc(AppI->scDataLen);
     AppO->readBuffer = TdMalloc(AppI->csDataLen);
 }
 
@@ -183,7 +184,6 @@ void TcpServerRun(TcpServerInterface_t* appIface){
                 if (newConn->tcSess->sessionType == SESSION_TYPE_LISTENER){
                     
                     if (IsReadEventSet(AppO->EventArr[eIndex])) {
-                        
                         TcpServerSession_t* newSess = GetFreeSession ();
                         if (newSess == NULL){
                             AppI->appStats.dbgNoFreeSession++;
@@ -192,9 +192,10 @@ void TcpServerRun(TcpServerInterface_t* appIface){
                             newConn = &newSess->tcConn;
 
                             socklen_t addrLen = sizeof (SockAddr_t);
-                            newConn->socketFd = accept(lSockConn->socketFd
-                                                    , GetSockAddr(newConn->remoteAddress)
-                                                    , &addrLen);
+                            newConn->socketFd 
+                                    = accept(lSockConn->socketFd
+                                            , GetSockAddr(newConn->remoteAddress)
+                                            , &addrLen);
                             newConn->localAddress = lSockConn->localAddress;
 
                             if ( newConn->socketFd > 0 ){

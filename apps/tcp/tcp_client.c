@@ -96,7 +96,7 @@ void DumpErrSessions() {
                     ", dst = %s : %hu\n"
                     , GetCS1(newConn)
                     , GetConnLastErr(newConn)
-                    , GetErrno(newConn) 
+                    , GetSysErrno(newConn) 
                     , GetSockErrno(newConn) 
                     , srcAddr, newConn->savedLocalPort
                     , dstAddr, newConn->savedRemotePort); 
@@ -128,7 +128,7 @@ static void OnConnectionInitError(TcpClientConnection_t* newConn){
 
     if (GetConnLastErr (newConn) 
             == TD_SOCKET_CONNECT_FAILED_IMMEDIATE
-        && GetErrno(newConn) == EADDRNOTAVAIL) {
+        && GetSysErrno(newConn) == EADDRNOTAVAIL) {
 
             IncConnStats2(&AppI->appConnStats
                         , newConn->tcSess->groupConnStats 
@@ -145,7 +145,7 @@ static void OnConnectionInitError(TcpClientConnection_t* newConn){
 }
 
 static void OnConnectionEstablished(TcpClientConnection_t* newConn) {
-
+    
     IncConnStats2(&AppI->appConnStats
             , newConn->tcSess->groupConnStats 
             , tcpConnInitSuccess);
@@ -185,6 +185,20 @@ static void OnRegisterForWriteEventError(TcpClientConnection_t* newConn){
     IncConnStats2(&AppI->appConnStats
                 , newConn->tcSess->groupConnStats 
                 , tcpConnRegisterForWriteEventFail);    
+
+    close(newConn->socketFd);
+    SetCS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
+    
+    StoreErrSession (newConn->tcSess);
+    SetFreeSession (newConn->tcSess);
+    ReleasePort (newConn);
+}
+
+static void OnRegisterForReadEventError(TcpClientConnection_t* newConn){
+
+    IncConnStats2(&AppI->appConnStats
+                , newConn->tcSess->groupConnStats 
+                , tcpConnRegisterForReadEventFail);    
 
     close(newConn->socketFd);
     SetCS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
@@ -274,6 +288,7 @@ static void InitApp() {
     AppO->timerWheel = CreateTimerWheel();
 
     AppO->sendBuffer =  TdMalloc(AppI->csDataLen);
+    AppO->readBuffer =  TdMalloc(AppI->scDataLen);
 }
 
 void DumpTcpClientStats(TcpClientConnStats_t* appConnStats) {
@@ -353,8 +368,7 @@ static int AppRunContinue() {
     return 1;
 }
 
-void TcpClientRun(TcpClientInterface_t* appIface)
-{
+void TcpClientRun(TcpClientInterface_t* appIface){
     AppO = CreateStruct0 (TcpClient_t);
     AppI = appIface;
     InitApp();
@@ -429,10 +443,7 @@ void TcpClientRun(TcpClientInterface_t* appIface)
                                     , AppI->maxEvents
                                     , AppO->eventPTO);
         if (eCount > 0){
-            if (AppO->eventPTO > 0){
-                AppO->eventPTO--;
-            }
-
+            AppO->eventPTO = 0; 
             for(int eIndex = 0; eIndex < eCount; eIndex++) {
 
                 TcpClientConnection_t* newConn 
@@ -446,8 +457,13 @@ void TcpClientRun(TcpClientInterface_t* appIface)
                             == APP_STATE_CONNECTION_IN_PROGRESS ) {
 
                         if ( IsNewTcpConnectionComplete(newConn->socketFd
-                                , newConn) ){
+                                                        , newConn) ){
                             OnConnectionEstablished(newConn);
+                            if ( RegisterForReadEvent(AppO->eventQ
+                                                    , newConn->socketFd
+                                                    , newConn)){
+                                OnRegisterForReadEventError(newConn);
+                            }
                         }else{
                             OnConnectionEstablishError(newConn);
                         }
@@ -480,6 +496,9 @@ void TcpClientRun(TcpClientInterface_t* appIface)
                         }
                     }
                 }
+                
+                if (IsReadEventSet(AppO->EventArr[eIndex])) {
+                }
             }
         }else{
             AppO->eventPTO++;
@@ -495,8 +514,7 @@ void TcpClientRun(TcpClientInterface_t* appIface)
 }
 
 TcpClientInterface_t* CreateTcpClientInterface(int csGroupCount
-                                            , int* clientAddrCounts)
-{
+                                            , int* clientAddrCounts){
     TcpClientInterface_t* iFace 
         = (TcpClientInterface_t*) mmap(NULL
             , sizeof (TcpClientInterface_t)
@@ -542,7 +560,6 @@ TcpClientInterface_t* CreateTcpClientInterface(int csGroupCount
     return iFace;
 }
 
-void DeleteTcpClientInterface (TcpClientInterface_t* iFace)
-{
+void DeleteTcpClientInterface (TcpClientInterface_t* iFace){
     //todo
 }

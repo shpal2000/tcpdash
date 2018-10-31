@@ -27,9 +27,6 @@ int TcpNewConnection(SockAddr_t* lAddr
                         , void* aStats
                         , void* bStats
                         , void* cState){
-
-    ResetErrno();
-
     //create socket
     int socket_fd = -1;
     if (IsIpv6(lAddr)){
@@ -95,21 +92,18 @@ int TcpNewConnection(SockAddr_t* lAddr
                 if (connect_status < 0){
                     if (errno == EINPROGRESS){
                         SetCS1(cState, STATE_TCP_CONN_IN_PROGRESS);
-                        SetConnLastErr(cState, TD_NO_ERROR);
                     }else{
                         SetConnLastErr(cState
                                 , TD_SOCKET_CONNECT_FAILED_IMMEDIATE);
                     }
                 }else{
                     SetCS1(cState, STATE_TCP_CONN_IN_PROGRESS2);
-                    SetConnLastErr(cState, TD_NO_ERROR);
                 }
     }
         }
     }
 
-    if (GetConnLastErr(cState) != TD_NO_ERROR){
-        SaveErrno(cState);
+    if ( GetConnLastErr(cState) ){
         if (socket_fd != -1){
             close(socket_fd);
             SetCS1(cState, STATE_TCP_SOCK_FD_CLOSE);
@@ -121,7 +115,6 @@ int TcpNewConnection(SockAddr_t* lAddr
 }
 
 int IsNewTcpConnectionComplete(int fd, void* cState){
-    ResetErrno();
     int socketErr;
     socklen_t socketErrBufLen = sizeof(int);
 
@@ -134,7 +127,7 @@ int IsNewTcpConnectionComplete(int fd, void* cState){
     if ((retGetsockopt|socketErr) == 0){
         return 1;
     }
-    SaveErrno(cState);
+    SetConnLastErr(cState, TD_SOCKET_CONNECT_FAILED);
     SaveSockErrno(cState, socketErr);
     return 0;
 }
@@ -144,9 +137,6 @@ int TcpListenStart(SockAddr_t* lAddr
                     , void* aStats
                     , void* bStats
                     , void* cState) {
-
-    ResetErrno();
-
     //create socket
     int socket_fd = -1;
     if (IsIpv6(lAddr)){
@@ -194,13 +184,11 @@ int TcpListenStart(SockAddr_t* lAddr
                SetConnLastErr(cState, TD_SOCKET_LISTEN_FAILED); 
             } else {
                 SetCS1(cState, STATE_TCP_LISTENING);
-                SetConnLastErr(cState, TD_NO_ERROR); 
             }
         }
     }
 
-    if (GetConnLastErr(cState) != TD_NO_ERROR){
-        SaveErrno(cState);
+    if ( GetConnLastErr(cState) ){
         if (socket_fd != -1){
             close(socket_fd);
             SetCS1(cState, STATE_TCP_SOCK_FD_CLOSE);
@@ -217,16 +205,10 @@ int TcpWrite(int fd
                 , void* aStats
                 , void* bStats
                 , void* cState) {
-    
-    ResetErrno();
-
     int bytesSent = send(fd, dataBuffer, dataLen, 0);
 
     if (bytesSent < 0){
         SetConnLastErr(cState, TD_SOCKET_WRITE_ERROR);
-        SaveErrno(cState);
-    }else {
-        SetConnLastErr(cState, TD_NO_ERROR);
     }
 
     return bytesSent;
@@ -238,16 +220,10 @@ int TcpRead(int fd
                 , void* aStats
                 , void* bStats
                 , void* cState) {
-    
-    ResetErrno();
-
     int bytesRead = recv(fd, dataBuffer, dataLen, 0);
 
     if (bytesRead < 0){
         SetConnLastErr(cState, TD_SOCKET_READ_ERROR);
-        SaveErrno(cState);
-    }else {
-        SetConnLastErr(cState, TD_NO_ERROR);
     }
 
     return bytesRead;

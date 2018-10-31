@@ -96,6 +96,7 @@ static inline void CSInit(void* cState) {
 static inline void SetConnLastErr(void* aSession, uint16_t err) {
     ((CommonConnState_t*)aSession)->lastErr = err;
     ((CommonConnState_t*)aSession)->lastErrCount += 1;
+    ((CommonConnState_t*)aSession)->sysErrno = errno;
 }
 
 #define GetConnLastErr(__aConn) ((CommonConnState_t*)__aConn)->lastErr
@@ -104,11 +105,9 @@ static inline void SetConnLastErr(void* aSession, uint16_t err) {
 
 #define CopyCS(__dstCS, __srcCS) *((CommonConnState_t*)(__dstCS)) = *((CommonConnState_t*)(__srcCS))
 
-#define SaveErrno(__aConn) ((CommonConnState_t*)__aConn)->sysErrno = errno
-
 #define SaveSockErrno(__aConn, __sockErrno) ((CommonConnState_t*)__aConn)->sockErrno = __sockErrno
 
-#define GetErrno(__aConn) ((CommonConnState_t*)__aConn)->sysErrno
+#define GetSysErrno(__aConn) ((CommonConnState_t*)__aConn)->sysErrno
 
 #define GetSockErrno(__aConn) ((CommonConnState_t*)__aConn)->sockErrno
 
@@ -125,7 +124,6 @@ int AssignSocketLocalPort(SockAddr_t* localAddres
 void AddressToString(SockAddr_t* addr, char* str);
 
 void DumpCStats(void* aStats);
-#define TD_NO_ERROR                                         0
 
 #define TD_SOCKET_CREATE_FAILED                             1
 #define TD_SOCKET_BIND_FAILED                               2
@@ -136,7 +134,12 @@ void DumpCStats(void* aStats);
 #define TD_SOCKET_WRITE_ERROR                               7
 #define TD_SOCKET_READ_ERROR                                8
 #define TD_ASSIGN_PORT_FAILED                               9
-
+#define TD_REG_SOCKET_READWRITE_EVENT_FAILED                10
+#define TD_REG_SOCKET_READ_EVENT_FAILED                     11
+#define TD_REG_SOCKET_WRITE_EVENT_FAILED                    12
+#define TD_UNREG_SOCKET_READWRITE_EVENT_FAILED              13
+#define TD_UNREG_SOCKET_READ_EVENT_FAILED                   14
+#define TD_UNREG_SOCKET_WRITE_EVENT_FAILED                  15
 
 #define STATE_TCP_PORT_ASSIGNED                             0x0000000000000001
 #define STATE_TCP_SOCK_CREATE                               0x0000000000000002
@@ -170,8 +173,6 @@ void DumpCStats(void* aStats);
 #define GetIOEventData(__event) __event.data.ptr
 #define IsWriteEventSet(__event) __event.events && EPOLLOUT 
 #define IsReadEventSet(__event) __event.events && EPOLLIN 
-
-#define ResetErrno() errno = 0
 
 #define CreateTimerWheel() g_timer_new()
 #define DeleteTimerWheel(__timer) g_timer_destroy(__timer)

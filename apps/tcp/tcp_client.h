@@ -31,6 +31,7 @@ typedef struct TcpClientInterface {
     uint64_t maxSessions;
     uint32_t connectionPerSec;
     uint32_t csDataLen;
+    uint32_t scDataLen;
 
     TcpClientStats_t appStats;
     TcpClientConnStats_t appConnStats;
@@ -88,6 +89,7 @@ typedef struct TcpClient {
     TimerWheel_t* timerWheel;
     
     char* sendBuffer; 
+    char* readBuffer; 
 } TcpClient_t;
 
 #endif
