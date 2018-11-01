@@ -85,6 +85,10 @@ static inline void CSInit(void* cState) {
 
 #define GetCS2(__aConn) ((CommonConnState_t*)__aConn)->state2
 
+#define IsSetCS1(__aConn,__state) (((CommonConnState_t*)__aConn)->state1&__state)
+
+#define IsSetCS2(__aConn,__state) (((CommonConnState_t*)__aConn)->state2&__state)
+
 #define InitConLastErr(__aConn, __err) ((CommonConnState_t*)__aConn)->lastErr = __err
 
 #define IncConnStats(__aStats, __stat) ((CommonConnStats_t*)__aStats)->__stat++
@@ -156,6 +160,22 @@ void DumpCStats(void* aStats);
 #define STATE_TCP_REGISTER_READ                             0x0000000000001000
 #define STATE_TCP_UNREGISTER_WRITE                          0x0000000000002000
 #define STATE_TCP_UNREGISTER_READ                           0x0000000000004000
+
+#define STATE_TCP_SOCK_CREATE_FAIL                          0x0000000000000001
+#define STATE_TCP_SOCK_BIND_FAIL                            0x0000000000000002
+#define STATE_TCP_SOCK_CONNECT_FAIL                         0x0000000000000004
+#define STATE_TCP_SOCK_CONNECT_FAIL_IMMEDIATE               0x0000000000000008
+#define STATE_TCP_SOCK_LISTEN_FAIL                          0x0000000000000010
+#define STATE_TCP_SOCK_REUSE_FAIL                           0x0000000000000020
+#define STATE_TCP_SOCK_READ_FAIL                            0x0000000000000040
+#define STATE_TCP_SOCK_WRITE_FAIL                           0x0000000000000080
+#define STATE_TCP_SOCK_PORT_ASSIGN_FAIL                     0x0000000000000100
+#define STATE_TCP_SOCK_READ_REG_FAIL                        0x0000000000000200
+#define STATE_TCP_SOCK_WRITE_REG_FAIL                       0x0000000000000400
+#define STATE_TCP_SOCK_READ_WRITE_REG_FAIL                  0x0000000000000800
+#define STATE_TCP_SOCK_READ_UNREG_FAIL                      0x0000000000001000
+#define STATE_TCP_SOCK_WRITE_UNREG_FAIL                     0x0000000000002000
+#define STATE_TCP_SOCK_READ_WRITE_UNREG_FAIL                0x0000000000004000
 
 #define AllocSession(__type) g_slice_new(__type)
 #define SetSessionToPool(__pool,__session) g_queue_push_tail (__pool,__session)
