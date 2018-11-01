@@ -11,7 +11,7 @@
 
 #include "sessions.h"
 
-int RegisterForReadWriteEvent(int pollId, int fd, void* cState) {
+void RegisterForReadWriteEvent(int pollId, int fd, void* cState) {
     struct epoll_event setEvent;
     setEvent.events = EPOLLIN | EPOLLOUT;
     setEvent.data.ptr = cState;
@@ -22,10 +22,9 @@ int RegisterForReadWriteEvent(int pollId, int fd, void* cState) {
         SetCS1(cState
             , STATE_TCP_REGISTER_READ | STATE_TCP_REGISTER_WRITE);
     }
-    return status;
 }
 
-int RegisterForReadEvent(int pollId, int fd, void* cState) {
+void RegisterForReadEvent(int pollId, int fd, void* cState) {
     struct epoll_event setEvent;
     setEvent.events = EPOLLIN;
     setEvent.data.ptr = cState;
@@ -35,10 +34,9 @@ int RegisterForReadEvent(int pollId, int fd, void* cState) {
     }else{
         SetCS1(cState, STATE_TCP_REGISTER_READ);
     }
-    return status;
 }
 
-int RegisterForWriteEvent(int pollId, int fd, void* cState) {
+void RegisterForWriteEvent(int pollId, int fd, void* cState) {
     struct epoll_event setEvent;
     setEvent.events = EPOLLOUT;
     setEvent.data.ptr = cState;
@@ -48,10 +46,9 @@ int RegisterForWriteEvent(int pollId, int fd, void* cState) {
     }else{
         SetCS1(cState, STATE_TCP_REGISTER_WRITE);
     }
-    return status;
 }
 
-int UnRegisterForReadWriteEvent(int pollId, int fd, void* cState) {
+void UnRegisterForReadWriteEvent(int pollId, int fd, void* cState) {
     struct epoll_event setEvent;
     setEvent.events = EPOLLIN | EPOLLOUT;
     setEvent.data.ptr = NULL;
@@ -62,10 +59,9 @@ int UnRegisterForReadWriteEvent(int pollId, int fd, void* cState) {
         SetCS1(cState
             , STATE_TCP_UNREGISTER_READ | STATE_TCP_UNREGISTER_WRITE);
     }
-    return status;
 }
 
-int UnRegisterForReadEvent(int pollId, int fd, void* cState) {
+void UnRegisterForReadEvent(int pollId, int fd, void* cState) {
     struct epoll_event setEvent;
     setEvent.events = EPOLLIN;
     setEvent.data.ptr = NULL;
@@ -75,10 +71,9 @@ int UnRegisterForReadEvent(int pollId, int fd, void* cState) {
     }else{
         SetCS1(cState, STATE_TCP_UNREGISTER_READ);
     }
-    return status;
 }
 
-int UnRegisterForWriteEvent(int pollId, int fd, void* cState) {
+void UnRegisterForWriteEvent(int pollId, int fd, void* cState) {
     struct epoll_event setEvent;
     setEvent.events = EPOLLOUT;
     setEvent.data.ptr = NULL;
@@ -88,21 +83,18 @@ int UnRegisterForWriteEvent(int pollId, int fd, void* cState) {
     }else{
         SetCS1(cState, STATE_TCP_UNREGISTER_WRITE);
     }
-    return status;
 }
 
-int AssignSocketLocalPort(SockAddr_t* localAddres
+void AssignSocketLocalPort(SockAddr_t* localAddres
                             , LocalPortPool_t* portPool
                             , void* cState) {
    int nextSrcPort = GetPortFromPool(portPool);
    if (nextSrcPort) {
        SetSockPort(localAddres, nextSrcPort);
        SetCS1(cState, STATE_TCP_PORT_ASSIGNED);
-       return 0;
+   }else{
+    SetConnLastErr(cState, TD_ASSIGN_PORT_FAILED);
    }
-
-   SetConnLastErr(cState, TD_ASSIGN_PORT_FAILED);
-   return -1; 
 }
 
 void DumpCStats(void* aStats) {

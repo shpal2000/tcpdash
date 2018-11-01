@@ -144,70 +144,82 @@ static void OnConnectionInitError(TcpClientConnection_t* newConn){
     ReleasePort (newConn);
 }
 
-static void OnConnectionEstablished(TcpClientConnection_t* newConn) {
-    
-    IncConnStats2(&AppI->appConnStats
-            , newConn->tcSess->groupConnStats 
-            , tcpConnInitSuccess);
-
-    SetAppState (newConn, APP_STATE_CONNECTION_ESTABLISHED);
-
-    SetCS1 (newConn, STATE_TCP_CONN_ESTABLISHED);
-}
-
-static void OnConnectionEstablishError(TcpClientConnection_t* newConn) {
-
-    IncConnStats2(&AppI->appConnStats
-        , newConn->tcSess->groupConnStats 
-        , tcpConnInitFail);
-
-    int unRegisterStatus = UnRegisterForWriteEvent(AppO->eventQ
-                                                , newConn->socketFd
-                                                , newConn);
-    if (unRegisterStatus){
-        IncConnStats2(&AppI->appConnStats
-            , newConn->tcSess->groupConnStats 
-            , tcpConnUnRegisterForWriteEventFail);        
-    }
-
+static void CloseConnection(TcpClientConnection_t* newConn
+                                        , int releasePort) {
     close(newConn->socketFd);
-    SetCS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
+    SetCS1(newConn, STATE_TCP_SOCK_FD_CLOSE); 
 
     StoreErrSession (newConn->tcSess);
     SetFreeSession (newConn->tcSess);
-    if (unRegisterStatus == 0){
+    if (releasePort){
         ReleasePort (newConn);
     }
 }
 
-static void OnRegisterForWriteEventError(TcpClientConnection_t* newConn){
+static void OnTcpConnectionCompletion (TcpClientConnection_t* newConn) {
+    VerifyTcpConnectionEstablished (newConn->socketFd, newConn);    
+    if ( GetConnLastErr (newConn) ) {
+        IncConnStats2(&AppI->appConnStats
+            , newConn->tcSess->groupConnStats 
+            , tcpConnInitFail);
 
-    IncConnStats2(&AppI->appConnStats
+        UnRegisterForWriteEvent(AppO->eventQ
+                                , newConn->socketFd
+                                , newConn);
+        int releasePort = 1;
+        if ( GetConnLastErr (newConn) ){
+            releasePort = 0;
+            IncConnStats2(&AppI->appConnStats
                 , newConn->tcSess->groupConnStats 
-                , tcpConnRegisterForWriteEventFail);    
+                , tcpConnUnRegisterForWriteEventFail);    
+        }
+        CloseConnection(newConn, releasePort);
+    } else {
+        IncConnStats2(&AppI->appConnStats
+                , newConn->tcSess->groupConnStats 
+                , tcpConnInitSuccess);
 
-    close(newConn->socketFd);
-    SetCS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
-    
-    StoreErrSession (newConn->tcSess);
-    SetFreeSession (newConn->tcSess);
-    ReleasePort (newConn);
+        SetAppState (newConn, APP_STATE_CONNECTION_ESTABLISHED);
+
+        RegisterForReadEvent(AppO->eventQ
+                            , newConn->socketFd
+                            , newConn);
+        if ( GetConnLastErr (newConn) ) {
+            IncConnStats2(&AppI->appConnStats
+                        , newConn->tcSess->groupConnStats 
+                        , tcpConnRegisterForReadEventFail);    
+            CloseConnection(newConn, 0); 
+        }
+    }
 }
 
-static void OnRegisterForReadEventError(TcpClientConnection_t* newConn){
+static void OnWriteNextData (TcpClientConnection_t* newConn) {
+                                    && newConn->bytesSent < 
+                                    AppI->csDataLen ) 
 
-    IncConnStats2(&AppI->appConnStats
-                , newConn->tcSess->groupConnStats 
-                , tcpConnRegisterForReadEventFail);    
+                        int bytesToSend 
+                            = AppI->csDataLen - newConn->bytesSent;
 
-    close(newConn->socketFd);
-    SetCS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
-    
-    StoreErrSession (newConn->tcSess);
-    SetFreeSession (newConn->tcSess);
-    ReleasePort (newConn);
+                        const char* sendBuffer
+                            = &AppO->sendBuffer[newConn->bytesSent];
+
+                        int bytesSent 
+                            = TcpWrite (newConn->socketFd
+                                        , sendBuffer
+                                        , bytesToSend
+                                        , &AppI->appConnStats
+                                        , newSess->groupConnStats
+                                        , newConn);
+
+                        if (GetConnLastErr (newConn)) {
+                            OnWriteError(newConn);
+                        }else {
+                            newConn->bytesSent += bytesSent;
+                            if (newConn->bytesSent == AppI->csDataLen) {
+                                OnAppDataWriteComplete(newConn);
+                            }
+                        }
 }
-
 static void OnWriteError(TcpClientConnection_t* newConn) {
 
     IncConnStats2(&AppI->appConnStats
@@ -452,52 +464,30 @@ void TcpClientRun(TcpClientInterface_t* appIface){
 
                 TcpClientSession_t* newSess = newConn->tcSess;
                 
+                //handle write event
                 if (IsWriteEventSet(AppO->EventArr[eIndex])) {
+                    
                     if ( GetAppState(newConn) 
                             == APP_STATE_CONNECTION_IN_PROGRESS ) {
 
-                        if ( IsNewTcpConnectionComplete(newConn->socketFd
-                                                        , newConn) ){
-                            OnConnectionEstablished(newConn);
-                            if ( RegisterForReadEvent(AppO->eventQ
-                                                    , newConn->socketFd
-                                                    , newConn)){
-                                OnRegisterForReadEventError(newConn);
-                            }
-                        }else{
-                            OnConnectionEstablishError(newConn);
-                        }
-                    } else if ( GetAppState(newConn) == 
-                                     APP_STATE_CONNECTION_ESTABLISHED 
-                                && newConn->bytesSent < 
-                                    AppI->csDataLen ) {
+                        OnTcpConnectionCompletion(newConn);
 
-                        int bytesToSend 
-                            = AppI->csDataLen - newConn->bytesSent;
+                    } else if ( GetAppState(newConn) 
+                            == APP_STATE_CONNECTION_ESTABLISHED ) {
 
-                        const char* sendBuffer
-                            = &AppO->sendBuffer[newConn->bytesSent];
+                        OnWriteNextData (newConn);   
+                    }
 
-                        int bytesSent 
-                            = TcpWrite (newConn->socketFd
-                                        , sendBuffer
-                                        , bytesToSend
-                                        , &AppI->appConnStats
-                                        , newSess->groupConnStats
-                                        , newConn);
-
-                        if (GetConnLastErr (newConn)) {
-                            OnWriteError(newConn);
-                        }else {
-                            newConn->bytesSent += bytesSent;
-                            if (newConn->bytesSent == AppI->csDataLen) {
-                                OnAppDataWriteComplete(newConn);
-                            }
-                        }
+                    if (GetConnLastErr (newConn)) {
+                        continue;
                     }
                 }
-                
+
+                //handle read event
                 if (IsReadEventSet(AppO->EventArr[eIndex])) {
+                    if (GetConnLastErr (newConn)) {
+                        continue;
+                    }
                 }
             }
         }else{

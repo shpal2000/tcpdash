@@ -114,7 +114,7 @@ int TcpNewConnection(SockAddr_t* lAddr
     return socket_fd;
 }
 
-int IsNewTcpConnectionComplete(int fd, void* cState){
+void VerifyTcpConnectionEstablished(int fd, void* cState){
     int socketErr;
     socklen_t socketErrBufLen = sizeof(int);
 
@@ -125,11 +125,11 @@ int IsNewTcpConnectionComplete(int fd, void* cState){
                                     , &socketErrBufLen);
     
     if ((retGetsockopt|socketErr) == 0){
-        return 1;
+        SetCS1 (newConn, STATE_TCP_CONN_ESTABLISHED);
+    }else {
+        SetConnLastErr(cState, TD_SOCKET_CONNECT_FAILED);
+        SaveSockErrno(cState, socketErr);
     }
-    SetConnLastErr(cState, TD_SOCKET_CONNECT_FAILED);
-    SaveSockErrno(cState, socketErr);
-    return 0;
 }
 
 int TcpListenStart(SockAddr_t* lAddr
