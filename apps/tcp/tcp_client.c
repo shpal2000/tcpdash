@@ -114,9 +114,9 @@ static void ReleasePort(TcpClientConnection_t* newConn){
     }
 }
 
-static void RegisterForReadEventHelper(TcpClientConnection_t* newConn) {
+static void UpdateForReadEventHelper(TcpClientConnection_t* newConn) {
 
-    RegisterForReadEvent(AppO->eventQ
+    UpdateForReadEvent(AppO->eventQ
                             , newConn->socketFd
                             , newConn);
 
@@ -216,12 +216,13 @@ static void CloseConnection(TcpClientConnection_t* newConn) {
 static void OnTcpConnectionCompletion (TcpClientConnection_t* newConn) {
 
     VerifyTcpConnectionEstablished (newConn->socketFd, newConn);
-
+    
     if ( GetCES(newConn) ) {
-
         IncConnStats2(&AppI->appConnStats
             , newConn->tcSess->groupConnStats 
             , tcpConnInitFail);
+        
+        CloseConnection(newConn);
 
     } else {
 
@@ -231,11 +232,10 @@ static void OnTcpConnectionCompletion (TcpClientConnection_t* newConn) {
 
         SetAppState (newConn, APP_STATE_CONNECTION_ESTABLISHED);
 
-        RegisterForReadEventHelper(newConn);
-    }
-
-    if ( GetCES(newConn) ) {
-        CloseConnection(newConn);
+        UpdateForReadEventHelper(newConn);
+        if ( GetCES(newConn) ) {
+            CloseConnection(newConn);
+        }
     }
 }
 
@@ -264,19 +264,16 @@ static void OnWriteNextData (TcpClientConnection_t* newConn) {
             IncConnStats2(&AppI->appConnStats
                 , newConn->tcSess->groupConnStats 
                 , tcpWriteFail);
-
+            
+            CloseConnection(newConn);
         } else {
 
             newConn->bytesSent += bytesSent;
 
             if (newConn->bytesSent == AppI->csDataLen) {
-                UnRegisterForWriteEventHelper(newConn);
+                CloseConnection(newConn);
             }
         }
-    }
-
-    if ( GetCES(newConn) ) {
-        CloseConnection(newConn);
     }
 }
 
@@ -321,12 +318,14 @@ void DumpTcpClientStats(TcpClientConnStats_t* appConnStats) {
                         "%" PRIu64 "\n"
                         "%" PRIu64 "\n"
                         "%" PRIu64 "\n"
+                        "%" PRIu64 "\n"
                         "\n"
         , GetConnStats(appConnStats, tcpConnInit)
         , GetConnStats(appConnStats, tcpConnInitSuccess)
         , GetConnStats(appConnStats, tcpConnInitFail)
         , GetConnStats(appConnStats, tcpConnInitFailEaddrNotAvail)
         , GetConnStats(appConnStats, tcpConnRegisterForWriteEventFail)
+        , GetConnStats(appConnStats, tcpConnRegisterForReadEventFail)
         );
 
     puts (statsString);
@@ -519,7 +518,9 @@ void TcpClientRun(TcpClientInterface_t* appIface){
                 }
             }
         }else{
-            AppO->eventPTO++;
+            if (AppO->eventPTO < MAX_POLL_TIMEOUT) {
+                AppO->eventPTO++;
+            }
         }
     }
 

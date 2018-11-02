@@ -119,6 +119,7 @@ static inline void SetCES(void* aSession, uint64_t errState) {
 
 void RegisterForReadWriteEvent(int pollId, int fd, void* cState);
 void RegisterForReadEvent(int pollId, int fd, void* cState);
+void UpdateForReadEvent(int pollId, int fd, void* cState);
 void RegisterForWriteEvent(int pollId, int fd, void* cState);
 void UnRegisterForReadWriteEvent(int pollId, int fd, void* cState);
 void UnRegisterForReadEvent(int pollId, int fd, void* cState);

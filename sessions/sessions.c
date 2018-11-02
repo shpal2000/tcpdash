@@ -36,6 +36,18 @@ void RegisterForReadEvent(int pollId, int fd, void* cState) {
     }
 }
 
+void UpdateForReadEvent(int pollId, int fd, void* cState) {
+    struct epoll_event setEvent;
+    setEvent.events = EPOLLIN | EPOLLOUT;
+    setEvent.data.ptr = cState;
+    int status = epoll_ctl(pollId, EPOLL_CTL_MOD, fd, &setEvent);
+    if (status) {
+        SetCES(cState, STATE_TCP_SOCK_READ_REG_FAIL);
+    }else{
+        SetCS1(cState, STATE_TCP_REGISTER_READ);
+    }
+}
+
 void RegisterForWriteEvent(int pollId, int fd, void* cState) {
     struct epoll_event setEvent;
     setEvent.events = EPOLLOUT;

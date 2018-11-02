@@ -55,6 +55,8 @@ void DumpTcpClientStats(TcpClientConnStats_t* appConnStats);
 #define APP_STATE_CONNECTION_ESTABLISHED             2
 #define APP_STATE_CONNECTION_CLOSED                  3
 
+#define MAX_POLL_TIMEOUT 100
+
 typedef struct TcpClientConnection{
     CommonConnState_t ccState; 
     int socketFd;
