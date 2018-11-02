@@ -497,8 +497,6 @@ void TcpClientRun(TcpClientInterface_t* appIface){
                     = (TcpClientConnection_t*) 
                         GetIOEventData(AppO->EventArr[eIndex]);
 
-                TcpClientSession_t* newSess = newConn->tcSess;
-                
                 //handle write event
                 if (IsWriteEventSet(AppO->EventArr[eIndex]) 
                                     && !IsFdClosed(newConn) ) {
