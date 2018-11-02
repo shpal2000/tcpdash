@@ -17,7 +17,7 @@ void RegisterForReadWriteEvent(int pollId, int fd, void* cState) {
     setEvent.data.ptr = cState;
     int status = epoll_ctl(pollId, EPOLL_CTL_ADD, fd, &setEvent);
     if (status) {
-       SetConnLastErr(cState, TD_REG_SOCKET_READWRITE_EVENT_FAILED); 
+       SetCES(cState, STATE_TCP_SOCK_READ_WRITE_REG_FAIL); 
     }else{
         SetCS1(cState
             , STATE_TCP_REGISTER_READ | STATE_TCP_REGISTER_WRITE);
@@ -30,7 +30,7 @@ void RegisterForReadEvent(int pollId, int fd, void* cState) {
     setEvent.data.ptr = cState;
     int status = epoll_ctl(pollId, EPOLL_CTL_ADD, fd, &setEvent);
     if (status) {
-        SetConnLastErr(cState, TD_REG_SOCKET_READ_EVENT_FAILED);
+        SetCES(cState, STATE_TCP_SOCK_READ_REG_FAIL);
     }else{
         SetCS1(cState, STATE_TCP_REGISTER_READ);
     }
@@ -42,7 +42,7 @@ void RegisterForWriteEvent(int pollId, int fd, void* cState) {
     setEvent.data.ptr = cState;
     int status = epoll_ctl(pollId, EPOLL_CTL_ADD, fd, &setEvent);
     if (status) {
-        SetConnLastErr(cState, TD_REG_SOCKET_WRITE_EVENT_FAILED);
+        SetCES(cState, STATE_TCP_SOCK_WRITE_REG_FAIL);
     }else{
         SetCS1(cState, STATE_TCP_REGISTER_WRITE);
     }
@@ -54,7 +54,7 @@ void UnRegisterForReadWriteEvent(int pollId, int fd, void* cState) {
     setEvent.data.ptr = NULL;
     int status = epoll_ctl(pollId, EPOLL_CTL_DEL, fd, &setEvent);
     if (status) {
-        SetConnLastErr(cState, TD_UNREG_SOCKET_READWRITE_EVENT_FAILED); 
+        SetCES(cState, STATE_TCP_SOCK_READ_WRITE_UNREG_FAIL); 
     }else{
         SetCS1(cState
             , STATE_TCP_UNREGISTER_READ | STATE_TCP_UNREGISTER_WRITE);
@@ -67,7 +67,7 @@ void UnRegisterForReadEvent(int pollId, int fd, void* cState) {
     setEvent.data.ptr = NULL;
     int status = epoll_ctl(pollId, EPOLL_CTL_DEL, fd, &setEvent);
     if (status) {
-        SetConnLastErr(cState, TD_UNREG_SOCKET_READ_EVENT_FAILED); 
+        SetCES(cState, STATE_TCP_SOCK_READ_UNREG_FAIL); 
     }else{
         SetCS1(cState, STATE_TCP_UNREGISTER_READ);
     }
@@ -79,7 +79,7 @@ void UnRegisterForWriteEvent(int pollId, int fd, void* cState) {
     setEvent.data.ptr = NULL;
     int status = epoll_ctl(pollId, EPOLL_CTL_DEL, fd, &setEvent);
     if (status) {
-        SetConnLastErr(cState, TD_UNREG_SOCKET_WRITE_EVENT_FAILED);
+        SetCES(cState, STATE_TCP_SOCK_WRITE_UNREG_FAIL);
     }else{
         SetCS1(cState, STATE_TCP_UNREGISTER_WRITE);
     }
@@ -92,9 +92,9 @@ void AssignSocketLocalPort(SockAddr_t* localAddres
    if (nextSrcPort) {
        SetSockPort(localAddres, nextSrcPort);
        SetCS1(cState, STATE_TCP_PORT_ASSIGNED);
-   }else{
-    SetConnLastErr(cState, TD_ASSIGN_PORT_FAILED);
-   }
+    }else{
+        SetCES(cState, STATE_TCP_SOCK_PORT_ASSIGN_FAIL);
+    }
 }
 
 void DumpCStats(void* aStats) {

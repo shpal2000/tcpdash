@@ -36,13 +36,15 @@ typedef struct CommonConnStats{
     uint64_t tcpListenStart;
     uint64_t tcpListenStop;
     uint64_t tcpListenStartFail;
-    uint64_t appDataWriteComplete;
 
     uint64_t tcpConnRegisterForWriteEventFail;
     uint64_t tcpConnRegisterForReadEventFail;
+    uint64_t tcpConnRegisterForReadWriteEventFail;
     uint64_t tcpConnRegisterForListenerReadEventFail;
+
     uint64_t tcpConnUnRegisterForWriteEventFail;
     uint64_t tcpConnUnRegisterForReadEventFail;
+    uint64_t tcpConnUnRegisterForReadWriteEventFail;
     uint64_t tcpLocalPortAssignFail;
 
 } CommonConnStats_t;
@@ -50,8 +52,7 @@ typedef struct CommonConnStats{
 typedef struct CommonConnState{
     uint64_t state1;
     uint64_t state2;
-    uint16_t lastErr;
-    uint16_t lastErrCount;
+    uint64_t errState;
     int sysErrno;
     int appState;
     int sockErrno;                                                              
@@ -67,8 +68,7 @@ static inline void CSInit(void* cState) {
 
     ((CommonConnState_t*)cState)->state1 = 0;
     ((CommonConnState_t*)cState)->state2 = 0;
-    ((CommonConnState_t*)cState)->lastErr = 0;
-    ((CommonConnState_t*)cState)->lastErrCount = 0;
+    ((CommonConnState_t*)cState)->errState = 0;
     ((CommonConnState_t*)cState)->sysErrno = 0;
     ((CommonConnState_t*)cState)->appState = 0;
 }
@@ -85,9 +85,15 @@ static inline void CSInit(void* cState) {
 
 #define GetCS2(__aConn) ((CommonConnState_t*)__aConn)->state2
 
+#define GetCES(__aConn) ((CommonConnState_t*)__aConn)->errState
+
 #define IsSetCS1(__aConn,__state) (((CommonConnState_t*)__aConn)->state1&__state)
 
 #define IsSetCS2(__aConn,__state) (((CommonConnState_t*)__aConn)->state2&__state)
+
+#define IsSetCES(__aConn,__state) (((CommonConnState_t*)__aConn)->errState&__state)
+
+#define IsFdClosed(__aConn) ((((CommonConnState_t*)__aConn)->state1&STATE_TCP_SOCK_FD_CLOSE) || (((CommonConnState_t*)__aConn)->errState&STATE_TCP_SOCK_FD_CLOSE_FAIL))
 
 #define InitConLastErr(__aConn, __err) ((CommonConnState_t*)__aConn)->lastErr = __err
 
@@ -97,15 +103,10 @@ static inline void CSInit(void* cState) {
 
 #define GetConnStats(__aStats, __stat) ((CommonConnStats_t*)__aStats)->__stat
 
-static inline void SetConnLastErr(void* aSession, uint16_t err) {
-    ((CommonConnState_t*)aSession)->lastErr = err;
-    ((CommonConnState_t*)aSession)->lastErrCount += 1;
+static inline void SetCES(void* aSession, uint64_t errState) {
     ((CommonConnState_t*)aSession)->sysErrno = errno;
+    ((CommonConnState_t*)aSession)->errState |= errState;
 }
-
-#define GetConnLastErr(__aConn) ((CommonConnState_t*)__aConn)->lastErr
-
-#define GetConnLastErrCount(__aConn) ((CommonConnState_t*)__aConn)->lastErrCount
 
 #define CopyCS(__dstCS, __srcCS) *((CommonConnState_t*)(__dstCS)) = *((CommonConnState_t*)(__srcCS))
 
@@ -116,34 +117,18 @@ static inline void SetConnLastErr(void* aSession, uint16_t err) {
 #define GetSockErrno(__aConn) ((CommonConnState_t*)__aConn)->sockErrno
 
 
-int RegisterForReadWriteEvent(int pollId, int fd, void* cState);
-int RegisterForReadEvent(int pollId, int fd, void* cState);
-int RegisterForWriteEvent(int pollId, int fd, void* cState);
-int UnRegisterForReadWriteEvent(int pollId, int fd, void* cState);
-int UnRegisterForReadEvent(int pollId, int fd, void* cState);
-int UnRegisterForWriteEvent(int pollId, int fd, void* cState);
-int AssignSocketLocalPort(SockAddr_t* localAddres
+void RegisterForReadWriteEvent(int pollId, int fd, void* cState);
+void RegisterForReadEvent(int pollId, int fd, void* cState);
+void RegisterForWriteEvent(int pollId, int fd, void* cState);
+void UnRegisterForReadWriteEvent(int pollId, int fd, void* cState);
+void UnRegisterForReadEvent(int pollId, int fd, void* cState);
+void UnRegisterForWriteEvent(int pollId, int fd, void* cState);
+void AssignSocketLocalPort(SockAddr_t* localAddres
                             , LocalPortPool_t* portPool
                             , void* cState);
 void AddressToString(SockAddr_t* addr, char* str);
 
 void DumpCStats(void* aStats);
-
-#define TD_SOCKET_CREATE_FAILED                             1
-#define TD_SOCKET_BIND_FAILED                               2
-#define TD_SOCKET_CONNECT_FAILED                            3
-#define TD_SOCKET_CONNECT_FAILED_IMMEDIATE                  4
-#define TD_SOCKET_LISTEN_FAILED                             5
-#define TD_SOCKET_REUSE_FAILED                              6
-#define TD_SOCKET_WRITE_ERROR                               7
-#define TD_SOCKET_READ_ERROR                                8
-#define TD_ASSIGN_PORT_FAILED                               9
-#define TD_REG_SOCKET_READWRITE_EVENT_FAILED                10
-#define TD_REG_SOCKET_READ_EVENT_FAILED                     11
-#define TD_REG_SOCKET_WRITE_EVENT_FAILED                    12
-#define TD_UNREG_SOCKET_READWRITE_EVENT_FAILED              13
-#define TD_UNREG_SOCKET_READ_EVENT_FAILED                   14
-#define TD_UNREG_SOCKET_WRITE_EVENT_FAILED                  15
 
 #define STATE_TCP_PORT_ASSIGNED                             0x0000000000000001
 #define STATE_TCP_SOCK_CREATE                               0x0000000000000002
@@ -176,6 +161,7 @@ void DumpCStats(void* aStats);
 #define STATE_TCP_SOCK_READ_UNREG_FAIL                      0x0000000000001000
 #define STATE_TCP_SOCK_WRITE_UNREG_FAIL                     0x0000000000002000
 #define STATE_TCP_SOCK_READ_WRITE_UNREG_FAIL                0x0000000000004000
+#define STATE_TCP_SOCK_FD_CLOSE_FAIL                        0x0000000000008000
 
 #define AllocSession(__type) g_slice_new(__type)
 #define SetSessionToPool(__pool,__session) g_queue_push_tail (__pool,__session)

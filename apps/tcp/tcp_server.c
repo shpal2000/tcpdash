@@ -156,12 +156,13 @@ void TcpServerRun(TcpServerInterface_t* appIface){
                                 , &AppI->appConnStats
                                 , srvSess->groupConnStats
                                 , newConn);
-        if ( GetConnLastErr (newConn) ) {
+        if ( GetCES(newConn) ) {
             OnListenStartError(newConn);
-        } else { 
-            if ( RegisterForReadEvent(AppO->eventQ
-                                    , newConn->socketFd
-                                    , newConn) ) {
+        } else {
+            RegisterForReadEvent(AppO->eventQ
+                                , newConn->socketFd
+                                , newConn);
+            if ( GetCES(newConn) ) {
                 OnRegisterForListenerReadEventError(newConn);
             }
         }
@@ -228,7 +229,7 @@ void TcpServerRun(TcpServerInterface_t* appIface){
                                     , newConn->tcSess->groupConnStats
                                     , newConn);
                     
-                    if (GetConnLastErr (newConn)) {
+                    if ( GetCES(newConn) ) {
                         close(newConn->socketFd);
                         SetCS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
                         // error handling ???
