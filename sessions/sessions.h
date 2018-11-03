@@ -37,16 +37,8 @@ typedef struct CommonConnStats{
     uint64_t tcpListenStop;
     uint64_t tcpListenStartFail;
 
-    uint64_t tcpConnRegisterForWriteEventFail;
-    uint64_t tcpConnRegisterForReadEventFail;
-    uint64_t tcpConnRegisterForReadWriteEventFail;
-    uint64_t tcpConnRegisterForListenerReadEventFail;
-
-    uint64_t tcpConnUnRegisterForWriteEventFail;
-    uint64_t tcpConnUnRegisterForReadEventFail;
-    uint64_t tcpConnUnRegisterForReadWriteEventFail;
     uint64_t tcpLocalPortAssignFail;
-
+    uint64_t tcpPollRegUnregFail;
 } CommonConnStats_t;
 
 typedef struct CommonConnState{
@@ -79,6 +71,8 @@ static inline void CSInit(void* cState) {
 
 #define SetCS1(__aConn, __state) ((CommonConnState_t*)__aConn)->state1 |= __state
 
+#define ClearCS1(__aConn, __state) ((CommonConnState_t*)__aConn)->state1 &= ~__state
+
 #define SetCS2(__aConn, __state) ((CommonConnState_t*)__aConn)->state2 |= __state
 
 #define GetCS1(__aConn) ((CommonConnState_t*)__aConn)->state1
@@ -87,11 +81,11 @@ static inline void CSInit(void* cState) {
 
 #define GetCES(__aConn) ((CommonConnState_t*)__aConn)->errState
 
-#define IsSetCS1(__aConn,__state) (((CommonConnState_t*)__aConn)->state1&__state)
+#define IsSetCS1(__aConn,__state) (((CommonConnState_t*)__aConn)->state1&(__state))
 
-#define IsSetCS2(__aConn,__state) (((CommonConnState_t*)__aConn)->state2&__state)
+#define IsSetCS2(__aConn,__state) (((CommonConnState_t*)__aConn)->state2&(__state))
 
-#define IsSetCES(__aConn,__state) (((CommonConnState_t*)__aConn)->errState&__state)
+#define IsSetCES(__aConn,__state) (((CommonConnState_t*)__aConn)->errState&(__state))
 
 #define IsFdClosed(__aConn) ((((CommonConnState_t*)__aConn)->state1&STATE_TCP_SOCK_FD_CLOSE) || (((CommonConnState_t*)__aConn)->errState&STATE_TCP_SOCK_FD_CLOSE_FAIL))
 
@@ -117,16 +111,16 @@ static inline void SetCES(void* aSession, uint64_t errState) {
 #define GetSockErrno(__aConn) ((CommonConnState_t*)__aConn)->sockErrno
 
 
-void RegisterForReadWriteEvent(int pollId, int fd, void* cState);
-void RegisterForReadEvent(int pollId, int fd, void* cState);
-void UpdateForReadEvent(int pollId, int fd, void* cState);
-void RegisterForWriteEvent(int pollId, int fd, void* cState);
-void UnRegisterForReadWriteEvent(int pollId, int fd, void* cState);
-void UnRegisterForReadEvent(int pollId, int fd, void* cState);
-void UnRegisterForWriteEvent(int pollId, int fd, void* cState);
+void SetPollEvent(int pollId
+                , int fd
+                , int pollRead
+                , int pollWrite
+                , void* cState);
+
 void AssignSocketLocalPort(SockAddr_t* localAddres
                             , LocalPortPool_t* portPool
                             , void* cState);
+
 void AddressToString(SockAddr_t* addr, char* str);
 
 void DumpCStats(void* aStats);
@@ -142,10 +136,10 @@ void DumpCStats(void* aStats);
 #define STATE_TCP_SOCK_FD_CLOSE                             0x0000000000000100
 #define STATE_TCP_LISTENING                                 0x0000000000000200
 #define STATE_TCP_LISTEN_STOP                               0x0000000000000400
-#define STATE_TCP_REGISTER_WRITE                            0x0000000000000800
-#define STATE_TCP_REGISTER_READ                             0x0000000000001000
-#define STATE_TCP_UNREGISTER_WRITE                          0x0000000000002000
-#define STATE_TCP_UNREGISTER_READ                           0x0000000000004000
+#define STATE_TCP_POLL_READ_CURRENT                         0x0000000000000800
+#define STATE_TCP_POLL_WRITE_CURRENT                        0x0000000000001000
+#define STATE_TCP_POLL_READ_STICKY                          0x0000000000002000
+#define STATE_TCP_POLL_WRITE_STICKY                         0x0000000000004000
 
 #define STATE_TCP_SOCK_CREATE_FAIL                          0x0000000000000001
 #define STATE_TCP_SOCK_BIND_FAIL                            0x0000000000000002
@@ -156,13 +150,8 @@ void DumpCStats(void* aStats);
 #define STATE_TCP_SOCK_READ_FAIL                            0x0000000000000040
 #define STATE_TCP_SOCK_WRITE_FAIL                           0x0000000000000080
 #define STATE_TCP_SOCK_PORT_ASSIGN_FAIL                     0x0000000000000100
-#define STATE_TCP_SOCK_READ_REG_FAIL                        0x0000000000000200
-#define STATE_TCP_SOCK_WRITE_REG_FAIL                       0x0000000000000400
-#define STATE_TCP_SOCK_READ_WRITE_REG_FAIL                  0x0000000000000800
-#define STATE_TCP_SOCK_READ_UNREG_FAIL                      0x0000000000001000
-#define STATE_TCP_SOCK_WRITE_UNREG_FAIL                     0x0000000000002000
-#define STATE_TCP_SOCK_READ_WRITE_UNREG_FAIL                0x0000000000004000
-#define STATE_TCP_SOCK_FD_CLOSE_FAIL                        0x0000000000008000
+#define STATE_TCP_SOCK_FD_CLOSE_FAIL                        0x0000000000000200
+#define STATE_TCP_SOCK_POLL_UPDATE_FAIL                     0x0000000000000400
 
 #define AllocSession(__type) g_slice_new(__type)
 #define SetSessionToPool(__pool,__session) g_queue_push_tail (__pool,__session)

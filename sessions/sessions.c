@@ -11,89 +11,72 @@
 
 #include "sessions.h"
 
-void RegisterForReadWriteEvent(int pollId, int fd, void* cState) {
-    struct epoll_event setEvent;
-    setEvent.events = EPOLLIN | EPOLLOUT;
-    setEvent.data.ptr = cState;
-    int status = epoll_ctl(pollId, EPOLL_CTL_ADD, fd, &setEvent);
-    if (status) {
-       SetCES(cState, STATE_TCP_SOCK_READ_WRITE_REG_FAIL); 
-    }else{
-        SetCS1(cState
-            , STATE_TCP_REGISTER_READ | STATE_TCP_REGISTER_WRITE);
-    }
-}
+void SetPollEvent(int pollId
+                , int fd
+                , int pollRead
+                , int pollWrite
+                , void* cState)
+{
+    enum Actions {PollAdd, PollMod, PollDel, PollNop} pollAction;
 
-void RegisterForReadEvent(int pollId, int fd, void* cState) {
-    struct epoll_event setEvent;
-    setEvent.events = EPOLLIN;
-    setEvent.data.ptr = cState;
-    int status = epoll_ctl(pollId, EPOLL_CTL_ADD, fd, &setEvent);
-    if (status) {
-        SetCES(cState, STATE_TCP_SOCK_READ_REG_FAIL);
-    }else{
-        SetCS1(cState, STATE_TCP_REGISTER_READ);
-    }
-}
+    pollAction = PollNop;
 
-void UpdateForReadEvent(int pollId, int fd, void* cState) {
-    struct epoll_event setEvent;
-    setEvent.events = EPOLLIN | EPOLLOUT;
-    setEvent.data.ptr = cState;
-    int status = epoll_ctl(pollId, EPOLL_CTL_MOD, fd, &setEvent);
-    if (status) {
-        SetCES(cState, STATE_TCP_SOCK_READ_REG_FAIL);
+   if ( IsSetCS1(cState, STATE_TCP_POLL_READ_CURRENT 
+                            | STATE_TCP_POLL_WRITE_CURRENT) ) {
+        if (pollRead || pollWrite) {
+            pollAction = PollMod;
+        }else {
+            pollAction = PollDel;
+        }
     }else{
-        SetCS1(cState, STATE_TCP_REGISTER_READ);
+        if (pollRead || pollWrite) {
+            pollAction = PollAdd;
+        }
     }
-}
 
-void RegisterForWriteEvent(int pollId, int fd, void* cState) {
-    struct epoll_event setEvent;
-    setEvent.events = EPOLLOUT;
-    setEvent.data.ptr = cState;
-    int status = epoll_ctl(pollId, EPOLL_CTL_ADD, fd, &setEvent);
-    if (status) {
-        SetCES(cState, STATE_TCP_SOCK_WRITE_REG_FAIL);
-    }else{
-        SetCS1(cState, STATE_TCP_REGISTER_WRITE);
-    }
-}
+    if (pollAction != PollNop) {
 
-void UnRegisterForReadWriteEvent(int pollId, int fd, void* cState) {
-    struct epoll_event setEvent;
-    setEvent.events = EPOLLIN | EPOLLOUT;
-    setEvent.data.ptr = NULL;
-    int status = epoll_ctl(pollId, EPOLL_CTL_DEL, fd, &setEvent);
-    if (status) {
-        SetCES(cState, STATE_TCP_SOCK_READ_WRITE_UNREG_FAIL); 
-    }else{
-        SetCS1(cState
-            , STATE_TCP_UNREGISTER_READ | STATE_TCP_UNREGISTER_WRITE);
-    }
-}
+        struct epoll_event setEvent;
 
-void UnRegisterForReadEvent(int pollId, int fd, void* cState) {
-    struct epoll_event setEvent;
-    setEvent.events = EPOLLIN;
-    setEvent.data.ptr = NULL;
-    int status = epoll_ctl(pollId, EPOLL_CTL_DEL, fd, &setEvent);
-    if (status) {
-        SetCES(cState, STATE_TCP_SOCK_READ_UNREG_FAIL); 
-    }else{
-        SetCS1(cState, STATE_TCP_UNREGISTER_READ);
-    }
-}
+        setEvent.data.ptr = cState;
 
-void UnRegisterForWriteEvent(int pollId, int fd, void* cState) {
-    struct epoll_event setEvent;
-    setEvent.events = EPOLLOUT;
-    setEvent.data.ptr = NULL;
-    int status = epoll_ctl(pollId, EPOLL_CTL_DEL, fd, &setEvent);
-    if (status) {
-        SetCES(cState, STATE_TCP_SOCK_WRITE_UNREG_FAIL);
-    }else{
-        SetCS1(cState, STATE_TCP_UNREGISTER_WRITE);
+        if (pollRead && pollWrite) {
+            setEvent.events = EPOLLIN | EPOLLOUT;
+        } else if (pollRead) {
+            setEvent.events = EPOLLIN;
+        } else if (pollWrite) {
+            setEvent.events = EPOLLOUT;
+        }
+
+        int status = -1;
+        switch (pollAction) {
+            case PollAdd:
+                status = epoll_ctl(pollId, EPOLL_CTL_ADD, fd, &setEvent);
+                break;
+            case PollMod:
+                status = epoll_ctl(pollId, EPOLL_CTL_MOD, fd, &setEvent);
+                break;
+            case PollDel:
+                status = epoll_ctl(pollId, EPOLL_CTL_DEL, fd, &setEvent);
+                break;
+        }
+
+        if (status) {
+            SetCES(cState, STATE_TCP_SOCK_POLL_UPDATE_FAIL);
+        }else{
+            if (pollRead) {
+                SetCS1(cState, STATE_TCP_POLL_READ_CURRENT
+                                | STATE_TCP_POLL_READ_STICKY);
+            }else{
+                ClearCS1(cState, STATE_TCP_POLL_READ_CURRENT);
+            }
+            if (pollWrite) {
+                SetCS1(cState, STATE_TCP_POLL_WRITE_CURRENT
+                                | STATE_TCP_POLL_WRITE_STICKY);
+            }else{
+                ClearCS1(cState, STATE_TCP_POLL_WRITE_CURRENT);
+            }
+        }
     }
 }
 
