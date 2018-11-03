@@ -1,8 +1,7 @@
 #ifndef __TCP_SERVER_APP_H
 #define __TCP_SERVER_APP_H
 
-#include "sessions/sessions.h"
-#include "sessions/tcp_connect.h"
+#include "socks/libsock.h"
 #include "logging/logs.h"
 
 typedef struct TsConnStats {

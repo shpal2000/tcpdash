@@ -4,14 +4,14 @@
 #include <glib.h>
 #include <gmodule.h>
 #include <sys/epoll.h>
-#include "utils/resource.h"
 
+//#####################Socket#####################
 typedef union SockAddr {
     struct sockaddr_in inAddr;
     struct sockaddr_in6 in6Addr;
 } SockAddr_t;
 
-typedef struct CommonConnStats{
+typedef struct ConnStats{
 
     uint64_t socketCreate;    
     uint64_t socketCreateFail;
@@ -41,7 +41,7 @@ typedef struct CommonConnStats{
     uint64_t tcpPollRegUnregFail;
 } ConnStats_t;
 
-typedef struct CommonConnState{
+typedef struct ConnState {
     uint64_t state1;
     uint64_t state2;
     uint64_t errState;
@@ -198,5 +198,43 @@ void DumpCStats(void* aStats);
 #define GetSockPort(__laddr)(IsIpv6(__laddr)) ? ((struct sockaddr_in6*)__laddr)->sin6_port : ((struct sockaddr_in*)__laddr)->sin_port
 
 #define GetSockAddr(__laddr) ((struct sockaddr*)&(__laddr))
+
+
+//#################TCP Start###############
+int TcpNewConnection(SockAddr_t* localAddress
+                        , SockAddr_t* remoteAddress
+                        , void* aStats
+                        , void* bStats
+                        , void* cState);
+
+void VerifyTcpConnectionEstablished(int fd, void* cState);
+
+int TcpListenStart(SockAddr_t* localAddress
+                    , int listenQLen
+                    , void* aStats
+                    , void* bStats
+                    , void* cState);
+
+void TcpClose(int fd, void* cState);
+
+int TcpWrite(int fd
+                , const char* dataBuff
+                , int dataLen
+                , void* aStats
+                , void* bStats
+                , void* cState);
+
+int TcpRead(int fd
+                , char* dataBuffer
+                , int dataLen
+                , void* aStats
+                , void* bStats
+                , void* cState);
+
+
+//##################resources######################
+#define CreateArray(__type,__count) g_new(__type, __count)
+#define CreateStruct0(__type) g_slice_new0(__type) 
+
 #endif
 

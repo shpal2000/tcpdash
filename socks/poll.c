@@ -9,7 +9,7 @@
 #include <unistd.h>
 #include <gmodule.h>
 
-#include "sessions.h"
+#include "libsock.h"
 
 void SetPollEvent(int pollId
                 , int fd
