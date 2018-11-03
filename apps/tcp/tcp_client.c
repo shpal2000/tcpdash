@@ -151,7 +151,9 @@ static void OnTcpConnectionCompletion (TcpClientConnection_t* newConn) {
         IncConnStats2(&AppI->appConnStats
             , newConn->tcSess->groupConnStats 
             , tcpConnInitFail);
-        
+
+        SetAppState (newConn, APP_STATE_CONNECTION_ESTABLISH_FAILED);
+
         CloseConnection(newConn);
 
     } else {

@@ -53,7 +53,8 @@ void DumpTcpClientStats(TcpClientConnStats_t* appConnStats);
 #define APP_STATE_INIT                               0
 #define APP_STATE_CONNECTION_IN_PROGRESS             1
 #define APP_STATE_CONNECTION_ESTABLISHED             2
-#define APP_STATE_CONNECTION_CLOSED                  3
+#define APP_STATE_CONNECTION_ESTABLISH_FAILED        3
+#define APP_STATE_CONNECTION_CLOSED                  4
 
 #define MAX_POLL_TIMEOUT 100
 
