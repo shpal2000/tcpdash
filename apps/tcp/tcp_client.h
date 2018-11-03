@@ -5,24 +5,24 @@
 #include "sessions/tcp_connect.h"
 #include "logging/logs.h"
 
-typedef struct TcpClientConnStats {
-    CommonConnStats_t connStats;
-} TcpClientConnStats_t;
+typedef struct TcConnStats {
+    ConnStats_t connStats;
+} TcConnStats_t;
 
-typedef struct TcpClientStats {
+typedef struct TcAppStats {
     uint64_t dbgNoFreeSession;  
-} TcpClientStats_t;
+} TcAppStats_t;
 
-typedef struct TcpClientConnGroup {
+typedef struct TcGroup {
     uint32_t clientAddrCount;
     SockAddr_t* clientAddrArr;
     uint32_t nextClientAddrIndex;
     LocalPortPool_t* LocalPortPoolArr;  
     SockAddr_t serverAddr;
-    TcpClientConnStats_t cStats;
-} TcpClientConnGroup_t;
+    TcConnStats_t cStats;
+} TcGroup_t;
 
-typedef struct TcpClientInterface {
+typedef struct TcAppInt {
     uint32_t isRunning;
     uint32_t maxEvents;
 
@@ -33,22 +33,22 @@ typedef struct TcpClientInterface {
     uint32_t csDataLen;
     uint32_t scDataLen;
 
-    TcpClientStats_t appStats;
-    TcpClientConnStats_t appConnStats;
+    TcAppStats_t appStats;
+    TcConnStats_t appConnStats;
 
     uint32_t csGroupCount;
     uint32_t nextCsGroupIndex;
-    TcpClientConnGroup_t* csGroupArr;
-} TcpClientInterface_t;
+    TcGroup_t* csGroupArr;
+} TcAppInt_t;
 
-void TcpClientRun(TcpClientInterface_t* appIface);
+void TcpClientRun(TcAppInt_t* appIface);
 
-TcpClientInterface_t* CreateTcpClientInterface(int csGroupCount
+TcAppInt_t* CreateTcpClientInterface(int csGroupCount
                                             , int* clientAddrCounts);
 
-void DeleteTcpClientInterface(TcpClientInterface_t* iFace);
+void DeleteTcpClientInterface(TcAppInt_t* iFace);
 
-void DumpTcpClientStats(TcpClientConnStats_t* appConnStats);
+void DumpTcpClientStats(TcConnStats_t* appConnStats);
 
 #define APP_STATE_INIT                               0
 #define APP_STATE_CONNECTION_IN_PROGRESS             1
@@ -58,26 +58,26 @@ void DumpTcpClientStats(TcpClientConnStats_t* appConnStats);
 
 #define MAX_POLL_TIMEOUT 100
 
-typedef struct TcpClientConnection{
-    CommonConnState_t ccState; 
+typedef struct TcConn {
+    ConnState_t ccState; 
     int socketFd;
     uint16_t savedLocalPort;
     uint16_t savedRemotePort;
     SockAddr_t* localAddress;
     SockAddr_t* remoteAddress;
     LocalPortPool_t* localPortPool;
-    struct TcpClientSession* tcSess;
+    struct TcSess* tcSess;
     uint32_t bytesSent;
-} TcpClientConnection_t;
+} TcConn_t;
 
-typedef struct TcpClientSession{
-    TcpClientConnection_t tcConn; 
-    TcpClientConnStats_t* groupConnStats;
-} TcpClientSession_t;
+typedef struct TcSess {
+    TcConn_t tcConn; 
+    TcConnStats_t* groupConnStats;
+} TcSess_t;
 
 typedef struct TcpClient {
 
-    TcpClientConnStats_t* appGroupConnStats;
+    TcConnStats_t* appGroupConnStats;
 
     SessionPool_t* freeSessionPool;
     SessionPool_t* activeSessionPool;
@@ -87,12 +87,12 @@ typedef struct TcpClient {
     int eventPTO;
 
     uint32_t errorSessionCount;
-    TcpClientSession_t* errorSessionArr;
+    TcSess_t* errorSessionArr;
     
     TimerWheel_t* timerWheel;
     
     char* sendBuffer; 
     char* readBuffer; 
-} TcpClient_t;
+} TcAppRun_t;
 
 #endif

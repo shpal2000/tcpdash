@@ -14,14 +14,14 @@
 
 #include "tcp_server.h"
 
-static TcpServer_t* AppO;
-static TcpServerInterface_t* AppI;
+static TsAppRun_t* AppO;
+static TsAppInt_t* AppI;
 
-static void InitSession(TcpServerSession_t* newSess
-                    , int initApp
-                    , int sessionType) {
+static void InitSession(TsSess_t* newSess
+                        , int initApp
+                        , int sessionType) {
 
-    TcpServerConnection_t* newConn = &newSess->tcConn; 
+    TsConn_t* newConn = &newSess->tcConn; 
     
     if (initApp){
         newSess->tcConn.tcSess = newSess;
@@ -34,9 +34,9 @@ static void InitSession(TcpServerSession_t* newSess
     newConn->bytesReceived = 0;
 }
 
-static TcpServerSession_t* GetFreeSession() {
+static TsSess_t* GetFreeSession() {
 
-    TcpServerSession_t* newSess 
+    TsSess_t* newSess 
         = GetSesionFromPool (AppO->freeSessionPool);
 
     if (newSess != NULL) {
@@ -47,16 +47,17 @@ static TcpServerSession_t* GetFreeSession() {
     return newSess;
 }
 
-static void SetFreeSession(TcpServerSession_t* newSess) {
+static void SetFreeSession(TsSess_t* newSess) {
     
     RemoveFromSessionPool (AppO->activeSessionPool, newSess);
     SetSessionToPool (AppO->freeSessionPool, newSess);
 }
 
-static void StoreErrSession(TcpServerSession_t* aSession) {
+static void StoreErrSession(TsSess_t* aSession) {
+
     if (AppO->errorSessionCount < AppI->maxErrorSessions) {
 
-        TcpServerSession_t* errSession 
+        TsSess_t* errSession 
                 = &AppO->errorSessionArr[AppO->errorSessionCount];
 
         *errSession =  *aSession;
@@ -78,8 +79,8 @@ static void InitApp() {
 
     for (int i = 0; i < AppI->maxActiveSessions; i++) {
 
-        TcpServerSession_t* aSession 
-            = AllocSession (TcpServerSession_t);
+        TsSess_t* aSession 
+            = AllocSession (TsSess_t);
 
         InitSession (aSession, 1, SESSION_TYPE_CONNECTION);
 
@@ -88,20 +89,20 @@ static void InitApp() {
 
     AppO->errorSessionCount = 0;
 
-    AppO->errorSessionArr = CreateArray (TcpServerSession_t
+    AppO->errorSessionArr = CreateArray (TsSess_t
                                 , AppI->maxErrorSessions); 
      
     AppO->EventArr = CreateArray(PollEvent_t
-                            , AppI->maxEvents);
+                                , AppI->maxEvents);
 
     AppO->eventQ = CreateEventQ();
 
-    AppO->serverSessionArr = CreateArray (TcpServerSession_t
+    AppO->serverSessionArr = CreateArray (TsSess_t
                                 , AppI->csGroupCount);
 
     for (int i = 0; i < AppI->csGroupCount; i++) {
 
-        TcpServerSession_t* aSession = &AppO->serverSessionArr[i];
+        TsSess_t* aSession = &AppO->serverSessionArr[i];
 
         InitSession (aSession, 1, SESSION_TYPE_LISTENER);
     }
@@ -114,7 +115,7 @@ static void CleanupApp() {
     DeleteEventQ(AppO->eventQ);
 }
 
-static void OnListenStartError(TcpServerConnection_t* newConn) {
+static void OnListenStartError(TsConn_t* newConn) {
 
     IncConnStats2(&AppI->appConnStats
             , newConn->tcSess->groupConnStats 
@@ -123,7 +124,7 @@ static void OnListenStartError(TcpServerConnection_t* newConn) {
     StoreErrSession (newConn->tcSess); 
 }
 
-static void OnRegisterForListenerReadEventError(TcpServerConnection_t* newConn){
+static void OnRegisterForListenerReadEventError(TsConn_t* newConn){
 
     IncConnStats2(&AppI->appConnStats
                 , newConn->tcSess->groupConnStats 
@@ -135,18 +136,18 @@ static void OnRegisterForListenerReadEventError(TcpServerConnection_t* newConn){
     StoreErrSession (newConn->tcSess);
 }
 
-void TcpServerRun(TcpServerInterface_t* appIface){
+void TcpServerRun(TsAppInt_t* appIface){
 
-    AppO = CreateStruct0 (TcpServer_t);
+    AppO = CreateStruct0 (TsAppRun_t);
     AppI = appIface;
     InitApp();
 
     for (int i = 0; i < AppI->csGroupCount; i++) {
 
-        TcpServerSession_t* srvSess = &AppO->serverSessionArr[i];
-        TcpServerConnGroup_t* csGroup = &AppI->csGroupArr[i];
+        TsSess_t* srvSess = &AppO->serverSessionArr[i];
+        TsGroup_t* csGroup = &AppI->csGroupArr[i];
         
-        TcpServerConnection_t* newConn = &srvSess->tcConn;
+        TsConn_t* newConn = &srvSess->tcConn;
         newConn->localAddress = &(csGroup->serverAddr);
         newConn->tcSess->groupConnStats = &csGroup->cStats;
 
@@ -178,18 +179,18 @@ void TcpServerRun(TcpServerInterface_t* appIface){
         if (eCount > 0){
             for(int eIndex = 0; eIndex < eCount; eIndex++) {
 
-                TcpServerConnection_t* newConn  
-                            = (TcpServerConnection_t*)
+                TsConn_t* newConn  
+                            = (TsConn_t*)
                                 GetIOEventData(AppO->EventArr[eIndex]);
                 
                 if (newConn->tcSess->sessionType == SESSION_TYPE_LISTENER){
                     
                     if (IsReadEventSet(AppO->EventArr[eIndex])) {
-                        TcpServerSession_t* newSess = GetFreeSession ();
+                        TsSess_t* newSess = GetFreeSession ();
                         if (newSess == NULL){
                             AppI->appStats.dbgNoFreeSession++;
                         }else {
-                            TcpServerConnection_t* lSockConn = newConn;
+                            TsConn_t* lSockConn = newConn;
                             newConn = &newSess->tcConn;
 
                             socklen_t addrLen = sizeof (SockAddr_t);
@@ -250,11 +251,11 @@ void TcpServerRun(TcpServerInterface_t* appIface){
     CleanupApp();
 }
 
-TcpServerInterface_t* CreateTcpServerInterface (int csGroupCount) {
+TsAppInt_t* CreateTcpServerInterface (int csGroupCount) {
 
-    TcpServerInterface_t* iFace 
-        = (TcpServerInterface_t*) mmap(NULL
-            , sizeof (TcpServerInterface_t)
+    TsAppInt_t* iFace 
+        = (TsAppInt_t*) mmap(NULL
+            , sizeof (TsAppInt_t)
             , PROT_READ | PROT_WRITE
             , MAP_SHARED | MAP_ANONYMOUS
             , -1
@@ -262,8 +263,8 @@ TcpServerInterface_t* CreateTcpServerInterface (int csGroupCount) {
 
     iFace->csGroupCount = csGroupCount;
     iFace->csGroupArr 
-        = (TcpServerConnGroup_t*) mmap(NULL
-            , sizeof (TcpServerConnGroup_t) * iFace->csGroupCount
+        = (TsGroup_t*) mmap(NULL
+            , sizeof (TsGroup_t) * iFace->csGroupCount
             , PROT_READ | PROT_WRITE
             , MAP_SHARED | MAP_ANONYMOUS
             , -1
@@ -272,7 +273,7 @@ TcpServerInterface_t* CreateTcpServerInterface (int csGroupCount) {
     return iFace;
 }
 
-void DeleteTcpServerInterface (TcpServerInterface_t* iFace)
+void DeleteTcpServerInterface (TsAppInt_t* iFace)
 {
     //todo
 }

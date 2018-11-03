@@ -119,7 +119,7 @@ void AssignSocketLocalPort(SockAddr_t* localAddres
 }
 
 void DumpCStats(void* aStats) {
-    CommonConnStats_t* cStats = (CommonConnStats_t*) aStats;
+    ConnStats_t* cStats = (ConnStats_t*) aStats;
     printf ("\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n"
                 , cStats->socketCreate
                 , cStats->socketCreateFail

@@ -39,7 +39,7 @@ typedef struct CommonConnStats{
 
     uint64_t tcpLocalPortAssignFail;
     uint64_t tcpPollRegUnregFail;
-} CommonConnStats_t;
+} ConnStats_t;
 
 typedef struct CommonConnState{
     uint64_t state1;
@@ -48,7 +48,7 @@ typedef struct CommonConnState{
     int sysErrno;
     int appState;
     int sockErrno;                                                              
-} CommonConnState_t;
+} ConnState_t;
 
 typedef struct epoll_event PollEvent_t;
 typedef GQueue LocalPortPool_t;
@@ -58,57 +58,57 @@ typedef GTimer TimerWheel_t;
 
 static inline void CSInit(void* cState) {
 
-    ((CommonConnState_t*)cState)->state1 = 0;
-    ((CommonConnState_t*)cState)->state2 = 0;
-    ((CommonConnState_t*)cState)->errState = 0;
-    ((CommonConnState_t*)cState)->sysErrno = 0;
-    ((CommonConnState_t*)cState)->appState = 0;
+    ((ConnState_t*)cState)->state1 = 0;
+    ((ConnState_t*)cState)->state2 = 0;
+    ((ConnState_t*)cState)->errState = 0;
+    ((ConnState_t*)cState)->sysErrno = 0;
+    ((ConnState_t*)cState)->appState = 0;
 }
 
-#define SetAppState(__aConn, __state) ((CommonConnState_t*)__aConn)->appState = __state
+#define SetAppState(__aConn, __state) ((ConnState_t*)__aConn)->appState = __state
 
-#define GetAppState(__aConn) ((CommonConnState_t*)__aConn)->appState
+#define GetAppState(__aConn) ((ConnState_t*)__aConn)->appState
 
-#define SetCS1(__aConn, __state) ((CommonConnState_t*)__aConn)->state1 |= __state
+#define SetCS1(__aConn, __state) ((ConnState_t*)__aConn)->state1 |= __state
 
-#define ClearCS1(__aConn, __state) ((CommonConnState_t*)__aConn)->state1 &= ~__state
+#define ClearCS1(__aConn, __state) ((ConnState_t*)__aConn)->state1 &= ~__state
 
-#define SetCS2(__aConn, __state) ((CommonConnState_t*)__aConn)->state2 |= __state
+#define SetCS2(__aConn, __state) ((ConnState_t*)__aConn)->state2 |= __state
 
-#define GetCS1(__aConn) ((CommonConnState_t*)__aConn)->state1
+#define GetCS1(__aConn) ((ConnState_t*)__aConn)->state1
 
-#define GetCS2(__aConn) ((CommonConnState_t*)__aConn)->state2
+#define GetCS2(__aConn) ((ConnState_t*)__aConn)->state2
 
-#define GetCES(__aConn) ((CommonConnState_t*)__aConn)->errState
+#define GetCES(__aConn) ((ConnState_t*)__aConn)->errState
 
-#define IsSetCS1(__aConn,__state) (((CommonConnState_t*)__aConn)->state1&(__state))
+#define IsSetCS1(__aConn,__state) (((ConnState_t*)__aConn)->state1&(__state))
 
-#define IsSetCS2(__aConn,__state) (((CommonConnState_t*)__aConn)->state2&(__state))
+#define IsSetCS2(__aConn,__state) (((ConnState_t*)__aConn)->state2&(__state))
 
-#define IsSetCES(__aConn,__state) (((CommonConnState_t*)__aConn)->errState&(__state))
+#define IsSetCES(__aConn,__state) (((ConnState_t*)__aConn)->errState&(__state))
 
-#define IsFdClosed(__aConn) ((((CommonConnState_t*)__aConn)->state1&STATE_TCP_SOCK_FD_CLOSE) || (((CommonConnState_t*)__aConn)->errState&STATE_TCP_SOCK_FD_CLOSE_FAIL))
+#define IsFdClosed(__aConn) ((((ConnState_t*)__aConn)->state1&STATE_TCP_SOCK_FD_CLOSE) || (((ConnState_t*)__aConn)->errState&STATE_TCP_SOCK_FD_CLOSE_FAIL))
 
-#define InitConLastErr(__aConn, __err) ((CommonConnState_t*)__aConn)->lastErr = __err
+#define InitConLastErr(__aConn, __err) ((ConnState_t*)__aConn)->lastErr = __err
 
-#define IncConnStats(__aStats, __stat) ((CommonConnStats_t*)__aStats)->__stat++
+#define IncConnStats(__aStats, __stat) ((ConnStats_t*)__aStats)->__stat++
 
-#define IncConnStats2(__aStats, __bStats, __stat) ((CommonConnStats_t*)__aStats)->__stat++;((CommonConnStats_t*)__bStats)->__stat++
+#define IncConnStats2(__aStats, __bStats, __stat) ((ConnStats_t*)__aStats)->__stat++;((ConnStats_t*)__bStats)->__stat++
 
-#define GetConnStats(__aStats, __stat) ((CommonConnStats_t*)__aStats)->__stat
+#define GetConnStats(__aStats, __stat) ((ConnStats_t*)__aStats)->__stat
 
 static inline void SetCES(void* aSession, uint64_t errState) {
-    ((CommonConnState_t*)aSession)->sysErrno = errno;
-    ((CommonConnState_t*)aSession)->errState |= errState;
+    ((ConnState_t*)aSession)->sysErrno = errno;
+    ((ConnState_t*)aSession)->errState |= errState;
 }
 
-#define CopyCS(__dstCS, __srcCS) *((CommonConnState_t*)(__dstCS)) = *((CommonConnState_t*)(__srcCS))
+#define CopyCS(__dstCS, __srcCS) *((ConnState_t*)(__dstCS)) = *((ConnState_t*)(__srcCS))
 
-#define SaveSockErrno(__aConn, __sockErrno) ((CommonConnState_t*)__aConn)->sockErrno = __sockErrno
+#define SaveSockErrno(__aConn, __sockErrno) ((ConnState_t*)__aConn)->sockErrno = __sockErrno
 
-#define GetSysErrno(__aConn) ((CommonConnState_t*)__aConn)->sysErrno
+#define GetSysErrno(__aConn) ((ConnState_t*)__aConn)->sysErrno
 
-#define GetSockErrno(__aConn) ((CommonConnState_t*)__aConn)->sockErrno
+#define GetSockErrno(__aConn) ((ConnState_t*)__aConn)->sockErrno
 
 void PollReadWriteEvent(int pollId
                         , int fd

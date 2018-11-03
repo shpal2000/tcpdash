@@ -71,7 +71,7 @@ void TcpClientMain(){
     int dstPort = 8081;
 
     int csGroupClientAddrCountArr[1] = {19};
-    TcpClientInterface_t* TcpClientI 
+    TcAppInt_t* TcpClientI 
         = CreateTcpClientInterface(1, csGroupClientAddrCountArr); 
 
     TcpClientI->isRunning = 1; 
@@ -85,7 +85,7 @@ void TcpClientMain(){
 
     for (int gIndex = 0; gIndex < TcpClientI->csGroupCount; gIndex++) {
 
-        TcpClientConnGroup_t* csGroup 
+        TcGroup_t* csGroup 
             = &TcpClientI->csGroupArr[gIndex];
 
         for (int cIndex = 0
@@ -139,7 +139,7 @@ void TcpServerMain() {
     char* dstIpGroups[2] = { "12.20.60.2", "12.20.60.3" };
     int dstPort = 8081;
 
-    TcpServerInterface_t* TcpServerI 
+    TsAppInt_t* TcpServerI 
         = CreateTcpServerInterface(1); 
 
     TcpServerI->isRunning = 1; 
@@ -152,7 +152,7 @@ void TcpServerMain() {
 
     for (int gIndex = 0; gIndex < TcpServerI->csGroupCount; gIndex++) {
 
-        TcpServerConnGroup_t* csGroup 
+        TsGroup_t* csGroup 
             = &TcpServerI->csGroupArr[gIndex];
 
         struct sockaddr_in* remoteAddr 
