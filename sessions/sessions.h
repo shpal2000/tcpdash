@@ -110,12 +110,21 @@ static inline void SetCES(void* aSession, uint64_t errState) {
 
 #define GetSockErrno(__aConn) ((CommonConnState_t*)__aConn)->sockErrno
 
+void PollReadWriteEvent(int pollId
+                        , int fd
+                        , void* cState);
 
-void SetPollEvent(int pollId
-                , int fd
-                , int pollRead
-                , int pollWrite
-                , void* cState);
+void PollOnlyReadEvent(int pollId
+                        , int fd
+                        , void* cState);
+
+void PollOnlyWriteEvent(int pollId
+                        , int fd
+                        , void* cState);
+
+void StopPollReadWriteEvent(int pollId
+                        , int fd
+                        , void* cState);
 
 void AssignSocketLocalPort(SockAddr_t* localAddres
                             , LocalPortPool_t* portPool

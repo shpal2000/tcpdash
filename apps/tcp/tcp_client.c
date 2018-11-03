@@ -118,11 +118,9 @@ static void CloseConnection(TcpClientConnection_t* newConn) {
 
     if ( IsSetCES(newConn, STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) {
 
-        SetPollEvent(AppO->eventQ
-                    , newConn->socketFd
-                    , 0 //read event
-                    , 0 //write event
-                    , newConn);
+        StopPollReadWriteEvent(AppO->eventQ
+                                , newConn->socketFd
+                                , newConn);
 
         if ( IsSetCES(newConn, STATE_TCP_SOCK_POLL_UPDATE_FAIL) ) {
             IncConnStats2(&AppI->appConnStats
@@ -164,11 +162,9 @@ static void OnTcpConnectionCompletion (TcpClientConnection_t* newConn) {
 
         SetAppState (newConn, APP_STATE_CONNECTION_ESTABLISHED);
 
-        SetPollEvent(AppO->eventQ
-                    , newConn->socketFd
-                    , 1 //read event
-                    , 1 //write event
-                    , newConn);
+        PollReadWriteEvent(AppO->eventQ
+                            , newConn->socketFd
+                            , newConn);
 
         if ( GetCES(newConn) ) {
             IncConnStats2(&AppI->appConnStats
@@ -353,11 +349,9 @@ static void InitNewConnection(TcpClientConnection_t* newConn){
             SetFreeSession (newConn->tcSess);
             ReleasePort (newConn);
         } else {
-            SetPollEvent(AppO->eventQ
-                        , newConn->socketFd
-                        , 0 //read event
-                        , 1 //write event
-                        , newConn);
+            PollOnlyWriteEvent(AppO->eventQ
+                                , newConn->socketFd
+                                , newConn);
 
             if ( GetCES(newConn) ) {
                 IncConnStats2(&AppI->appConnStats

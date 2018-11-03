@@ -15,8 +15,7 @@ void SetPollEvent(int pollId
                 , int fd
                 , int pollRead
                 , int pollWrite
-                , void* cState)
-{
+                , void* cState) {
     enum Actions {PollAdd, PollMod, PollDel, PollNop} pollAction;
 
     pollAction = PollNop;
@@ -59,6 +58,8 @@ void SetPollEvent(int pollId
             case PollDel:
                 status = epoll_ctl(pollId, EPOLL_CTL_DEL, fd, &setEvent);
                 break;
+            case PollNop:
+                break;
         }
 
         if (status) {
@@ -79,6 +80,31 @@ void SetPollEvent(int pollId
         }
     }
 }
+
+void PollReadWriteEvent(int pollId
+                        , int fd
+                        , void* cState) {
+    SetPollEvent(pollId, fd, 1, 1, cState);
+}
+
+void PollOnlyReadEvent(int pollId
+                        , int fd
+                        , void* cState) {
+    SetPollEvent(pollId, fd, 1, 0, cState);
+}
+
+void PollOnlyWriteEvent(int pollId
+                        , int fd
+                        , void* cState) {
+    SetPollEvent(pollId, fd, 0, 1, cState);
+}
+
+void StopPollReadWriteEvent(int pollId
+                        , int fd
+                        , void* cState) {
+    SetPollEvent(pollId, fd, 0, 0, cState);
+}
+
 
 void AssignSocketLocalPort(SockAddr_t* localAddres
                             , LocalPortPool_t* portPool

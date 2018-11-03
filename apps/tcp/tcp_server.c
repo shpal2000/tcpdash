@@ -159,10 +159,8 @@ void TcpServerRun(TcpServerInterface_t* appIface){
         if ( GetCES(newConn) ) {
             OnListenStartError(newConn);
         } else {
-            SetPollEvent(AppO->eventQ
+            PollOnlyReadEvent(AppO->eventQ
                         , newConn->socketFd
-                        , 1 //read event
-                        , 0 //write event
                         , newConn);
             if ( GetCES(newConn) ) {
                 OnRegisterForListenerReadEventError(newConn);
@@ -211,10 +209,8 @@ void TcpServerRun(TcpServerInterface_t* appIface){
                                 setsockopt(newConn->socketFd, SOL_SOCKET
                                     , SO_REUSEADDR, &(int){ 1 }, sizeof(int));
 
-                                SetPollEvent(AppO->eventQ
+                                PollOnlyReadEvent(AppO->eventQ
                                             , newConn->socketFd
-                                            , 1 //read event
-                                            , 0 //write event
                                             , newConn);
 
                             } else { //do error handling ???
