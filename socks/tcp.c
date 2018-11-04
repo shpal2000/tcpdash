@@ -254,7 +254,7 @@ int TcpAcceptConnection(int listenerFd
     socklen_t addrLen = sizeof (SockAddr_t);
 
     socket_fd = accept(listenerFd
-                        , rAddr
+                        , GetSockAddr(rAddr)
                         , &addrLen);
     
     if (socket_fd < 0) {

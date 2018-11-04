@@ -118,23 +118,6 @@ static void CleanupApp() {
     DeleteEventQ(AppO->eventQ);
 }
 
-static void AcceptConnection(TsConn_t* newConn
-                                , TsConn_t* lSockConn) {
-
-    newConn->localAddress = lSockConn->localAddress;
-
-    TcpAcceptConnection(lSockConn->socketFd
-                        , GetSockAddr(newConn->remoteAddress)
-                        , &AppI->appConnStats
-                        , newConn->tcSess->groupConnStats
-                        , newConn);
-
-    if ( GetCES(newConn) ) {
-        StoreErrSession (newConn->tcSess);
-        SetFreeSession (newConn->tcSess); 
-    }
-}
-
 static void CloseConnection(TsConn_t* newConn) {
 
     if ( IsSetCES(newConn, STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) {
@@ -157,6 +140,35 @@ static void CloseConnection(TsConn_t* newConn) {
     }
 
     SetFreeSession (newConn->tcSess);
+}
+
+static void AcceptConnection(TsConn_t* newConn
+                                , TsConn_t* lSockConn) {
+
+    newConn->localAddress = lSockConn->localAddress;
+
+    newConn->socketFd = TcpAcceptConnection(lSockConn->socketFd
+                                            , &newConn->remoteAddress
+                                            , &AppI->appConnStats
+                                            , newConn->tcSess->groupConnStats
+                                            , newConn);
+
+    if ( GetCES(newConn) ) {
+        StoreErrSession (newConn->tcSess);
+        SetFreeSession (newConn->tcSess); 
+    } else {
+        PollReadEventOnly(AppO->eventQ
+                            , newConn->socketFd
+                            , newConn);
+
+        if ( GetCES(newConn) ) {
+            IncConnStats2(&AppI->appConnStats
+                , newConn->tcSess->groupConnStats 
+                , tcpPollRegUnregFail);
+
+            CloseConnection(newConn);
+        }
+    }
 }
 
 static void InitServer(TsConn_t* newConn) {
@@ -233,6 +245,9 @@ void TcpServerRun(TsAppInt_t* appIface) {
                         }else {
                             TsConn_t* lSockConn = newConn;
                             newConn = &newSess->tcConn;
+                            newConn->tcSess->groupConnStats 
+                                = lSockConn->tcSess->groupConnStats;
+
                             AcceptConnection(newConn, lSockConn);
                         }
                     }else {
