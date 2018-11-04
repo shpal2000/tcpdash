@@ -6,6 +6,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "libsock.h"
 #include "logging/logs.h"
@@ -101,7 +102,7 @@ int TcpNewConnection(SockAddr_t* lAddr
                 }else{
                     SetCS1(cState, STATE_TCP_CONN_IN_PROGRESS2);
                 }
-    }
+            }
         }
     }
 
@@ -241,4 +242,58 @@ int TcpRead(int fd
     }
 
     return bytesRead;
+}
+
+int TcpAcceptConnection(int listenerFd
+                        , SockAddr_t* rAddr
+                        , void* aStats
+                        , void* bStats
+                        , void* cState) {
+    
+    int socket_fd = -1;
+    socklen_t addrLen = sizeof (SockAddr_t);
+
+    socket_fd = accept(listenerFd
+                        , rAddr
+                        , &addrLen);
+    
+    if (socket_fd < 0) {
+        IncConnStats2(aStats, bStats, tcpAcceptFail);
+        SetCES(cState, STATE_TCP_CONN_ACCEPT_FAIL);        
+    } else {
+        SetCS1(cState, STATE_TCP_CONN_ACCEPT);
+
+        int flags = fcntl(socket_fd, F_GETFL, 0);
+        if (flags < 0) {
+            SetCES(cState, STATE_TCP_SOCK_F_GETFL_FAIL 
+                            | STATE_TCP_SOCK_O_NONBLOCK_FAIL);
+        } else {
+            int ret = fcntl(socket_fd, F_SETFL, flags | O_NONBLOCK);
+            if (ret < 0) {
+                SetCES(cState, STATE_TCP_SOCK_F_SETFL_FAIL 
+                                | STATE_TCP_SOCK_O_NONBLOCK_FAIL);
+            } else {
+                SetCS1(cState, STATE_TCP_CONN_ACCEPT_O_NONBLOCK);
+
+                ret = setsockopt(socket_fd, SOL_SOCKET
+                                , SO_REUSEADDR, &(int){ 1 }, sizeof(int));
+                if (ret < 0) {
+                    IncConnStats2(aStats, bStats, socketReuseSetFail);
+                    SetCES(cState, STATE_TCP_SOCK_REUSE_FAIL);
+                } else {
+                    IncConnStats2(aStats, bStats, socketReuseSet);
+                    SetCS1(cState, STATE_TCP_SOCK_REUSE); 
+                }
+            }
+        }
+    }
+
+    if ( GetCES(cState) ){
+        if (socket_fd != -1){
+            TcpClose(socket_fd, cState);
+        }
+        return -1;
+    }
+
+    return socket_fd;    
 }

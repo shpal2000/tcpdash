@@ -36,6 +36,8 @@ typedef struct ConnStats{
     uint64_t tcpListenStart;
     uint64_t tcpListenStop;
     uint64_t tcpListenStartFail;
+    uint64_t tcpAcceptFail;
+    uint64_t tcpNonReadEventOnListener;
 
     uint64_t tcpLocalPortAssignFail;
     uint64_t tcpPollRegUnregFail;
@@ -151,6 +153,8 @@ void DumpCStats(void* aStats);
 #define STATE_TCP_POLL_WRITE_CURRENT                        0x0000000000001000
 #define STATE_TCP_POLL_READ_STICKY                          0x0000000000002000
 #define STATE_TCP_POLL_WRITE_STICKY                         0x0000000000004000
+#define STATE_TCP_CONN_ACCEPT                               0x0000000000008000
+#define STATE_TCP_CONN_ACCEPT_O_NONBLOCK                    0x0000000000008000
 
 #define STATE_TCP_SOCK_CREATE_FAIL                          0x0000000000000001
 #define STATE_TCP_SOCK_BIND_FAIL                            0x0000000000000002
@@ -163,6 +167,10 @@ void DumpCStats(void* aStats);
 #define STATE_TCP_SOCK_PORT_ASSIGN_FAIL                     0x0000000000000100
 #define STATE_TCP_SOCK_FD_CLOSE_FAIL                        0x0000000000000200
 #define STATE_TCP_SOCK_POLL_UPDATE_FAIL                     0x0000000000000400
+#define STATE_TCP_CONN_ACCEPT_FAIL                          0x0000000000000800
+#define STATE_TCP_SOCK_F_GETFL_FAIL                         0x0000000000001000
+#define STATE_TCP_SOCK_F_SETFL_FAIL                         0x0000000000002000
+#define STATE_TCP_SOCK_O_NONBLOCK_FAIL                      0x0000000000004000
 
 #define AllocSession(__type) g_slice_new(__type)
 #define SetSessionToPool(__pool,__session) g_queue_push_tail (__pool,__session)
@@ -217,6 +225,12 @@ int TcpListenStart(SockAddr_t* localAddress
                     , void* bStats
                     , void* cState);
 
+int TcpAcceptConnection(int listenerFd
+                        , SockAddr_t* rAddr
+                        , void* aStats
+                        , void* bStats
+                        , void* cState);
+                        
 void TcpClose(int fd, void* cState);
 
 int TcpWrite(int fd

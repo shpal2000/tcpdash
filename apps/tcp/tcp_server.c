@@ -118,6 +118,23 @@ static void CleanupApp() {
     DeleteEventQ(AppO->eventQ);
 }
 
+static void AcceptConnection(TsConn_t* newConn
+                                , TsConn_t* lSockConn) {
+
+    newConn->localAddress = lSockConn->localAddress;
+
+    TcpAcceptConnection(lSockConn->socketFd
+                        , GetSockAddr(newConn->remoteAddress)
+                        , &AppI->appConnStats
+                        , newConn->tcSess->groupConnStats
+                        , newConn);
+
+    if ( GetCES(newConn) ) {
+        StoreErrSession (newConn->tcSess);
+        SetFreeSession (newConn->tcSess); 
+    }
+}
+
 static void CloseConnection(TsConn_t* newConn) {
 
     if ( IsSetCES(newConn, STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) {
@@ -216,36 +233,12 @@ void TcpServerRun(TsAppInt_t* appIface) {
                         }else {
                             TsConn_t* lSockConn = newConn;
                             newConn = &newSess->tcConn;
-
-                            socklen_t addrLen = sizeof (SockAddr_t);
-
-                            newConn->socketFd 
-                                = accept(lSockConn->socketFd
-                                    , GetSockAddr(newConn->remoteAddress)
-                                    , &addrLen);
-
-                            newConn->localAddress = lSockConn->localAddress;
-
-                            if ( newConn->socketFd > 0 ){
-
-                                int flags = fcntl(newConn->socketFd, F_GETFL, 0);
-                                //do error handling ??? 
-                                fcntl(newConn->socketFd, F_SETFL, flags | O_NONBLOCK);
-                                
-                                //do error handling ??? 
-                                setsockopt(newConn->socketFd, SOL_SOCKET
-                                    , SO_REUSEADDR, &(int){ 1 }, sizeof(int));
-
-                                PollReadEventOnly(AppO->eventQ
-                                            , newConn->socketFd
-                                            , newConn);
-
-                            } else { //do error handling ???
-                                
-                            }
+                            AcceptConnection(newConn, lSockConn);
                         }
-                    }else { //do error handling ???
-
+                    }else {
+                        IncConnStats2(&AppI->appConnStats
+                            , newConn->tcSess->groupConnStats 
+                            , tcpNonReadEventOnListener);
                     }
                 }else {
                     int bytesReceived 
