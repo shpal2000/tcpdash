@@ -134,6 +134,8 @@ void AddressToString(SockAddr_t* addr, char* str);
 
 void DumpCStats(void* aStats);
 
+#define MAX_POLL_TIMEOUT 100
+
 #define STATE_TCP_PORT_ASSIGNED                             0x0000000000000001
 #define STATE_TCP_SOCK_CREATE                               0x0000000000000002
 #define STATE_TCP_SOCK_REUSE                                0x0000000000000004

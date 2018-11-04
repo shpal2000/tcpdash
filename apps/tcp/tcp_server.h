@@ -74,6 +74,7 @@ typedef struct TsAppRun {
 
     PollEvent_t* EventArr;
     int eventQ;
+    int eventPTO;
 
     uint32_t errorSessionCount;
     TsSess_t* errorSessionArr;

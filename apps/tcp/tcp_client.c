@@ -249,6 +249,8 @@ static void InitApp() {
 
     AppO->sendBuffer =  TdMalloc(AppI->csDataLen);
     AppO->readBuffer =  TdMalloc(AppI->scDataLen);
+
+    AppO->eventPTO = 0;
 }
 
 void DumpTcpClientStats(TcConnStats_t* appConnStats) {
@@ -283,7 +285,7 @@ static void CleanupApp() {
     DumpErrSessions();
 }
 
-static void InitNewConnection(TcConn_t* newConn){
+static void InitConnection(TcConn_t* newConn){
 
     TcSess_t* newSess = newConn->tcSess;
 
@@ -425,7 +427,7 @@ void TcpClientRun(TcAppInt_t* appIface) {
 
                     SetAppState(newConn, APP_STATE_CONNECTION_IN_PROGRESS);
 
-                    InitNewConnection(newConn);
+                    InitConnection(newConn);
                 }
             }
         }

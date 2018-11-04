@@ -109,34 +109,69 @@ static void InitApp() {
 
     AppO->sendBuffer = TdMalloc(AppI->scDataLen);
     AppO->readBuffer = TdMalloc(AppI->csDataLen);
+
+    AppO->eventPTO = 0;
 }
 
 static void CleanupApp() {
     DeleteEventQ(AppO->eventQ);
 }
 
-static void OnListenStartError(TsConn_t* newConn) {
+static void CloseConnection(TsConn_t* newConn) {
 
-    IncConnStats2(&AppI->appConnStats
-            , newConn->tcSess->groupConnStats 
-            , tcpListenStartFail);
+    if ( IsSetCES(newConn, STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) {
 
-    StoreErrSession (newConn->tcSess); 
+        StopPollReadWriteEvent(AppO->eventQ
+                                , newConn->socketFd
+                                , newConn);
+
+        if ( IsSetCES(newConn, STATE_TCP_SOCK_POLL_UPDATE_FAIL) ) {
+            IncConnStats2(&AppI->appConnStats
+                                , newConn->tcSess->groupConnStats 
+                                , tcpPollRegUnregFail);
+        }
+    }
+
+    TcpClose(newConn->socketFd, newConn);
+
+    if ( GetCES(newConn) ) {
+        StoreErrSession (newConn->tcSess);
+    }
+
+    SetFreeSession (newConn->tcSess);
 }
 
-static void OnRegisterForListenerReadEventError(TsConn_t* newConn){
+static void InitServer(TsConn_t* newConn) {
 
-    IncConnStats2(&AppI->appConnStats
+    newConn->socketFd 
+        = TcpListenStart(newConn->localAddress
+                            , AppI->listenQLen 
+                            , &AppI->appConnStats
+                            , newConn->tcSess->groupConnStats
+                            , newConn);
+
+    if ( GetCES(newConn) ) {
+        IncConnStats2(&AppI->appConnStats
+                            , newConn->tcSess->groupConnStats 
+                            , tcpListenStartFail);
+        StoreErrSession (newConn->tcSess); 
+    } else {
+        PollOnlyReadEvent(AppO->eventQ
+                            , newConn->socketFd
+                            , newConn);
+
+        if ( GetCES(newConn) ) {
+
+            IncConnStats2(&AppI->appConnStats
                 , newConn->tcSess->groupConnStats 
-                , tcpPollRegUnregFail);    
-
-    close(newConn->socketFd);
-    SetCS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
-    
-    StoreErrSession (newConn->tcSess);
+                , tcpPollRegUnregFail);
+            
+            CloseConnection(newConn);
+        }
+    }
 }
 
-void TcpServerRun(TsAppInt_t* appIface){
+void TcpServerRun(TsAppInt_t* appIface) {
 
     AppO = CreateStruct0 (TsAppRun_t);
     AppI = appIface;
@@ -151,22 +186,7 @@ void TcpServerRun(TsAppInt_t* appIface){
         newConn->localAddress = &(csGroup->serverAddr);
         newConn->tcSess->groupConnStats = &csGroup->cStats;
 
-        newConn->socketFd 
-            = TcpListenStart(newConn->localAddress
-                                , AppI->listenQLen 
-                                , &AppI->appConnStats
-                                , srvSess->groupConnStats
-                                , newConn);
-        if ( GetCES(newConn) ) {
-            OnListenStartError(newConn);
-        } else {
-            PollOnlyReadEvent(AppO->eventQ
-                        , newConn->socketFd
-                        , newConn);
-            if ( GetCES(newConn) ) {
-                OnRegisterForListenerReadEventError(newConn);
-            }
-        }
+        InitServer(newConn);
     }
 
     while (true) {
@@ -174,18 +194,21 @@ void TcpServerRun(TsAppInt_t* appIface){
         int eCount = GetIOEvents(AppO->eventQ
                                     , AppO->EventArr
                                     , AppI->maxEvents
-                                    , 0);
+                                    , AppO->eventPTO);
 
         if (eCount > 0){
+
+            AppO->eventPTO = 0;
+            
             for(int eIndex = 0; eIndex < eCount; eIndex++) {
 
                 TsConn_t* newConn  
-                            = (TsConn_t*)
-                                GetIOEventData(AppO->EventArr[eIndex]);
+                    = (TsConn_t*) GetIOEventData(AppO->EventArr[eIndex]);
                 
                 if (newConn->tcSess->sessionType == SESSION_TYPE_LISTENER){
                     
-                    if (IsReadEventSet(AppO->EventArr[eIndex])) {
+                    if ( IsReadEventSet(AppO->EventArr[eIndex]) ) {
+
                         TsSess_t* newSess = GetFreeSession ();
                         if (newSess == NULL){
                             AppI->appStats.dbgNoFreeSession++;
@@ -194,10 +217,12 @@ void TcpServerRun(TsAppInt_t* appIface){
                             newConn = &newSess->tcConn;
 
                             socklen_t addrLen = sizeof (SockAddr_t);
+
                             newConn->socketFd 
-                                    = accept(lSockConn->socketFd
-                                            , GetSockAddr(newConn->remoteAddress)
-                                            , &addrLen);
+                                = accept(lSockConn->socketFd
+                                    , GetSockAddr(newConn->remoteAddress)
+                                    , &addrLen);
+
                             newConn->localAddress = lSockConn->localAddress;
 
                             if ( newConn->socketFd > 0 ){
@@ -244,6 +269,10 @@ void TcpServerRun(TsAppInt_t* appIface){
                         }
                     }
                 }
+            }
+        }else{
+            if (AppO->eventPTO < MAX_POLL_TIMEOUT) {
+                AppO->eventPTO++;
             }
         }
     }

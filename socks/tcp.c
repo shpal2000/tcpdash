@@ -54,9 +54,13 @@ int TcpNewConnection(SockAddr_t* lAddr
             //bind local socket
             int bind_status = -1;
             if (IsIpv6(lAddr)){
-                bind_status = bind(socket_fd, (struct sockaddr*)lAddr, sizeof(struct sockaddr_in6));
+                bind_status = bind(socket_fd
+                                    , (struct sockaddr*)lAddr
+                                    , sizeof(struct sockaddr_in6));
             }else{
-                bind_status = bind(socket_fd, (struct sockaddr*)lAddr, sizeof(struct sockaddr_in));
+                bind_status = bind(socket_fd
+                                    , (struct sockaddr*)lAddr
+                                    , sizeof(struct sockaddr_in));
             }
 
             if (bind_status == -1){
@@ -82,8 +86,8 @@ int TcpNewConnection(SockAddr_t* lAddr
                                     , sizeof(struct sockaddr_in6));
                 }else{
                     connect_status = connect(socket_fd
-                                        , (struct sockaddr*)rAddr
-                                        , sizeof(struct sockaddr_in));
+                                    , (struct sockaddr*)rAddr
+                                    , sizeof(struct sockaddr_in));
                 }
                 SetCS1(cState, STATE_TCP_CONN_INIT);
 
@@ -153,9 +157,13 @@ int TcpListenStart(SockAddr_t* lAddr
         //bind local socket
         int bind_status = -1;
         if (IsIpv6(lAddr)){
-            bind_status = bind(socket_fd, (struct sockaddr*)lAddr, sizeof(struct sockaddr_in6));
+            bind_status = bind(socket_fd
+                                , (struct sockaddr*)lAddr
+                                , sizeof(struct sockaddr_in6));
         }else{
-            bind_status = bind(socket_fd, (struct sockaddr*)lAddr, sizeof(struct sockaddr_in));
+            bind_status = bind(socket_fd
+                                , (struct sockaddr*)lAddr
+                                , sizeof(struct sockaddr_in));
         }
 
         if (bind_status == -1){
