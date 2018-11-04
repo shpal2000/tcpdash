@@ -87,13 +87,13 @@ void PollReadWriteEvent(int pollId
     SetPollEvent(pollId, fd, 1, 1, cState);
 }
 
-void PollOnlyReadEvent(int pollId
+void PollReadEventOnly(int pollId
                         , int fd
                         , void* cState) {
     SetPollEvent(pollId, fd, 1, 0, cState);
 }
 
-void PollOnlyWriteEvent(int pollId
+void PollWriteEventOnly(int pollId
                         , int fd
                         , void* cState) {
     SetPollEvent(pollId, fd, 0, 1, cState);

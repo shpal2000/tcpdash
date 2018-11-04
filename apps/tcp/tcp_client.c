@@ -12,6 +12,8 @@
 #include <time.h>
 #include <sys/mman.h>
 
+#define TCP_CLIENT_MAIN
+ 
 #include "tcp_client.h"
 
 static TcAppRun_t* AppO;
@@ -357,7 +359,7 @@ static void InitConnection(TcConn_t* newConn){
             SetFreeSession (newConn->tcSess);
             ReleasePort (newConn);
         } else {
-            PollOnlyWriteEvent(AppO->eventQ
+            PollWriteEventOnly(AppO->eventQ
                                 , newConn->socketFd
                                 , newConn);
 

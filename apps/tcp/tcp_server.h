@@ -42,6 +42,8 @@ void DeleteTcpServerInterface (TsAppInt_t* iFace);
 
 void DumpTcpServerStats(TsConnStats_t* appConnStats);
 
+#ifdef TCP_SERVER_MAIN
+
 #define APP_STATE_INIT                               0
 #define APP_STATE_CONNECTION_IN_PROGRESS             1
 #define APP_STATE_CONNECTION_ESTABLISHED             2
@@ -84,5 +86,7 @@ typedef struct TsAppRun {
     char* sendBuffer;
     char* readBuffer;
 } TsAppRun_t;
+
+#endif
 
 #endif

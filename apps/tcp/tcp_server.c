@@ -12,6 +12,7 @@
 #include <time.h>
 #include <sys/mman.h>
 
+#define TCP_SERVER_MAIN
 #include "tcp_server.h"
 
 static TsAppRun_t* AppO;
@@ -156,7 +157,7 @@ static void InitServer(TsConn_t* newConn) {
                             , tcpListenStartFail);
         StoreErrSession (newConn->tcSess); 
     } else {
-        PollOnlyReadEvent(AppO->eventQ
+        PollReadEventOnly(AppO->eventQ
                             , newConn->socketFd
                             , newConn);
 
@@ -235,7 +236,7 @@ void TcpServerRun(TsAppInt_t* appIface) {
                                 setsockopt(newConn->socketFd, SOL_SOCKET
                                     , SO_REUSEADDR, &(int){ 1 }, sizeof(int));
 
-                                PollOnlyReadEvent(AppO->eventQ
+                                PollReadEventOnly(AppO->eventQ
                                             , newConn->socketFd
                                             , newConn);
 

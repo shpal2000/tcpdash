@@ -114,11 +114,11 @@ void PollReadWriteEvent(int pollId
                         , int fd
                         , void* cState);
 
-void PollOnlyReadEvent(int pollId
+void PollReadEventOnly(int pollId
                         , int fd
                         , void* cState);
 
-void PollOnlyWriteEvent(int pollId
+void PollWriteEventOnly(int pollId
                         , int fd
                         , void* cState);
 
