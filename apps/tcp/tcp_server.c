@@ -265,14 +265,13 @@ void TcpServerRun(TsAppInt_t* appIface) {
                                     , newConn);
                     
                     if ( GetCES(newConn) ) {
-                        close(newConn->socketFd);
-                        SetCS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
-                        // error handling ???
+                        IncConnStats2(&AppI->appConnStats
+                                    , newConn->tcSess->groupConnStats 
+                                    , tcpReadFail);
+                        CloseConnection(newConn);
                     } else {
                         if (bytesReceived == 0) {
-                           close(newConn->socketFd);
-                           SetCS1(newConn, STATE_TCP_SOCK_FD_CLOSE);
-                           SetFreeSession (newConn->tcSess); 
+                           CloseConnection(newConn); 
                         } else {
                             newConn->bytesReceived += bytesReceived;   
                         }

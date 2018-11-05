@@ -29,9 +29,11 @@ typedef struct ConnStats{
     uint64_t tcpConnInit;
     uint64_t tcpConnInitSuccess;
     uint64_t tcpConnInitFail;
-    uint64_t tcpConnInitFailEaddrNotAvail;
+    uint64_t tcpConnInitFailImmediateEaddrNotAvail;
+    uint64_t tcpConnInitFailImmediateOther;
     uint64_t tcpConnInitProgress;
     uint64_t tcpWriteFail;
+    uint64_t tcpReadFail;
 
     uint64_t tcpListenStart;
     uint64_t tcpListenStop;
@@ -217,7 +219,10 @@ int TcpNewConnection(SockAddr_t* localAddress
                         , void* bStats
                         , void* cState);
 
-void VerifyTcpConnectionEstablished(int fd, void* cState);
+void VerifyTcpConnectionEstablished(int fd
+                        , void* aStats
+                        , void* bStats
+                        , void* cState);
 
 int TcpListenStart(SockAddr_t* localAddress
                     , int listenQLen

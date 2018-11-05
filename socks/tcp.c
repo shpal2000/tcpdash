@@ -98,6 +98,15 @@ int TcpNewConnection(SockAddr_t* lAddr
                         SetCS1(cState, STATE_TCP_CONN_IN_PROGRESS);
                     }else{
                         SetCES(cState, STATE_TCP_SOCK_CONNECT_FAIL_IMMEDIATE);
+                        if ( (GetSysErrno(cState) == EADDRNOTAVAIL) ) {
+                            IncConnStats2(aStats
+                                        , bStats
+                                        , tcpConnInitFailImmediateEaddrNotAvail);
+                        }else{
+                            IncConnStats2(aStats
+                                        , bStats
+                                        , tcpConnInitFailImmediateOther);
+                        }
                     }
                 }else{
                     SetCS1(cState, STATE_TCP_CONN_IN_PROGRESS2);
@@ -117,7 +126,10 @@ int TcpNewConnection(SockAddr_t* lAddr
     return socket_fd;
 }
 
-void VerifyTcpConnectionEstablished(int fd, void* cState){
+void VerifyTcpConnectionEstablished(int fd
+                                    , void* aStats
+                                    , void* bStats
+                                    , void* cState){
     int socketErr;
     socklen_t socketErrBufLen = sizeof(int);
 
@@ -129,9 +141,15 @@ void VerifyTcpConnectionEstablished(int fd, void* cState){
     
     if ((retGetsockopt|socketErr) == 0){
         SetCS1 (cState, STATE_TCP_CONN_ESTABLISHED);
+        IncConnStats2(aStats
+                    , bStats 
+                    , tcpConnInitSuccess);
     }else {
         SetCES(cState, STATE_TCP_SOCK_CONNECT_FAIL);
         SaveSockErrno(cState, socketErr);
+        IncConnStats2(aStats
+                    , bStats 
+                    , tcpConnInitFail);
     }
 }
 

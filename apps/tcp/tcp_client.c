@@ -151,23 +151,15 @@ static void CloseConnection(TcConn_t* newConn) {
 
 static void OnTcpConnectionCompletion (TcConn_t* newConn) {
 
-    VerifyTcpConnectionEstablished (newConn->socketFd, newConn);
+    VerifyTcpConnectionEstablished (newConn->socketFd
+                                    , &AppI->appConnStats
+                                    , newConn->tcSess->groupConnStats
+                                    , newConn);
     
     if ( GetCES(newConn) ) {
-        IncConnStats2(&AppI->appConnStats
-            , newConn->tcSess->groupConnStats 
-            , tcpConnInitFail);
-
         SetAppState (newConn, APP_STATE_CONNECTION_ESTABLISH_FAILED);
-
         CloseConnection(newConn);
-
     } else {
-
-        IncConnStats2(&AppI->appConnStats
-                , newConn->tcSess->groupConnStats 
-                , tcpConnInitSuccess);
-
         SetAppState (newConn, APP_STATE_CONNECTION_ESTABLISHED);
 
         PollReadWriteEvent(AppO->eventQ
@@ -265,11 +257,13 @@ void DumpTcpClientStats(TcConnStats_t* appConnStats) {
                         "%" PRIu64 "\n"
                         "%" PRIu64 "\n"
                         "%" PRIu64 "\n"
+                        "%" PRIu64 "\n"
                         "\n"
         , GetConnStats(appConnStats, tcpConnInit)
         , GetConnStats(appConnStats, tcpConnInitSuccess)
         , GetConnStats(appConnStats, tcpConnInitFail)
-        , GetConnStats(appConnStats, tcpConnInitFailEaddrNotAvail)
+        , GetConnStats(appConnStats, tcpConnInitFailImmediateOther)
+        , GetConnStats(appConnStats, tcpConnInitFailImmediateEaddrNotAvail)
         , GetConnStats(appConnStats, tcpPollRegUnregFail)
         );
 
@@ -342,15 +336,6 @@ static void InitConnection(TcConn_t* newConn){
                     , newConn);
 
         if ( GetCES(newConn) ) {
-
-            if ( IsSetCES(newConn, STATE_TCP_SOCK_CONNECT_FAIL_IMMEDIATE) 
-                    && (GetSysErrno(newConn) == EADDRNOTAVAIL) ) {
-
-                IncConnStats2(&AppI->appConnStats
-                            , newConn->tcSess->groupConnStats 
-                            , tcpConnInitFailEaddrNotAvail);
-            } 
-
             IncConnStats2(&AppI->appConnStats
                         , newConn->tcSess->groupConnStats 
                         , tcpConnInitFail);
