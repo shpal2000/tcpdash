@@ -10,10 +10,10 @@ tcp_client_lib =  static_library('tcp_client'
                     , sources : tcp_client_src
                     , include_directories : incdir
                     , dependencies : glib_dep
-                    , link_with : socks_lib)
+                    , link_with : platform_lib)
 
 tcp_server_lib = static_library('tcp_server'
                     , sources : tcp_server_src
                     , include_directories : incdir
                     , dependencies : glib_dep
-                    , link_with : socks_lib)
+                    , link_with : platform_lib)
