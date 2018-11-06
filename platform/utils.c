@@ -5,8 +5,7 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include "libsock.h"
-
+#include "platform/common.h"
 
 void AssignSocketLocalPort(SockAddr_t* localAddres
                             , LocalPortPool_t* portPool
@@ -18,19 +17,6 @@ void AssignSocketLocalPort(SockAddr_t* localAddres
     }else{
         SetCES(cState, STATE_TCP_SOCK_PORT_ASSIGN_FAIL);
     }
-}
-
-void DumpCStats(void* aStats) {
-    ConnStats_t* cStats = (ConnStats_t*) aStats;
-    printf ("\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n%" PRIu64 "\n"
-                , cStats->socketCreate
-                , cStats->socketCreateFail
-                , cStats->socketBindIpv4
-                , cStats->socketBindIpv4Fail
-                , cStats->socketBindIpv6
-                , cStats->socketBindIpv6Fail
-                , cStats->socketConnectEstablishFail
-                , cStats->socketConnectEstablishFail2);
 }
 
 void AddressToString(SockAddr_t* addr, char* str){

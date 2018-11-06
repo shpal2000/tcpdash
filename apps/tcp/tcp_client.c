@@ -8,8 +8,6 @@
 #include <sys/mman.h>
 
 #define TCP_CLIENT_MAIN
- 
-#include "socks/libsock.h" 
 #include "tcp_client.h"
 
 static TcAppRun_t* AppO;

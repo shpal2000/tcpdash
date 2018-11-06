@@ -2,7 +2,7 @@ project('tcpdash', 'c')
 
 add_global_arguments('-std=gnu99', language : 'c')
 
-subdir('socks')
+subdir('platform')
 subdir('lab')
 subdir('apps')
 

@@ -1,7 +1,7 @@
 #ifndef __TCP_CLIENT_APP_H
 #define __TCP_CLIENT_APP_H
 
-#include "socks/libsock.h"
+#include "platform/common.h"
 
 typedef struct TcConnStats {
     ConnStats_t connStats;

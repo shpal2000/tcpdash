@@ -4,7 +4,11 @@
 #include <glib.h>
 #include <gmodule.h>
 
-#include "tdio.h"
+#include <sys/epoll.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <fcntl.h>
 
 
 
