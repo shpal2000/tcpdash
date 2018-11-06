@@ -2,14 +2,11 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <errno.h>
 #include <unistd.h>
-#include <gmodule.h>
 
 #include "libsock.h"
+
 
 void AssignSocketLocalPort(SockAddr_t* localAddres
                             , LocalPortPool_t* portPool

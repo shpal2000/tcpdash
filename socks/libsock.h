@@ -3,7 +3,10 @@
 
 #include <glib.h>
 #include <gmodule.h>
-#include <sys/epoll.h>
+
+#include "tdio.h"
+
+
 
 //#####################Socket#####################
 typedef union SockAddr {

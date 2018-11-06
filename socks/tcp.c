@@ -1,16 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <inttypes.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <errno.h>
 #include <unistd.h>
-#include <fcntl.h>
 
 #include "libsock.h"
-#include "logging/logs.h"
-
 
 /** @brief Initiate the TCP connection etablishment process 
  *         to remote host.

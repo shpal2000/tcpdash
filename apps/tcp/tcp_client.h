@@ -2,7 +2,6 @@
 #define __TCP_CLIENT_APP_H
 
 #include "socks/libsock.h"
-#include "logging/logs.h"
 
 typedef struct TcConnStats {
     ConnStats_t connStats;

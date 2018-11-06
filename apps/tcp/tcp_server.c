@@ -1,14 +1,9 @@
 #include <stdio.h>
-#include <stdbool.h>
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <errno.h>
 #include <unistd.h>
-#include <fcntl.h>
 #include <time.h>
 #include <sys/mman.h>
 
@@ -219,7 +214,7 @@ void TcpServerRun(TsAppInt_t* appIface) {
         InitServer(newConn);
     }
 
-    while (true) {
+    while (1) {
 
         int eCount = GetIOEvents(AppO->eventQ
                                     , AppO->EventArr
