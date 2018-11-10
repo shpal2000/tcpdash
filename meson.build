@@ -2,9 +2,9 @@ project('tcpdash', 'c')
 
 add_global_arguments('-std=gnu99', language : 'c')
 
-subdir('platform')
+subdir('api')
 subdir('lab')
-subdir('apps')
+subdir('tcp')
 
 tcpdash_src = ['tcpdash.c']
 

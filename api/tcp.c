@@ -5,7 +5,7 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include "platform/common.h"
+#include "api/common.h"
 
 /** @brief Initiate the TCP connection etablishment process 
  *         to remote host.
@@ -233,7 +233,7 @@ int TcpWrite(int fd
                 , void* aStats
                 , void* bStats
                 , void* cState) {
-    int bytesSent = send(fd, dataBuffer, dataLen, 0);
+    int bytesSent = write(fd, dataBuffer, dataLen);
 
     if (bytesSent < 0){
         SetCES(cState, STATE_TCP_SOCK_WRITE_FAIL);
@@ -248,7 +248,7 @@ int TcpRead(int fd
                 , void* aStats
                 , void* bStats
                 , void* cState) {
-    int bytesRead = recv(fd, dataBuffer, dataLen, 0);
+    int bytesRead = read(fd, dataBuffer, dataLen);
 
     if (bytesRead < 0){
         SetCES(cState, STATE_TCP_SOCK_READ_FAIL);

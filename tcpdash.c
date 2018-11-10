@@ -18,8 +18,8 @@
 
 #include "tcpdash.h"
 
-#include "apps/tcp/tcp_client.h"
-#include "apps/tcp/tcp_server.h"
+#include "tcp/tcp_client.h"
+#include "tcp/tcp_server.h"
 
 #define APP_MAX_EVENTS 1000
 #define APP_MAX_LISTENQ_LENGTH 10000

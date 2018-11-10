@@ -1,7 +1,7 @@
 #ifndef __TCP_SERVER_APP_H
 #define __TCP_SERVER_APP_H
 
-#include "platform/common.h"
+#include "api/common.h"
 
 typedef struct TsConnStats {
     ConnStats_t connStats;
