@@ -46,7 +46,6 @@ typedef struct ConnStats{
     uint64_t tcpListenStop;
     uint64_t tcpListenStartFail;
     uint64_t tcpAcceptFail;
-    uint64_t tcpNonReadEventOnListener;
 
     uint64_t tcpLocalPortAssignFail;
     uint64_t tcpPollRegUnregFail;
@@ -123,23 +122,33 @@ static inline void SetCES(void* aSession, uint64_t errState) {
 
 void PollReadWriteEvent(int pollId
                         , int fd
+                        , void* aStats
+                        , void* bStats
                         , void* cState);
 
 void PollReadEventOnly(int pollId
                         , int fd
+                        , void* aStats
+                        , void* bStats
                         , void* cState);
 
 void PollWriteEventOnly(int pollId
                         , int fd
+                        , void* aStats
+                        , void* bStats
                         , void* cState);
 
 void StopPollReadWriteEvent(int pollId
                         , int fd
+                        , void* aStats
+                        , void* bStats
                         , void* cState);
 
 void AssignSocketLocalPort(SockAddr_t* localAddres
-                            , LocalPortPool_t* portPool
-                            , void* cState);
+                        , LocalPortPool_t* portPool
+                        , void* aStats
+                        , void* bStats
+                        , void* cState);
 
 void AddressToString(SockAddr_t* addr, char* str);
 

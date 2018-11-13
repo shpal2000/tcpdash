@@ -22,6 +22,10 @@ int TcpNewConnection(SockAddr_t* lAddr
                         , void* aStats
                         , void* bStats
                         , void* cState){
+
+    //stats
+    IncConnStats2(aStats, bStats, tcpConnInit);
+
     //create socket
     int socket_fd = -1;
     if (IsIpv6(lAddr)){
@@ -112,6 +116,9 @@ int TcpNewConnection(SockAddr_t* lAddr
 
 
     if ( GetCES(cState) ){
+
+        IncConnStats2(aStats, bStats, tcpConnInitFail);
+
         if (socket_fd != -1){
             TcpClose(socket_fd, cState);
         }
@@ -209,6 +216,9 @@ int TcpListenStart(SockAddr_t* lAddr
     }
 
     if ( GetCES(cState) ){
+
+        IncConnStats2(aStats, bStats, tcpListenStartFail);
+
         if (socket_fd != -1){
             TcpClose(socket_fd, cState);
         }
@@ -237,6 +247,7 @@ int TcpWrite(int fd
 
     if (bytesSent < 0){
         SetCES(cState, STATE_TCP_SOCK_WRITE_FAIL);
+        IncConnStats2(aStats, bStats, tcpWriteFail);
     }
 
     return bytesSent;
@@ -252,6 +263,7 @@ int TcpRead(int fd
 
     if (bytesRead < 0){
         SetCES(cState, STATE_TCP_SOCK_READ_FAIL);
+        IncConnStats2(aStats, bStats, tcpReadFail);
     }
 
     return bytesRead;

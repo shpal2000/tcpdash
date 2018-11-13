@@ -119,13 +119,9 @@ static void CloseConnection(TsConn_t* newConn) {
 
         StopPollReadWriteEvent(AppO->eventQ
                                 , newConn->socketFd
+                                , &AppI->appConnStats
+                                , newConn->tcSess->groupConnStats
                                 , newConn);
-
-        if ( IsSetCES(newConn, STATE_TCP_SOCK_POLL_UPDATE_FAIL) ) {
-            IncConnStats2(&AppI->appConnStats
-                                , newConn->tcSess->groupConnStats 
-                                , tcpPollRegUnregFail);
-        }
     }
 
     TcpClose(newConn->socketFd, newConn);
@@ -154,13 +150,11 @@ static void AcceptConnection(TsConn_t* newConn
     } else {
         PollReadEventOnly(AppO->eventQ
                             , newConn->socketFd
+                            , &AppI->appConnStats
+                            , newConn->tcSess->groupConnStats
                             , newConn);
 
         if ( GetCES(newConn) ) {
-            IncConnStats2(&AppI->appConnStats
-                , newConn->tcSess->groupConnStats 
-                , tcpPollRegUnregFail);
-
             CloseConnection(newConn);
         }
     }
@@ -176,21 +170,15 @@ static void InitServer(TsConn_t* newConn) {
                             , newConn);
 
     if ( GetCES(newConn) ) {
-        IncConnStats2(&AppI->appConnStats
-                            , newConn->tcSess->groupConnStats 
-                            , tcpListenStartFail);
         StoreErrSession (newConn->tcSess); 
     } else {
         PollReadEventOnly(AppO->eventQ
                             , newConn->socketFd
+                            , &AppI->appConnStats
+                            , newConn->tcSess->groupConnStats
                             , newConn);
 
         if ( GetCES(newConn) ) {
-
-            IncConnStats2(&AppI->appConnStats
-                , newConn->tcSess->groupConnStats 
-                , tcpPollRegUnregFail);
-            
             CloseConnection(newConn);
         }
     }
@@ -245,10 +233,6 @@ void TcpServerRun(TsAppInt_t* appIface) {
 
                             AcceptConnection(newConn, lSockConn);
                         }
-                    }else {
-                        IncConnStats2(&AppI->appConnStats
-                            , newConn->tcSess->groupConnStats 
-                            , tcpNonReadEventOnListener);
                     }
                 }else {
                     int bytesReceived 
@@ -260,9 +244,6 @@ void TcpServerRun(TsAppInt_t* appIface) {
                                     , newConn);
                     
                     if ( GetCES(newConn) ) {
-                        IncConnStats2(&AppI->appConnStats
-                                    , newConn->tcSess->groupConnStats 
-                                    , tcpReadFail);
                         CloseConnection(newConn);
                     } else {
                         if (bytesReceived == 0) {

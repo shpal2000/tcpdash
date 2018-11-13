@@ -120,13 +120,9 @@ static void CloseConnection(TcConn_t* newConn) {
 
         StopPollReadWriteEvent(AppO->eventQ
                                 , newConn->socketFd
+                                , &AppI->appConnStats
+                                , newConn->tcSess->groupConnStats
                                 , newConn);
-
-        if ( IsSetCES(newConn, STATE_TCP_SOCK_POLL_UPDATE_FAIL) ) {
-            IncConnStats2(&AppI->appConnStats
-                , newConn->tcSess->groupConnStats 
-                , tcpPollRegUnregFail);
-        }
     }
 
     TcpClose(newConn->socketFd, newConn);
@@ -158,13 +154,11 @@ static void OnTcpConnectionCompletion (TcConn_t* newConn) {
 
         PollReadWriteEvent(AppO->eventQ
                             , newConn->socketFd
+                            , &AppI->appConnStats
+                            , newConn->tcSess->groupConnStats
                             , newConn);
 
         if ( GetCES(newConn) ) {
-            IncConnStats2(&AppI->appConnStats
-                , newConn->tcSess->groupConnStats 
-                , tcpPollRegUnregFail);
-
             CloseConnection(newConn);
         }
     }
@@ -191,11 +185,6 @@ static void OnWriteNextData (TcConn_t* newConn) {
                         , newConn);
 
         if ( GetCES(newConn) ) {
-
-            IncConnStats2(&AppI->appConnStats
-                , newConn->tcSess->groupConnStats 
-                , tcpWriteFail);
-            
             CloseConnection(newConn);
         } else {
 
@@ -305,22 +294,15 @@ static void InitConnection(TcConn_t* newConn){
 
     AssignSocketLocalPort(newConn->localAddress
                         , newConn->localPortPool
+                        , &AppI->appConnStats
+                        , newConn->tcSess->groupConnStats
                         , newConn);
 
     if ( GetCES(newConn) ) {
-
-        IncConnStats2(&AppI->appConnStats
-                    , newConn->tcSess->groupConnStats 
-                    , tcpLocalPortAssignFail);    
-
         StoreErrSession (newConn->tcSess);
         SetFreeSession (newConn->tcSess);
 
     } else {
-
-        IncConnStats2(&AppI->appConnStats
-                    , newConn->tcSess->groupConnStats 
-                    , tcpConnInit);
 
         newConn->socketFd 
             = TcpNewConnection(newConn->localAddress
@@ -330,23 +312,17 @@ static void InitConnection(TcConn_t* newConn){
                     , newConn);
 
         if ( GetCES(newConn) ) {
-            IncConnStats2(&AppI->appConnStats
-                        , newConn->tcSess->groupConnStats 
-                        , tcpConnInitFail);
-
             StoreErrSession (newConn->tcSess);
             SetFreeSession (newConn->tcSess);
             ReleasePort (newConn);
         } else {
             PollWriteEventOnly(AppO->eventQ
                                 , newConn->socketFd
+                                , &AppI->appConnStats
+                                , newConn->tcSess->groupConnStats
                                 , newConn);
 
             if ( GetCES(newConn) ) {
-                IncConnStats2(&AppI->appConnStats
-                    , newConn->tcSess->groupConnStats 
-                    , tcpPollRegUnregFail);
-
                 CloseConnection(newConn);
             }
         }

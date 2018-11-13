@@ -11,6 +11,8 @@ void SetPollEvent(int pollId
                 , int fd
                 , int pollRead
                 , int pollWrite
+                , void* aStats
+                , void* bStats
                 , void* cState) {
     enum Actions {PollAdd, PollMod, PollDel, PollNop} pollAction;
 
@@ -74,29 +76,41 @@ void SetPollEvent(int pollId
                 ClearCS1(cState, STATE_TCP_POLL_WRITE_CURRENT);
             }
         }
+
+        if ( IsSetCES(cState, STATE_TCP_SOCK_POLL_UPDATE_FAIL) ) {
+            IncConnStats2(aStats, bStats, tcpPollRegUnregFail);
+        }
     }
 }
 
 void PollReadWriteEvent(int pollId
                         , int fd
+                        , void* aStats
+                        , void* bStats
                         , void* cState) {
-    SetPollEvent(pollId, fd, 1, 1, cState);
+    SetPollEvent(pollId, fd, 1, 1, aStats, bStats, cState);
 }
 
 void PollReadEventOnly(int pollId
                         , int fd
+                        , void* aStats
+                        , void* bStats
                         , void* cState) {
-    SetPollEvent(pollId, fd, 1, 0, cState);
+    SetPollEvent(pollId, fd, 1, 0, aStats, bStats, cState);
 }
 
 void PollWriteEventOnly(int pollId
                         , int fd
+                        , void* aStats
+                        , void* bStats
                         , void* cState) {
-    SetPollEvent(pollId, fd, 0, 1, cState);
+    SetPollEvent(pollId, fd, 0, 1, aStats, bStats, cState);
 }
 
 void StopPollReadWriteEvent(int pollId
                         , int fd
+                        , void* aStats
+                        , void* bStats
                         , void* cState) {
-    SetPollEvent(pollId, fd, 0, 0, cState);
+    SetPollEvent(pollId, fd, 0, 0, aStats, bStats, cState);
 }
