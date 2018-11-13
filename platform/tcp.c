@@ -5,7 +5,7 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include "api/common.h"
+#include "platform/common.h"
 
 /** @brief Initiate the TCP connection etablishment process 
  *         to remote host.

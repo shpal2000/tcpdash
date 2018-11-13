@@ -5,7 +5,7 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include "api/common.h"
+#include "platform/common.h"
 
 void AssignSocketLocalPort(SockAddr_t* localAddres
                             , LocalPortPool_t* portPool
