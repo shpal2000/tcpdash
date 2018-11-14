@@ -4,7 +4,7 @@
 #include "platform/common.h"
 
 typedef struct TsConnStats {
-    ConnStats_t connStats;
+    SockStats_t connStats;
 } TsConnStats_t;
 
 typedef struct TsAppStats {
@@ -51,8 +51,8 @@ void DumpTcpServerStats(TsConnStats_t* appConnStats);
 #define SESSION_TYPE_LISTENER                       1
 #define SESSION_TYPE_CONNECTION                     2
 
-typedef struct TcpServerConnection{
-    ConnState_t ccState; 
+typedef struct TsConn{
+    SockState_t ccState; 
     int socketFd;
     uint16_t savedLocalPort;
     uint16_t savedRemotePort;

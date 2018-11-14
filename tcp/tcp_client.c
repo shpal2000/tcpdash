@@ -13,6 +13,8 @@
 static TcAppRun_t* AppO;
 static TcAppInt_t* AppI;
 
+static TcMethods_t* TcMethods;
+
 static void InitSession(TcSess_t* newSess
                         , int initApp) {
 
@@ -28,6 +30,8 @@ static void InitSession(TcSess_t* newSess
     newConn->localAddress = NULL;
     newConn->remoteAddress = NULL;
     newConn->bytesSent = 0;
+
+    (*TcMethods->InitSession)(newSess);
 }
 
 static TcSess_t* GetFreeSession() {
@@ -241,6 +245,7 @@ void DumpTcpClientStats(TcConnStats_t* appConnStats) {
                         "%" PRIu64 "\n"
                         "%" PRIu64 "\n"
                         "%" PRIu64 "\n"
+                        "%" PRIu64 "\n"
                         "\n"
         , GetConnStats(appConnStats, tcpConnInit)
         , GetConnStats(appConnStats, tcpConnInitSuccess)
@@ -248,6 +253,7 @@ void DumpTcpClientStats(TcConnStats_t* appConnStats) {
         , GetConnStats(appConnStats, tcpConnInitFailImmediateOther)
         , GetConnStats(appConnStats, tcpConnInitFailImmediateEaddrNotAvail)
         , GetConnStats(appConnStats, tcpPollRegUnregFail)
+        , GetConnStats(appConnStats, dummyCount)
         );
 
     puts (statsString);
@@ -344,7 +350,16 @@ static int AppRunContinue() {
     return 1;
 }
 
+static void AppInitSession(void* newSessParam) {
+    TcAppSess_t* newSess = (TcAppSess_t*) newSessParam;
+    newSess++;
+    IncConnStats(&AppI->appConnStats, dummyCount); 
+}
+
 void TcpClientRun(TcAppInt_t* appIface) {
+
+    TcMethods = CreateStruct0 (TcMethods_t);
+    TcMethods->InitSession = &AppInitSession;
 
     AppO = CreateStruct0 (TcAppRun_t);
     AppI = appIface;

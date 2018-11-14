@@ -4,7 +4,7 @@
 #include "platform/common.h"
 
 typedef struct TcConnStats {
-    ConnStats_t connStats;
+    SockStats_t connStats;
 } TcConnStats_t;
 
 typedef struct TcAppStats {
@@ -48,7 +48,13 @@ void DeleteTcpClientInterface(TcAppInt_t* iFace);
 
 void DumpTcpClientStats(TcConnStats_t* appConnStats);
 
+
+
 #ifdef TCP_CLIENT_MAIN
+
+typedef struct TcMethods {
+    void (*InitSession) (void*);
+} TcMethods_t;
 
 #define APP_STATE_INIT                               0
 #define APP_STATE_CONNECTION_IN_PROGRESS             1
@@ -57,7 +63,7 @@ void DumpTcpClientStats(TcConnStats_t* appConnStats);
 #define APP_STATE_CONNECTION_CLOSED                  4
 
 typedef struct TcConn {
-    ConnState_t ccState; 
+    SockState_t ccState; 
     int socketFd;
     uint16_t savedLocalPort;
     uint16_t savedRemotePort;
@@ -68,10 +74,19 @@ typedef struct TcConn {
     uint32_t bytesSent;
 } TcConn_t;
 
+typedef struct TcAppConn {
+    TcConn_t __tcConn;
+} TcAppConn_t;
+
+
 typedef struct TcSess {
     TcConn_t tcConn; 
     TcConnStats_t* groupConnStats;
 } TcSess_t;
+
+typedef struct TcAppSess {
+    TcSess_t __tcSes;
+} TcAppSess_t;
 
 typedef struct TcpClient {
 
