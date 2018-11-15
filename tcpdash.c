@@ -68,7 +68,7 @@ void TcpClientMain(){
 
     // char* dstIpGroups[2] = { "12.20.60.2", "12.20.60.3" };
     char* dstIpGroups[1] = { "12.20.60.2"};
-    int dstPort = 8081;
+    int dstPort = 9443;
 
     int csGroupClientAddrCountArr[1] = {19};
     TcAppInt_t* TcpClientI 
@@ -78,8 +78,8 @@ void TcpClientMain(){
     TcpClientI->maxEvents = TCP_CLIENT_MAX_EVENTS;
     TcpClientI->maxActiveSessions = 100000;
     TcpClientI->maxErrorSessions = 40;
-    TcpClientI->maxSessions = 1000000;
-    TcpClientI->connectionPerSec = 33000;
+    TcpClientI->maxSessions = 1;
+    TcpClientI->connectionPerSec = 10;
     TcpClientI->csDataLen = 5000;
     TcpClientI->scDataLen = 5000;
 
@@ -113,8 +113,8 @@ void TcpClientMain(){
         remoteAddr->sin_port = htons(dstPort);
     }
 
-    // TcpClientRun(TcpClientI);
-    // return;
+     TcpClientRun(TcpClientI);
+     return;
 
     int forkPid = fork();
 

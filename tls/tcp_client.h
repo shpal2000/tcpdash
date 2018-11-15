@@ -61,6 +61,8 @@ typedef struct TcMethods {
 #define APP_STATE_CONNECTION_ESTABLISHED             2
 #define APP_STATE_CONNECTION_ESTABLISH_FAILED        3
 #define APP_STATE_CONNECTION_CLOSED                  4
+#define APP_STATE_SSL_CONNECTION_ESTABLISHED         5
+#define APP_STATE_SSL_CONNECTION_ESTABLISH_FAILED    6
 
 typedef struct TcConn {
     SockState_t ccState; 
@@ -72,6 +74,8 @@ typedef struct TcConn {
     LocalPortPool_t* localPortPool;
     struct TcSess* tcSess;
     uint32_t bytesSent;
+    
+    SSL* cSSL;
 } TcConn_t;
 
 typedef struct TcAppConn {
@@ -105,7 +109,9 @@ typedef struct TcpClient {
     TimerWheel_t* timerWheel;
     
     char* sendBuffer; 
-    char* readBuffer; 
+    char* readBuffer;
+
+    SSL_CTX* sslContext;  
 } TcAppRun_t;
 
 #endif

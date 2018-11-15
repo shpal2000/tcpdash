@@ -31,7 +31,10 @@ static void InitSession(TcSess_t* newSess
     newConn->remoteAddress = NULL;
     newConn->bytesSent = 0;
 
-    (*TcMethods->InitSession)(newSess);
+    if (initApp == 0) {
+        newConn->cSSL = SSL_new(AppO->sslContext);
+    }   
+    // (*TcMethods->InitSession)(newSess);
 }
 
 static TcSess_t* GetFreeSession() {
@@ -51,6 +54,9 @@ static void SetFreeSession(TcSess_t* newSess) {
     
     RemoveFromSessionPool (AppO->activeSessionPool, newSess);
     SetSessionToPool (AppO->freeSessionPool, newSess);
+
+    TcConn_t* newConn = &newSess->tcConn;
+    SSL_free(newConn->cSSL);
 }
 
 static void StoreErrSession(TcSess_t* aSession) {
@@ -164,39 +170,64 @@ static void OnTcpConnectionCompletion (TcConn_t* newConn) {
 
         if ( GetCES(newConn) ) {
             CloseConnection(newConn);
+        } else {
+            SSL_set_fd(newConn->cSSL, newConn->socketFd);
+            if (SSL_connect(newConn->cSSL) == 0) {
+                SetAppState (newConn
+                            , APP_STATE_SSL_CONNECTION_ESTABLISHED);
+            }
         }
     }
 }
 
 static void OnWriteNextData (TcConn_t* newConn) {
     
-    TcSess_t* newSess = newConn->tcSess;
+    if ( GetAppState(newConn) == APP_STATE_CONNECTION_ESTABLISHED) {
+        if (SSL_connect(newConn->cSSL) == 0) {
+            SetAppState (newConn
+                        , APP_STATE_SSL_CONNECTION_ESTABLISHED);
+        }
+    }
 
-    if (newConn->bytesSent < AppI->csDataLen ) {
+    if ( GetAppState(newConn) == APP_STATE_SSL_CONNECTION_ESTABLISHED ) {
+        TcSess_t* newSess = newConn->tcSess;
 
-        int bytesToSend 
-            = AppI->csDataLen - newConn->bytesSent;
+        if (newConn->bytesSent < AppI->csDataLen ) {
 
-        const char* sendBuffer 
-            = &AppO->sendBuffer[newConn->bytesSent];
+            int bytesToSend 
+                = AppI->csDataLen - newConn->bytesSent;
 
-        int bytesSent 
-            = TcpWrite (newConn->socketFd
-                        , sendBuffer
-                        , bytesToSend
-                        , &AppI->appConnStats
-                        , newSess->groupConnStats
-                        , newConn);
+            const char* sendBuffer 
+                = &AppO->sendBuffer[newConn->bytesSent];
 
-        if ( GetCES(newConn) ) {
-            CloseConnection(newConn);
-        } else {
+            int bytesSent 
+                = TcpWrite (newConn->socketFd
+                            , sendBuffer
+                            , bytesToSend
+                            , &AppI->appConnStats
+                            , newSess->groupConnStats
+                            , newConn);
 
-            newConn->bytesSent += bytesSent;
-
-            if (newConn->bytesSent == AppI->csDataLen) {
+            if ( GetCES(newConn) ) {
                 CloseConnection(newConn);
+            } else {
+
+                newConn->bytesSent += bytesSent;
+
+                if (newConn->bytesSent == AppI->csDataLen) {
+                    CloseConnection(newConn);
+                }
             }
+        }
+    }
+}
+
+static void OnReadNextData (TcConn_t* newConn) {
+    
+    if ( GetAppState(newConn) == APP_STATE_CONNECTION_ESTABLISHED) {
+        if (SSL_connect(newConn->cSSL) == 0) {
+            SetAppState (newConn
+                        , APP_STATE_SSL_CONNECTION_ESTABLISHED);
         }
     }
 }
@@ -227,6 +258,17 @@ void DumpTcpClientStats(TcConnStats_t* appConnStats) {
 }
 
 static void InitApp() {
+    SSL_load_error_strings();
+    ERR_load_crypto_strings();
+    OpenSSL_add_ssl_algorithms();
+    SSL_library_init();
+
+    AppO->sslContext = SSL_CTX_new(SSLv23_client_method());
+    SSL_CTX_set_verify(AppO->sslContext, SSL_VERIFY_NONE, 0);
+    SSL_CTX_set_options(AppO->sslContext
+                            , SSL_OP_NO_SSLv2 
+                            | SSL_OP_NO_SSLv3 
+                            | SSL_OP_NO_COMPRESSION);
 
     AppO->freeSessionPool = AllocEmptySessionPool();
     AppO->activeSessionPool = AllocEmptySessionPool();
@@ -257,9 +299,6 @@ static void InitApp() {
     AppO->readBuffer =  TdMalloc(AppI->scDataLen);
 
     AppO->eventPTO = 0;
-
-    SSL_load_error_strings();	
-    OpenSSL_add_ssl_algorithms();
 
 }
 
@@ -443,6 +482,7 @@ void TcpClientRun(TcAppInt_t* appIface) {
                 //handle read event
                 if (IsReadEventSet(AppO->EventArr[eIndex])
                                     && !IsFdClosed(newConn) ) {
+                    OnReadNextData (newConn);
                 }
             }
         }else{
