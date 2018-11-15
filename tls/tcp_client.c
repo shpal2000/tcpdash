@@ -171,11 +171,11 @@ static void OnTcpConnectionCompletion (TcConn_t* newConn) {
         if ( GetCES(newConn) ) {
             CloseConnection(newConn);
         } else {
-            SSL_set_fd(newConn->cSSL, newConn->socketFd);
-            if (SSL_connect(newConn->cSSL) == 0) {
-                SetAppState (newConn
-                            , APP_STATE_SSL_CONNECTION_ESTABLISHED);
-            }
+            SSLConnectInit (newConn->cSSL
+                            , newConn->socketFd
+                            , &AppI->appConnStats
+                            , newConn->tcSess->groupConnStats
+                            , newConn);
         }
     }
 }
@@ -183,7 +183,11 @@ static void OnTcpConnectionCompletion (TcConn_t* newConn) {
 static void OnWriteNextData (TcConn_t* newConn) {
     
     if ( GetAppState(newConn) == APP_STATE_CONNECTION_ESTABLISHED) {
-        if (SSL_connect(newConn->cSSL) == 0) {
+        SSLConnectContinue (newConn->cSSL
+                            , &AppI->appConnStats
+                            , newConn->tcSess->groupConnStats
+                            , newConn);
+        if (IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED)) {
             SetAppState (newConn
                         , APP_STATE_SSL_CONNECTION_ESTABLISHED);
         }
@@ -223,9 +227,12 @@ static void OnWriteNextData (TcConn_t* newConn) {
 }
 
 static void OnReadNextData (TcConn_t* newConn) {
-    
     if ( GetAppState(newConn) == APP_STATE_CONNECTION_ESTABLISHED) {
-        if (SSL_connect(newConn->cSSL) == 0) {
+        SSLConnectContinue (newConn->cSSL
+                            , &AppI->appConnStats
+                            , newConn->tcSess->groupConnStats
+                            , newConn);
+        if (IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED)) {
             SetAppState (newConn
                         , APP_STATE_SSL_CONNECTION_ESTABLISHED);
         }

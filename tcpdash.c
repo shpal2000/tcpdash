@@ -68,7 +68,7 @@ void TcpClientMain(){
 
     // char* dstIpGroups[2] = { "12.20.60.2", "12.20.60.3" };
     char* dstIpGroups[1] = { "12.20.60.2"};
-    int dstPort = 9443;
+    int dstPort = 443;
 
     int csGroupClientAddrCountArr[1] = {19};
     TcAppInt_t* TcpClientI 

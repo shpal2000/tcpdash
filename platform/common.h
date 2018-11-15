@@ -50,6 +50,12 @@ typedef struct SockStats{
 
     uint64_t tcpLocalPortAssignFail;
     uint64_t tcpPollRegUnregFail;
+
+    uint64_t sslConnInit;
+    uint64_t sslConnInitSuccess;
+    uint64_t sslConnInitFail;
+    uint64_t sslConnInitProgress;
+
     uint64_t dummyCount;
 } SockStats_t;
 
@@ -175,7 +181,11 @@ void DumpCStats(void* aStats);
 #define STATE_TCP_POLL_READ_STICKY                          0x0000000000002000
 #define STATE_TCP_POLL_WRITE_STICKY                         0x0000000000004000
 #define STATE_TCP_CONN_ACCEPT                               0x0000000000008000
-#define STATE_TCP_CONN_ACCEPT_O_NONBLOCK                    0x0000000000008000
+#define STATE_TCP_CONN_ACCEPT_O_NONBLOCK                    0x0000000000010000
+#define STATE_SSL_CONN_INIT                                 0x0000000000020000
+#define STATE_SSL_CONN_IN_PROGRESS                          0x0000000000040000
+#define STATE_SSL_CONN_ESTABLISHED                          0x0000000000080000
+
 
 #define STATE_TCP_SOCK_CREATE_FAIL                          0x0000000000000001
 #define STATE_TCP_SOCK_BIND_FAIL                            0x0000000000000002
@@ -192,6 +202,7 @@ void DumpCStats(void* aStats);
 #define STATE_TCP_SOCK_F_GETFL_FAIL                         0x0000000000001000
 #define STATE_TCP_SOCK_F_SETFL_FAIL                         0x0000000000002000
 #define STATE_TCP_SOCK_O_NONBLOCK_FAIL                      0x0000000000004000
+#define STATE_SSL_SOCK_CONNECT_FAIL                         0x0000000000008000
 
 #define AllocSession(__type) g_slice_new(__type)
 #define SetSessionToPool(__pool,__session) g_queue_push_tail (__pool,__session)
@@ -276,5 +287,16 @@ int TcpRead(int fd
 #define CreateArray(__type,__count) g_new(__type, __count)
 #define CreateStruct0(__type) g_slice_new0(__type) 
 
+//##################TLS######################
+void SSLConnectInit(SSL* newSSL
+                    , int fd
+                    , void* aStats
+                    , void* bStats
+                    , void* cState);
+
+void SSLConnectContinue(SSL* newSSL
+                    , void* aStats
+                    , void* bStats
+                    , void* cState);
 #endif
 
