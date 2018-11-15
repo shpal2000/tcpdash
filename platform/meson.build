@@ -3,11 +3,12 @@ api_src = ['tcp.c'
                 , 'poll.c'
                 , 'utils.c']
 
-glib_dep = dependency('glib-2.0')
+glib = dependency('glib-2.0')
+openssl = dependency('openssl')
 
 incdir = include_directories('..')
 
 api_lib = static_library('api'
                 , sources :api_src
                 , include_directories : incdir
-                , dependencies : glib_dep)
+                , dependencies : [glib, openssl])

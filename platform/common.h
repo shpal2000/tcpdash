@@ -10,6 +10,8 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 
 
 //#####################Socket#####################
@@ -63,6 +65,7 @@ typedef struct SockState {
 typedef struct epoll_event PollEvent_t;
 typedef GQueue LocalPortPool_t;
 typedef GQueue SessionPool_t;
+typedef GQueue ConnectionPool_t;
 
 typedef GTimer TimerWheel_t;
 

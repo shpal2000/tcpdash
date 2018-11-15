@@ -4,7 +4,7 @@ add_global_arguments('-std=gnu99', language : 'c')
 
 subdir('platform')
 subdir('lab')
-subdir('tcp')
+subdir('tls')
 
 tcpdash_src = ['tcpdash.c']
 
