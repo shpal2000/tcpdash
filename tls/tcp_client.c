@@ -205,7 +205,7 @@ static void OnWriteNextData (TcConn_t* newConn) {
                 = &AppO->sendBuffer[newConn->bytesSent];
 
             int bytesSent 
-                = TcpWrite (newConn->socketFd
+                = SSLWrite (newConn->cSSL
                             , sendBuffer
                             , bytesToSend
                             , &AppI->appConnStats
@@ -219,6 +219,7 @@ static void OnWriteNextData (TcConn_t* newConn) {
                 newConn->bytesSent += bytesSent;
 
                 if (newConn->bytesSent == AppI->csDataLen) {
+                    // SSL_shutdown(newConn->cSSL);
                     CloseConnection(newConn);
                 }
             }
@@ -271,11 +272,16 @@ static void InitApp() {
     SSL_library_init();
 
     AppO->sslContext = SSL_CTX_new(SSLv23_client_method());
-    SSL_CTX_set_verify(AppO->sslContext, SSL_VERIFY_NONE, 0);
+    SSL_CTX_set_verify(AppO->sslContext
+                            , SSL_VERIFY_NONE, 0);
+
     SSL_CTX_set_options(AppO->sslContext
                             , SSL_OP_NO_SSLv2 
                             | SSL_OP_NO_SSLv3 
                             | SSL_OP_NO_COMPRESSION);
+                            
+    SSL_CTX_set_mode(AppO->sslContext
+                            , SSL_MODE_ENABLE_PARTIAL_WRITE);
 
     AppO->freeSessionPool = AllocEmptySessionPool();
     AppO->activeSessionPool = AllocEmptySessionPool();
