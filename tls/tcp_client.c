@@ -135,6 +135,11 @@ static void CloseConnection(TcConn_t* newConn) {
                                 , newConn);
     }
 
+    if ( IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED) ) {
+        SSL_shutdown(newConn->cSSL);
+        SetCS1 (newConn, STATE_SSL_CONN_SHUTDOWN);
+    }
+
     TcpClose(newConn->socketFd, newConn);
 
     if ( GetCES(newConn) ) {
@@ -219,7 +224,6 @@ static void OnWriteNextData (TcConn_t* newConn) {
                 newConn->bytesSent += bytesSent;
 
                 if (newConn->bytesSent == AppI->csDataLen) {
-                    // SSL_shutdown(newConn->cSSL);
                     CloseConnection(newConn);
                 }
             }
@@ -486,7 +490,9 @@ void TcpClientRun(TcAppInt_t* appIface) {
                         OnTcpConnectionCompletion(newConn);
 
                     } else if ( GetAppState(newConn) 
-                            == APP_STATE_CONNECTION_ESTABLISHED ) {
+                            == APP_STATE_CONNECTION_ESTABLISHED 
+                                || GetAppState(newConn) 
+                            == APP_STATE_SSL_CONNECTION_ESTABLISHED) {
 
                         OnWriteNextData (newConn);   
                     }

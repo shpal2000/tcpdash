@@ -185,6 +185,7 @@ void DumpCStats(void* aStats);
 #define STATE_SSL_CONN_INIT                                 0x0000000000020000
 #define STATE_SSL_CONN_IN_PROGRESS                          0x0000000000040000
 #define STATE_SSL_CONN_ESTABLISHED                          0x0000000000080000
+#define STATE_SSL_CONN_SHUTDOWN                             0x0000000000100000
 
 
 #define STATE_TCP_SOCK_CREATE_FAIL                          0x0000000000000001
