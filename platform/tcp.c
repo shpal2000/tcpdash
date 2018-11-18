@@ -324,26 +324,38 @@ int TcpAcceptConnection(int listenerFd
 }
 
 void DoSSLConnect(SSL* newSSL
+                    , int fd
                     , void* aStats
                     , void* bStats
                     , void* cState) {
 
+    if (IsSetCS1(cState, STATE_SSL_CONN_INIT) == 0) {
+        SetCS1(cState, STATE_SSL_CONN_INIT);
+        IncConnStats2(aStats, bStats, sslConnInit);
+        int status = SSL_set_fd(newSSL, fd);
+
+        if (status != 1) {
+            SetCES(cState, STATE_SSL_SOCK_FD_SET_ERROR);
+        }
+    }
+
     if (IsSetCS1(cState, STATE_SSL_CONN_ESTABLISHED
-                        | STATE_SSL_SOCK_CONNECT_FAIL) == 0) {
+                        | STATE_SSL_SOCK_CONNECT_FAIL
+                        | STATE_SSL_SOCK_FD_SET_ERROR) == 0) {
 
         int status = SSL_connect(newSSL);
 
         if (status == 1) {
             SetCS1(cState, STATE_SSL_CONN_ESTABLISHED);
             IncConnStats2(aStats, bStats, sslConnInitSuccess);
-        } else if  (status == 0) {
-            SetCES(cState, STATE_SSL_SOCK_CONNECT_FAIL);
-            IncConnStats2(aStats, bStats, sslConnInitFail);
-        } else {
+        } else if (status == -1) {
             if (IsSetCS1(cState, STATE_SSL_CONN_IN_PROGRESS) == 0) {
                 SetCS1(cState, STATE_SSL_CONN_IN_PROGRESS);
                 IncConnStats2(aStats, bStats, sslConnInitProgress);
             }
+        } else {
+            SetCES(cState, STATE_SSL_SOCK_CONNECT_FAIL);
+            IncConnStats2(aStats, bStats, sslConnInitFail);
         }               
     }
 }

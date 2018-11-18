@@ -174,12 +174,14 @@ static void OnTcpConnectionCompletion (TcConn_t* newConn) {
     }
 }
 
-static void OnSSLConnectHandshake (TcConn_t* newConn) {
+static void OnSSLConnect (TcConn_t* newConn) {
+
     DoSSLConnect (newConn->cSSL
                     , newConn->socketFd
                     , &AppI->appConnStats
                     , newConn->tcSess->groupConnStats
                     , newConn);
+
     if (IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED)) {
         SetAppState (newConn
                     , APP_STATE_SSL_CONNECTION_ESTABLISHED);
@@ -382,25 +384,7 @@ static void InitTcpConnection(TcConn_t* newConn){
 
 static void InitSslConnection(TcConn_t* newConn) {
 
-   SslNewConnection (newConn->cSSL
-                        , newConn->socketFd
-                        , &AppI->appConnStats
-                        , newConn->tcSess->groupConnStats
-                        , newConn);
-
-    if (IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED)) {
-        SetAppState (newConn
-                    , APP_STATE_SSL_CONNECTION_ESTABLISHED);
-    } else if ( GetCES(newConn) ) {
-        SetAppState (newConn
-                    , APP_STATE_SSL_CONNECTION_ESTABLISH_FAILED);
-        CloseConnection(newConn);
-    }    
-}
-
-static void InitSslConnection(TcConn_t* newConn) {
-
-   SslNewConnection (newConn->cSSL
+   DoSSLConnect (newConn->cSSL
                         , newConn->socketFd
                         , &AppI->appConnStats
                         , newConn->tcSess->groupConnStats
