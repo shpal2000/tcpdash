@@ -204,7 +204,8 @@ void DumpCStats(void* aStats);
 #define STATE_TCP_SOCK_F_SETFL_FAIL                         0x0000000000002000
 #define STATE_TCP_SOCK_O_NONBLOCK_FAIL                      0x0000000000004000
 #define STATE_SSL_SOCK_CONNECT_FAIL                         0x0000000000008000
-#define STATE_SSL_SOCK_GENERAL_ERROR                        0x0000000000010000
+#define STATE_SSL_SOCK_FD_SET_ERROR                         0x0000000000010000
+#define STATE_SSL_SOCK_GENERAL_ERROR                        0x0000000000020000
 
 #define AllocSession(__type) g_slice_new(__type)
 #define SetSessionToPool(__pool,__session) g_queue_push_tail (__pool,__session)

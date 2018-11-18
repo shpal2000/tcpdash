@@ -174,74 +174,57 @@ static void OnTcpConnectionCompletion (TcConn_t* newConn) {
     }
 }
 
+static void OnSSLConnectHandshake (TcConn_t* newConn) {
+    DoSSLConnect (newConn->cSSL
+                    , newConn->socketFd
+                    , &AppI->appConnStats
+                    , newConn->tcSess->groupConnStats
+                    , newConn);
+    if (IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED)) {
+        SetAppState (newConn
+                    , APP_STATE_SSL_CONNECTION_ESTABLISHED);
+    } else if ( GetCES(newConn) ) {
+        SetAppState (newConn
+                    , APP_STATE_SSL_CONNECTION_ESTABLISH_FAILED);
+        CloseConnection(newConn);
+    }
+}
+
 static void OnWriteNextData (TcConn_t* newConn) {
-    
-    if ( GetAppState(newConn) == APP_STATE_CONNECTION_ESTABLISHED) {
 
-        DoSSLConnect (newConn->cSSL
-                        , newConn->socketFd
+    TcSess_t* newSess = newConn->tcSess;
+
+    if (newConn->bytesSent < AppI->csDataLen ) {
+
+        int bytesToSend 
+            = AppI->csDataLen - newConn->bytesSent;
+
+        const char* sendBuffer 
+            = &AppO->sendBuffer[newConn->bytesSent];
+
+        int bytesSent 
+            = SSLWrite (newConn->cSSL
+                        , sendBuffer
+                        , bytesToSend
                         , &AppI->appConnStats
-                        , newConn->tcSess->groupConnStats
+                        , newSess->groupConnStats
                         , newConn);
-        if (IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED)) {
-            SetAppState (newConn
-                        , APP_STATE_SSL_CONNECTION_ESTABLISHED);
-        } else if ( GetCES(newConn) ) {
-            SetAppState (newConn
-                        , APP_STATE_SSL_CONNECTION_ESTABLISH_FAILED);
+
+        if ( GetCES(newConn) ) {
             CloseConnection(newConn);
-        }
-    } else if ( GetAppState(newConn) 
-                            == APP_STATE_SSL_CONNECTION_ESTABLISHED ) {
+        } else {
 
-        TcSess_t* newSess = newConn->tcSess;
+            newConn->bytesSent += bytesSent;
 
-        if (newConn->bytesSent < AppI->csDataLen ) {
-
-            int bytesToSend 
-                = AppI->csDataLen - newConn->bytesSent;
-
-            const char* sendBuffer 
-                = &AppO->sendBuffer[newConn->bytesSent];
-
-            int bytesSent 
-                = SSLWrite (newConn->cSSL
-                            , sendBuffer
-                            , bytesToSend
-                            , &AppI->appConnStats
-                            , newSess->groupConnStats
-                            , newConn);
-
-            if ( GetCES(newConn) ) {
+            if (newConn->bytesSent == AppI->csDataLen) {
                 CloseConnection(newConn);
-            } else {
-
-                newConn->bytesSent += bytesSent;
-
-                if (newConn->bytesSent == AppI->csDataLen) {
-                    CloseConnection(newConn);
-                }
             }
         }
     }
 }
 
 static void OnReadNextData (TcConn_t* newConn) {
-    if ( GetAppState(newConn) == APP_STATE_CONNECTION_ESTABLISHED) {
-        DoSSLConnect (newConn->cSSL
-                        , newConn->socketFd
-                        , &AppI->appConnStats
-                        , newConn->tcSess->groupConnStats
-                        , newConn);
-        if (IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED)) {
-            SetAppState (newConn
-                        , APP_STATE_SSL_CONNECTION_ESTABLISHED);
-        } else if ( GetCES(newConn) ) {
-            SetAppState (newConn
-                        , APP_STATE_SSL_CONNECTION_ESTABLISH_FAILED);
-            CloseConnection(newConn);
-        }    
-    }
+
 }
 
 void DumpTcpClientStats(TcConnStats_t* appConnStats) {
@@ -332,7 +315,7 @@ static void CleanupApp() {
     EVP_cleanup();
 }
 
-static void InitConnection(TcConn_t* newConn){
+static void InitTcpConnection(TcConn_t* newConn){
 
     TcSess_t* newSess = newConn->tcSess;
 
@@ -395,6 +378,42 @@ static void InitConnection(TcConn_t* newConn){
             }
         }
     }
+}
+
+static void InitSslConnection(TcConn_t* newConn) {
+
+   SslNewConnection (newConn->cSSL
+                        , newConn->socketFd
+                        , &AppI->appConnStats
+                        , newConn->tcSess->groupConnStats
+                        , newConn);
+
+    if (IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED)) {
+        SetAppState (newConn
+                    , APP_STATE_SSL_CONNECTION_ESTABLISHED);
+    } else if ( GetCES(newConn) ) {
+        SetAppState (newConn
+                    , APP_STATE_SSL_CONNECTION_ESTABLISH_FAILED);
+        CloseConnection(newConn);
+    }    
+}
+
+static void InitSslConnection(TcConn_t* newConn) {
+
+   SslNewConnection (newConn->cSSL
+                        , newConn->socketFd
+                        , &AppI->appConnStats
+                        , newConn->tcSess->groupConnStats
+                        , newConn);
+
+    if (IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED)) {
+        SetAppState (newConn
+                    , APP_STATE_SSL_CONNECTION_ESTABLISHED);
+    } else if ( GetCES(newConn) ) {
+        SetAppState (newConn
+                    , APP_STATE_SSL_CONNECTION_ESTABLISH_FAILED);
+        CloseConnection(newConn);
+    }    
 }
 
 static int AppRunContinue() {
@@ -460,8 +479,7 @@ void TcpClientRun(TcAppInt_t* appIface) {
                     TcConn_t* newConn = &newSess->tcConn;
 
                     SetAppState(newConn, APP_STATE_CONNECTION_IN_PROGRESS);
-
-                    InitConnection(newConn);
+                    InitTcpConnection(newConn);
                 }
             }
         }
@@ -480,28 +498,48 @@ void TcpClientRun(TcAppInt_t* appIface) {
                     = (TcConn_t*) 
                         GetIOEventData(AppO->EventArr[eIndex]);
 
-                //handle write event
-                if (IsWriteEventSet(AppO->EventArr[eIndex]) 
-                                    && !IsFdClosed(newConn) ) {
+                //Handle Tcp Connect
+                if ( (GetAppState(newConn) 
+                            == APP_STATE_CONNECTION_IN_PROGRESS)
+                        &&  IsWriteEventSet(AppO->EventArr[eIndex]) ) {
                     
-                    if ( GetAppState(newConn) 
-                            == APP_STATE_CONNECTION_IN_PROGRESS ) {
+                    OnTcpConnectionCompletion (newConn);
 
-                        OnTcpConnectionCompletion(newConn);
+                //Handle SSL Connect Init
+                } else if ( (GetAppState(newConn) 
+                            == APP_STATE_CONNECTION_ESTABLISHED)
+                        && (IsWriteEventSet(AppO->EventArr[eIndex]) ) {
 
-                    } else if ( GetAppState(newConn) 
-                            == APP_STATE_CONNECTION_ESTABLISHED 
-                                || GetAppState(newConn) 
-                            == APP_STATE_SSL_CONNECTION_ESTABLISHED) {
+                    SetAppState(newConn, APP_STATE_SSL_CONNECTION_IN_PROGRESS);
+                    InitSslConnection (newConn);
 
-                        OnWriteNextData (newConn);   
+                //Handle SSL Connect Handshake
+                } else if ( (GetAppState(newConn) 
+                            == APP_STATE_SSL_CONNECTION_IN_PROGRESS)
+                        &&  ( IsWriteEventSet(AppO->EventArr[eIndex])
+                            || IsReadEventSet(AppO->EventArr[eIndex])) ) {
+                    
+                    OnSslConnectionCompletion (newConn);
+
+                // Handle Read, Write Data
+                } else if ( GetAppState(newConn) 
+                            == APP_STATE_SSL_CONNECTION_ESTABLISHED ) {
+
+                    // Handle Write
+                    if ( IsWriteEventSet(AppO->EventArr[eIndex]) 
+                                        && !IsFdClosed(newConn) ) {
+                        
+                        OnWriteNextData (newConn);
+
                     }
-                }
 
-                //handle read event
-                if (IsReadEventSet(AppO->EventArr[eIndex])
-                                    && !IsFdClosed(newConn) ) {
-                    OnReadNextData (newConn);
+                    // Handle Read
+                    if (IsReadEventSet(AppO->EventArr[eIndex])
+                                        && !IsFdClosed(newConn) ) {
+
+                        OnReadNextData (newConn);
+
+                    }
                 }
             }
         }else{
