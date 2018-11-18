@@ -324,9 +324,16 @@ int TcpAcceptConnection(int listenerFd
 }
 
 void DoSSLConnect(SSL* newSSL
+                    , int fd
                     , void* aStats
                     , void* bStats
                     , void* cState){
+
+    if (IsSetCS1(cState, STATE_SSL_CONN_INIT) == 0) {
+        SetCS1(cState, STATE_SSL_CONN_INIT);
+        IncConnStats2(aStats, bStats, sslConnInit);
+        SSL_set_fd(newSSL, fd);
+    }
 
     if (IsSetCS1(cState, STATE_SSL_CONN_ESTABLISHED
                         | STATE_SSL_SOCK_CONNECT_FAIL) == 0) {
@@ -346,27 +353,6 @@ void DoSSLConnect(SSL* newSSL
             }
         }               
     }
-}
-
-void SSLConnectInit(SSL* newSSL
-                    , int fd
-                    , void* aStats
-                    , void* bStats
-                    , void* cState){
-    if (IsSetCS1(cState, STATE_SSL_CONN_INIT) == 0) {
-        SetCS1(cState, STATE_SSL_CONN_INIT);
-        IncConnStats2(aStats, bStats, sslConnInit);
-        SSL_set_fd(newSSL, fd);
-        DoSSLConnect(newSSL, aStats, bStats, cState); 
-    }   
-}
-
-void SSLConnectContinue(SSL* newSSL
-                    , void* aStats
-                    , void* bStats
-                    , void* cState){
-
-    DoSSLConnect(newSSL, aStats, bStats, cState);   
 }
 
 int SSLWrite (SSL* newSSL

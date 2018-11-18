@@ -290,13 +290,8 @@ int TcpRead(int fd
 #define CreateStruct0(__type) g_slice_new0(__type) 
 
 //##################TLS######################
-void SSLConnectInit(SSL* newSSL
+void DoSSLConnect(SSL* newSSL
                     , int fd
-                    , void* aStats
-                    , void* bStats
-                    , void* cState);
-
-void SSLConnectContinue(SSL* newSSL
                     , void* aStats
                     , void* bStats
                     , void* cState);

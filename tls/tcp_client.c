@@ -15,14 +15,10 @@ static TcAppInt_t* AppI;
 
 static TcMethods_t* TcMethods;
 
-static void InitSession(TcSess_t* newSess
-                        , int initApp) {
+static void InitSession(TcSess_t* newSess) {
 
     TcConn_t* newConn = &newSess->tcConn; 
-    
-    if (initApp) {
-        newSess->tcConn.tcSess = newSess;
-    }
+    newSess->tcConn.tcSess = newSess;
 
     CSInit(newConn);
 
@@ -31,9 +27,6 @@ static void InitSession(TcSess_t* newSess
     newConn->remoteAddress = NULL;
     newConn->bytesSent = 0;
 
-    if (initApp == 0) {
-        newConn->cSSL = SSL_new(AppO->sslContext);
-    }   
     // (*TcMethods->InitSession)(newSess);
 }
 
@@ -44,7 +37,9 @@ static TcSess_t* GetFreeSession() {
 
     if (newSess != NULL) {
         SetSessionToPool (AppO->activeSessionPool, newSess);
-        InitSession(newSess, 0);
+        InitSession(newSess);
+        TcConn_t* newConn = &newSess->tcConn;
+        newConn->cSSL = SSL_new(AppO->sslContext);
     }
 
     return newSess;
@@ -175,12 +170,6 @@ static void OnTcpConnectionCompletion (TcConn_t* newConn) {
 
         if ( GetCES(newConn) ) {
             CloseConnection(newConn);
-        } else {
-            SSLConnectInit (newConn->cSSL
-                            , newConn->socketFd
-                            , &AppI->appConnStats
-                            , newConn->tcSess->groupConnStats
-                            , newConn);
         }
     }
 }
@@ -188,17 +177,23 @@ static void OnTcpConnectionCompletion (TcConn_t* newConn) {
 static void OnWriteNextData (TcConn_t* newConn) {
     
     if ( GetAppState(newConn) == APP_STATE_CONNECTION_ESTABLISHED) {
-        SSLConnectContinue (newConn->cSSL
-                            , &AppI->appConnStats
-                            , newConn->tcSess->groupConnStats
-                            , newConn);
+
+        DoSSLConnect (newConn->cSSL
+                        , newConn->socketFd
+                        , &AppI->appConnStats
+                        , newConn->tcSess->groupConnStats
+                        , newConn);
         if (IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED)) {
             SetAppState (newConn
                         , APP_STATE_SSL_CONNECTION_ESTABLISHED);
+        } else if ( GetCES(newConn) ) {
+            SetAppState (newConn
+                        , APP_STATE_SSL_CONNECTION_ESTABLISH_FAILED);
+            CloseConnection(newConn);
         }
-    }
+    } else if ( GetAppState(newConn) 
+                            == APP_STATE_SSL_CONNECTION_ESTABLISHED ) {
 
-    if ( GetAppState(newConn) == APP_STATE_SSL_CONNECTION_ESTABLISHED ) {
         TcSess_t* newSess = newConn->tcSess;
 
         if (newConn->bytesSent < AppI->csDataLen ) {
@@ -233,14 +228,19 @@ static void OnWriteNextData (TcConn_t* newConn) {
 
 static void OnReadNextData (TcConn_t* newConn) {
     if ( GetAppState(newConn) == APP_STATE_CONNECTION_ESTABLISHED) {
-        SSLConnectContinue (newConn->cSSL
-                            , &AppI->appConnStats
-                            , newConn->tcSess->groupConnStats
-                            , newConn);
+        DoSSLConnect (newConn->cSSL
+                        , newConn->socketFd
+                        , &AppI->appConnStats
+                        , newConn->tcSess->groupConnStats
+                        , newConn);
         if (IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED)) {
             SetAppState (newConn
                         , APP_STATE_SSL_CONNECTION_ESTABLISHED);
-        }
+        } else if ( GetCES(newConn) ) {
+            SetAppState (newConn
+                        , APP_STATE_SSL_CONNECTION_ESTABLISH_FAILED);
+            CloseConnection(newConn);
+        }    
     }
 }
 
@@ -295,7 +295,7 @@ static void InitApp() {
         TcSess_t* aSession 
             = AllocSession (TcSess_t);
 
-        InitSession (aSession, 1);
+        InitSession (aSession);
 
         SetSessionToPool (AppO->freeSessionPool, aSession);
     }
