@@ -46,7 +46,11 @@ void DumpTcpServerStats(TsConnStats_t* appConnStats);
 #define APP_STATE_INIT                               0
 #define APP_STATE_CONNECTION_IN_PROGRESS             1
 #define APP_STATE_CONNECTION_ESTABLISHED             2
-#define APP_STATE_CONNECTION_CLOSED                  3
+#define APP_STATE_CONNECTION_ESTABLISH_FAILED        3
+#define APP_STATE_CONNECTION_CLOSED                  4
+#define APP_STATE_SSL_CONNECTION_IN_PROGRESS         5
+#define APP_STATE_SSL_CONNECTION_ESTABLISHED         6
+#define APP_STATE_SSL_CONNECTION_ESTABLISH_FAILED    7
 
 #define SESSION_TYPE_LISTENER                       1
 #define SESSION_TYPE_CONNECTION                     2
@@ -60,6 +64,8 @@ typedef struct TsConn{
     SockAddr_t remoteAddress;
     struct TsSess* tcSess;
     uint32_t bytesReceived;
+
+    SSL* cSSL;
 } TsConn_t;
 
 typedef struct TsSess {
@@ -84,6 +90,8 @@ typedef struct TsAppRun {
 
     char* sendBuffer;
     char* readBuffer;
+
+    SSL_CTX* sslContext;
 } TsAppRun_t;
 
 #endif

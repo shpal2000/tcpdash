@@ -309,6 +309,13 @@ void DoSSLConnect(SSL* newSSL
                     , void* bStats
                     , void* cState);
 
+int SSLRead (SSL* newSSL
+                    , char* dataBuffer
+                    , int dataLen
+                    , void* aStats
+                    , void* bStats
+                    , void* cState);
+
 int SSLWrite (SSL* newSSL
                     , const char* dataBuffer
                     , int dataLen

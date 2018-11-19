@@ -38,6 +38,8 @@ static TsSess_t* GetFreeSession() {
     if (newSess != NULL) {
         SetSessionToPool (AppO->activeSessionPool, newSess);
         InitSession(newSess, 0, 0);
+        TsConn_t* newConn = &newSess->tcConn;
+        newConn->cSSL = SSL_new(AppO->sslContext);
     }
 
     return newSess;
@@ -47,6 +49,9 @@ static void SetFreeSession(TsSess_t* newSess) {
     
     RemoveFromSessionPool (AppO->activeSessionPool, newSess);
     SetSessionToPool (AppO->freeSessionPool, newSess);
+
+    TsConn_t* newConn = &newSess->tcConn;
+    SSL_free(newConn->cSSL);
 }
 
 static void StoreErrSession(TsSess_t* aSession) {
@@ -69,8 +74,34 @@ static void StoreErrSession(TsSess_t* aSession) {
 }
 
 static void InitApp() {
+    SSL_load_error_strings();
+    ERR_load_crypto_strings();
+    OpenSSL_add_ssl_algorithms();
+    SSL_library_init();
+
+    AppO->sslContext = SSL_CTX_new(SSLv23_server_method());
+    
+    SSL_CTX_set_verify(AppO->sslContext
+                            , SSL_VERIFY_NONE, 0);
+
+    SSL_CTX_set_options(AppO->sslContext
+                            , SSL_OP_NO_SSLv2 
+                            | SSL_OP_NO_SSLv3 
+                            | SSL_OP_NO_COMPRESSION);
+                            
+    SSL_CTX_set_mode(AppO->sslContext
+                            , SSL_MODE_ENABLE_PARTIAL_WRITE);
+    
+    SSL_CTX_use_certificate_file(AppO->sslContext
+            , "/root/autssl/certdepo/ca1/usrcerts/rsa2048_1_sha256.cert"
+            , SSL_FILETYPE_PEM);
+
+    SSL_CTX_use_PrivateKey_file(AppO->sslContext
+            , "/root/autssl/certdepo/ca1//usrcerts/rsa2048_1.key"
+            , SSL_FILETYPE_PEM);
 
     AppO->freeSessionPool = AllocEmptySessionPool();
+
     AppO->activeSessionPool = AllocEmptySessionPool();
 
     for (int i = 0; i < AppI->maxActiveSessions; i++) {
@@ -124,6 +155,11 @@ static void CloseConnection(TsConn_t* newConn) {
                                 , newConn);
     }
 
+    if ( IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED) ) {
+        SSL_shutdown(newConn->cSSL);
+        SetCS1 (newConn, STATE_SSL_CONN_SHUTDOWN);
+    }
+
     TcpClose(newConn->socketFd, newConn);
 
     if ( GetCES(newConn) ) {
@@ -131,6 +167,52 @@ static void CloseConnection(TsConn_t* newConn) {
     }
 
     SetFreeSession (newConn->tcSess);
+}
+
+static void OnWriteNextData (TsConn_t* newConn) {
+
+}
+
+static void OnReadNextData (TsConn_t* newConn) {
+    int bytesReceived 
+        = SSLRead ( newConn->cSSL
+                    , AppO->readBuffer
+                    , AppI->csDataLen
+                    , &AppI->appConnStats
+                    , newConn->tcSess->groupConnStats
+                    , newConn);
+    
+    if ( GetCES(newConn) ) {
+        CloseConnection(newConn);
+    } else {
+        if (bytesReceived == 0) {
+            CloseConnection(newConn); 
+        } else {
+            newConn->bytesReceived += bytesReceived;
+            if ( newConn->bytesReceived == AppI->csDataLen ) {
+                CloseConnection(newConn);
+            }
+        }
+    }
+}
+
+static void HandleSslConnect (TsConn_t* newConn) {
+
+   DoSSLConnect (newConn->cSSL
+                        , newConn->socketFd
+                        , 0
+                        , &AppI->appConnStats
+                        , newConn->tcSess->groupConnStats
+                        , newConn);
+
+    if (IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED)) {
+        SetAppState (newConn
+                    , APP_STATE_SSL_CONNECTION_ESTABLISHED);
+    } else if ( GetCES(newConn) ) {
+        SetAppState (newConn
+                    , APP_STATE_SSL_CONNECTION_ESTABLISH_FAILED);
+        CloseConnection(newConn);
+    }  
 }
 
 static void AcceptConnection(TsConn_t* newConn
@@ -148,7 +230,9 @@ static void AcceptConnection(TsConn_t* newConn
         StoreErrSession (newConn->tcSess);
         SetFreeSession (newConn->tcSess); 
     } else {
-        PollReadEventOnly(AppO->eventQ
+        SetAppState (newConn, APP_STATE_CONNECTION_ESTABLISHED);
+
+        PollReadWriteEvent(AppO->eventQ
                             , newConn->socketFd
                             , &AppI->appConnStats
                             , newConn->tcSess->groupConnStats
@@ -158,6 +242,17 @@ static void AcceptConnection(TsConn_t* newConn
             CloseConnection(newConn);
         }
     }
+}
+
+static void InitSslConnection(TsConn_t* newConn) {
+
+    SetAppState(newConn, APP_STATE_SSL_CONNECTION_IN_PROGRESS);
+
+    HandleSslConnect (newConn);
+}
+
+static void OnSslConnectionCompletion (TsConn_t* newConn) {
+    HandleSslConnect (newConn);
 }
 
 static void InitServer(TsConn_t* newConn) {
@@ -217,40 +312,72 @@ void TcpServerRun(TsAppInt_t* appIface) {
 
                 TsConn_t* newConn  
                     = (TsConn_t*) GetIOEventData(AppO->EventArr[eIndex]);
-                
-                if (newConn->tcSess->sessionType == SESSION_TYPE_LISTENER){
-                    
-                    if ( IsReadEventSet(AppO->EventArr[eIndex]) ) {
 
-                        TsSess_t* newSess = GetFreeSession ();
-                        if (newSess == NULL){
-                            AppI->appStats.dbgNoFreeSession++;
-                        }else {
-                            TsConn_t* lSockConn = newConn;
-                            newConn = &newSess->tcConn;
-                            newConn->tcSess->groupConnStats 
-                                = lSockConn->tcSess->groupConnStats;
+                //Handle Tcp Connect
+                if ( (newConn->tcSess->sessionType 
+                            == SESSION_TYPE_LISTENER) 
+                        && IsReadEventSet(AppO->EventArr[eIndex]) ) {
 
-                            AcceptConnection(newConn, lSockConn);
-                        }
+                    TsSess_t* newSess = GetFreeSession ();
+                    if (newSess == NULL){
+                        AppI->appStats.dbgNoFreeSession++;
+                    }else {
+                        TsConn_t* lSockConn = newConn;
+                        newConn = &newSess->tcConn;
+                        newConn->tcSess->groupConnStats 
+                            = lSockConn->tcSess->groupConnStats;
+
+                        AcceptConnection(newConn, lSockConn);
                     }
-                }else {
-                    int bytesReceived 
-                        = TcpRead (newConn->socketFd
-                                    , AppO->readBuffer
-                                    , AppI->csDataLen
-                                    , &AppI->appConnStats
-                                    , newConn->tcSess->groupConnStats
-                                    , newConn);
+                
+                //Handle SSL Connect Init
+                } else if ( (GetAppState(newConn) 
+                            == APP_STATE_CONNECTION_ESTABLISHED)
+                        &&  IsReadEventSet(AppO->EventArr[eIndex]) ) {
+
+                    InitSslConnection (newConn);
+
+                //Handle SSL Connect Handshake 
+                } else if (GetAppState(newConn) 
+                            == APP_STATE_SSL_CONNECTION_IN_PROGRESS) {
+
+                    int sslWantWrite = 0;
+                    int sslWantRead = 0;
                     
-                    if ( GetCES(newConn) ) {
-                        CloseConnection(newConn);
-                    } else {
-                        if (bytesReceived == 0) {
-                           CloseConnection(newConn); 
-                        } else {
-                            newConn->bytesReceived += bytesReceived;   
-                        }
+                    if ( IsSetCS1(newConn, STATE_SSL_CONN_WANT_WRITE) 
+                            && IsWriteEventSet(AppO->EventArr[eIndex]) ) {
+                        sslWantWrite = 1;
+                        ClearCS1(newConn, STATE_SSL_CONN_WANT_WRITE);   
+                    } 
+                    
+                    if ( IsSetCS1(newConn, STATE_SSL_CONN_WANT_READ) 
+                            && IsReadEventSet(AppO->EventArr[eIndex]) ) {
+                        sslWantRead = 1;
+                        ClearCS1(newConn, STATE_SSL_CONN_WANT_READ);  
+                    }
+
+                    if (sslWantRead || sslWantWrite ) {
+                        OnSslConnectionCompletion (newConn);
+                    }
+                
+                // Handle Read, Write Data 
+                } else if ( GetAppState(newConn) 
+                            == APP_STATE_SSL_CONNECTION_ESTABLISHED ) {
+
+                    // Handle Write
+                    if ( IsWriteEventSet(AppO->EventArr[eIndex]) 
+                                        && !IsFdClosed(newConn) ) {
+                        
+                        OnWriteNextData (newConn);
+
+                    }
+
+                    // Handle Read
+                    if (IsReadEventSet(AppO->EventArr[eIndex])
+                                        && !IsFdClosed(newConn) ) {
+
+                        OnReadNextData (newConn);
+
                     }
                 }
             }

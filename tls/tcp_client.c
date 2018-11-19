@@ -266,6 +266,7 @@ static void InitApp() {
     SSL_library_init();
 
     AppO->sslContext = SSL_CTX_new(SSLv23_client_method());
+
     SSL_CTX_set_verify(AppO->sslContext
                             , SSL_VERIFY_NONE, 0);
 
@@ -278,6 +279,7 @@ static void InitApp() {
                             , SSL_MODE_ENABLE_PARTIAL_WRITE);
 
     AppO->freeSessionPool = AllocEmptySessionPool();
+    
     AppO->activeSessionPool = AllocEmptySessionPool();
 
     for (int i = 0; i < AppI->maxActiveSessions; i++) {

@@ -382,6 +382,36 @@ void DoSSLConnect(SSL* newSSL
     }
 }
 
+int SSLRead (SSL* newSSL
+                , char* dataBuffer
+                , int dataLen
+                , void* aStats
+                , void* bStats
+                , void* cState) {
+
+    int bytesSent = SSL_read(newSSL, dataBuffer, dataLen);
+
+    if (bytesSent <= 0) {
+        int sslError = SSL_get_error(newSSL, bytesSent);
+        switch (sslError) {
+            case SSL_ERROR_ZERO_RETURN:
+                break;
+
+             case SSL_ERROR_WANT_READ:
+                break;
+
+             case SSL_ERROR_WANT_WRITE:
+                break;
+            
+            default:
+                SetCES(cState, STATE_SSL_SOCK_GENERAL_ERROR);
+                break;
+        }
+    }
+
+    return bytesSent;
+}
+
 int SSLWrite (SSL* newSSL
                 , const char* dataBuffer
                 , int dataLen
