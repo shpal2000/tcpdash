@@ -153,6 +153,7 @@ static void HandleSslConnect (TcConn_t* newConn) {
 
    DoSSLConnect (newConn->cSSL
                         , newConn->socketFd
+                        , 1
                         , &AppI->appConnStats
                         , newConn->tcSess->groupConnStats
                         , newConn);
@@ -491,12 +492,27 @@ void TcpClientRun(TcAppInt_t* appIface) {
                     InitSslConnection (newConn);
 
                 //Handle SSL Connect Handshake
-                } else if ( (GetAppState(newConn) 
-                            == APP_STATE_SSL_CONNECTION_IN_PROGRESS)
-                        &&  (IsWriteEventSet(AppO->EventArr[eIndex])
-                            || IsReadEventSet(AppO->EventArr[eIndex])) ) {
+                } else if (GetAppState(newConn) 
+                            == APP_STATE_SSL_CONNECTION_IN_PROGRESS) {
+
+                    int sslWantWrite = 0;
+                    int sslWantRead = 0;
                     
-                    OnSslConnectionCompletion (newConn);
+                    if ( IsSetCS1(newConn, STATE_SSL_CONN_WANT_WRITE) 
+                            && IsWriteEventSet(AppO->EventArr[eIndex]) ) {
+                        sslWantWrite = 1;
+                        ClearCS1(newConn, STATE_SSL_CONN_WANT_WRITE);   
+                    } 
+                    
+                    if ( IsSetCS1(newConn, STATE_SSL_CONN_WANT_READ) 
+                            && IsReadEventSet(AppO->EventArr[eIndex]) ) {
+                        sslWantRead = 1;
+                        ClearCS1(newConn, STATE_SSL_CONN_WANT_READ);  
+                    }
+
+                    if (sslWantRead || sslWantWrite ) {
+                        OnSslConnectionCompletion (newConn);
+                    }
 
                 // Handle Read, Write Data
                 } else if ( GetAppState(newConn) 

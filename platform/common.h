@@ -66,6 +66,7 @@ typedef struct SockState {
     int sysErrno;
     int appState;
     int sockErrno;
+    int sslErrno;
 } SockState_t;
 
 typedef struct epoll_event PollEvent_t;
@@ -82,6 +83,8 @@ static inline void CSInit(void* cState) {
     ((SockState_t*)cState)->errState = 0;
     ((SockState_t*)cState)->sysErrno = 0;
     ((SockState_t*)cState)->appState = 0;
+    ((SockState_t*)cState)->sockErrno = 0;
+    ((SockState_t*)cState)->sslErrno = 0;
 }
 
 #define SetAppState(__aConn, __state) ((SockState_t*)__aConn)->appState = __state
@@ -119,6 +122,11 @@ static inline void CSInit(void* cState) {
 static inline void SetCES(void* aSession, uint64_t errState) {
     ((SockState_t*)aSession)->sysErrno = errno;
     ((SockState_t*)aSession)->errState |= errState;
+}
+
+static inline void SetCESSL(void* aSession, uint64_t errState, int sslErrno) {
+    SetCES (aSession, errState);
+    ((SockState_t*)aSession)->sslErrno = sslErrno;
 }
 
 #define CopyCS(__dstCS, __srcCS) *((SockState_t*)(__dstCS)) = *((SockState_t*)(__srcCS))
@@ -186,6 +194,8 @@ void DumpCStats(void* aStats);
 #define STATE_SSL_CONN_IN_PROGRESS                          0x0000000000040000
 #define STATE_SSL_CONN_ESTABLISHED                          0x0000000000080000
 #define STATE_SSL_CONN_SHUTDOWN                             0x0000000000100000
+#define STATE_SSL_CONN_WANT_READ                            0x0000000000200000
+#define STATE_SSL_CONN_WANT_WRITE                           0x0000000000400000
 
 
 #define STATE_TCP_SOCK_CREATE_FAIL                          0x0000000000000001
@@ -206,6 +216,7 @@ void DumpCStats(void* aStats);
 #define STATE_SSL_SOCK_CONNECT_FAIL                         0x0000000000008000
 #define STATE_SSL_SOCK_FD_SET_ERROR                         0x0000000000010000
 #define STATE_SSL_SOCK_GENERAL_ERROR                        0x0000000000020000
+#define STATE_SSL_SOCK_HANDSHAKE_ERROR                      0x0000000000040000
 
 #define AllocSession(__type) g_slice_new(__type)
 #define SetSessionToPool(__pool,__session) g_queue_push_tail (__pool,__session)
@@ -293,6 +304,7 @@ int TcpRead(int fd
 //##################TLS######################
 void DoSSLConnect(SSL* newSSL
                     , int fd
+                    , int isClient
                     , void* aStats
                     , void* bStats
                     , void* cState);

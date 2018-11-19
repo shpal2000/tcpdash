@@ -325,6 +325,7 @@ int TcpAcceptConnection(int listenerFd
 
 void DoSSLConnect(SSL* newSSL
                     , int fd
+                    , int isClient
                     , void* aStats
                     , void* bStats
                     , void* cState) {
@@ -335,16 +336,21 @@ void DoSSLConnect(SSL* newSSL
         int status = SSL_set_fd(newSSL, fd);
 
         if (status != 1) {
-            SetCES(cState, STATE_SSL_SOCK_FD_SET_ERROR);
+            SetCES(cState, STATE_SSL_SOCK_CONNECT_FAIL
+                            | STATE_SSL_SOCK_FD_SET_ERROR);
+        }
+        if (isClient) {
+            SSL_set_connect_state (newSSL);
+        } else {
+            SSL_set_accept_state (newSSL);
         }
     }
 
-    if (IsSetCS1(cState, STATE_SSL_CONN_ESTABLISHED
-                        | STATE_SSL_SOCK_CONNECT_FAIL
-                        | STATE_SSL_SOCK_FD_SET_ERROR) == 0) {
+    if ( (IsSetCS1(cState, STATE_SSL_CONN_ESTABLISHED)
+            && IsSetCES (cState, STATE_SSL_SOCK_CONNECT_FAIL)) == 0 ) {
 
-        int status = SSL_connect(newSSL);
-
+        int status = SSL_do_handshake(newSSL);
+        int sslErrno = SSL_get_error (newSSL, status);
         if (status == 1) {
             SetCS1(cState, STATE_SSL_CONN_ESTABLISHED);
             IncConnStats2(aStats, bStats, sslConnInitSuccess);
@@ -353,8 +359,24 @@ void DoSSLConnect(SSL* newSSL
                 SetCS1(cState, STATE_SSL_CONN_IN_PROGRESS);
                 IncConnStats2(aStats, bStats, sslConnInitProgress);
             }
+            switch (sslErrno) {
+                case SSL_ERROR_WANT_READ:
+                    SetCS1(cState, STATE_SSL_CONN_WANT_READ);
+                    break;
+                case SSL_ERROR_WANT_WRITE:
+                    SetCS1(cState, STATE_SSL_CONN_WANT_WRITE);
+                    break;
+                default:
+                    SetCESSL(cState
+                                , STATE_SSL_SOCK_CONNECT_FAIL
+                                , sslErrno);
+                    IncConnStats2(aStats, bStats, sslConnInitFail);
+                    break;  
+            }  
         } else {
-            SetCES(cState, STATE_SSL_SOCK_CONNECT_FAIL);
+            SetCESSL(cState
+                        , STATE_SSL_SOCK_CONNECT_FAIL
+                        , sslErrno);
             IncConnStats2(aStats, bStats, sslConnInitFail);
         }               
     }
