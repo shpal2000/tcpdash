@@ -155,10 +155,10 @@ static void CloseConnection(TsConn_t* newConn) {
                                 , newConn);
     }
 
-    if ( IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED) ) {
-        SSL_shutdown(newConn->cSSL);
-        SetCS1 (newConn, STATE_SSL_CONN_SHUTDOWN);
-    }
+    // if ( IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED) ) {
+    //     SSL_shutdown(newConn->cSSL);
+    //     SetCS1 (newConn, STATE_SSL_CONN_SHUTDOWN);
+    // }
 
     TcpClose(newConn->socketFd, newConn);
 

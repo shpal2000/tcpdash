@@ -130,10 +130,10 @@ static void CloseConnection(TcConn_t* newConn) {
                                 , newConn);
     }
 
-    if ( IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED) ) {
-        SSL_shutdown(newConn->cSSL);
-        SetCS1 (newConn, STATE_SSL_CONN_SHUTDOWN);
-    }
+    // if ( IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED) ) {
+    //     SSL_shutdown(newConn->cSSL);
+    //     SetCS1 (newConn, STATE_SSL_CONN_SHUTDOWN);
+    // }
 
     TcpClose(newConn->socketFd, newConn);
 
@@ -279,7 +279,7 @@ static void InitApp() {
                             , SSL_MODE_ENABLE_PARTIAL_WRITE);
 
     AppO->freeSessionPool = AllocEmptySessionPool();
-    
+
     AppO->activeSessionPool = AllocEmptySessionPool();
 
     for (int i = 0; i < AppI->maxActiveSessions; i++) {

@@ -76,12 +76,12 @@ void TcpClientMain(){
 
     TcpClientI->isRunning = 1; 
     TcpClientI->maxEvents = TCP_CLIENT_MAX_EVENTS;
-    TcpClientI->maxActiveSessions = 100000;
-    TcpClientI->maxErrorSessions = 40;
+    TcpClientI->maxActiveSessions = 10000;
+    TcpClientI->maxErrorSessions = 5000;
     TcpClientI->maxSessions = 100000;
-    TcpClientI->connectionPerSec = 1000;
-    TcpClientI->csDataLen = 1024;
-    TcpClientI->scDataLen = 1024;
+    TcpClientI->connectionPerSec = 450;
+    TcpClientI->csDataLen = 70000;
+    TcpClientI->scDataLen = 70000;
 
     for (int gIndex = 0; gIndex < TcpClientI->csGroupCount; gIndex++) {
 
@@ -147,8 +147,8 @@ void TcpServerMain() {
     TcpServerI->listenQLen = TCP_SERVER_MAX_LISTENQ_LENGTH;
     TcpServerI->maxActiveSessions = 100000;
     TcpServerI->maxErrorSessions = 40;
-    TcpServerI->csDataLen = 1024;
-    TcpServerI->scDataLen = 1024;
+    TcpServerI->csDataLen = 70000;
+    TcpServerI->scDataLen = 70000;
 
     for (int gIndex = 0; gIndex < TcpServerI->csGroupCount; gIndex++) {
 
