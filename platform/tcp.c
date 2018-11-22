@@ -229,6 +229,12 @@ int TcpListenStart(SockAddr_t* lAddr
 }
 
 void TcpClose(int fd, void* cState){
+    
+    // if (shutdown(fd, SHUT_WR)) {
+    //     SetCES(cState, STATE_TCP_SOCK_SHUTDOWN_WR_FAIL);
+    // } else {
+    //     SetCS1(cState, STATE_TCP_SHUTDOWN_WR);
+    // }
 
     if ( close(fd) ) {
         SetCES(cState, STATE_TCP_SOCK_FD_CLOSE_FAIL);

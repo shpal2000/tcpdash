@@ -78,10 +78,10 @@ void TcpClientMain(){
     TcpClientI->maxEvents = TCP_CLIENT_MAX_EVENTS;
     TcpClientI->maxActiveSessions = 10000;
     TcpClientI->maxErrorSessions = 5000;
-    TcpClientI->maxSessions = 100000;
+    TcpClientI->maxSessions = 100;
     TcpClientI->connectionPerSec = 450;
-    TcpClientI->csDataLen = 70000;
-    TcpClientI->scDataLen = 70000;
+    TcpClientI->csDataLen = 4000;
+    TcpClientI->scDataLen = 4000;
 
     for (int gIndex = 0; gIndex < TcpClientI->csGroupCount; gIndex++) {
 
@@ -113,8 +113,8 @@ void TcpClientMain(){
         remoteAddr->sin_port = htons(dstPort);
     }
 
-    //  TcpClientRun(TcpClientI);
-    //  return;
+     TcpClientRun(TcpClientI);
+     return;
 
     int forkPid = fork();
 
@@ -147,8 +147,8 @@ void TcpServerMain() {
     TcpServerI->listenQLen = TCP_SERVER_MAX_LISTENQ_LENGTH;
     TcpServerI->maxActiveSessions = 100000;
     TcpServerI->maxErrorSessions = 40;
-    TcpServerI->csDataLen = 70000;
-    TcpServerI->scDataLen = 70000;
+    TcpServerI->csDataLen = 4000;
+    TcpServerI->scDataLen = 4000;
 
     for (int gIndex = 0; gIndex < TcpServerI->csGroupCount; gIndex++) {
 
