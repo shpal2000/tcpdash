@@ -344,16 +344,16 @@ void TcpServerRun(TsAppInt_t* appIface) {
                     int sslWantWrite = 0;
                     int sslWantRead = 0;
                     
-                    if ( IsSetCS1(newConn, STATE_SSL_CONN_WANT_WRITE) 
+                    if ( IsSetCS1(newConn, STATE_SSL_HANDSHAKE_WANT_WRITE) 
                             && IsWriteEventSet(AppO->EventArr[eIndex]) ) {
                         sslWantWrite = 1;
-                        ClearCS1(newConn, STATE_SSL_CONN_WANT_WRITE);   
+                        ClearCS1(newConn, STATE_SSL_HANDSHAKE_WANT_WRITE);   
                     } 
                     
-                    if ( IsSetCS1(newConn, STATE_SSL_CONN_WANT_READ) 
+                    if ( IsSetCS1(newConn, STATE_SSL_HANDSHAKE_WANT_READ) 
                             && IsReadEventSet(AppO->EventArr[eIndex]) ) {
                         sslWantRead = 1;
-                        ClearCS1(newConn, STATE_SSL_CONN_WANT_READ);  
+                        ClearCS1(newConn, STATE_SSL_HANDSHAKE_WANT_READ);  
                     }
 
                     if (sslWantRead || sslWantWrite ) {

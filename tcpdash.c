@@ -78,7 +78,7 @@ void TcpClientMain(){
     TcpClientI->maxEvents = TCP_CLIENT_MAX_EVENTS;
     TcpClientI->maxActiveSessions = 10000;
     TcpClientI->maxErrorSessions = 5000;
-    TcpClientI->maxSessions = 100;
+    TcpClientI->maxSessions = 10;
     TcpClientI->connectionPerSec = 450;
     TcpClientI->csDataLen = 4000;
     TcpClientI->scDataLen = 4000;

@@ -229,17 +229,18 @@ int TcpListenStart(SockAddr_t* lAddr
 }
 
 void TcpClose(int fd, void* cState){
-    
-    // if (shutdown(fd, SHUT_WR)) {
-    //     SetCES(cState, STATE_TCP_SOCK_SHUTDOWN_WR_FAIL);
-    // } else {
-    //     SetCS1(cState, STATE_TCP_SHUTDOWN_WR);
-    // }
-
     if ( close(fd) ) {
         SetCES(cState, STATE_TCP_SOCK_FD_CLOSE_FAIL);
     } else {
         SetCS1(cState, STATE_TCP_SOCK_FD_CLOSE);
+    }
+}
+
+void TcpWrShutdown(int fd, void* cState){    
+    if (shutdown(fd, SHUT_WR)) {
+        SetCES(cState, STATE_TCP_FIN_SEND_FAIL);
+    } else {
+        SetCS1(cState, STATE_TCP_SENT_FIN);
     }
 }
 
@@ -367,10 +368,10 @@ void DoSSLConnect(SSL* newSSL
             }
             switch (sslErrno) {
                 case SSL_ERROR_WANT_READ:
-                    SetCS1(cState, STATE_SSL_CONN_WANT_READ);
+                    SetCS1(cState, STATE_SSL_HANDSHAKE_WANT_READ);
                     break;
                 case SSL_ERROR_WANT_WRITE:
-                    SetCS1(cState, STATE_SSL_CONN_WANT_WRITE);
+                    SetCS1(cState, STATE_SSL_HANDSHAKE_WANT_WRITE);
                     break;
                 default:
                     SetCESSL(cState

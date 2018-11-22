@@ -195,11 +195,15 @@ void DumpCStats(void* aStats);
 #define STATE_SSL_CONN_ESTABLISHED                          0x0000000000080000
 #define STATE_SSL_SENT_SHUTDOWN                             0x0000000000100000
 #define STATE_SSL_RECEIVED_SHUTDOWN                         0x0000000000200000
-#define STATE_SSL_CONN_WANT_READ                            0x0000000000400000
-#define STATE_SSL_CONN_WANT_WRITE                           0x0000000000800000
+#define STATE_SSL_HANDSHAKE_WANT_READ                       0x0000000000400000
+#define STATE_SSL_HANDSHAKE_WANT_WRITE                      0x0000000000800000
 #define STATE_SSL_TO_SEND_SHUTDOWN                          0x0000000001000000
 #define STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN                  0x0000000002000000
-#define STATE_TCP_SHUTDOWN_WR                               0x0000000002000000
+#define STATE_NO_MORE_WRITE_DATA                            0x0000000004000000
+#define STATE_TCP_TO_SEND_FIN                               0x0000000008000000
+#define STATE_TCP_TO_SEND_RST                               0x0000000010000000
+#define STATE_TCP_SENT_FIN                                  0x0000000020000000
+#define STATE_TCP_SENT_RESET                                0x0000000040000000
 
 
 #define STATE_TCP_SOCK_CREATE_FAIL                          0x0000000000000001
@@ -221,7 +225,8 @@ void DumpCStats(void* aStats);
 #define STATE_SSL_SOCK_FD_SET_ERROR                         0x0000000000010000
 #define STATE_SSL_SOCK_GENERAL_ERROR                        0x0000000000020000
 #define STATE_SSL_SOCK_HANDSHAKE_ERROR                      0x0000000000040000
-#define STATE_TCP_SOCK_SHUTDOWN_WR_FAIL                     0x0000000000080000
+#define STATE_TCP_FIN_SEND_FAIL                             0x0000000000080000
+#define STATE_TCP_RESET_SEND_FAIL                           0x0000000000100000
 
 #define AllocSession(__type) g_slice_new(__type)
 #define SetSessionToPool(__pool,__session) g_queue_push_tail (__pool,__session)

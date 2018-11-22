@@ -121,46 +121,64 @@ static void ReleasePort(TcConn_t* newConn) {
 
 static void CloseConnection(TcConn_t* newConn) {
 
-    if ( IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED) ) {
-        if ( IsSetCS1(newConn
+    if ( IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED)
+            && IsSetCS1(newConn, STATE_NO_MORE_WRITE_DATA)
+            && IsSetCS1(newConn
                 , STATE_SSL_TO_SEND_SHUTDOWN 
                 | STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN) ) {
-            
-            int status = SSL_shutdown(newConn->cSSL);
-            int sslError = SSL_get_error(newConn->cSSL, status);
-            
-            switch (status) {
-                case 1:
-                    SetCS1 (newConn, STATE_SSL_RECEIVED_SHUTDOWN);
-                    ClearCS1 (newConn, STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN);
-                    SetCS1 (newConn, STATE_SSL_SENT_SHUTDOWN);
-                    ClearCS1 (newConn, STATE_SSL_TO_SEND_SHUTDOWN);
-                    break;
+        int status = SSL_shutdown(newConn->cSSL);
+        int sslError = SSL_get_error(newConn->cSSL, status);
+        
+        switch (status) {
+            case 1:
+                SetCS1 (newConn, STATE_SSL_RECEIVED_SHUTDOWN);
+                ClearCS1 (newConn, STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN);
+                SetCS1 (newConn, STATE_SSL_SENT_SHUTDOWN);
+                ClearCS1 (newConn, STATE_SSL_TO_SEND_SHUTDOWN);
+                break;
 
-                case 0:
-                    SetCS1 (newConn, STATE_SSL_SENT_SHUTDOWN);
-                    ClearCS1 (newConn, STATE_SSL_TO_SEND_SHUTDOWN);
-                    break;
+            case 0:
+                SetCS1 (newConn, STATE_SSL_SENT_SHUTDOWN);
+                ClearCS1 (newConn, STATE_SSL_TO_SEND_SHUTDOWN);
+                break;
 
-                default:
-                    switch (sslError) {
-                        case SSL_ERROR_WANT_READ:
-                            break;
+            default:
+                switch (sslError) {
+                    case SSL_ERROR_WANT_READ:
+                        break;
 
-                        case SSL_ERROR_WANT_WRITE:
-                            break;
-                        
-                        default:
-                            ClearCS1 (newConn, STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN);
-                            ClearCS1 (newConn, STATE_SSL_TO_SEND_SHUTDOWN);
-                            SetCES(newConn, STATE_SSL_SOCK_GENERAL_ERROR);
-                            break;
-                    }
-                    break;
-            } 
+                    case SSL_ERROR_WANT_WRITE:
+                        break;
+                    
+                    default:
+                        ClearCS1 (newConn, STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN);
+                        ClearCS1 (newConn, STATE_SSL_TO_SEND_SHUTDOWN);
+                        SetCES(newConn, STATE_SSL_SOCK_GENERAL_ERROR);
+                        break;
+                }
+                break;
         }
+    }
+    
+    // if ( IsSetCS1(newConn, STATE_NO_MORE_WRITE_DATA) 
+    //         && (IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED) 
+    //                 && IsSetCS1(newConn, STATE_SSL_SENT_SHUTDOWN)) )
+
+    // if ( IsSetCS1(newConn, STATE_TCP_CONN_ESTABLISHED) 
+    //         && IsSetCS1(newConn, STATE_NO_MORE_WRITE_DATA) 
+    //         && STATE_SSL_SENT_SHUTDOWN) {
+
+    //     if ( IsSetCS1(newConn
+    //             , STATE_SSL_TO_SEND_SHUTDOWN 
+    //             | STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN) == 0) {
+    //         if ( IsSetCS1(newConn, STATE_TCP_TO_SEND_FIN) ) {
+    //             TcpWrShutdown (newConn->socketFd, newConn);
+    //         }
+    //     }
     } 
 
+    
+    
     if ( (IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED) == 0)
             || (IsSetCS1(newConn
                 , STATE_SSL_TO_SEND_SHUTDOWN 
@@ -265,8 +283,9 @@ static void OnWriteNextData (TcConn_t* newConn) {
             newConn->bytesSent += bytesSent;
 
             if (newConn->bytesSent == AppI->csDataLen) {
-                SetCS1(newConn, STATE_SSL_TO_SEND_SHUTDOWN);
-                CloseConnection(newConn);
+                SetCS1(newConn, STATE_NO_MORE_WRITE_DATA 
+                                | STATE_SSL_TO_SEND_SHUTDOWN
+                                | STATE_TCP_TO_SEND_FIN);
             }
         }
     }
@@ -539,22 +558,21 @@ void TcpClientRun(TcAppInt_t* appIface) {
                 } else if (GetAppState(newConn) 
                             == APP_STATE_SSL_CONNECTION_IN_PROGRESS) {
 
-                    int sslWantWrite = 0;
-                    int sslWantRead = 0;
-                    
-                    if ( IsSetCS1(newConn, STATE_SSL_CONN_WANT_WRITE) 
+                    int finishSslHandshake = 0;
+
+                    if ( IsSetCS1(newConn, STATE_SSL_HANDSHAKE_WANT_WRITE) 
                             && IsWriteEventSet(AppO->EventArr[eIndex]) ) {
-                        sslWantWrite = 1;
-                        ClearCS1(newConn, STATE_SSL_CONN_WANT_WRITE);   
+                        finishSslHandshake = 1;
+                        ClearCS1(newConn, STATE_SSL_HANDSHAKE_WANT_WRITE);   
                     } 
                     
-                    if ( IsSetCS1(newConn, STATE_SSL_CONN_WANT_READ) 
+                    if ( IsSetCS1(newConn, STATE_SSL_HANDSHAKE_WANT_READ) 
                             && IsReadEventSet(AppO->EventArr[eIndex]) ) {
-                        sslWantRead = 1;
-                        ClearCS1(newConn, STATE_SSL_CONN_WANT_READ);  
+                        finishSslHandshake = 1;
+                        ClearCS1(newConn, STATE_SSL_HANDSHAKE_WANT_READ);  
                     }
 
-                    if (sslWantRead || sslWantWrite ) {
+                    if ( finishSslHandshake ) {
                         OnSslConnectionCompletion (newConn);
                     }
 
@@ -566,8 +584,11 @@ void TcpClientRun(TcAppInt_t* appIface) {
                     if ( IsWriteEventSet(AppO->EventArr[eIndex]) 
                                         && !IsFdClosed(newConn) ) {
                         
-                        OnWriteNextData (newConn);
-
+                        if ( IsSetCS1(newConn,  STATE_NO_MORE_WRITE_DATA) ) {
+                            CloseConnection (newConn);
+                        } else {
+                            OnWriteNextData (newConn);
+                        }
                     }
 
                     // Handle Read
