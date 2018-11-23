@@ -236,7 +236,7 @@ void TcpClose(int fd, void* cState){
     }
 }
 
-void TcpWrShutdown(int fd, void* cState){    
+void TcpWrShutdown(int fd, void* cState) {    
     if (shutdown(fd, SHUT_WR)) {
         SetCES(cState, STATE_TCP_FIN_SEND_FAIL);
     } else {

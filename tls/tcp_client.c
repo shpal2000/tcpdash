@@ -119,92 +119,104 @@ static void ReleasePort(TcConn_t* newConn) {
     }
 }
 
+static void RemoveConnection(TcConn_t* newConn) {
+
+    if ( IsSetCES(newConn, STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) {
+        StopPollReadWriteEvent(AppO->eventQ
+                                , newConn->socketFd
+                                , &AppI->appConnStats
+                                , newConn->tcSess->groupConnStats
+                                , newConn);
+    }       
+
+    TcpClose(newConn->socketFd, newConn);
+
+    if ( GetCES(newConn) ) {
+        StoreErrSession (newConn->tcSess);
+    }
+
+    SetFreeSession (newConn->tcSess);
+
+    if ( IsSetCES(newConn, STATE_TCP_SOCK_FD_CLOSE_FAIL
+                            | STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) {
+        ReleasePort(newConn);
+    }
+}
+
 static void CloseConnection(TcConn_t* newConn) {
 
-    if ( IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED)
-            && IsSetCS1(newConn, STATE_NO_MORE_WRITE_DATA)
-            && IsSetCS1(newConn
-                , STATE_SSL_TO_SEND_SHUTDOWN 
-                | STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN) ) {
-        int status = SSL_shutdown(newConn->cSSL);
-        int sslError = SSL_get_error(newConn->cSSL, status);
-        
-        switch (status) {
-            case 1:
-                SetCS1 (newConn, STATE_SSL_RECEIVED_SHUTDOWN);
-                ClearCS1 (newConn, STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN);
-                SetCS1 (newConn, STATE_SSL_SENT_SHUTDOWN);
-                ClearCS1 (newConn, STATE_SSL_TO_SEND_SHUTDOWN);
-                break;
+    if ( IsSetCS1(newConn, STATE_TCP_RECEIVED_RESET) 
+            || IsSetCS1(newConn, STATE_TCP_TIMEOUT_CLOSED) 
+            || GetCES(newConn) ) {
 
-            case 0:
-                SetCS1 (newConn, STATE_SSL_SENT_SHUTDOWN);
-                ClearCS1 (newConn, STATE_SSL_TO_SEND_SHUTDOWN);
-                break;
+        RemoveConnection (newConn);
 
-            default:
-                switch (sslError) {
-                    case SSL_ERROR_WANT_READ:
-                        break;
+    } else {
 
-                    case SSL_ERROR_WANT_WRITE:
-                        break;
-                    
-                    default:
-                        ClearCS1 (newConn, STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN);
-                        ClearCS1 (newConn, STATE_SSL_TO_SEND_SHUTDOWN);
-                        SetCES(newConn, STATE_SSL_SOCK_GENERAL_ERROR);
-                        break;
-                }
-                break;
-        }
-    }
-    
-    // if ( IsSetCS1(newConn, STATE_NO_MORE_WRITE_DATA) 
-    //         && (IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED) 
-    //                 && IsSetCS1(newConn, STATE_SSL_SENT_SHUTDOWN)) )
+        int pendingSendReceiveCloseNotify 
+            = IsSetCS1(newConn, STATE_SSL_TO_SEND_SHUTDOWN) 
+            || IsSetCS1(newConn, STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN);
 
-    // if ( IsSetCS1(newConn, STATE_TCP_CONN_ESTABLISHED) 
-    //         && IsSetCS1(newConn, STATE_NO_MORE_WRITE_DATA) 
-    //         && STATE_SSL_SENT_SHUTDOWN) {
+        if ( IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED)
+                && pendingSendReceiveCloseNotify ) {
 
-    //     if ( IsSetCS1(newConn
-    //             , STATE_SSL_TO_SEND_SHUTDOWN 
-    //             | STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN) == 0) {
-    //         if ( IsSetCS1(newConn, STATE_TCP_TO_SEND_FIN) ) {
-    //             TcpWrShutdown (newConn->socketFd, newConn);
-    //         }
-    //     }
-    } 
+            int status = SSL_shutdown(newConn->cSSL);
+            int sslError = SSL_get_error(newConn->cSSL, status);
+            
+            switch (status) {
+                case 1:
+                    SetCS1 (newConn, STATE_SSL_RECEIVED_SHUTDOWN);
+                    ClearCS1 (newConn, STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN);
+                    SetCS1 (newConn, STATE_SSL_SENT_SHUTDOWN);
+                    ClearCS1 (newConn, STATE_SSL_TO_SEND_SHUTDOWN);
+                    break;
 
-    
-    
-    if ( (IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED) == 0)
-            || (IsSetCS1(newConn
-                , STATE_SSL_TO_SEND_SHUTDOWN 
-                | STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN) == 0) ) {
+                case 0:
+                    SetCS1 (newConn, STATE_SSL_SENT_SHUTDOWN);
+                    ClearCS1 (newConn, STATE_SSL_TO_SEND_SHUTDOWN);
+                    break;
 
-        if ( IsSetCES(newConn, STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) {
+                default:
+                    switch (sslError) {
+                        case SSL_ERROR_WANT_READ:
+                            break;
 
-            StopPollReadWriteEvent(AppO->eventQ
-                                    , newConn->socketFd
-                                    , &AppI->appConnStats
-                                    , newConn->tcSess->groupConnStats
-                                    , newConn);
+                        case SSL_ERROR_WANT_WRITE:
+                            break;
+                        
+                        default:
+                            ClearCS1 (newConn, STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN);
+                            ClearCS1 (newConn, STATE_SSL_TO_SEND_SHUTDOWN);
+                            SetCES(newConn, STATE_SSL_SOCK_GENERAL_ERROR);
+                            break;
+                    }
+                    break;
+            }
         }
 
-        TcpClose(newConn->socketFd, newConn);
+        int sentCloseNotifyOrNotRequired 
+            = IsSetCS1(newConn, STATE_SSL_SENT_SHUTDOWN) 
+                || ( (IsSetCS1(newConn, STATE_SSL_TO_SEND_SHUTDOWN) == 0)
+                    && (IsSetCS1(newConn, STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN) == 0) );
 
-        if ( GetCES(newConn) ) {
-            StoreErrSession (newConn->tcSess);
+
+        int wrShutdownDone 
+            = IsSetCS1 (newConn, STATE_TCP_SENT_FIN)
+                || IsSetCES (newConn, STATE_TCP_FIN_SEND_FAIL); 
+
+        if ( IsSetCS1(newConn, STATE_TCP_CONN_ESTABLISHED)
+                && (wrShutdownDone == 0)
+                && sentCloseNotifyOrNotRequired ) {
+
+            TcpWrShutdown (newConn->socketFd, newConn);
         }
 
-        SetFreeSession (newConn->tcSess);
-
-        if ( IsSetCES(newConn, STATE_TCP_SOCK_FD_CLOSE_FAIL
-                                | STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) {
-            ReleasePort(newConn);
-        }        
+        if ( GetCES(newConn) 
+                || (IsSetCS1(newConn, STATE_TCP_REMOTE_CLOSED)  
+                     &&  wrShutdownDone) ) {
+                         
+            RemoveConnection (newConn);
+        }
     }
 }
 

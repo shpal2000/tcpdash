@@ -204,6 +204,10 @@ void DumpCStats(void* aStats);
 #define STATE_TCP_TO_SEND_RST                               0x0000000010000000
 #define STATE_TCP_SENT_FIN                                  0x0000000020000000
 #define STATE_TCP_SENT_RESET                                0x0000000040000000
+#define STATE_TCP_RECEIVED_FIN                              0x0000000080000000
+#define STATE_TCP_RECEIVED_RESET                            0x0000000100000000
+#define STATE_TCP_REMOTE_CLOSED                             0x0000000200000000
+#define STATE_TCP_TIMEOUT_CLOSED                            0x0000000400000000
 
 
 #define STATE_TCP_SOCK_CREATE_FAIL                          0x0000000000000001
@@ -291,6 +295,8 @@ int TcpAcceptConnection(int listenerFd
                         , void* cState);
                         
 void TcpClose(int fd, void* cState);
+
+void TcpWrShutdown(int fd, void* cState);
 
 int TcpWrite(int fd
                 , const char* dataBuff
