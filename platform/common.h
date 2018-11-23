@@ -207,7 +207,6 @@ void DumpCStats(void* aStats);
 #define STATE_TCP_RECEIVED_FIN                              0x0000000080000000
 #define STATE_TCP_RECEIVED_RESET                            0x0000000100000000
 #define STATE_TCP_REMOTE_CLOSED                             0x0000000200000000
-#define STATE_TCP_TIMEOUT_CLOSED                            0x0000000400000000
 
 
 #define STATE_TCP_SOCK_CREATE_FAIL                          0x0000000000000001
@@ -231,6 +230,8 @@ void DumpCStats(void* aStats);
 #define STATE_SSL_SOCK_HANDSHAKE_ERROR                      0x0000000000040000
 #define STATE_TCP_FIN_SEND_FAIL                             0x0000000000080000
 #define STATE_TCP_RESET_SEND_FAIL                           0x0000000000100000
+#define STATE_TCP_REMOTE_CLOSED_ERROR                       0x0000000000200000
+#define STATE_TCP_TIMEOUT_CLOSED_ERROR                      0x0000000000400000
 
 #define AllocSession(__type) g_slice_new(__type)
 #define SetSessionToPool(__pool,__session) g_queue_push_tail (__pool,__session)
@@ -338,5 +339,8 @@ int SSLWrite (SSL* newSSL
                     , void* aStats
                     , void* bStats
                     , void* cState);
+
+void SSLShutdown (SSL* newSSL
+                , void* cState);
 #endif
 

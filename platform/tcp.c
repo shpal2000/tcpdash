@@ -401,13 +401,13 @@ int SSLRead (SSL* newSSL
     if (bytesSent <= 0) {
         int sslError = SSL_get_error(newSSL, bytesSent);
         switch (sslError) {
+            case SSL_ERROR_SYSCALL:
+                SetCS1 (cState, STATE_TCP_REMOTE_CLOSED);
+                break;
+  
             case SSL_ERROR_ZERO_RETURN:
-                break;
-
-             case SSL_ERROR_WANT_READ:
-                break;
-
-             case SSL_ERROR_WANT_WRITE:
+            case SSL_ERROR_WANT_READ:
+            case SSL_ERROR_WANT_WRITE:
                 break;
             
             default:
@@ -431,13 +431,13 @@ int SSLWrite (SSL* newSSL
     if (bytesSent <= 0) {
         int sslError = SSL_get_error(newSSL, bytesSent);
         switch (sslError) {
+            case SSL_ERROR_SYSCALL:
+                SetCES(cState, STATE_TCP_REMOTE_CLOSED_ERROR);
+                break;
+
             case SSL_ERROR_ZERO_RETURN:
-                break;
-
-             case SSL_ERROR_WANT_READ:
-                break;
-
-             case SSL_ERROR_WANT_WRITE:
+            case SSL_ERROR_WANT_READ:
+            case SSL_ERROR_WANT_WRITE:
                 break;
             
             default:
@@ -447,4 +447,41 @@ int SSLWrite (SSL* newSSL
     }
 
     return bytesSent;
+}
+
+void SSLShutdown (SSL* newSSL
+                , void* cState) {
+
+    int status = SSL_shutdown(newSSL);
+    int sslError = SSL_get_error(newSSL, status);
+    
+    switch (status) {
+        case 1:
+            SetCS1 (cState, STATE_SSL_RECEIVED_SHUTDOWN);
+            ClearCS1 (cState, STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN);
+            SetCS1 (cState, STATE_SSL_SENT_SHUTDOWN);
+            ClearCS1 (cState, STATE_SSL_TO_SEND_SHUTDOWN);
+            break;
+
+        case 0:
+            SetCS1 (cState, STATE_SSL_SENT_SHUTDOWN);
+            ClearCS1 (cState, STATE_SSL_TO_SEND_SHUTDOWN);
+            break;
+
+        default:
+            switch (sslError) {
+                case SSL_ERROR_SYSCALL:
+                case SSL_ERROR_ZERO_RETURN:
+                case SSL_ERROR_WANT_READ:
+                case SSL_ERROR_WANT_WRITE:
+                    break;
+                
+                default:
+                    ClearCS1 (cState, STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN);
+                    ClearCS1 (cState, STATE_SSL_TO_SEND_SHUTDOWN);
+                    SetCES(cState, STATE_SSL_SOCK_GENERAL_ERROR);
+                    break;
+            }
+            break;
+    }
 }

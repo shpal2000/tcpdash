@@ -145,9 +145,7 @@ static void RemoveConnection(TcConn_t* newConn) {
 
 static void CloseConnection(TcConn_t* newConn) {
 
-    if ( IsSetCS1(newConn, STATE_TCP_RECEIVED_RESET) 
-            || IsSetCS1(newConn, STATE_TCP_TIMEOUT_CLOSED) 
-            || GetCES(newConn) ) {
+    if ( GetCES(newConn) ) {
 
         RemoveConnection (newConn);
 
@@ -160,38 +158,7 @@ static void CloseConnection(TcConn_t* newConn) {
         if ( IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED)
                 && pendingSendReceiveCloseNotify ) {
 
-            int status = SSL_shutdown(newConn->cSSL);
-            int sslError = SSL_get_error(newConn->cSSL, status);
-            
-            switch (status) {
-                case 1:
-                    SetCS1 (newConn, STATE_SSL_RECEIVED_SHUTDOWN);
-                    ClearCS1 (newConn, STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN);
-                    SetCS1 (newConn, STATE_SSL_SENT_SHUTDOWN);
-                    ClearCS1 (newConn, STATE_SSL_TO_SEND_SHUTDOWN);
-                    break;
-
-                case 0:
-                    SetCS1 (newConn, STATE_SSL_SENT_SHUTDOWN);
-                    ClearCS1 (newConn, STATE_SSL_TO_SEND_SHUTDOWN);
-                    break;
-
-                default:
-                    switch (sslError) {
-                        case SSL_ERROR_WANT_READ:
-                            break;
-
-                        case SSL_ERROR_WANT_WRITE:
-                            break;
-                        
-                        default:
-                            ClearCS1 (newConn, STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN);
-                            ClearCS1 (newConn, STATE_SSL_TO_SEND_SHUTDOWN);
-                            SetCES(newConn, STATE_SSL_SOCK_GENERAL_ERROR);
-                            break;
-                    }
-                    break;
-            }
+            SSLShutdown (newConn->cSSL, newConn);
         }
 
         int sentCloseNotifyOrNotRequired 
@@ -214,7 +181,7 @@ static void CloseConnection(TcConn_t* newConn) {
         if ( GetCES(newConn) 
                 || (IsSetCS1(newConn, STATE_TCP_REMOTE_CLOSED)  
                      &&  wrShutdownDone) ) {
-                         
+
             RemoveConnection (newConn);
         }
     }
@@ -270,8 +237,6 @@ static void OnSslConnectionCompletion (TcConn_t* newConn) {
 
 static void OnWriteNextData (TcConn_t* newConn) {
 
-    TcSess_t* newSess = newConn->tcSess;
-
     if (newConn->bytesSent < AppI->csDataLen ) {
 
         int bytesToSend 
@@ -285,19 +250,23 @@ static void OnWriteNextData (TcConn_t* newConn) {
                         , sendBuffer
                         , bytesToSend
                         , &AppI->appConnStats
-                        , newSess->groupConnStats
+                        , newConn->tcSess->groupConnStats
                         , newConn);
 
         if ( GetCES(newConn) ) {
             CloseConnection(newConn);
         } else {
+            if (bytesSent <= 0) {
+                // ssl want read write; skip
+            } else {
+                //process written data
+                newConn->bytesSent += bytesSent;
 
-            newConn->bytesSent += bytesSent;
-
-            if (newConn->bytesSent == AppI->csDataLen) {
-                SetCS1(newConn, STATE_NO_MORE_WRITE_DATA 
-                                | STATE_SSL_TO_SEND_SHUTDOWN
-                                | STATE_TCP_TO_SEND_FIN);
+                if (newConn->bytesSent == AppI->csDataLen) {
+                    SetCS1(newConn, STATE_NO_MORE_WRITE_DATA 
+                                    | STATE_SSL_TO_SEND_SHUTDOWN
+                                    | STATE_TCP_TO_SEND_FIN);
+                }
             }
         }
     }
@@ -305,6 +274,27 @@ static void OnWriteNextData (TcConn_t* newConn) {
 
 static void OnReadNextData (TcConn_t* newConn) {
 
+    if ( IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) == 0) {
+        int bytesReceived 
+            = SSLRead ( newConn->cSSL
+                        , AppO->readBuffer
+                        , AppI->csDataLen
+                        , &AppI->appConnStats
+                        , newConn->tcSess->groupConnStats
+                        , newConn);
+        
+        if ( GetCES(newConn) ) {
+            CloseConnection(newConn);
+        } else {
+            if (bytesReceived <= 0) {
+                if ( IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) ) {
+                    CloseConnection(newConn);
+                }
+            } else {
+                //process read data
+            }
+        }
+    }
 }
 
 void DumpTcpClientStats(TcConnStats_t* appConnStats) {
