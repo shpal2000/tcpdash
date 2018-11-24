@@ -235,14 +235,18 @@ void DumpCStats(void* aStats);
 
 #define AllocSession(__type) g_slice_new(__type)
 #define SetSessionToPool(__pool,__session) g_queue_push_tail (__pool,__session)
-#define AddToPool(__pool,__session) g_queue_push_tail (__pool,__session)
 #define RemoveFromSessionPool(__pool,__session) g_queue_remove (__pool,__session)
 
 #define AllocEmptySessionPool() g_queue_new()
-#define AllocEmptyPool() g_queue_new()
 #define GetSesionFromPool(__pool) g_queue_pop_head(__pool)
 #define IsSessionPoolEmpty(__pool) g_queue_is_empty(__pool)
 #define GetSessionCount(__pool) g_queue_get_length(__pool)
+
+#define AllocEmptyPool() g_queue_new()
+#define GetFromPool(__pool) g_queue_pop_head(__pool)
+#define IsPoolEmpty(__pool) g_queue_is_empty(__pool)
+#define GetPoolCount(__pool) g_queue_get_length(__pool)
+#define AddToPool(__pool,__session) g_queue_push_tail (__pool,__session)
 
 #define CreateEventQ() epoll_create(1)
 #define DeleteEventQ(__eventQId) close(__eventQId)

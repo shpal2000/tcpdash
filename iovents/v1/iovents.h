@@ -39,6 +39,7 @@ typedef struct IoVentMethods {
 
 typedef struct IoVentOptions {
     uint32_t maxActiveConnections; 
+    uint32_t maxErrorConnections;
     uint32_t maxErrorConnections; 
 } IoVentOptions_t;
 
@@ -47,6 +48,9 @@ typedef struct IoVentApp {
     IoVentMethods_t methods;
     ConnectionPool_t* freeConnectionPool; 
     ConnectionPool_t* activeConnectionPool;
+
+    uint32_t errorConnectionCount;
+    IoVentConn_t* errorConnectionArr;
 } IoVentApp_t;
 
 void InitIoVents (IoVentMethods_t* methods

@@ -9,25 +9,64 @@
 
 static IoVentApp_t* App;
 
-static void InitConnection (IoVentConn_t* iovConn) {
+static void InitConnection (IoVentConn_t* newConn) {
 
-    CSInit(iovConn);
+    CSInit(newConn);
 
-    iovConn->socketFd = 0;
-    iovConn->cSSL = NULL;
-    iovConn->savedLocalPort = 0;
-    iovConn->savedRemotePort = 0;
-    iovConn->localAddress = NULL;
-    iovConn->remoteAddress = NULL;
-    iovConn->localPortPool = NULL  
+    newConn->socketFd = 0;
+    newConn->cSSL = NULL;
+    newConn->savedLocalPort = 0;
+    newConn->savedRemotePort = 0;
+    newConn->localAddress = NULL;
+    newConn->remoteAddress = NULL;
+    newConn->localPortPool = NULL  
 
-    iovConn->statusId = ;
-    iovConn->statusData = NULL;
+    newConn->statusId = ;
+    newConn->statusData = NULL;
 
-    iovConn->statusResponseId = ;
-    iovConn->statusResponseData = NULL;
+    newConn->statusResponseId = ;
+    newConn->statusResponseData = NULL;
 
-    iovConn->appData = NULL;   
+    newConn->appData = NULL;   
+}
+
+static IoVentConn_t* GetFreeConnection() {
+
+    IoVentConn_t* newConn 
+        = GetFromPool (App->freeConnectionPool);
+
+    if (newConn != NULL) {
+        AddToPool (App->activeConnectionPool, newConn);
+        InitConnection (newConn);
+    }
+
+    return newConn;
+}
+
+static void SetFreeSession(IoVentConn_t* newConn) {
+    
+    RemoveFromPool (App->activeConnectionPool, newConn);
+    AddToPool (App->freeConnectionPool, newConn);
+}
+
+static void StoreErrConnection(IoVentConn_t* newConn) {
+
+    if (App->errorConnectionCount 
+                < App->options.maxErrorConnections) {
+
+        IoVentConn_t* errConn 
+                = &App->errorConnectionArr[App->errorConnectionCount];
+
+        *errConn =  *newConn;
+
+        errSession->tcConn.savedLocalPort 
+            = ntohs(GetSockPort(errSession->tcConn.localAddress));
+
+        errSession->tcConn.savedRemotePort 
+            = ntohs(GetSockPort(errSession->tcConn.remoteAddress));
+
+        App->errorSessionCount++;
+    }
 }
 
 static void InitApp () {
@@ -42,12 +81,17 @@ static void InitApp () {
 
     for (int i = 0; i < App->options.maxActiveConnections; i++) {
 
-        IoVentConn_t* iovConn = CreateStruct0 (IoVentConn_t);
+        IoVentConn_t* newConn = CreateStruct (IoVentConn_t);
 
-        InitConnection (iovConn);
+        InitConnection (newConn);
 
-        AddToPool (App->freeConnectionPool, iovConn);
+        AddToPool (App->freeConnectionPool, newConn);
     }
+
+    App->errorConnectionCount = 0;
+    
+    App->errorConnectionArr 
+        = CreateArray (IoVentConn_t, App->options.maxErrorConnections); 
 
 } 
 
