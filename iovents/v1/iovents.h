@@ -4,6 +4,7 @@
 #include "platform/common.h"
 
 #define STATUS_GET_SSL_CTX                                  1
+#define STATUS_GET_SSL_CTX                                  1
 
 typedef struct IoVentConn {
 
