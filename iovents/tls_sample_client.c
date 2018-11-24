@@ -43,8 +43,7 @@ void TlsSampleClientRun (TlsSampleClient_t* appIface) {
     
     InitIoVents (&iovMethods, &iovOptions);
 
-
-
+    CleanupIoVents ();
 }
 
 
