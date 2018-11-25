@@ -30,20 +30,24 @@ static void OnStatus (IoVentConn_t* iovConn) {
 
 void TlsSampleClientRun (TlsSampleClient_t* appIface) {
 
-    IoVentMethods_t iovMethods;
-    iovMethods.OnEstablish = &OnEstablish;
-    iovMethods.OnWriteNext = &OnWriteNext;
-    iovMethods.OnReadNext = &OnReadNext;
-    iovMethods.OnCleanup = &OnCleanup;
-    iovMethods.OnStatus = &OnStatus;
+    IoVentMethods_t* iovMethods = CreateStruct0 (IoVentMethods_t);
+    iovMethods->OnEstablish = &OnEstablish;
+    iovMethods->OnWriteNext = &OnWriteNext;
+    iovMethods->OnReadNext = &OnReadNext;
+    iovMethods->OnCleanup = &OnCleanup;
+    iovMethods->OnStatus = &OnStatus;
 
-    IoVentOptions_t iovOptions;
-    iovOptions.maxActiveConnections = 100;
-    iovOptions.maxErrorConnections = 100;
+    IoVentOptions_t* iovOptions = CreateStruct0 (IoVentOptions_t);
+    iovOptions->maxActiveConnections = 100;
+    iovOptions->maxErrorConnections = 100;
     
-    InitIoVents (&iovMethods, &iovOptions);
+    IoVentCtx_t* iovCtx = CreateIoVentCtx (iovMethods, iovOptions);
 
-    CleanupIoVents ();
+    while (1) {
+        ProcessIoVent (iovCtx);
+    }
+
+    DeleteIoVentCtx (iovCtx);
 }
 
 
