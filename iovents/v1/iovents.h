@@ -8,34 +8,14 @@
 #define STATUS_GET_SSL_CTX                                  1
 #define STATUS_GET_SSL_CTX                                  1
 
-
-typedef struct IoVentMethods {
-    void (*OnEstablish) (IoVentConn_t*); 
-    void (*OnWriteNext) (IoVentConn_t*); 
-    void (*OnReadNext) (IoVentConn_t*); 
-    void (*OnCleanup) (IoVentConn_t*);
-    void (*OnStatus) (IoVentConn_t*);
-} IoVentMethods_t;
-
-typedef struct IoVentOptions {
-    uint32_t maxActiveConnections; 
-    uint32_t maxErrorConnections;
-    uint32_t maxEvents; 
-} IoVentOptions_t;
-
-typedef struct IoVentCtx {
-    IoVentOptions_t options;
-    IoVentMethods_t methods;
-    ConnectionPool_t* freeConnectionPool; 
-    ConnectionPool_t* activeConnectionPool;
-
-    uint32_t errorConnectionCount;
-    IoVentConn_t* errorConnectionArr;
-
-    PollEvent_t* EventArr;
-    int eventQ;
-    int eventPTO;
-} IoVentCtx_t;
+#define CONNAPP_STATE_INIT                               0
+#define CONNAPP_STATE_CONNECTION_IN_PROGRESS             1
+#define CONNAPP_STATE_CONNECTION_ESTABLISHED             2
+#define CONNAPP_STATE_CONNECTION_ESTABLISH_FAILED        3
+#define CONNAPP_STATE_CONNECTION_CLOSED                  4
+#define CONNAPP_STATE_SSL_CONNECTION_IN_PROGRESS         5
+#define CONNAPP_STATE_SSL_CONNECTION_ESTABLISHED         6
+#define CONNAPP_STATE_SSL_CONNECTION_ESTABLISH_FAILED    7
 
 typedef struct IoVentConn {
 
@@ -58,14 +38,40 @@ typedef struct IoVentConn {
    
     void* appData;
 
-    IoVentCtx_t* iovCtx;
+    struct IoVentCtx * iovCtx;
 
     SockStats_t* groupStats;
     SockStats_t* summaryStats;
 
 } IoVentConn_t;
 
+typedef struct IoVentMethods {
+    void (*OnEstablish) (IoVentConn_t *); 
+    void (*OnWriteNext) (IoVentConn_t *); 
+    void (*OnReadNext) (IoVentConn_t *); 
+    void (*OnCleanup) (IoVentConn_t *);
+    void (*OnStatus) (IoVentConn_t *);
+} IoVentMethods_t;
 
+typedef struct IoVentOptions {
+    uint32_t maxActiveConnections; 
+    uint32_t maxErrorConnections;
+    uint32_t maxEvents; 
+} IoVentOptions_t;
+
+typedef struct IoVentCtx {
+    IoVentOptions_t options;
+    IoVentMethods_t methods;
+    ConnectionPool_t* freeConnectionPool; 
+    ConnectionPool_t* activeConnectionPool;
+
+    uint32_t errorConnectionCount;
+    IoVentConn_t* errorConnectionArr;
+
+    PollEvent_t* EventArr;
+    int eventQ;
+    int eventPTO;
+} IoVentCtx_t;
 
 IoVentCtx_t* CreateIoVentCtx (IoVentMethods_t* methods
                 , IoVentOptions_t* options);
@@ -73,5 +79,9 @@ IoVentCtx_t* CreateIoVentCtx (IoVentMethods_t* methods
 void DeleteIoVentCtx (IoVentCtx_t* iovCtx);
 
 int ProcessIoVent (IoVentCtx_t* iovCtx);
+
+IoVentConn_t* GetFreeConnection (IoVentCtx_t* iovCtx);
+
+void SetFreeConnection (IoVentConn_t* newConn);
 
 #endif

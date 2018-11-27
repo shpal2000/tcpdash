@@ -247,6 +247,7 @@ void DumpCStats(void* aStats);
 #define IsPoolEmpty(__pool) g_queue_is_empty(__pool)
 #define GetPoolCount(__pool) g_queue_get_length(__pool)
 #define AddToPool(__pool,__session) g_queue_push_tail (__pool,__session)
+#define RemoveFromPool(__pool,__session) g_queue_remove (__pool,__session)
 
 #define CreateEventQ() epoll_create(1)
 #define DeleteEventQ(__eventQId) close(__eventQId)

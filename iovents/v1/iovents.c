@@ -17,18 +17,18 @@ static void InitConnection (IoVentConn_t* newConn) {
     newConn->savedRemotePort = 0;
     newConn->localAddress = NULL;
     newConn->remoteAddress = NULL;
-    newConn->localPortPool = NULL  
+    newConn->localPortPool = NULL;  
 
-    newConn->statusId = ;
+    newConn->statusId = 0;
     newConn->statusData = NULL;
 
-    newConn->statusResponseId = ;
+    newConn->statusResponseId = 0;
     newConn->statusResponseData = NULL;
 
     newConn->appData = NULL;   
 }
 
-static IoVentConn_t* GetFreeConnection (IoVentCtx_t* iovCtx) {
+IoVentConn_t* GetFreeConnection (IoVentCtx_t* iovCtx) {
 
     IoVentConn_t* newConn 
         = GetFromPool (iovCtx->freeConnectionPool);
@@ -41,29 +41,28 @@ static IoVentConn_t* GetFreeConnection (IoVentCtx_t* iovCtx) {
     return newConn;
 }
 
-static void SetFreeSession (IoVentConn_t* newConn) {
-    
-    RemoveFromPool (iovCtx->activeConnectionPool, newConn);
-    AddToPool (iovCtx->freeConnectionPool, newConn);
+void SetFreeConnection (IoVentConn_t* newConn) {
+    RemoveFromPool (newConn->iovCtx->activeConnectionPool, newConn);
+    AddToPool (newConn->iovCtx->freeConnectionPool, newConn);
 }
 
 static void StoreErrConnection (IoVentConn_t* newConn) {
-
-    if (iovCtx->errorConnectionCount 
-                < iovCtx->options.maxErrorConnections) {
+    int currentErrCount = newConn->iovCtx->errorConnectionCount;
+    if (currentErrCount 
+                < newConn->iovCtx->options.maxErrorConnections) {
 
         IoVentConn_t* errConn 
-                = &iovCtx->errorConnectionArr[iovCtx->errorConnectionCount];
+            = &newConn->iovCtx->errorConnectionArr[currentErrCount];
 
         *errConn =  *newConn;
 
-        errSession->tcConn.savedLocalPort 
-            = ntohs(GetSockPort(errSession->tcConn.localAddress));
+        errConn->savedLocalPort 
+            = ntohs(GetSockPort(errConn->localAddress));
 
-        errSession->tcConn.savedRemotePort 
-            = ntohs(GetSockPort(errSession->tcConn.remoteAddress));
+        errConn->savedRemotePort 
+            = ntohs(GetSockPort(errConn->remoteAddress));
 
-        iovCtx->errorConnectionCount++;
+        newConn->iovCtx->errorConnectionCount++;
     }
 }
 
@@ -102,10 +101,10 @@ void DumpErrConnections (IoVentCtx_t* iovCtx) {
 static void ReleasePort(IoVentConn_t* newConn) {
 
     if (IsIpv6(newConn->localAddress)) {
-        AddToPool (newConn->localPortPool
+        SetPortToPool (newConn->localPortPool
             , ((struct sockaddr_in6*)newConn->localAddress)->sin6_port);
     } else {
-        AddToPool (newConn->localPortPool
+        SetPortToPool (newConn->localPortPool
             , ((struct sockaddr_in*)newConn->localAddress)->sin_port);
     }
 }
@@ -113,20 +112,20 @@ static void ReleasePort(IoVentConn_t* newConn) {
 static void RemoveConnection(IoVentConn_t* newConn) {
 
     if ( IsSetCES(newConn, STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) {
-        StopPollReadWriteEvent(iovCtx->eventQ
+        StopPollReadWriteEvent(newConn->iovCtx->eventQ
                                 , newConn->socketFd
                                 , newConn->summaryStats
-                                , newConn->grouStats
+                                , newConn->groupStats
                                 , newConn);
     }       
 
     TcpClose(newConn->socketFd, newConn);
 
     if ( GetCES(newConn) ) {
-        StoreErrSession (newConn->tcSess);
+        StoreErrConnection (newConn);
     }
 
-    SetFreeSession (newConn->tcSess);
+    SetFreeConnection (newConn);
 
     if ( IsSetCES(newConn, STATE_TCP_SOCK_FD_CLOSE_FAIL
                             | STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) {
@@ -184,36 +183,43 @@ static void HandleSslConnect (IoVentConn_t* newConn) {
                         , newConn->socketFd
                         , 1
                         , newConn->summaryStats
-                        , newConn->grouStats
+                        , newConn->groupStats
                         , newConn);
 
     if (IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED)) {
         SetAppState (newConn
-                    , APP_STATE_SSL_CONNECTION_ESTABLISHED);
+                    , CONNAPP_STATE_SSL_CONNECTION_ESTABLISHED);
     } else if ( GetCES(newConn) ) {
         SetAppState (newConn
-                    , APP_STATE_SSL_CONNECTION_ESTABLISH_FAILED);
+                    , CONNAPP_STATE_SSL_CONNECTION_ESTABLISH_FAILED);
         CloseConnection(newConn);
     }  
+}
+
+static void InitSslConnection(IoVentConn_t* newConn) {
+
+    SetAppState(newConn, CONNAPP_STATE_SSL_CONNECTION_IN_PROGRESS);
+
+    HandleSslConnect (newConn);
 }
 
 static void OnTcpConnectionCompletion (IoVentConn_t* newConn) {
 
     VerifyTcpConnectionEstablished (newConn->socketFd
                                     , newConn->summaryStats
-                                    , newConn->grouStats
+                                    , newConn->groupStats
                                     , newConn);
     
     if ( GetCES(newConn) ) {
-        SetAppState (newConn, APP_STATE_CONNECTION_ESTABLISH_FAILED);
+        SetAppState (newConn, CONNAPP_STATE_CONNECTION_ESTABLISH_FAILED);
         CloseConnection(newConn);
     } else {
-        SetAppState (newConn, APP_STATE_CONNECTION_ESTABLISHED);
+        SetAppState (newConn, CONNAPP_STATE_CONNECTION_ESTABLISHED);
 
-        PollReadWriteEvent(AppO->eventQ
+        PollReadWriteEvent(newConn->iovCtx->eventQ
                             , newConn->socketFd
                             , newConn->summaryStats
-                            , newConn->grouStats
+                            , newConn->groupStats
                             , newConn);
 
         if ( GetCES(newConn) ) {
@@ -226,66 +232,12 @@ static void OnSslConnectionCompletion (IoVentConn_t* newConn) {
     HandleSslConnect (newConn);
 }
 
-static void OnWriteNextData (IoVentConn_t* newConn) {
-
-    if (newConn->bytesSent < AppI->csDataLen ) {
-
-        int bytesToSend 
-            = AppI->csDataLen - newConn->bytesSent;
-
-        const char* sendBuffer 
-            = &AppO->sendBuffer[newConn->bytesSent];
-
-        int bytesSent 
-            = SSLWrite (newConn->cSSL
-                        , sendBuffer
-                        , bytesToSend
-                        , newConn->summaryStats
-                        , newConn->grouStats
-                        , newConn);
-
-        if ( GetCES(newConn) ) {
-            CloseConnection(newConn);
-        } else {
-            if (bytesSent <= 0) {
-                // ssl want read write; skip
-            } else {
-                //process written data
-                newConn->bytesSent += bytesSent;
-
-                if (newConn->bytesSent == AppI->csDataLen) {
-                    SetCS1(newConn, STATE_NO_MORE_WRITE_DATA 
-                                    | STATE_SSL_TO_SEND_SHUTDOWN
-                                    | STATE_TCP_TO_SEND_FIN);
-                }
-            }
-        }
-    }
+static void OnWriteNext (IoVentConn_t* newConn) {
+    (*newConn->iovCtx->methods.OnWriteNext)(newConn);
 }
 
-static void OnReadNextData (IoVentConn_t* newConn) {
-
-    if ( IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) == 0) {
-        int bytesReceived 
-            = SSLRead ( newConn->cSSL
-                        , AppO->readBuffer
-                        , AppI->csDataLen
-                        , newConn->summaryStats
-                        , newConn->grouStats
-                        , newConn);
-        
-        if ( GetCES(newConn) ) {
-            CloseConnection(newConn);
-        } else {
-            if (bytesReceived <= 0) {
-                if ( IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) ) {
-                    CloseConnection(newConn);
-                }
-            } else {
-                //process read data
-            }
-        }
-    }
+static void OnReadNext (IoVentConn_t* newConn) {
+    (*newConn->iovCtx->methods.OnReadNext)(newConn);
 }
 
 static void InitIoVentCtx (IoVentCtx_t* iovCtx
@@ -296,8 +248,8 @@ static void InitIoVentCtx (IoVentCtx_t* iovCtx
 
     iovCtx->options = *options;
 
-    if (iovCtx->options->maxEvents == 0) {
-        iovCtx->options->maxEvents = DEFAULT_MAX_EVENTS;
+    if (iovCtx->options.maxEvents == 0) {
+        iovCtx->options.maxEvents = DEFAULT_MAX_EVENTS;
     }
     
     iovCtx->freeConnectionPool = AllocEmptyPool ();
@@ -319,7 +271,7 @@ static void InitIoVentCtx (IoVentCtx_t* iovCtx
         = CreateArray (IoVentConn_t, iovCtx->options.maxErrorConnections); 
 
     iovCtx->EventArr = CreateArray(PollEvent_t
-                                , iovCtx->options->maxEvents);
+                                , iovCtx->options.maxEvents);
 
     iovCtx->eventQ = CreateEventQ();
 
@@ -334,7 +286,7 @@ static void InitIoVentCtx (IoVentCtx_t* iovCtx
 IoVentCtx_t* CreateIoVentCtx (IoVentMethods_t* methods
                             , IoVentOptions_t* options) {
 
-    iovCtx = CreateStruct0 (IoVentCtx_t);
+    IoVentCtx_t* iovCtx = CreateStruct0 (IoVentCtx_t);
 
     InitIoVentCtx (iovCtx, methods, options);
 
@@ -342,10 +294,89 @@ IoVentCtx_t* CreateIoVentCtx (IoVentMethods_t* methods
 }
 
 void DeleteIoVentCtx (IoVentCtx_t* iovCtx) {
-
 }
 
-int ProcessIoVent (IoVentCtx_t* app) {
+int ProcessIoVent (IoVentCtx_t* iovCtx) {
 
+    int eCount = GetIOEvents(iovCtx->eventQ
+                                , iovCtx->EventArr
+                                , iovCtx->options.maxEvents
+                                , iovCtx->eventPTO);
+    if (eCount > 0) {
+
+        iovCtx->eventPTO = 0;
+
+        for(int eIndex = 0; eIndex < eCount; eIndex++) {
+
+            IoVentConn_t* newConn 
+                = (IoVentConn_t*) 
+                    GetIOEventData(iovCtx->EventArr[eIndex]);
+
+            //Handle Tcp Connect
+            if ( (GetAppState(newConn) 
+                        == CONNAPP_STATE_CONNECTION_IN_PROGRESS)
+                    &&  IsWriteEventSet(iovCtx->EventArr[eIndex]) ) {
+                
+                OnTcpConnectionCompletion (newConn);
+
+            //Handle SSL Connect Init
+            } else if ( (GetAppState(newConn) 
+                        == CONNAPP_STATE_CONNECTION_ESTABLISHED)
+                    && IsWriteEventSet(iovCtx->EventArr[eIndex]) ) {
+
+                InitSslConnection (newConn);
+
+            //Handle SSL Connect Handshake
+            } else if (GetAppState(newConn) 
+                        == CONNAPP_STATE_SSL_CONNECTION_IN_PROGRESS) {
+
+                int finishSslHandshake = 0;
+
+                if ( IsSetCS1(newConn, STATE_SSL_HANDSHAKE_WANT_WRITE) 
+                        && IsWriteEventSet(iovCtx->EventArr[eIndex]) ) {
+                    finishSslHandshake = 1;
+                    ClearCS1(newConn, STATE_SSL_HANDSHAKE_WANT_WRITE);   
+                } 
+                
+                if ( IsSetCS1(newConn, STATE_SSL_HANDSHAKE_WANT_READ) 
+                        && IsReadEventSet(iovCtx->EventArr[eIndex]) ) {
+                    finishSslHandshake = 1;
+                    ClearCS1(newConn, STATE_SSL_HANDSHAKE_WANT_READ);  
+                }
+
+                if ( finishSslHandshake ) {
+                    OnSslConnectionCompletion (newConn);
+                }
+
+            // Handle Read, Write Data
+            } else if ( GetAppState(newConn) 
+                        == CONNAPP_STATE_SSL_CONNECTION_ESTABLISHED ) {
+
+                // Handle Write
+                if ( IsWriteEventSet(iovCtx->EventArr[eIndex]) 
+                                    && !IsFdClosed(newConn) ) {
+                    
+                    if ( IsSetCS1(newConn,  STATE_NO_MORE_WRITE_DATA) ) {
+                        CloseConnection (newConn);
+                    } else {
+                        OnWriteNext (newConn);
+                    }
+                }
+
+                // Handle Read
+                if (IsReadEventSet(iovCtx->EventArr[eIndex])
+                                    && !IsFdClosed(newConn) ) {
+
+                    OnReadNext (newConn);
+
+                }
+            }
+        }
+    }else{
+        if (iovCtx->eventPTO < MAX_POLL_TIMEOUT) {
+            iovCtx->eventPTO++;
+        }
+    }
+    return 0;
 }
 
