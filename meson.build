@@ -18,6 +18,8 @@ executable('tcpdash.exe'
             , sources : tcpdash_src
             , include_directories : incdir
             , dependencies : [glib_dep, json_glib_dep]
-            , link_with : [tcp_client_lib, tcp_server_lib]) 
+            , link_with : [tcp_client_lib
+                            , tcp_server_lib
+                            , tls_sample_client_lib]) 
 
 
