@@ -196,6 +196,61 @@ static void HandleSslConnect (IoVentConn_t* newConn) {
     }  
 }
 
+void NewConnection (IoVentCtx_t* iovCtx
+                        , SockAddr_t* localAddress
+                        , LocalPortPool_t* localPortPool 
+                        , SockAddr_t* remoteAddress
+                        , void* aStats
+                        , void* bStats
+                        , int isSSL) {
+
+    IoVentConn_t* newConn = GetFreeConnection (iovCtx); 
+    
+    if (newConn) {
+
+        newConn->localAddress = localAddress;
+        newConn->localPortPool = localPortPool;
+        SetAppState(newConn, CONNAPP_STATE_CONNECTION_IN_PROGRESS);
+
+        AssignSocketLocalPort(newConn->localAddress
+                            , newConn->localPortPool
+                            , aStats
+                            , bStats
+                            , newConn);
+
+        if ( GetCES(newConn) ) {
+            StoreErrConnection (newConn);
+            SetFreeConnection (newConn);
+        } else {
+
+            newConn->socketFd 
+                = TcpNewConnection(newConn->localAddress
+                        , newConn->remoteAddress
+                        , aStats
+                        , bStats
+                        , newConn);
+
+            if ( GetCES(newConn) ) {
+                StoreErrConnection (newConn);
+                SetFreeConnection (newConn);
+                ReleasePort (newConn);
+            } else {
+                PollWriteEventOnly(iovCtx->eventQ
+                                    , newConn->socketFd
+                                    , aStats
+                                    , bStats
+                                    , newConn);
+
+                if ( GetCES(newConn) ) {
+                    CloseConnection(newConn);
+                }
+            }
+        }
+    } else {
+        //todo
+    }
+}
+
 static void InitSslConnection(IoVentConn_t* newConn) {
 
     SetAppState(newConn, CONNAPP_STATE_SSL_CONNECTION_IN_PROGRESS);
@@ -377,6 +432,11 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
             iovCtx->eventPTO++;
         }
     }
-    return 0;
+    
+    if ( IsPoolEmpty (iovCtx->activeConnectionPool) ) {
+        return 0;
+    }
+
+    return 1;
 }
 

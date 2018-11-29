@@ -80,8 +80,11 @@ void DeleteIoVentCtx (IoVentCtx_t* iovCtx);
 
 int ProcessIoVent (IoVentCtx_t* iovCtx);
 
-IoVentConn_t* GetFreeConnection (IoVentCtx_t* iovCtx);
-
-void SetFreeConnection (IoVentConn_t* newConn);
-
+void NewConnection (IoVentCtx_t* iovCtx
+                        , SockAddr_t* localAddress
+                        , LocalPortPool_t* localPortPool 
+                        , SockAddr_t* remoteAddress
+                        , void* aStats
+                        , void* bStats
+                        , int isSSL);
 #endif

@@ -31,7 +31,7 @@ static void OnStatus (IoVentConn_t* iovConn) {
 
 }
 
-void TlsSampleClientRun (TlsSampleClient_t* appIface) {
+void TlsSampleClientRun (TlsSampleClient_t* appI) {
 
     IoVentMethods_t* iovMethods = CreateStruct0 (IoVentMethods_t);
     iovMethods->OnEstablish = &OnEstablish;
@@ -41,16 +41,82 @@ void TlsSampleClientRun (TlsSampleClient_t* appIface) {
     iovMethods->OnStatus = &OnStatus;
 
     IoVentOptions_t* iovOptions = CreateStruct0 (IoVentOptions_t);
-    iovOptions->maxActiveConnections = 100;
-    iovOptions->maxErrorConnections = 100;
+    iovOptions->maxActiveConnections = appI->maxActiveSessions;
+    iovOptions->maxErrorConnections = appI->maxErrorSessions;
+    iovOptions->maxEvents = appI->maxEvents; 
     
     IoVentCtx_t* iovCtx = CreateIoVentCtx (iovMethods, iovOptions);
 
+    TimerWheel_t* timerWheel = CreateTimerWheel();
+    double lastConnectionInitTime = TimeElapsedTimerWheel(timerWheel);
+    int activeConnections = 0;
+    TlsSampleClientStats_t* appConnStats = &appI->appConnStats;
+    TlsSampleClientAppStats_t* appStats = &appI->appStats;
+
     while (1) {
-        ProcessIoVent (iovCtx);
+
+        activeConnections = ProcessIoVent (iovCtx);
+
+        if ( (GetConnStats(appConnStats, tcpConnInitFail) 
+                    >= appI->maxErrorSessions) 
+                || (GetConnStats(appConnStats, tcpConnInit) 
+                    == appI->maxSessions 
+                    && activeConnections == 0) ) {
+            break;
+        }
+
+        if (GetConnStats(appConnStats, tcpConnInit) < appI->maxSessions) {
+
+            int newConnectionInits 
+                = ((TimeElapsedTimerWheel(timerWheel)
+                        - lastConnectionInitTime)
+                    * appI->connectionPerSec);
+                
+            while ( (newConnectionInits > 0) 
+                    && (GetConnStats(appConnStats, tcpConnInit) 
+                        < appI->maxSessions) ) {
+
+                newConnectionInits--;
+
+                lastConnectionInitTime = TimeElapsedTimerWheel(timerWheel);
+
+                TlsSampleClientGroup_t* csGroup 
+                    = &appI->csGroupArr[appI->nextCsGroupIndex];
+
+                SockAddr_t* localAddress 
+                    = &(csGroup->clientAddrArr[csGroup->nextClientAddrIndex]);
+
+                SockAddr_t* remoteAddress 
+                    = &(csGroup->serverAddr);
+
+                TlsSampleClientStats_t* groupConnStats = &csGroup->cStats;
+
+                LocalPortPool_t* localPortPool 
+                    = &csGroup->LocalPortPoolArr[csGroup->nextClientAddrIndex];
+
+                appI->nextCsGroupIndex += 1;
+                if (appI->nextCsGroupIndex == appI->csGroupCount){
+                    appI->nextCsGroupIndex = 0;
+                }
+                
+                csGroup->nextClientAddrIndex += 1;
+                if (csGroup->nextClientAddrIndex == csGroup->clientAddrCount) {
+                    csGroup->nextClientAddrIndex = 0;
+                }
+
+                NewConnection (iovCtx
+                                , localAddress
+                                , localPortPool
+                                , remoteAddress
+                                , appConnStats
+                                , groupConnStats
+                                , 1);
+            }
+        }
     }
 
     DeleteIoVentCtx (iovCtx);
+    DeleteTimerWheel(timerWheel);
 }
 
 TlsSampleClient_t* CreateTlsSampleClientInterface(int csGroupCount
