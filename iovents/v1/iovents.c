@@ -177,11 +177,11 @@ static void CloseConnection(IoVentConn_t* newConn) {
     }
 }
 
-static void HandleSslConnect (IoVentConn_t* newConn) {
+static void DoSslHandshake (IoVentConn_t* newConn) {
 
    DoSSLConnect (newConn->cSSL
                         , newConn->socketFd
-                        , 1
+                        , IsSetCS1 (newConn, STATE_SSL_CONN_CLIENT)
                         , newConn->summaryStats
                         , newConn->groupStats
                         , newConn);
@@ -201,17 +201,16 @@ void NewConnection (IoVentCtx_t* iovCtx
                         , LocalPortPool_t* localPortPool 
                         , SockAddr_t* remoteAddress
                         , void* aStats
-                        , void* bStats
-                        , int isSSL) {
+                        , void* bStats) {
 
     IoVentConn_t* newConn = GetFreeConnection (iovCtx); 
-    
-    if (newConn) {
 
+    if (newConn == NULL) {
+        IncConnStats2(aStats, bStats, tcpConnStructNotAvail);
+    } else {
+        SetAppState(newConn, CONNAPP_STATE_CONNECTION_IN_PROGRESS);
         newConn->localAddress = localAddress;
         newConn->localPortPool = localPortPool;
-        SetAppState(newConn, CONNAPP_STATE_CONNECTION_IN_PROGRESS);
-
         AssignSocketLocalPort(newConn->localAddress
                             , newConn->localPortPool
                             , aStats
@@ -222,7 +221,6 @@ void NewConnection (IoVentCtx_t* iovCtx
             StoreErrConnection (newConn);
             SetFreeConnection (newConn);
         } else {
-
             newConn->socketFd 
                 = TcpNewConnection(newConn->localAddress
                         , newConn->remoteAddress
@@ -246,16 +244,36 @@ void NewConnection (IoVentCtx_t* iovCtx
                 }
             }
         }
-    } else {
-        //todo
     }
 }
 
-static void InitSslConnection(IoVentConn_t* newConn) {
+static void InitSslConnection(IoVentConn_t* newConn
+                                        , SSL* newSSL
+                                        , int isClient) {
 
     SetAppState(newConn, CONNAPP_STATE_SSL_CONNECTION_IN_PROGRESS);
 
-    HandleSslConnect (newConn);
+    if (isClient) {
+        SetCS1 (newConn, STATE_SSL_CONN_CLIENT);
+    }
+
+    newConn->cSSL = newSSL;
+
+    DoSslHandshake (newConn);
+}
+
+void SslClientInit (IoVentCtx_t* iovCtx
+                        , IoVentConn_t* newConn
+                        , SSL* newSSL) {
+
+    InitSslConnection(newConn, newSSL, 1);
+}
+
+void SslServerAccept (IoVentCtx_t* iovCtx
+                        , IoVentConn_t* newConn
+                        , SSL* newSSL) {
+
+    InitSslConnection(newConn, newSSL, 0);
 }
 
 static void OnTcpConnectionCompletion (IoVentConn_t* newConn) {
@@ -279,12 +297,10 @@ static void OnTcpConnectionCompletion (IoVentConn_t* newConn) {
 
         if ( GetCES(newConn) ) {
             CloseConnection(newConn);
+        } else {
+            (*newConn->iovCtx->methods.OnEstablish)(newConn);
         }
     }
-}
-
-static void OnSslConnectionCompletion (IoVentConn_t* newConn) {
-    HandleSslConnect (newConn);
 }
 
 static void OnWriteNext (IoVentConn_t* newConn) {
@@ -374,33 +390,33 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                 
                 OnTcpConnectionCompletion (newConn);
 
-            //Handle SSL Connect Init
-            } else if ( (GetAppState(newConn) 
-                        == CONNAPP_STATE_CONNECTION_ESTABLISHED)
-                    && IsWriteEventSet(iovCtx->EventArr[eIndex]) ) {
+            //Handle SSL Connect Init : will be done from callback
+            // } else if ( (GetAppState(newConn) 
+            //             == CONNAPP_STATE_CONNECTION_ESTABLISHED)
+            //         && IsWriteEventSet(iovCtx->EventArr[eIndex]) ) {
 
-                InitSslConnection (newConn);
+            //     InitSslConnection (newConn);
 
             //Handle SSL Connect Handshake
             } else if (GetAppState(newConn) 
                         == CONNAPP_STATE_SSL_CONNECTION_IN_PROGRESS) {
 
-                int finishSslHandshake = 0;
+                int doSslHandshake = 0;
 
                 if ( IsSetCS1(newConn, STATE_SSL_HANDSHAKE_WANT_WRITE) 
                         && IsWriteEventSet(iovCtx->EventArr[eIndex]) ) {
-                    finishSslHandshake = 1;
+                    doSslHandshake = 1;
                     ClearCS1(newConn, STATE_SSL_HANDSHAKE_WANT_WRITE);   
                 } 
                 
                 if ( IsSetCS1(newConn, STATE_SSL_HANDSHAKE_WANT_READ) 
                         && IsReadEventSet(iovCtx->EventArr[eIndex]) ) {
-                    finishSslHandshake = 1;
+                    doSslHandshake = 1;
                     ClearCS1(newConn, STATE_SSL_HANDSHAKE_WANT_READ);  
                 }
 
-                if ( finishSslHandshake ) {
-                    OnSslConnectionCompletion (newConn);
+                if ( doSslHandshake ) {
+                    DoSslHandshake (newConn);
                 }
 
             // Handle Read, Write Data

@@ -74,7 +74,7 @@ typedef struct IoVentCtx {
 } IoVentCtx_t;
 
 IoVentCtx_t* CreateIoVentCtx (IoVentMethods_t* methods
-                , IoVentOptions_t* options);
+                        , IoVentOptions_t* options);
 
 void DeleteIoVentCtx (IoVentCtx_t* iovCtx);
 
@@ -85,6 +85,14 @@ void NewConnection (IoVentCtx_t* iovCtx
                         , LocalPortPool_t* localPortPool 
                         , SockAddr_t* remoteAddress
                         , void* aStats
-                        , void* bStats
-                        , int isSSL);
+                        , void* bStats);
+
+void SslClientInit (IoVentCtx_t* iovCtx
+                        , IoVentConn_t* newConn
+                        , SSL* newSSL);
+
+void SslServerAccept (IoVentCtx_t* iovCtx
+                        , IoVentConn_t* newConn
+                        , SSL* newSSL);
+
 #endif

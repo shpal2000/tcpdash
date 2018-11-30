@@ -72,7 +72,7 @@ void TcpClientMain(){
     int dstPort = 443;
 
     int csGroupClientAddrCountArr[1] = {19};
-    TlsSampleClient_t* TcpClientI 
+    TcAppInt_t* TcpClientI 
         = CreateTcpClientInterface(1, csGroupClientAddrCountArr); 
 
     TcpClientI->isRunning = 1; 

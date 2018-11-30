@@ -51,7 +51,7 @@ void TlsSampleClientRun (TlsSampleClient_t* appI) {
     double lastConnectionInitTime = TimeElapsedTimerWheel(timerWheel);
     int activeConnections = 0;
     TlsSampleClientStats_t* appConnStats = &appI->appConnStats;
-    TlsSampleClientAppStats_t* appStats = &appI->appStats;
+    // TlsSampleClientAppStats_t* appStats = &appI->appStats;
 
     while (1) {
 
@@ -109,8 +109,7 @@ void TlsSampleClientRun (TlsSampleClient_t* appI) {
                                 , localPortPool
                                 , remoteAddress
                                 , appConnStats
-                                , groupConnStats
-                                , 1);
+                                , groupConnStats);
             }
         }
     }

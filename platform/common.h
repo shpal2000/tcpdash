@@ -56,6 +56,8 @@ typedef struct SockStats{
     uint64_t sslConnInitFail;
     uint64_t sslConnInitProgress;
 
+    uint64_t tcpConnStructNotAvail;
+
     uint64_t dummyCount;
 } SockStats_t;
 
@@ -207,6 +209,7 @@ void DumpCStats(void* aStats);
 #define STATE_TCP_RECEIVED_FIN                              0x0000000080000000
 #define STATE_TCP_RECEIVED_RESET                            0x0000000100000000
 #define STATE_TCP_REMOTE_CLOSED                             0x0000000200000000
+#define STATE_SSL_CONN_CLIENT                               0x0000000400000000
 
 
 #define STATE_TCP_SOCK_CREATE_FAIL                          0x0000000000000001
