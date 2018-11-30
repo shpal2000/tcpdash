@@ -125,12 +125,14 @@ static void RemoveConnection(IoVentConn_t* newConn) {
         StoreErrConnection (newConn);
     }
 
-    SetFreeConnection (newConn);
-
     if ( IsSetCES(newConn, STATE_TCP_SOCK_FD_CLOSE_FAIL
                             | STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) {
         ReleasePort(newConn);
     }
+
+    SetFreeConnection (newConn);
+
+    (*newConn->iovCtx->methods.OnCleanup)(newConn); 
 }
 
 static void CloseConnection(IoVentConn_t* newConn) {
@@ -262,15 +264,13 @@ static void InitSslConnection(IoVentConn_t* newConn
     DoSslHandshake (newConn);
 }
 
-void SslClientInit (IoVentCtx_t* iovCtx
-                        , IoVentConn_t* newConn
+void SslClientInit (IoVentConn_t* newConn
                         , SSL* newSSL) {
 
     InitSslConnection(newConn, newSSL, 1);
 }
 
-void SslServerAccept (IoVentCtx_t* iovCtx
-                        , IoVentConn_t* newConn
+void SslServerAccept (IoVentConn_t* newConn
                         , SSL* newSSL) {
 
     InitSslConnection(newConn, newSSL, 0);
@@ -301,14 +301,6 @@ static void OnTcpConnectionCompletion (IoVentConn_t* newConn) {
             (*newConn->iovCtx->methods.OnEstablish)(newConn);
         }
     }
-}
-
-static void OnWriteNext (IoVentConn_t* newConn) {
-    (*newConn->iovCtx->methods.OnWriteNext)(newConn);
-}
-
-static void OnReadNext (IoVentConn_t* newConn) {
-    (*newConn->iovCtx->methods.OnReadNext)(newConn);
 }
 
 static void InitIoVentCtx (IoVentCtx_t* iovCtx
@@ -430,16 +422,14 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                     if ( IsSetCS1(newConn,  STATE_NO_MORE_WRITE_DATA) ) {
                         CloseConnection (newConn);
                     } else {
-                        OnWriteNext (newConn);
+                        (*newConn->iovCtx->methods.OnWriteNext)(newConn);
                     }
                 }
 
                 // Handle Read
                 if (IsReadEventSet(iovCtx->EventArr[eIndex])
                                     && !IsFdClosed(newConn) ) {
-
-                    OnReadNext (newConn);
-
+                    (*newConn->iovCtx->methods.OnReadNext)(newConn);
                 }
             }
         }

@@ -87,12 +87,10 @@ void NewConnection (IoVentCtx_t* iovCtx
                         , void* aStats
                         , void* bStats);
 
-void SslClientInit (IoVentCtx_t* iovCtx
-                        , IoVentConn_t* newConn
+void SslClientInit (IoVentConn_t* newConn
                         , SSL* newSSL);
 
-void SslServerAccept (IoVentCtx_t* iovCtx
-                        , IoVentConn_t* newConn
+void SslServerAccept (IoVentConn_t* newConn
                         , SSL* newSSL);
 
 #endif

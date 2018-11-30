@@ -4,9 +4,11 @@
 #include "iovents.h"
 #include "tls_sample_client.h"
 
+SSL_CTX* GSslContext = NULL;
 
 static void OnEstablish (IoVentConn_t* iovConn) {
-
+    iovConn->appData = SSL_new(GSslContext);
+    SslClientInit (iovConn, (SSL*)iovConn->appData);     
 }
 
 static void OnWriteNext (IoVentConn_t* iovConn) {
@@ -18,7 +20,7 @@ static void OnReadNext (IoVentConn_t* iovConn) {
 }
 
 static void OnCleanup (IoVentConn_t* iovConn) {
-    
+    SSL_free((SSL*)iovConn->appData);
 }
 
 static void OnStatus (IoVentConn_t* iovConn) {
@@ -32,6 +34,25 @@ static void OnStatus (IoVentConn_t* iovConn) {
 }
 
 void TlsSampleClientRun (TlsSampleClient_t* appI) {
+
+    SSL_load_error_strings();
+    ERR_load_crypto_strings();
+    OpenSSL_add_ssl_algorithms();
+    SSL_library_init();
+
+    GSslContext = SSL_CTX_new(SSLv23_client_method());
+
+    SSL_CTX_set_verify(GSslContext
+                            , SSL_VERIFY_NONE, 0);
+
+    SSL_CTX_set_options(GSslContext
+                            , SSL_OP_NO_SSLv2 
+                            | SSL_OP_NO_SSLv3 
+                            | SSL_OP_NO_COMPRESSION);
+                            
+    SSL_CTX_set_mode(GSslContext
+                            , SSL_MODE_ENABLE_PARTIAL_WRITE);
+
 
     IoVentMethods_t* iovMethods = CreateStruct0 (IoVentMethods_t);
     iovMethods->OnEstablish = &OnEstablish;
