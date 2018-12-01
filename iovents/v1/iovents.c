@@ -180,10 +180,9 @@ static void CloseConnection(IoVentConn_t* newConn) {
 }
 
 static void DoSslHandshake (IoVentConn_t* newConn) {
-
-   DoSSLConnect (newConn->cSSL
+    DoSSLConnect (newConn->cSSL
                         , newConn->socketFd
-                        , IsSetCS1 (newConn, STATE_SSL_CONN_CLIENT)
+                        , IsSetCS1 (newConn, STATE_SSL_CONN_CLIENT) ? 1 : 0
                         , newConn->summaryStats
                         , newConn->groupStats
                         , newConn);
@@ -211,8 +210,12 @@ void NewConnection (IoVentCtx_t* iovCtx
         IncConnStats2(aStats, bStats, tcpConnStructNotAvail);
     } else {
         SetAppState(newConn, CONNAPP_STATE_CONNECTION_IN_PROGRESS);
+        newConn->iovCtx = iovCtx;
         newConn->localAddress = localAddress;
         newConn->localPortPool = localPortPool;
+        newConn->remoteAddress = remoteAddress;
+        newConn->summaryStats = aStats;
+        newConn->groupStats = bStats;
         AssignSocketLocalPort(newConn->localAddress
                             , newConn->localPortPool
                             , aStats
