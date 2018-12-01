@@ -37,6 +37,7 @@ typedef struct TlsSampleClient {
     uint32_t csGroupCount;
     uint32_t nextCsGroupIndex;
     TlsSampleClientGroup_t* csGroupArr;
+      
 } TlsSampleClient_t;
 
 void TlsSampleClientRun(TlsSampleClient_t* appIface);
@@ -47,5 +48,15 @@ TlsSampleClient_t* CreateTlsSampleClientInterface(int csGroupCount
 void DeleteTlsSampleClientInterface(TlsSampleClient_t* iFace);
 
 void DumpTlsSampleClientStats(TlsSampleClientStats_t* appConnStats);
+
+// non-interface types
+typedef struct TlsSampleClientCtx {
+    char* sendBuffer;
+    int csDataLen;
+} TlsSampleClientCtx_t;
+
+typedef struct TlsSampleClientConnData {
+    int bytesSent;
+} TlsSampleClientConnData_t;
 
 #endif

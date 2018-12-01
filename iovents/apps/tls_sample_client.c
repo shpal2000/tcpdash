@@ -6,24 +6,52 @@
 
 SSL_CTX* GSslContext = NULL;
 
-static void OnEstablish (IoVentConn_t* iovConn) {
-    iovConn->appData = SSL_new(GSslContext);
-    SslClientInit (iovConn, (SSL*)iovConn->appData);     
+static void OnEstablish (void* appCtx, IoVentConn_t* iovConn) {
+    iovConn->connData = SSL_new(GSslContext);
+    iovConn->bytesSent = 0;
+    SslClientInit (iovConn, (SSL*)iovConn->connData);     
 }
 
-static void OnWriteNext (IoVentConn_t* iovConn) {
+static void OnWriteNext (void* appCtx, IoVentConn_t* iovConn) {
+
+    TlsSampleClientCtx_t* appData 
+            = (TlsSampleClientCtx_t*) appCtx;
+
+    if (iovConn->bytesSent < appData->csDataLen ) {
+
+       WriteNextData (iovConn
+                    , appData->sendBuffer
+                    , 0
+                    , appData->csDataLen - iovConn->bytesSent); 
+    }
+}
+
+static void OnWriteNextStatus (void* appCtx
+                                , IoVentConn_t* iovConn
+                                , int bytesWritten
+                                ) {
+
+    TlsSampleClientCtx_t* appData 
+            = (TlsSampleClientCtx_t*) appCtx;
+    iovConn->bytesSent += bytesWritten;
+
+    if (iovConn->bytesSent == appData->csDataLen) {
+        //chnage this to iovent API
+        SetCS1(iovConn, STATE_NO_MORE_WRITE_DATA 
+                        | STATE_SSL_TO_SEND_SHUTDOWN
+                        | STATE_TCP_TO_SEND_FIN);
+    }          
+}
+
+static void OnReadNext (void* appCtx, IoVentConn_t* iovConn) {
     
 }
 
-static void OnReadNext (IoVentConn_t* iovConn) {
-    
+static void OnCleanup (void* appCtx, IoVentConn_t* iovConn) {
+    SSL_free((SSL*)iovConn->connData);
 }
 
-static void OnCleanup (IoVentConn_t* iovConn) {
-    SSL_free((SSL*)iovConn->appData);
-}
-
-static void OnStatus (IoVentConn_t* iovConn) {
+static void OnStatus (void* appCtx, IoVentConn_t* iovConn) {
 
     //todo for more advavanced control
     switch (iovConn->statusId) {
@@ -33,7 +61,18 @@ static void OnStatus (IoVentConn_t* iovConn) {
 
 }
 
+static TlsSampleClientCtx_t* CreateAppCtx (TlsSampleClient_t* appI) {
+
+    TlsSampleClientCtx_t* appCtx = CreateStruct0 (TlsSampleClientCtx_t);
+
+    appCtx->sendBuffer = TdMalloc (appI->csDataLen);
+
+    return appCtx;
+}
+
 void TlsSampleClientRun (TlsSampleClient_t* appI) {
+
+    TlsSampleClientCtx_t* appCtx = CreateAppCtx (appI);
 
     SSL_load_error_strings();
     ERR_load_crypto_strings();
@@ -57,6 +96,7 @@ void TlsSampleClientRun (TlsSampleClient_t* appI) {
     IoVentMethods_t* iovMethods = CreateStruct0 (IoVentMethods_t);
     iovMethods->OnEstablish = &OnEstablish;
     iovMethods->OnWriteNext = &OnWriteNext;
+    iovMethods->OnWriteNextStatus = &OnWriteNextStatus;
     iovMethods->OnReadNext = &OnReadNext;
     iovMethods->OnCleanup = &OnCleanup;
     iovMethods->OnStatus = &OnStatus;
@@ -126,6 +166,7 @@ void TlsSampleClientRun (TlsSampleClient_t* appI) {
                 }
 
                 NewConnection (iovCtx
+                                , appCtx
                                 , localAddress
                                 , localPortPool
                                 , remoteAddress

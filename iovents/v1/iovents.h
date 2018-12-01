@@ -36,21 +36,31 @@ typedef struct IoVentConn {
     uint32_t statusResponseId;
     void* statusResponseData;
    
-    void* appData;
 
     struct IoVentCtx * iovCtx;
+    void* connData; //connection specific data ; rename it;
+    void* sessionData; //groupd of related connections; part of a session
+    void* appCtx; //common to all connection; global application data
 
     SockStats_t* groupStats;
     SockStats_t* summaryStats;
 
+    char* writeBuffer;
+    int writeBuffOffset;
+    int writeDataLen;
+
+    int bytesSent; //remove this to connData
 } IoVentConn_t;
 
 typedef struct IoVentMethods {
-    void (*OnEstablish) (IoVentConn_t *); 
-    void (*OnWriteNext) (IoVentConn_t *); 
-    void (*OnReadNext) (IoVentConn_t *); 
-    void (*OnCleanup) (IoVentConn_t *);
-    void (*OnStatus) (IoVentConn_t *);
+    void (*OnEstablish) (void* appCtx, IoVentConn_t* conn); 
+    void (*OnWriteNext) (void* appCtx, IoVentConn_t* conn); 
+    void (*OnReadNext) (void* appCtx, IoVentConn_t* conn); 
+    void (*OnCleanup) (void* appCtx, IoVentConn_t* conn);
+    void (*OnStatus) (void* appCtx, IoVentConn_t* conn);
+
+    void (*OnWriteNextStatus) (void* appCtx, IoVentConn_t* conn 
+                                    , int bytesWritten); 
 } IoVentMethods_t;
 
 typedef struct IoVentOptions {
@@ -81,6 +91,7 @@ void DeleteIoVentCtx (IoVentCtx_t* iovCtx);
 int ProcessIoVent (IoVentCtx_t* iovCtx);
 
 void NewConnection (IoVentCtx_t* iovCtx
+                        , void* appCtx
                         , SockAddr_t* localAddress
                         , LocalPortPool_t* localPortPool 
                         , SockAddr_t* remoteAddress
@@ -92,5 +103,10 @@ void SslClientInit (IoVentConn_t* newConn
 
 void SslServerAccept (IoVentConn_t* newConn
                         , SSL* newSSL);
+
+void WriteNextData (IoVentConn_t* newConn
+                        , char* writeBuffer
+                        , int writeBuffOffset
+                        , int writeDataLen);
 
 #endif
