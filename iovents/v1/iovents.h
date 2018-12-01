@@ -49,6 +49,10 @@ typedef struct IoVentConn {
     int writeBuffOffset;
     int writeDataLen;
 
+    char* readBuffer;
+    int readBuffOffset;
+    int readDataLen;
+
     int bytesSent; //remove this to connData
 } IoVentConn_t;
 
@@ -61,6 +65,8 @@ typedef struct IoVentMethods {
 
     void (*OnWriteNextStatus) (void* appCtx, IoVentConn_t* conn 
                                     , int bytesWritten); 
+    void (*OnReadNextStatus) (void* appCtx, IoVentConn_t* conn 
+                                    , int bytesReceived); 
 } IoVentMethods_t;
 
 typedef struct IoVentOptions {
@@ -108,5 +114,10 @@ void WriteNextData (IoVentConn_t* newConn
                         , char* writeBuffer
                         , int writeBuffOffset
                         , int writeDataLen);
+
+void ReadNextData (IoVentConn_t* newConn
+                        , char* readBuffer
+                        , int readBuffOffset
+                        , int readDataLen);
 
 #endif

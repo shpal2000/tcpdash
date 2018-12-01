@@ -284,7 +284,8 @@ void SslServerAccept (IoVentConn_t* newConn
     InitSslConnection(newConn, newSSL, 0);
 }
 
-void HandleWriteNextData (IoVentConn_t* newConn) {
+//handle plain tcp write also
+static void HandleWriteNextData (IoVentConn_t* newConn) {
     int bytesSent 
         = SSLWrite (newConn->cSSL
                     , newConn->writeBuffer + newConn->writeBuffOffset
@@ -319,6 +320,52 @@ void WriteNextData (IoVentConn_t* newConn
     newConn->writeDataLen = writeDataLen;
 
     HandleWriteNextData (newConn);
+}
+
+//handle plain tcp read also
+static void HandleReadNextData (IoVentConn_t* newConn) {
+
+    if ( IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) == 0) {
+        int bytesReceived 
+            = SSLRead ( newConn->cSSL
+                        , newConn->readBuffer + newConn->readBuffOffset
+                        , newConn->readDataLen
+                        , newConn->summaryStats
+                        , newConn->groupStats
+                        , newConn);
+        
+        if ( GetCES(newConn) ) {
+            newConn->readBuffer = NULL;
+            CloseConnection(newConn);
+        } else {
+            if (bytesReceived <= 0) {
+                if ( IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) ) {
+                    newConn->readBuffer = NULL;
+                    CloseConnection(newConn);
+                } else {
+                    // ssl want read write; skip
+                }
+            } else {
+                //process read data
+                newConn->readBuffer = NULL;
+                (*newConn->iovCtx->methods.OnReadNextStatus)(newConn->appCtx
+                                                            , newConn
+                                                            , bytesReceived);
+            }
+        }
+    }
+}
+
+void ReadNextData (IoVentConn_t* newConn
+                        , char* readBuffer
+                        , int readBuffOffset
+                        , int readDataLen) {
+
+    newConn->readBuffer = readBuffer;
+    newConn->readBuffOffset = readBuffOffset;
+    newConn->readDataLen = readDataLen;
+
+    HandleReadNextData (newConn);
 }
 
 static void OnTcpConnectionCompletion (IoVentConn_t* newConn) {
@@ -472,8 +519,12 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                 // Handle Read
                 if (IsReadEventSet(iovCtx->EventArr[eIndex])
                                     && !IsFdClosed(newConn) ) {
-                    (*newConn->iovCtx->methods.OnReadNext)(newConn->appCtx
+                    if (newConn->readBuffer) {
+                        HandleReadNextData (newConn);
+                    } else {
+                        (*newConn->iovCtx->methods.OnReadNext)(newConn->appCtx
                                                                     , newConn);
+                    }
                 }
             }
         }

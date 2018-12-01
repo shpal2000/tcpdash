@@ -36,7 +36,7 @@ static void OnWriteNextStatus (void* appCtx
     iovConn->bytesSent += bytesWritten;
 
     if (iovConn->bytesSent == appData->csDataLen) {
-        //chnage this to iovent API
+        //change this to iovent API
         SetCS1(iovConn, STATE_NO_MORE_WRITE_DATA 
                         | STATE_SSL_TO_SEND_SHUTDOWN
                         | STATE_TCP_TO_SEND_FIN);
@@ -44,7 +44,21 @@ static void OnWriteNextStatus (void* appCtx
 }
 
 static void OnReadNext (void* appCtx, IoVentConn_t* iovConn) {
-    
+
+    TlsSampleClientCtx_t* appData 
+            = (TlsSampleClientCtx_t*) appCtx;
+
+    ReadNextData (iovConn
+                    , appData->receiveBuffer
+                    , 0
+                    , appData->scDataLen);
+}
+
+static void OnReadNextStatus (void* appCtx
+                                , IoVentConn_t* iovConn
+                                , int bytesReceived
+                                ) {
+
 }
 
 static void OnCleanup (void* appCtx, IoVentConn_t* iovConn) {
@@ -66,6 +80,10 @@ static TlsSampleClientCtx_t* CreateAppCtx (TlsSampleClient_t* appI) {
     TlsSampleClientCtx_t* appCtx = CreateStruct0 (TlsSampleClientCtx_t);
 
     appCtx->sendBuffer = TdMalloc (appI->csDataLen);
+    appCtx->csDataLen = appI->csDataLen;
+
+    appCtx->receiveBuffer = TdMalloc (appI->scDataLen);
+    appCtx->scDataLen = appI->scDataLen;
 
     return appCtx;
 }
@@ -98,6 +116,7 @@ void TlsSampleClientRun (TlsSampleClient_t* appI) {
     iovMethods->OnWriteNext = &OnWriteNext;
     iovMethods->OnWriteNextStatus = &OnWriteNextStatus;
     iovMethods->OnReadNext = &OnReadNext;
+    iovMethods->OnReadNextStatus = &OnReadNextStatus;
     iovMethods->OnCleanup = &OnCleanup;
     iovMethods->OnStatus = &OnStatus;
 

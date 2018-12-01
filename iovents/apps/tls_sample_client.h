@@ -53,6 +53,8 @@ void DumpTlsSampleClientStats(TlsSampleClientStats_t* appConnStats);
 typedef struct TlsSampleClientCtx {
     char* sendBuffer;
     int csDataLen;
+    char* receiveBuffer;
+    int scDataLen;
 } TlsSampleClientCtx_t;
 
 typedef struct TlsSampleClientConnData {
