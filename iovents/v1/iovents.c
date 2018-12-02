@@ -28,6 +28,16 @@ static void InitConnection (IoVentConn_t* newConn) {
     newConn->connData = NULL;   
     newConn->sessionData = NULL;   
     newConn->appCtx = NULL;
+
+    newConn->writeBuffer = NULL;
+    newConn->writeBuffOffset = 0;
+    newConn->writeDataLen = 0;
+
+    newConn->readBuffer = NULL;
+    newConn->readBuffOffset = 0;
+    newConn->readDataLen = 0;
+
+    newConn->bytesSent = 0;
 }
 
 IoVentConn_t* GetFreeConnection (IoVentCtx_t* iovCtx) {
@@ -68,37 +78,43 @@ static void StoreErrConnection (IoVentConn_t* newConn) {
     }
 }
 
+static void DumpConnection (IoVentConn_t* newConn) {
+
+    char srcAddr[INET6_ADDRSTRLEN];
+    char dstAddr[INET6_ADDRSTRLEN];
+
+    AddressToString (newConn->localAddress, srcAddr);
+
+    AddressToString (newConn->remoteAddress, dstAddr);
+
+    printf ("SS1 = %#018" PRIx64 
+            ", ES = %#018" PRIx64 
+            ", SysErr = %d"
+            ", SockErr = %d"
+            ", src = %s : %hu"
+            ", dst = %s : %hu\n"
+            , GetCS1(newConn)
+            , GetCES(newConn)
+            , GetSysErrno(newConn) 
+            , GetSockErrno(newConn) 
+            , srcAddr, newConn->savedLocalPort
+            , dstAddr, newConn->savedRemotePort);
+}
+
 void DumpErrConnections (IoVentCtx_t* iovCtx) {
 
     if (iovCtx->errorConnectionCount) {
-
-        char srcAddr[INET6_ADDRSTRLEN];
-        char dstAddr[INET6_ADDRSTRLEN];
 
         for (int i = 0; i < iovCtx->errorConnectionCount; i++) {
 
             IoVentConn_t* errConn 
                     = &iovCtx->errorConnectionArr[i];
 
-            AddressToString (errConn->localAddress, srcAddr);
-
-            AddressToString (errConn->remoteAddress, dstAddr);
-
-            printf ("SS1 = %#018" PRIx64 
-                    ", ES = %#018" PRIx64 
-                    ", SysErr = %d"
-                    ", SockErr = %d"
-                    ", src = %s : %hu"
-                    ", dst = %s : %hu\n"
-                    , GetCS1(errConn)
-                    , GetCES(errConn)
-                    , GetSysErrno(errConn) 
-                    , GetSockErrno(errConn) 
-                    , srcAddr, errConn->savedLocalPort
-                    , dstAddr, errConn->savedRemotePort); 
+            DumpConnection (errConn);
         }
     }
 }
+
 
 static void ReleasePort(IoVentConn_t* newConn) {
 
@@ -112,6 +128,8 @@ static void ReleasePort(IoVentConn_t* newConn) {
 }
 
 static void RemoveConnection(IoVentConn_t* newConn) {
+
+    // DumpConnection (newConn);
 
     if ( IsSetCES(newConn, STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) {
         StopPollReadWriteEvent(newConn->iovCtx->eventQ
