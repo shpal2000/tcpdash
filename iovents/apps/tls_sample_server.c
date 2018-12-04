@@ -2,7 +2,7 @@
 #include <sys/mman.h>
 
 #include "iovents.h"
-#include "tls_sample_client.h"
+#include "tls_sample_server.h"
 
 SSL_CTX* GSslContext = NULL;
 
@@ -14,8 +14,8 @@ static void OnEstablish (void* appCtx, IoVentConn_t* iovConn) {
 
 static void OnWriteNext (void* appCtx, IoVentConn_t* iovConn) {
 
-    TlsSampleClientCtx_t* appData 
-            = (TlsSampleClientCtx_t*) appCtx;
+    TlsSampleServerCtx_t* appData 
+            = (TlsSampleServerCtx_t*) appCtx;
 
     if (iovConn->bytesSent < appData->csDataLen ) {
 
@@ -31,8 +31,8 @@ static void OnWriteNextStatus (void* appCtx
                                 , int bytesWritten
                                 ) {
 
-    TlsSampleClientCtx_t* appData 
-            = (TlsSampleClientCtx_t*) appCtx;
+    TlsSampleServerCtx_t* appData 
+            = (TlsSampleServerCtx_t*) appCtx;
     iovConn->bytesSent += bytesWritten;
 
     if (iovConn->bytesSent == appData->csDataLen) {
@@ -45,8 +45,8 @@ static void OnWriteNextStatus (void* appCtx
 
 static void OnReadNext (void* appCtx, IoVentConn_t* iovConn) {
 
-    TlsSampleClientCtx_t* appData 
-            = (TlsSampleClientCtx_t*) appCtx;
+    TlsSampleServerCtx_t* appData 
+            = (TlsSampleServerCtx_t*) appCtx;
 
     ReadNextData (iovConn
                     , appData->receiveBuffer
@@ -75,9 +75,9 @@ static void OnStatus (void* appCtx, IoVentConn_t* iovConn) {
 
 }
 
-static TlsSampleClientCtx_t* CreateAppCtx (TlsSampleClient_t* appI) {
+static TlsSampleServerCtx_t* CreateAppCtx (TlsSampleServer_t* appI) {
 
-    TlsSampleClientCtx_t* appCtx = CreateStruct0 (TlsSampleClientCtx_t);
+    TlsSampleServerCtx_t* appCtx = CreateStruct0 (TlsSampleServerCtx_t);
 
     appCtx->sendBuffer = TdMalloc (appI->csDataLen);
     appCtx->csDataLen = appI->csDataLen;
@@ -88,10 +88,10 @@ static TlsSampleClientCtx_t* CreateAppCtx (TlsSampleClient_t* appI) {
     return appCtx;
 }
 
-void TlsSampleClientRun (TlsSampleClient_t* appI) {
+void TlsSampleServerRun (TlsSampleServer_t* appI) {
 
     appI->isRunning = 1;
-    TlsSampleClientCtx_t* appCtx = CreateAppCtx (appI);
+    TlsSampleServerCtx_t* appCtx = CreateAppCtx (appI);
 
     SSL_load_error_strings();
     ERR_load_crypto_strings();
@@ -131,8 +131,8 @@ void TlsSampleClientRun (TlsSampleClient_t* appI) {
     TimerWheel_t* timerWheel = CreateTimerWheel();
     double lastConnectionInitTime = TimeElapsedTimerWheel(timerWheel);
     int activeConnections = 0;
-    TlsSampleClientStats_t* appConnStats = &appI->appConnStats;
-    // TlsSampleClientAppStats_t* appStats = &appI->appStats;
+    TlsSampleServerStats_t* appConnStats = &appI->appConnStats;
+    // TlsSampleServerAppStats_t* appStats = &appI->appStats;
 
     while (1) {
 
@@ -161,7 +161,7 @@ void TlsSampleClientRun (TlsSampleClient_t* appI) {
 
                 lastConnectionInitTime = TimeElapsedTimerWheel(timerWheel);
 
-                TlsSampleClientGroup_t* csGroup 
+                TlsSampleServerGroup_t* csGroup 
                     = &appI->csGroupArr[appI->nextCsGroupIndex];
 
                 SockAddr_t* localAddress 
@@ -170,7 +170,7 @@ void TlsSampleClientRun (TlsSampleClient_t* appI) {
                 SockAddr_t* remoteAddress 
                     = &(csGroup->serverAddr);
 
-                TlsSampleClientStats_t* groupConnStats = &csGroup->cStats;
+                TlsSampleServerStats_t* groupConnStats = &csGroup->cStats;
 
                 LocalPortPool_t* localPortPool 
                     = &csGroup->LocalPortPoolArr[csGroup->nextClientAddrIndex];
@@ -205,12 +205,12 @@ void TlsSampleClientRun (TlsSampleClient_t* appI) {
     appI->isRunning = 0;
 }
 
-TlsSampleClient_t* CreateTlsSampleClientInterface(int csGroupCount
+TlsSampleServer_t* CreateTlsSampleServerInterface(int csGroupCount
                                             , int* clientAddrCounts) {
 
-    TlsSampleClient_t* iFace 
-        = (TlsSampleClient_t*) mmap(NULL
-            , sizeof (TlsSampleClient_t)
+    TlsSampleServer_t* iFace 
+        = (TlsSampleServer_t*) mmap(NULL
+            , sizeof (TlsSampleServer_t)
             , PROT_READ | PROT_WRITE
             , MAP_SHARED | MAP_ANONYMOUS
             , -1
@@ -218,15 +218,15 @@ TlsSampleClient_t* CreateTlsSampleClientInterface(int csGroupCount
 
     iFace->csGroupCount = csGroupCount;
     iFace->csGroupArr 
-        = (TlsSampleClientGroup_t*) mmap(NULL
-            , sizeof (TlsSampleClientGroup_t) * iFace->csGroupCount
+        = (TlsSampleServerGroup_t*) mmap(NULL
+            , sizeof (TlsSampleServerGroup_t) * iFace->csGroupCount
             , PROT_READ | PROT_WRITE
             , MAP_SHARED | MAP_ANONYMOUS
             , -1
             , 0);
     iFace->nextCsGroupIndex = 0;
     for (int gIndex = 0; gIndex < iFace->csGroupCount; gIndex++) {
-        TlsSampleClientGroup_t* csGroup = &iFace->csGroupArr[gIndex];
+        TlsSampleServerGroup_t* csGroup = &iFace->csGroupArr[gIndex];
         csGroup->clientAddrCount = clientAddrCounts[gIndex];
         csGroup->nextClientAddrIndex = 0;
         csGroup->clientAddrArr
@@ -253,11 +253,11 @@ TlsSampleClient_t* CreateTlsSampleClientInterface(int csGroupCount
     return iFace;
 }
 
-void DeleteTlsSampleClientInterface (TlsSampleClient_t* iFace){
+void DeleteTlsSampleServerInterface (TlsSampleServer_t* iFace){
     //todo
 }
 
-void DumpTlsSampleClientStats(TlsSampleClientStats_t* appConnStats) {
+void DumpTlsSampleServerStats(TlsSampleServerStats_t* appConnStats) {
     
     char statsString[120];
 
