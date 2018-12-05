@@ -26,6 +26,7 @@ typedef struct IoVentConn {
 
     uint16_t savedLocalPort;
     uint16_t savedRemotePort;
+    SockAddr_t remoteAddressAccept;
     SockAddr_t* localAddress;
     SockAddr_t* remoteAddress;
     LocalPortPool_t* localPortPool;   
@@ -106,10 +107,16 @@ void NewConnection (IoVentCtx_t* iovCtx
                         , void* aStats
                         , void* bStats);
 
+void InitServer (IoVentCtx_t* iovCtx
+                    , void* appCtx
+                    , SockAddr_t* localAddress
+                    , void* aStats
+                    , void* bStats);
+                    
 void SslClientInit (IoVentConn_t* newConn
                         , SSL* newSSL);
 
-void SslServerAccept (IoVentConn_t* newConn
+void SslServerInit (IoVentConn_t* newConn
                         , SSL* newSSL);
 
 void WriteNextData (IoVentConn_t* newConn

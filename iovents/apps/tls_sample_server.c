@@ -9,21 +9,21 @@ SSL_CTX* GSslContext = NULL;
 static void OnEstablish (void* appCtx, IoVentConn_t* iovConn) {
     iovConn->connData = SSL_new(GSslContext);
     iovConn->bytesSent = 0;
-    SslClientInit (iovConn, (SSL*)iovConn->connData);     
+    SslServerInit (iovConn, (SSL*)iovConn->connData);     
 }
 
 static void OnWriteNext (void* appCtx, IoVentConn_t* iovConn) {
 
-    TlsSampleServerCtx_t* appData 
-            = (TlsSampleServerCtx_t*) appCtx;
+    // TlsSampleServerCtx_t* appData 
+    //         = (TlsSampleServerCtx_t*) appCtx;
 
-    if (iovConn->bytesSent < appData->csDataLen ) {
+    // if (iovConn->bytesSent < appData->csDataLen ) {
 
-       WriteNextData (iovConn
-                    , appData->sendBuffer
-                    , 0
-                    , appData->csDataLen - iovConn->bytesSent); 
-    }
+    //    WriteNextData (iovConn
+    //                 , appData->sendBuffer
+    //                 , 0
+    //                 , appData->csDataLen - iovConn->bytesSent); 
+    // }
 }
 
 static void OnWriteNextStatus (void* appCtx
@@ -31,16 +31,16 @@ static void OnWriteNextStatus (void* appCtx
                                 , int bytesWritten
                                 ) {
 
-    TlsSampleServerCtx_t* appData 
-            = (TlsSampleServerCtx_t*) appCtx;
-    iovConn->bytesSent += bytesWritten;
+    // TlsSampleServerCtx_t* appData 
+    //         = (TlsSampleServerCtx_t*) appCtx;
+    // iovConn->bytesSent += bytesWritten;
 
-    if (iovConn->bytesSent == appData->csDataLen) {
-        //change this to iovent API
-        SetCS1(iovConn, STATE_NO_MORE_WRITE_DATA 
-                        | STATE_SSL_TO_SEND_SHUTDOWN
-                        | STATE_TCP_TO_SEND_FIN);
-    }          
+    // if (iovConn->bytesSent == appData->csDataLen) {
+    //     //change this to iovent API
+    //     SetCS1(iovConn, STATE_NO_MORE_WRITE_DATA 
+    //                     | STATE_SSL_TO_SEND_SHUTDOWN
+    //                     | STATE_TCP_TO_SEND_FIN);
+    // }          
 }
 
 static void OnReadNext (void* appCtx, IoVentConn_t* iovConn) {
@@ -98,7 +98,7 @@ void TlsSampleServerRun (TlsSampleServer_t* appI) {
     OpenSSL_add_ssl_algorithms();
     SSL_library_init();
 
-    GSslContext = SSL_CTX_new(SSLv23_client_method());
+    GSslContext = SSL_CTX_new(SSLv23_server_method());
 
     SSL_CTX_set_verify(GSslContext
                             , SSL_VERIFY_NONE, 0);
@@ -111,6 +111,14 @@ void TlsSampleServerRun (TlsSampleServer_t* appI) {
     SSL_CTX_set_mode(GSslContext
                             , SSL_MODE_ENABLE_PARTIAL_WRITE);
 
+
+    SSL_CTX_use_certificate_file(GSslContext
+            , "/root/autssl/certdepo/ca1/usrcerts/rsa2048_1_sha256.cert"
+            , SSL_FILETYPE_PEM);
+
+    SSL_CTX_use_PrivateKey_file(GSslContext
+            , "/root/autssl/certdepo/ca1/usrcerts/rsa2048_1.key"
+            , SSL_FILETYPE_PEM);
 
     IoVentMethods_t* iovMethods = CreateStruct0 (IoVentMethods_t);
     iovMethods->OnEstablish = &OnEstablish;
@@ -127,86 +135,44 @@ void TlsSampleServerRun (TlsSampleServer_t* appI) {
     iovOptions->maxEvents = appI->maxEvents; 
     
     IoVentCtx_t* iovCtx = CreateIoVentCtx (iovMethods, iovOptions);
-
-    TimerWheel_t* timerWheel = CreateTimerWheel();
-    double lastConnectionInitTime = TimeElapsedTimerWheel(timerWheel);
-    int activeConnections = 0;
     TlsSampleServerStats_t* appConnStats = &appI->appConnStats;
     // TlsSampleServerAppStats_t* appStats = &appI->appStats;
 
+
+    for (int i = 0; i < appI->csGroupCount; i++) {
+
+        TlsSampleServerGroup_t* csGroup 
+            = &appI->csGroupArr[i];
+
+        TlsSampleServerStats_t* groupConnStats 
+            = &csGroup->cStats;
+
+        SockAddr_t* localAddress 
+             = &(csGroup->serverAddr);
+
+        InitServer(iovCtx
+                    , appCtx
+                    , localAddress
+                    , appConnStats
+                    , groupConnStats);
+    }
+
+
     while (1) {
 
-        activeConnections = ProcessIoVent (iovCtx);
+        ProcessIoVent (iovCtx);
 
-        if ( (GetConnStats(appConnStats, tcpConnInitFail) 
-                    >= appI->maxErrorSessions) 
-                || (GetConnStats(appConnStats, tcpConnInit) 
-                    == appI->maxSessions 
-                    && activeConnections == 0) ) {
-            break;
-        }
-
-        if (GetConnStats(appConnStats, tcpConnInit) < appI->maxSessions) {
-
-            int newConnectionInits 
-                = ((TimeElapsedTimerWheel(timerWheel)
-                        - lastConnectionInitTime)
-                    * appI->connectionPerSec);
-                
-            while ( (newConnectionInits > 0) 
-                    && (GetConnStats(appConnStats, tcpConnInit) 
-                        < appI->maxSessions) ) {
-
-                newConnectionInits--;
-
-                lastConnectionInitTime = TimeElapsedTimerWheel(timerWheel);
-
-                TlsSampleServerGroup_t* csGroup 
-                    = &appI->csGroupArr[appI->nextCsGroupIndex];
-
-                SockAddr_t* localAddress 
-                    = &(csGroup->clientAddrArr[csGroup->nextClientAddrIndex]);
-
-                SockAddr_t* remoteAddress 
-                    = &(csGroup->serverAddr);
-
-                TlsSampleServerStats_t* groupConnStats = &csGroup->cStats;
-
-                LocalPortPool_t* localPortPool 
-                    = &csGroup->LocalPortPoolArr[csGroup->nextClientAddrIndex];
-
-                appI->nextCsGroupIndex += 1;
-                if (appI->nextCsGroupIndex == appI->csGroupCount){
-                    appI->nextCsGroupIndex = 0;
-                }
-                
-                csGroup->nextClientAddrIndex += 1;
-                if (csGroup->nextClientAddrIndex == csGroup->clientAddrCount) {
-                    csGroup->nextClientAddrIndex = 0;
-                }
-
-                NewConnection (iovCtx
-                                , appCtx
-                                , localAddress
-                                , localPortPool
-                                , remoteAddress
-                                , appConnStats
-                                , groupConnStats);
-            }
-        }
     }
 
     DumpErrConnections (iovCtx);
 
     DeleteIoVentCtx (iovCtx);
-    DeleteTimerWheel(timerWheel);
 
 
     appI->isRunning = 0;
 }
 
-TlsSampleServer_t* CreateTlsSampleServerInterface(int csGroupCount
-                                            , int* clientAddrCounts) {
+TlsSampleServer_t* CreateTlsSampleServerInterface(int csGroupCount) {
 
     TlsSampleServer_t* iFace 
         = (TlsSampleServer_t*) mmap(NULL
@@ -224,31 +190,6 @@ TlsSampleServer_t* CreateTlsSampleServerInterface(int csGroupCount
             , MAP_SHARED | MAP_ANONYMOUS
             , -1
             , 0);
-    iFace->nextCsGroupIndex = 0;
-    for (int gIndex = 0; gIndex < iFace->csGroupCount; gIndex++) {
-        TlsSampleServerGroup_t* csGroup = &iFace->csGroupArr[gIndex];
-        csGroup->clientAddrCount = clientAddrCounts[gIndex];
-        csGroup->nextClientAddrIndex = 0;
-        csGroup->clientAddrArr
-            = (SockAddr_t*) mmap(NULL
-                , sizeof (SockAddr_t) * csGroup->clientAddrCount
-                , PROT_READ | PROT_WRITE
-                , MAP_SHARED | MAP_ANONYMOUS
-                , -1
-                , 0);
-        csGroup->LocalPortPoolArr 
-            = (LocalPortPool_t*) mmap(NULL
-                , sizeof (LocalPortPool_t) * csGroup->clientAddrCount
-                , PROT_READ | PROT_WRITE
-                , MAP_SHARED | MAP_ANONYMOUS
-                , -1
-                , 0);
-        for (int cIndex = 0
-                ; cIndex < csGroup->clientAddrCount
-                ; cIndex++) {
-            InitPortBindQ(&csGroup->LocalPortPoolArr[cIndex]);
-        }
-    }
 
     return iFace;
 }

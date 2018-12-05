@@ -69,10 +69,10 @@ static void StoreErrConnection (IoVentConn_t* newConn) {
         *errConn =  *newConn;
 
         errConn->savedLocalPort 
-            = ntohs(GetSockPort(errConn->localAddress));
+            = ntohs(GetSockPort(&errConn->localAddress));
 
         errConn->savedRemotePort 
-            = ntohs(GetSockPort(errConn->remoteAddress));
+            = ntohs(GetSockPort(&errConn->remoteAddress));
 
         newConn->iovCtx->errorConnectionCount++;
     }
@@ -114,7 +114,6 @@ void DumpErrConnections (IoVentCtx_t* iovCtx) {
         }
     }
 }
-
 
 static void ReleasePort(IoVentConn_t* newConn) {
 
@@ -218,6 +217,23 @@ static void DoSslHandshake (IoVentConn_t* newConn) {
     }  
 }
 
+static void OnConnectionEstablshedHelper (IoVentConn_t* newConn) {
+    SetAppState (newConn, CONNAPP_STATE_CONNECTION_ESTABLISHED);
+
+    PollReadWriteEvent(newConn->iovCtx->eventQ
+                        , newConn->socketFd
+                        , newConn->summaryStats
+                        , newConn->groupStats
+                        , newConn);
+
+    if ( GetCES(newConn) ) {
+        CloseConnection(newConn);
+    } else {
+        (*newConn->iovCtx->methods.OnEstablish)(newConn->appCtx
+                                                    , newConn);
+    }
+}
+
 void NewConnection (IoVentCtx_t* iovCtx
                         , void* appCtx
                         , SockAddr_t* localAddress
@@ -275,6 +291,83 @@ void NewConnection (IoVentCtx_t* iovCtx
     }
 }
 
+void InitServer (IoVentCtx_t* iovCtx
+                    , void* appCtx
+                    , SockAddr_t* localAddress
+                    , void* aStats
+                    , void* bStats) {
+    int status = -1;
+    IoVentConn_t* newConn = GetFreeConnection (iovCtx);
+    if (newConn == NULL) {
+        IncConnStats2(aStats, bStats, tcpListenStructNotAvail);
+    } else {
+        newConn->iovCtx = iovCtx;
+        newConn->appCtx = appCtx;
+        newConn->localAddress = localAddress;
+        newConn->summaryStats = aStats;
+        newConn->groupStats = bStats;
+        
+        newConn->socketFd 
+            = TcpListenStart(newConn->localAddress
+                                , 1000 //remove hardcoded 
+                                , newConn->summaryStats
+                                , newConn->groupStats
+                                , newConn);
+
+        if ( GetCES(newConn) ) {
+            StoreErrConnection (newConn);
+            SetFreeConnection (newConn);
+        } else {
+            PollReadEventOnly(newConn->iovCtx->eventQ
+                                , newConn->socketFd
+                                , newConn->summaryStats
+                                , newConn->groupStats
+                                , newConn);
+
+            if ( GetCES(newConn) ) {
+                CloseConnection(newConn);
+            }
+
+            status = 0;
+        }
+    }
+
+    if (status != 0 ) {
+        IncConnStats2(aStats, bStats, tcpInitServerFail);
+    }
+}
+
+static void OnTcpAcceptConnection(IoVentConn_t* lSockConn) {
+                
+    IoVentConn_t* newConn = GetFreeConnection (lSockConn->iovCtx);
+    
+    if (newConn == NULL) {
+        IncConnStats2(lSockConn->summaryStats
+                    , lSockConn->groupStats
+                    , tcpConnStructNotAvail);
+    } else {
+        newConn->iovCtx = lSockConn->iovCtx;
+        newConn->appCtx = lSockConn->appCtx;
+        newConn->localAddress = lSockConn->localAddress;
+        newConn->remoteAddress = &newConn->remoteAddressAccept; 
+        newConn->summaryStats = lSockConn->summaryStats;
+        newConn->groupStats = lSockConn->groupStats;
+
+        newConn->socketFd = TcpAcceptConnection(lSockConn->socketFd
+                                            , newConn->remoteAddress
+                                            , newConn->summaryStats
+                                            , newConn->groupStats
+                                            , newConn);
+
+        if ( GetCES(newConn) ) {
+            StoreErrConnection (newConn);
+            SetFreeConnection (newConn);
+        } else {
+            OnConnectionEstablshedHelper (newConn);
+        }
+    }
+}
+
 static void InitSslConnection(IoVentConn_t* newConn
                                         , SSL* newSSL
                                         , int isClient) {
@@ -296,7 +389,7 @@ void SslClientInit (IoVentConn_t* newConn
     InitSslConnection(newConn, newSSL, 1);
 }
 
-void SslServerAccept (IoVentConn_t* newConn
+void SslServerInit (IoVentConn_t* newConn
                         , SSL* newSSL) {
 
     InitSslConnection(newConn, newSSL, 0);
@@ -397,20 +490,7 @@ static void OnTcpConnectionCompletion (IoVentConn_t* newConn) {
         SetAppState (newConn, CONNAPP_STATE_CONNECTION_ESTABLISH_FAILED);
         CloseConnection(newConn);
     } else {
-        SetAppState (newConn, CONNAPP_STATE_CONNECTION_ESTABLISHED);
-
-        PollReadWriteEvent(newConn->iovCtx->eventQ
-                            , newConn->socketFd
-                            , newConn->summaryStats
-                            , newConn->groupStats
-                            , newConn);
-
-        if ( GetCES(newConn) ) {
-            CloseConnection(newConn);
-        } else {
-            (*newConn->iovCtx->methods.OnEstablish)(newConn->appCtx
-                                                        , newConn);
-        }
+        OnConnectionEstablshedHelper (newConn);
     }
 }
 
@@ -486,66 +566,72 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                 = (IoVentConn_t*) 
                     GetIOEventData(iovCtx->EventArr[eIndex]);
 
-            //Handle Tcp Connect
-            if ( (GetAppState(newConn) 
-                        == CONNAPP_STATE_CONNECTION_IN_PROGRESS)
-                    &&  IsWriteEventSet(iovCtx->EventArr[eIndex]) ) {
-                
-                OnTcpConnectionCompletion (newConn);
+            if IsSetCS1 (newConn, STATE_TCP_LISTENING) {
+                OnTcpAcceptConnection(newConn);
+            } else {
 
-            } else if (GetAppState(newConn) 
-                        == CONNAPP_STATE_SSL_CONNECTION_IN_PROGRESS) {
-
-                int doSslHandshake = 0;
-
-                if ( IsSetCS1(newConn, STATE_SSL_HANDSHAKE_WANT_WRITE) 
-                        && IsWriteEventSet(iovCtx->EventArr[eIndex]) ) {
-                    doSslHandshake = 1;
-                    ClearCS1(newConn, STATE_SSL_HANDSHAKE_WANT_WRITE);   
-                } 
-                
-                if ( IsSetCS1(newConn, STATE_SSL_HANDSHAKE_WANT_READ) 
-                        && IsReadEventSet(iovCtx->EventArr[eIndex]) ) {
-                    doSslHandshake = 1;
-                    ClearCS1(newConn, STATE_SSL_HANDSHAKE_WANT_READ);  
-                }
-
-                if ( doSslHandshake ) {
-                    DoSslHandshake (newConn);
-                }
-
-            // Handle Read, Write Data
-            } else if ( GetAppState(newConn) 
-                        == CONNAPP_STATE_SSL_CONNECTION_ESTABLISHED ) {
-
-                // Handle Write
-                if ( IsWriteEventSet(iovCtx->EventArr[eIndex]) 
-                                    && !IsFdClosed(newConn) ) {
+                //Handle Tcp Connect
+                if ( (GetAppState(newConn) 
+                            == CONNAPP_STATE_CONNECTION_IN_PROGRESS)
+                        &&  IsWriteEventSet(iovCtx->EventArr[eIndex]) ) {
                     
-                    if ( IsSetCS1(newConn,  STATE_NO_MORE_WRITE_DATA) ) {
-                        CloseConnection (newConn);
-                    } else {
-                        if (newConn->writeBuffer) {
-                            HandleWriteNextData (newConn);
+                    OnTcpConnectionCompletion (newConn);
+
+                } else if (GetAppState(newConn) 
+                            == CONNAPP_STATE_SSL_CONNECTION_IN_PROGRESS) {
+
+                    int doSslHandshake = 0;
+
+                    if ( IsSetCS1(newConn, STATE_SSL_HANDSHAKE_WANT_WRITE) 
+                            && IsWriteEventSet(iovCtx->EventArr[eIndex]) ) {
+                        doSslHandshake = 1;
+                        ClearCS1(newConn, STATE_SSL_HANDSHAKE_WANT_WRITE);   
+                    } 
+                    
+                    if ( IsSetCS1(newConn, STATE_SSL_HANDSHAKE_WANT_READ) 
+                            && IsReadEventSet(iovCtx->EventArr[eIndex]) ) {
+                        doSslHandshake = 1;
+                        ClearCS1(newConn, STATE_SSL_HANDSHAKE_WANT_READ);  
+                    }
+
+                    if ( doSslHandshake ) {
+                        DoSslHandshake (newConn);
+                    }
+
+                // Handle Read, Write Data
+                } else if ( GetAppState(newConn) 
+                            == CONNAPP_STATE_SSL_CONNECTION_ESTABLISHED ) {
+
+                    // Handle Write
+                    if ( IsWriteEventSet(iovCtx->EventArr[eIndex]) 
+                                        && !IsFdClosed(newConn) ) {
+                        
+                        if ( IsSetCS1(newConn,  STATE_NO_MORE_WRITE_DATA) ) {
+                            CloseConnection (newConn);
                         } else {
-                            (*newConn->iovCtx->methods.OnWriteNext)(newConn->appCtx
-                                                                    , newConn);
+                            if (newConn->writeBuffer) {
+                                HandleWriteNextData (newConn);
+                            } else {
+                                (*newConn->iovCtx->methods.OnWriteNext)(newConn->appCtx
+                                                                        , newConn);
+                            }
                         }
                     }
-                }
 
-                // Handle Read
-                if (IsReadEventSet(iovCtx->EventArr[eIndex])
-                                    && !IsFdClosed(newConn) ) {
-                    if (newConn->readBuffer) {
-                        HandleReadNextData (newConn);
-                    } else {
-                        (*newConn->iovCtx->methods.OnReadNext)(newConn->appCtx
-                                                                    , newConn);
+                    // Handle Read
+                    if (IsReadEventSet(iovCtx->EventArr[eIndex])
+                                        && !IsFdClosed(newConn) ) {
+                        if (newConn->readBuffer) {
+                            HandleReadNextData (newConn);
+                        } else {
+                            (*newConn->iovCtx->methods.OnReadNext)(newConn->appCtx
+                                                                        , newConn);
+                        }
                     }
                 }
             }
         }
+
     }else{
         if (iovCtx->eventPTO < MAX_POLL_TIMEOUT) {
             iovCtx->eventPTO++;

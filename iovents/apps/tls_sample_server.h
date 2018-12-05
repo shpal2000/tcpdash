@@ -42,8 +42,7 @@ typedef struct TlsSampleServer {
 
 void TlsSampleServerRun(TlsSampleServer_t* appIface);
 
-TlsSampleServer_t* CreateTlsSampleServerInterface(int csGroupCount
-                                            , int* clientAddrCounts);
+TlsSampleServer_t* CreateTlsSampleServerInterface(int csGroupCount);
 
 void DeleteTlsSampleServerInterface(TlsSampleServer_t* iFace);
 

@@ -57,6 +57,9 @@ typedef struct SockStats{
     uint64_t sslConnInitProgress;
 
     uint64_t tcpConnStructNotAvail;
+    uint64_t tcpListenStructNotAvail;
+
+    uint64_t tcpInitServerFail;
 
     uint64_t dummyCount;
 } SockStats_t;

@@ -170,7 +170,8 @@ void TlsSampleClientRun (TlsSampleClient_t* appI) {
                 SockAddr_t* remoteAddress 
                     = &(csGroup->serverAddr);
 
-                TlsSampleClientStats_t* groupConnStats = &csGroup->cStats;
+                TlsSampleClientStats_t* groupConnStats 
+                    = &csGroup->cStats;
 
                 LocalPortPool_t* localPortPool 
                     = &csGroup->LocalPortPoolArr[csGroup->nextClientAddrIndex];
