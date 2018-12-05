@@ -24,6 +24,13 @@ static void OnWriteNext (void* appCtx, IoVentConn_t* iovConn) {
     //                 , 0
     //                 , appData->csDataLen - iovConn->bytesSent); 
     // }
+
+    if ( IsSetCS1 (iovConn, STATE_TCP_REMOTE_CLOSED) ) {
+        //change this to iovent API
+        SetCS1(iovConn, STATE_NO_MORE_WRITE_DATA 
+                        | STATE_SSL_TO_SEND_SHUTDOWN
+                        | STATE_TCP_TO_SEND_FIN);
+    } 
 }
 
 static void OnWriteNextStatus (void* appCtx

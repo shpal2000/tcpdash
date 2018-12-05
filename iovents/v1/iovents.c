@@ -144,8 +144,10 @@ static void RemoveConnection(IoVentConn_t* newConn) {
         StoreErrConnection (newConn);
     }
 
-    if ( IsSetCES(newConn, STATE_TCP_SOCK_FD_CLOSE_FAIL
-                            | STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) {
+    //only for client connection
+    if ( newConn->localPortPool 
+            && ( IsSetCES(newConn, STATE_TCP_SOCK_FD_CLOSE_FAIL
+                        | STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) ) {
         ReleasePort(newConn);
     }
 
@@ -452,7 +454,6 @@ static void HandleReadNextData (IoVentConn_t* newConn) {
             if (bytesReceived <= 0) {
                 if ( IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) ) {
                     newConn->readBuffer = NULL;
-                    CloseConnection(newConn);
                 } else {
                     // ssl want read write; skip
                 }

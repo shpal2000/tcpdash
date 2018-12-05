@@ -282,6 +282,8 @@ int TcpAcceptConnection(int listenerFd
                         , void* bStats
                         , void* cState) {
     
+    SetCS1(cState, STATE_TCP_CONN_ACCEPT);
+
     int socket_fd = -1;
     socklen_t addrLen = sizeof (SockAddr_t);
 
@@ -293,7 +295,7 @@ int TcpAcceptConnection(int listenerFd
         IncConnStats2(aStats, bStats, tcpAcceptFail);
         SetCES(cState, STATE_TCP_CONN_ACCEPT_FAIL);        
     } else {
-        SetCS1(cState, STATE_TCP_CONN_ACCEPT);
+        SetCS1 (cState, STATE_TCP_CONN_ESTABLISHED);
 
         IncConnStats2(aStats
                     , bStats 
