@@ -4,7 +4,7 @@
 #include "iovents.h"
 #include "tls_sample_server.h"
 
-SSL_CTX* GSslContext = NULL;
+static SSL_CTX* GSslContext = NULL;
 
 static void OnEstablish (void* appCtx, IoVentConn_t* iovConn) {
     iovConn->connData = SSL_new(GSslContext);
@@ -212,7 +212,7 @@ void DumpTlsSampleServerStats(TlsSampleServerStats_t* appConnStats) {
                         "%" PRIu64 "\n"
                         "\n"
         , GetConnStats(appConnStats, tcpConnInit)
-        , GetConnStats(appConnStats, tcpConnInitSuccess)
+        , GetConnStats(appConnStats, tcpAcceptSuccess)
         , GetConnStats(appConnStats, tcpConnInitFail)
         , GetConnStats(appConnStats, tcpConnInitFailImmediateOther)
         , GetConnStats(appConnStats, tcpConnInitFailImmediateEaddrNotAvail)

@@ -1,5 +1,5 @@
-#ifndef __TLS_SAMPLE_CLIENT_APP_H
-#define __TLS_SAMPLE_CLIENT_APP_H
+#ifndef __TLS_SAMPLE_SERVER_APP_H
+#define __TLS_SAMPLE_SERVER_APP_H
 
 #include "platform/common.h"
 

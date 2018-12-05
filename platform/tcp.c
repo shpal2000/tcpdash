@@ -295,6 +295,10 @@ int TcpAcceptConnection(int listenerFd
     } else {
         SetCS1(cState, STATE_TCP_CONN_ACCEPT);
 
+        IncConnStats2(aStats
+                    , bStats 
+                    , tcpAcceptSuccess);
+
         int flags = fcntl(socket_fd, F_GETFL, 0);
         if (flags < 0) {
             SetCES(cState, STATE_TCP_SOCK_F_GETFL_FAIL 
@@ -401,11 +405,11 @@ int SSLRead (SSL* newSSL
     if (bytesSent <= 0) {
         int sslError = SSL_get_error(newSSL, bytesSent);
         switch (sslError) {
+            case SSL_ERROR_ZERO_RETURN:
             case SSL_ERROR_SYSCALL:
                 SetCS1 (cState, STATE_TCP_REMOTE_CLOSED);
                 break;
   
-            case SSL_ERROR_ZERO_RETURN:
             case SSL_ERROR_WANT_READ:
             case SSL_ERROR_WANT_WRITE:
                 break;

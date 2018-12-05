@@ -47,6 +47,7 @@ typedef struct SockStats{
     uint64_t tcpListenStop;
     uint64_t tcpListenStartFail;
     uint64_t tcpAcceptFail;
+    uint64_t tcpAcceptSuccess;
 
     uint64_t tcpLocalPortAssignFail;
     uint64_t tcpPollRegUnregFail;

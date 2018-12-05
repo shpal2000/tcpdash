@@ -4,7 +4,7 @@
 #include "iovents.h"
 #include "tls_sample_client.h"
 
-SSL_CTX* GSslContext = NULL;
+static SSL_CTX* GSslContext = NULL;
 
 static void OnEstablish (void* appCtx, IoVentConn_t* iovConn) {
     iovConn->connData = SSL_new(GSslContext);
