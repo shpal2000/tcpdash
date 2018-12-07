@@ -64,10 +64,17 @@ typedef struct IoVentMethods {
     void (*OnCleanup) (void* appCtx, IoVentConn_t* conn);
     void (*OnStatus) (void* appCtx, IoVentConn_t* conn);
 
-    void (*OnWriteNextStatus) (void* appCtx, IoVentConn_t* conn 
-                                    , int bytesWritten); 
-    void (*OnReadNextStatus) (void* appCtx, IoVentConn_t* conn 
-                                    , int bytesReceived); 
+    void (*OnWriteNextStatus) (void* appCtx, IoVentConn_t* conn
+                                    , char* writeBuffer
+                                    , int writeBuffOffset
+                                    , int writeDataLen 
+                                    , int bytesWritten);
+
+    void (*OnReadNextStatus) (void* appCtx, IoVentConn_t* conn
+                                    , char* readBuffer
+                                    , int readBuffOffset
+                                    , int readDataLen 
+                                    , int bytesReceived);
 } IoVentMethods_t;
 
 typedef struct IoVentOptions {

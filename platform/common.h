@@ -41,6 +41,7 @@ typedef struct SockStats{
     uint64_t tcpConnInitFailImmediateOther;
     uint64_t tcpConnInitProgress;
     uint64_t tcpWriteFail;
+    uint64_t tcpWriteReturnsZero;
     uint64_t tcpReadFail;
 
     uint64_t tcpListenStart;

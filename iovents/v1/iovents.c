@@ -398,13 +398,23 @@ void SslServerInit (IoVentConn_t* newConn
 
 //handle plain tcp write also
 static void HandleWriteNextData (IoVentConn_t* newConn) {
-    int bytesSent 
-        = SSLWrite (newConn->cSSL
+
+    int bytesSent;
+    if ( IsSetCS1 (newConn, STATE_SSL_ENABLED_CONN) ) { 
+        bytesSent = SSLWrite (newConn->cSSL
                     , newConn->writeBuffer + newConn->writeBuffOffset
                     , newConn->writeDataLen
                     , newConn->summaryStats
                     , newConn->groupStats
                     , newConn);
+    } else {
+        bytesSent = TcpWrite (newConn->socketFd
+                    , newConn->writeBuffer + newConn->writeBuffOffset
+                    , newConn->writeDataLen
+                    , newConn->summaryStats
+                    , newConn->groupStats
+                    , newConn);
+    }
 
     if ( GetCES(newConn) ) {
         newConn->writeBuffer = NULL;
@@ -414,10 +424,13 @@ static void HandleWriteNextData (IoVentConn_t* newConn) {
             // ssl want read write; skip
         } else {
             //process written data
-            newConn->writeBuffer = NULL;
             (*newConn->iovCtx->methods.OnWriteNextStatus)(newConn->appCtx
                                                             , newConn
+                                                            , newConn->writeBuffer
+                                                            , newConn->writeBuffOffset
+                                                            , newConn->writeDataLen
                                                             , bytesSent);
+            newConn->writeBuffer = NULL;
         }
     }
 }
@@ -468,10 +481,13 @@ static void HandleReadNextData (IoVentConn_t* newConn) {
                 }
             } else {
                 //process read data
-                newConn->readBuffer = NULL;
                 (*newConn->iovCtx->methods.OnReadNextStatus)(newConn->appCtx
                                                             , newConn
+                                                            , newConn->readBuffer
+                                                            , newConn->readBuffOffset
+                                                            , newConn->readDataLen
                                                             , bytesReceived);
+                newConn->readBuffer = NULL;
             }
         }
     }

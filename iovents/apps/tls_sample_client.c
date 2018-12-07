@@ -28,6 +28,9 @@ static void OnWriteNext (void* appCtx, IoVentConn_t* iovConn) {
 
 static void OnWriteNextStatus (void* appCtx
                                 , IoVentConn_t* iovConn
+                                , char* writeBuffer
+                                , int writeBuffOffset
+                                , int writeDataLen 
                                 , int bytesWritten
                                 ) {
 
@@ -56,6 +59,9 @@ static void OnReadNext (void* appCtx, IoVentConn_t* iovConn) {
 
 static void OnReadNextStatus (void* appCtx
                                 , IoVentConn_t* iovConn
+                                , char* readBuffer
+                                , int readBuffOffset
+                                , int readDataLen 
                                 , int bytesReceived
                                 ) {
 
