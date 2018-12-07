@@ -5,6 +5,7 @@ add_global_arguments('-std=gnu99', language : 'c')
 subdir('platform')
 subdir('lab')
 subdir('iovents')
+subdir('apps')
 
 tcpdash_src = ['tcpdash.c']
 
@@ -18,6 +19,7 @@ executable('tcpdash.exe'
             , include_directories : incdir
             , dependencies : [glib_dep, json_glib_dep]
             , link_with : [tls_sample_client_lib
-                            , tls_sample_server_lib]) 
+                            , tls_sample_server_lib
+                            , tcp_proxy_lib]) 
 
 

@@ -20,6 +20,7 @@
 
 #include "iovents/apps/tls_sample_client.h"
 #include "iovents/apps/tls_sample_server.h"
+#include "apps/tcp_proxy/tcp_proxy.h"
 
 #define APP_MAX_EVENTS 1000
 #define APP_MAX_LISTENQ_LENGTH 10000
@@ -79,8 +80,8 @@ void TlsSampleClientMain () {
     TcpClientI->maxEvents = TCP_CLIENT_MAX_EVENTS;
     TcpClientI->maxActiveSessions = 10000;
     TcpClientI->maxErrorSessions = 100;
-    TcpClientI->maxSessions = 1;
-    TcpClientI->connectionPerSec = 750;
+    TcpClientI->maxSessions = 1000000;
+    TcpClientI->connectionPerSec = 20000;
     TcpClientI->csDataLen = 70000;
     TcpClientI->scDataLen = 70000;
 
@@ -114,8 +115,8 @@ void TlsSampleClientMain () {
         remoteAddr->sin_port = htons(dstPort);
     }
 
-    TlsSampleClientRun(TcpClientI);
-    return;
+    // TlsSampleClientRun(TcpClientI);
+    // return;
 
     int forkPid = fork();
 
@@ -193,12 +194,42 @@ void TlsSampleServerMain() {
 
 }
 
+void TcpProxyMain() {
+
+    TcpProxyI_t* tcpProxyI 
+        = CreateTcpProxyInterface(1); 
+
+    tcpProxyI->maxActiveSessions = 10;
+    tcpProxyI->maxErrorSessions = 10;
+
+    TcpProxyServer_t* server 
+        = &tcpProxyI->serverArr[0];
+
+    struct sockaddr_in* serverAddr 
+        = &(server->serverAddr.inAddr);
+
+    memset(serverAddr, 0, sizeof(SockAddr_t));
+
+    serverAddr->sin_family = AF_INET;
+    inet_pton(AF_INET
+                , "12.20.60.2"
+                , &(serverAddr->sin_addr));
+
+    serverAddr->sin_port = htons(443);
+
+    TcpProxyRun(tcpProxyI);
+
+    return;
+}
+
 int main(int argc, char** argv)
 {
     if (strcmp (argv[1], "TlsSampleClient") == 0) {
         TlsSampleClientMain();
     } else if (strcmp (argv[1], "TlsSampleServer") == 0) {
         TlsSampleServerMain();
+    } else if (strcmp (argv[1], "TcpProxy") == 0) {
+        TcpProxyMain();
     }
 
     return 0;
