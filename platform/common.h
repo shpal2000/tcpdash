@@ -214,6 +214,7 @@ void DumpCStats(void* aStats);
 #define STATE_TCP_RECEIVED_RESET                            0x0000000100000000
 #define STATE_TCP_REMOTE_CLOSED                             0x0000000200000000
 #define STATE_SSL_CONN_CLIENT                               0x0000000400000000
+#define STATE_SSL_ENABLED_CONN                              0x0000000800000000
 
 
 #define STATE_TCP_SOCK_CREATE_FAIL                          0x0000000000000001
@@ -276,14 +277,51 @@ void DumpCStats(void* aStats);
 
 #define TdMalloc(__size) malloc(__size)
 
-#define IsIpv6(__saddr) (((struct sockaddr*)__saddr)->sa_family == AF_INET6)
+// #define IsIpv6(__saddr) (((struct sockaddr*)__saddr)->sa_family == AF_INET6)
 
-#define SetSockPort(__laddr,__lport)if (IsIpv6(__laddr)) ((struct sockaddr_in6*)__laddr)->sin6_port=__lport;else ((struct sockaddr_in*)__laddr)->sin_port=__lport
+// #define GetSockPort(__laddr)(IsIpv6(__laddr)) ? ((struct sockaddr_in6*)__laddr)->sin6_port : ((struct sockaddr_in*)__laddr)->sin_port
 
-#define GetSockPort(__laddr)(IsIpv6(__laddr)) ? ((struct sockaddr_in6*)__laddr)->sin6_port : ((struct sockaddr_in*)__laddr)->sin_port
+// #define SetSockPort(__laddr,__lport)if (IsIpv6(__laddr)) ((struct sockaddr_in6*)__laddr)->sin6_port=__lport;else ((struct sockaddr_in*)__laddr)->sin_port=__lport
 
-#define GetSockAddr(__laddr) ((struct sockaddr*)&(__laddr))
+// int IsIpv6 (void* addr);
 
+// uint16_t GetSockPort(void* addr);
+
+// void SetSockPort (void* addr, uint16_t port);
+
+#define GET_SOCK_PORT(__addr,__sockport) \
+{ \
+    struct sockaddr* __uaddr = (struct sockaddr*) __addr; \
+    if (__uaddr->sa_family == AF_INET6) { \
+        struct sockaddr_in6* __addr_in6 = (struct sockaddr_in6*) __addr; \
+        *(__sockport) = __addr_in6->sin6_port; \
+    } else { \
+        struct sockaddr_in* __addr_in = (struct sockaddr_in*) __addr; \
+        *(__sockport) = __addr_in->sin_port; \
+    } \
+} \
+
+#define SET_SOCK_PORT(__addr,__sockport) \
+{ \
+    struct sockaddr* __uaddr = (struct sockaddr*) __addr; \
+    if (__uaddr->sa_family == AF_INET6) { \
+        struct sockaddr_in6* __addr_in6 = (struct sockaddr_in6*) __addr; \
+        __addr_in6->sin6_port = __sockport; \
+    } else { \
+        struct sockaddr_in* __addr_in = (struct sockaddr_in*) __addr; \
+        __addr_in->sin_port = __sockport; \
+    } \
+} \
+
+#define CHECK_IPV6(__addr,__is_ipv6) \
+{ \
+    struct sockaddr* __uaddr = (struct sockaddr*) __addr; \
+    if (__uaddr->sa_family == AF_INET6) { \
+        *(__is_ipv6) = 1; \
+    } else { \
+        *(__is_ipv6) = 0; \
+    } \
+} \
 
 //#################TCP Start###############
 int TcpNewConnection(SockAddr_t* localAddress

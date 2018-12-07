@@ -68,11 +68,13 @@ static void StoreErrConnection (IoVentConn_t* newConn) {
 
         *errConn =  *newConn;
 
-        errConn->savedLocalPort 
-            = ntohs(GetSockPort(&errConn->localAddress));
+        uint16_t tmpPort;
 
-        errConn->savedRemotePort 
-            = ntohs(GetSockPort(&errConn->remoteAddress));
+        GET_SOCK_PORT (errConn->localAddress, &tmpPort);        
+        errConn->savedLocalPort = ntohs(tmpPort);
+
+        GET_SOCK_PORT (errConn->remoteAddress, &tmpPort);        
+        errConn->savedRemotePort = ntohs(tmpPort);
 
         newConn->iovCtx->errorConnectionCount++;
     }
@@ -116,14 +118,9 @@ void DumpErrConnections (IoVentCtx_t* iovCtx) {
 }
 
 static void ReleasePort(IoVentConn_t* newConn) {
-
-    if (IsIpv6(newConn->localAddress)) {
-        SetPortToPool (newConn->localPortPool
-            , ((struct sockaddr_in6*)newConn->localAddress)->sin6_port);
-    } else {
-        SetPortToPool (newConn->localPortPool
-            , ((struct sockaddr_in*)newConn->localAddress)->sin_port);
-    }
+    uint16_t localPort;
+    GET_SOCK_PORT(newConn->localAddress, &localPort);
+    SetPortToPool (newConn->localPortPool, localPort);
 }
 
 static void RemoveConnection(IoVentConn_t* newConn) {
@@ -377,7 +374,9 @@ static void InitSslConnection(IoVentConn_t* newConn
     SetAppState(newConn, CONNAPP_STATE_SSL_CONNECTION_IN_PROGRESS);
 
     if (isClient) {
-        SetCS1 (newConn, STATE_SSL_CONN_CLIENT);
+        SetCS1 (newConn, STATE_SSL_ENABLED_CONN | STATE_SSL_CONN_CLIENT);
+    } else {
+        SetCS1 (newConn,  STATE_SSL_ENABLED_CONN);
     }
 
     newConn->cSSL = newSSL;
@@ -439,14 +438,24 @@ void WriteNextData (IoVentConn_t* newConn
 static void HandleReadNextData (IoVentConn_t* newConn) {
 
     if ( IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) == 0) {
-        int bytesReceived 
-            = SSLRead ( newConn->cSSL
-                        , newConn->readBuffer + newConn->readBuffOffset
-                        , newConn->readDataLen
-                        , newConn->summaryStats
-                        , newConn->groupStats
-                        , newConn);
-        
+
+        int bytesReceived;
+        if ( IsSetCS1 (newConn, STATE_SSL_ENABLED_CONN) ) {
+            bytesReceived  = SSLRead ( newConn->cSSL
+                            , newConn->readBuffer + newConn->readBuffOffset
+                            , newConn->readDataLen
+                            , newConn->summaryStats
+                            , newConn->groupStats
+                            , newConn);
+        } else {
+            bytesReceived  = TcpRead ( newConn->socketFd
+                            , newConn->readBuffer + newConn->readBuffOffset
+                            , newConn->readDataLen
+                            , newConn->summaryStats
+                            , newConn->groupStats
+                            , newConn);
+        }
+
         if ( GetCES(newConn) ) {
             newConn->readBuffer = NULL;
             CloseConnection(newConn);
@@ -455,7 +464,7 @@ static void HandleReadNextData (IoVentConn_t* newConn) {
                 if ( IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) ) {
                     newConn->readBuffer = NULL;
                 } else {
-                    // ssl want read write; skip
+                    // ssl want read write; skip;
                 }
             } else {
                 //process read data

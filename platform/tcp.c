@@ -26,9 +26,13 @@ int TcpNewConnection(SockAddr_t* lAddr
     //stats
     IncConnStats2(aStats, bStats, tcpConnInit);
 
+    //check ipv6
+    int is_ipv6;
+    CHECK_IPV6(lAddr, &is_ipv6);
+
     //create socket
     int socket_fd = -1;
-    if (IsIpv6(lAddr)){
+    if (is_ipv6){
         socket_fd = socket(AF_INET6 , SOCK_STREAM | SOCK_NONBLOCK , 0);
     }else{
         socket_fd = socket(AF_INET , SOCK_STREAM | SOCK_NONBLOCK , 0);
@@ -53,7 +57,7 @@ int TcpNewConnection(SockAddr_t* lAddr
             SetCS1(cState, STATE_TCP_SOCK_REUSE);
             //bind local socket
             int bind_status = -1;
-            if (IsIpv6(lAddr)){
+            if (is_ipv6){
                 bind_status = bind(socket_fd
                                     , (struct sockaddr*)lAddr
                                     , sizeof(struct sockaddr_in6));
@@ -64,14 +68,14 @@ int TcpNewConnection(SockAddr_t* lAddr
             }
 
             if (bind_status == -1){
-                if (IsIpv6(lAddr)){
+                if (is_ipv6){
                     IncConnStats2(aStats, bStats, socketBindIpv6Fail);
                 }else{
                     IncConnStats2(aStats, bStats, socketBindIpv4Fail);
                 }
                 SetCES(cState, STATE_TCP_SOCK_BIND_FAIL);
             }else{
-                if (IsIpv6(lAddr)){
+                if (is_ipv6){
                     IncConnStats2(aStats, bStats, socketBindIpv6);
                 }else{
                     IncConnStats2(aStats, bStats, socketBindIpv4);
@@ -80,7 +84,7 @@ int TcpNewConnection(SockAddr_t* lAddr
 
                 //connect socket
                 int connect_status = -1;
-                if (IsIpv6(lAddr)){
+                if (is_ipv6){
                     connect_status = connect(socket_fd
                                     , (struct sockaddr*)rAddr
                                     , sizeof(struct sockaddr_in6));
@@ -160,9 +164,14 @@ int TcpListenStart(SockAddr_t* lAddr
                     , void* aStats
                     , void* bStats
                     , void* cState) {
+
+    //check ipv6
+    int is_ipv6;
+    CHECK_IPV6(lAddr, &is_ipv6);
+
     //create socket
     int socket_fd = -1;
-    if (IsIpv6(lAddr)){
+    if (is_ipv6){
         socket_fd = socket(AF_INET6 , SOCK_STREAM | SOCK_NONBLOCK , 0);
     }else{
         socket_fd = socket(AF_INET , SOCK_STREAM | SOCK_NONBLOCK , 0);
@@ -177,7 +186,7 @@ int TcpListenStart(SockAddr_t* lAddr
 
         //bind local socket
         int bind_status = -1;
-        if (IsIpv6(lAddr)){
+        if (is_ipv6){
             bind_status = bind(socket_fd
                                 , (struct sockaddr*)lAddr
                                 , sizeof(struct sockaddr_in6));
@@ -188,14 +197,14 @@ int TcpListenStart(SockAddr_t* lAddr
         }
 
         if (bind_status == -1){
-            if (IsIpv6(lAddr)){
+            if (is_ipv6){
                 IncConnStats2(aStats, bStats, socketBindIpv6Fail);
             }else{
                 IncConnStats2(aStats, bStats, socketBindIpv4Fail);
             }
             SetCES(cState, STATE_TCP_SOCK_BIND_FAIL);
         }else{
-            if (IsIpv6(lAddr)){
+            if (is_ipv6){
                 IncConnStats2(aStats, bStats, socketBindIpv6);
             }else{
                 IncConnStats2(aStats, bStats, socketBindIpv4);
@@ -268,7 +277,9 @@ int TcpRead(int fd
                 , void* cState) {
     int bytesRead = read(fd, dataBuffer, dataLen);
 
-    if (bytesRead < 0){
+    if (bytesRead == 0) {
+        SetCS1 (cState, STATE_TCP_REMOTE_CLOSED);
+    } else if (bytesRead < 0){
         SetCES(cState, STATE_TCP_SOCK_READ_FAIL);
         IncConnStats2(aStats, bStats, tcpReadFail);
     }
@@ -288,7 +299,7 @@ int TcpAcceptConnection(int listenerFd
     socklen_t addrLen = sizeof (SockAddr_t);
 
     socket_fd = accept(listenerFd
-                        , GetSockAddr(rAddr)
+                        , (struct sockaddr *) rAddr
                         , &addrLen);
     
     if (socket_fd < 0) {

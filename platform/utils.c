@@ -13,18 +13,24 @@ void AssignSocketLocalPort(SockAddr_t* localAddres
                             , void* bStats
                             , void* cState) {
    int nextSrcPort = GetPortFromPool(portPool);
+
    if (nextSrcPort) {
-       SetSockPort(localAddres, nextSrcPort);
+       SET_SOCK_PORT(localAddres, nextSrcPort);
        SetCS1(cState, STATE_TCP_PORT_ASSIGNED);
+       
     }else{
         SetCES(cState, STATE_TCP_SOCK_PORT_ASSIGN_FAIL);
         IncConnStats2(aStats, bStats, tcpLocalPortAssignFail);    
     }
 }
 
-void AddressToString(SockAddr_t* addr, char* str){
+void AddressToString(SockAddr_t* addr, char* str) {
 
-   if IsIpv6(addr) {
+    //check ipv6
+    int is_ipv6;
+    CHECK_IPV6(addr, &is_ipv6);
+
+   if (is_ipv6) {
         inet_ntop(AF_INET6
             , &( ((struct sockaddr_in6*)addr)->sin6_addr )
             , str
@@ -36,3 +42,36 @@ void AddressToString(SockAddr_t* addr, char* str){
             , INET_ADDRSTRLEN);
    }
 }
+
+#if 0
+int IsIpv6 (void* addr) {
+    int isIpv6 = 0;
+    struct sockaddr* uaddr = (struct sockaddr*) addr;
+    if (uaddr->sa_family == AF_INET6) {
+        isIpv6 = 1;
+    }
+    return isIpv6;
+}
+
+uint16_t GetSockPort(void* addr) {
+   struct sockaddr* uaddr = addr;
+   if (uaddr->sa_family == AF_INET6) {
+       struct sockaddr_in6* addr_in6 = addr;
+       return addr_in6->sin6_port; 
+   }
+
+    struct sockaddr_in* addr_in = addr;
+    return addr_in->sin_port;
+}
+
+void SetSockPort (void* addr, uint16_t port) {
+   struct sockaddr* uaddr = addr;
+   if (uaddr->sa_family == AF_INET6) {
+       struct sockaddr_in6* addr_in6 = addr;
+       addr_in6->sin6_port = port;
+   } else {
+        struct sockaddr_in* addr_in = addr;
+        addr_in->sin_port = port;
+   }
+}
+#endif

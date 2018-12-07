@@ -78,11 +78,11 @@ void TlsSampleClientMain () {
     TcpClientI->isRunning = 1; 
     TcpClientI->maxEvents = TCP_CLIENT_MAX_EVENTS;
     TcpClientI->maxActiveSessions = 10000;
-    TcpClientI->maxErrorSessions = 1;
-    TcpClientI->maxSessions = 1;
-    TcpClientI->connectionPerSec = 900;
-    TcpClientI->csDataLen = 2500;
-    TcpClientI->scDataLen = 2500;
+    TcpClientI->maxErrorSessions = 100;
+    TcpClientI->maxSessions = 100;
+    TcpClientI->connectionPerSec = 750;
+    TcpClientI->csDataLen = 70000;
+    TcpClientI->scDataLen = 70000;
 
     for (int gIndex = 0; gIndex < TcpClientI->csGroupCount; gIndex++) {
 
@@ -114,8 +114,8 @@ void TlsSampleClientMain () {
         remoteAddr->sin_port = htons(dstPort);
     }
 
-    // TlsSampleClientRun(TcpClientI);
-    // return;
+    TlsSampleClientRun(TcpClientI);
+    return;
 
     int forkPid = fork();
 
@@ -146,11 +146,11 @@ void TlsSampleServerMain() {
     TcpServerI->isRunning = 1; 
     TcpServerI->maxEvents = TCP_CLIENT_MAX_EVENTS;
     TcpServerI->maxActiveSessions = 10000;
-    TcpServerI->maxErrorSessions = 1;
+    TcpServerI->maxErrorSessions = 100;
     TcpServerI->maxSessions = 500000;
     TcpServerI->connectionPerSec = 900;
-    TcpServerI->csDataLen = 2500;
-    TcpServerI->scDataLen = 2500;
+    TcpServerI->csDataLen = 70000;
+    TcpServerI->scDataLen = 70000;
 
     for (int gIndex = 0; gIndex < TcpServerI->csGroupCount; gIndex++) {
 
@@ -170,26 +170,26 @@ void TlsSampleServerMain() {
         remoteAddr->sin_port = htons(dstPort);
     }
 
-    TlsSampleServerRun(TcpServerI);
-    return;
+    // TlsSampleServerRun(TcpServerI);
+    // return;
 
-    // int forkPid = fork();
+    int forkPid = fork();
 
-    // if (forkPid < 0) {
-    //     exit(-1);
-    // }
+    if (forkPid < 0) {
+        exit(-1);
+    }
 
-    // if (forkPid == 0) {
-    //     TlsSampleServerRun(TcpServerI);
-    // }else{
-    //     while (TcpServerI->isRunning) {
-    //         sleep(2);
-    //         DumpTlsSampleServerStats(&TcpServerI->appConnStats); 
-    //     }
+    if (forkPid == 0) {
+        TlsSampleServerRun(TcpServerI);
+    }else{
+        while (TcpServerI->isRunning) {
+            sleep(2);
+            DumpTlsSampleServerStats(&TcpServerI->appConnStats); 
+        }
 
-    //     int status;
-    //     wait(&status);
-    // }    
+        int status;
+        wait(&status);
+    }    
 
 }
 
