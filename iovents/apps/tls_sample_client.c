@@ -7,9 +7,9 @@
 static SSL_CTX* GSslContext = NULL;
 
 static void OnEstablish (void* appCtx, IoVentConn_t* iovConn) {
-    iovConn->connData = SSL_new(GSslContext);
+    // iovConn->connData = SSL_new(GSslContext);
     iovConn->bytesSent = 0;
-    SslClientInit (iovConn, (SSL*)iovConn->connData);     
+    // SslClientInit (iovConn, (SSL*)iovConn->connData);     
 }
 
 static void OnWriteNext (void* appCtx, IoVentConn_t* iovConn) {
@@ -68,7 +68,7 @@ static void OnReadNextStatus (void* appCtx
 }
 
 static void OnCleanup (void* appCtx, IoVentConn_t* iovConn) {
-    SSL_free((SSL*)iovConn->connData);
+    // SSL_free((SSL*)iovConn->connData);
 }
 
 static void OnStatus (void* appCtx, IoVentConn_t* iovConn) {

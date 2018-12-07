@@ -173,7 +173,8 @@ static void CloseConnection(IoVentConn_t* newConn) {
         }
 
         int sentCloseNotifyOrNotRequired 
-            = IsSetCS1(newConn, STATE_SSL_SENT_SHUTDOWN) 
+            =   (IsSetCS1(newConn, STATE_SSL_ENABLED_CONN) == 0) 
+                || IsSetCS1(newConn, STATE_SSL_SENT_SHUTDOWN) 
                 || ( (IsSetCS1(newConn, STATE_SSL_TO_SEND_SHUTDOWN) == 0)
                     && (IsSetCS1(newConn, STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN) == 0) );
 
@@ -625,8 +626,12 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                     }
 
                 // Handle Read, Write Data
-                } else if ( GetAppState(newConn) 
-                            == CONNAPP_STATE_SSL_CONNECTION_ESTABLISHED ) {
+                } else if ( ( GetAppState(newConn) 
+                                == CONNAPP_STATE_SSL_CONNECTION_ESTABLISHED )
+                            || ( (GetAppState(newConn)
+                                == CONNAPP_STATE_CONNECTION_ESTABLISHED) 
+                                    && (IsSetCS1 (newConn, STATE_SSL_ENABLED_CONN) == 0) )
+                                ) {
 
                     // Handle Write
                     if ( IsWriteEventSet(iovCtx->EventArr[eIndex]) 

@@ -79,7 +79,7 @@ void TlsSampleClientMain () {
     TcpClientI->maxEvents = TCP_CLIENT_MAX_EVENTS;
     TcpClientI->maxActiveSessions = 10000;
     TcpClientI->maxErrorSessions = 100;
-    TcpClientI->maxSessions = 1000000;
+    TcpClientI->maxSessions = 1;
     TcpClientI->connectionPerSec = 750;
     TcpClientI->csDataLen = 70000;
     TcpClientI->scDataLen = 70000;
@@ -114,8 +114,8 @@ void TlsSampleClientMain () {
         remoteAddr->sin_port = htons(dstPort);
     }
 
-    // TlsSampleClientRun(TcpClientI);
-    // return;
+    TlsSampleClientRun(TcpClientI);
+    return;
 
     int forkPid = fork();
 

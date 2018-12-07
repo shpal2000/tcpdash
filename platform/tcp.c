@@ -283,9 +283,13 @@ int TcpRead(int fd
 
     if (bytesRead == 0) {
         SetCS1 (cState, STATE_TCP_REMOTE_CLOSED);
-    } else if (bytesRead < 0){
-        SetCES(cState, STATE_TCP_SOCK_READ_FAIL);
-        IncConnStats2(aStats, bStats, tcpReadFail);
+    } else if (bytesRead < 0) {
+        if (errno == EAGAIN) {
+            //nothing to read; retry
+        } else {
+            SetCES(cState, STATE_TCP_SOCK_READ_FAIL);
+            IncConnStats2(aStats, bStats, tcpReadFail);
+        }
     }
 
     return bytesRead;
