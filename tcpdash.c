@@ -211,9 +211,19 @@ void TcpProxyMain() {
     memset(serverAddrL, 0, sizeof(SockAddr_t));
     serverAddrL->sin_family = AF_INET;
     inet_pton(AF_INET
-                , "12.20.60.2"
+                , "2.2.2.2"
                 , &(serverAddrL->sin_addr));
     serverAddrL->sin_port = htons(443);
+
+    struct sockaddr_in* serverAddrR 
+        = &(server->serverAddrR.inAddr);
+
+    memset(serverAddrR, 0, sizeof(SockAddr_t));
+    serverAddrR->sin_family = AF_INET;
+    inet_pton(AF_INET
+                , "12.20.60.2"
+                , &(serverAddrR->sin_addr));
+    serverAddrR->sin_port = htons(443);    
 
     TcpProxyRun(tcpProxyI);
 

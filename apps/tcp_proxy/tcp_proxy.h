@@ -37,7 +37,8 @@ void DumpTcpProxyStats(TcpProxyStats_t* appConnStats);
 #ifdef __APP__MAIN__
 
 typedef struct TcpProxyCtx {
-    Pool_t* freeSessionPool; 
+    Pool_t* freeSessionPool;
+    TcpProxyI_t* appI; 
 } TcpProxyCtx_t;
 
 typedef struct TcpProxySession {

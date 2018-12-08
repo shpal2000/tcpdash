@@ -7,6 +7,7 @@
 static SSL_CTX* GSslContext = NULL;
 
 static void OnEstablish (void* appCtx
+                            , void* groupCtx
                             , struct IoVentCtx* iovCtx
                             , struct IoVentConn* iovConn) {
     // iovConn->connData = SSL_new(GSslContext);
@@ -15,6 +16,7 @@ static void OnEstablish (void* appCtx
 }
 
 static void OnWriteNext (void* appCtx
+                            , void* groupCtx
                             , struct IoVentCtx* iovCtx
                             , struct IoVentConn* iovConn) {
 
@@ -38,6 +40,7 @@ static void OnWriteNext (void* appCtx
 }
 
 static void OnWriteNextStatus (void* appCtx
+                                , void* groupCtx
                                 , struct IoVentCtx* iovCtx
                                 , struct IoVentConn* iovConn
                                 , char* writeBuffer
@@ -59,6 +62,7 @@ static void OnWriteNextStatus (void* appCtx
 }
 
 static void OnReadNext (void* appCtx
+                            , void* groupCtx
                             , struct IoVentCtx* iovCtx
                             , struct IoVentConn* iovConn) {
 
@@ -72,6 +76,7 @@ static void OnReadNext (void* appCtx
 }
 
 static void OnReadNextStatus (void* appCtx
+                                , void* groupCtx
                                 , struct IoVentCtx* iovCtx
                                 , struct IoVentConn* iovConn
                                 , char* readBuffer
@@ -83,12 +88,14 @@ static void OnReadNextStatus (void* appCtx
 }
 
 static void OnCleanup (void* appCtx
+                                , void* groupCtx
                                 , struct IoVentCtx* iovCtx
                                 , struct IoVentConn* iovConn) {
     // SSL_free((SSL*)iovConn->connData);
 }
 
 static void OnStatus (void* appCtx
+                                , void* groupCtx
                                 , struct IoVentCtx* iovCtx
                                 , struct IoVentConn* iovConn) {
 
@@ -176,6 +183,7 @@ void TlsSampleServerRun (TlsSampleServer_t* appI) {
              = &(csGroup->serverAddr);
 
         InitServer(iovCtx
+                    , csGroup
                     , appCtx
                     , localAddress
                     , appConnStats

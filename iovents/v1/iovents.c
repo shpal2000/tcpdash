@@ -28,6 +28,8 @@ static void InitConnection (IoVentConn_t* newConn) {
     newConn->connData = NULL;   
     newConn->sessionData = NULL;   
     newConn->appCtx = NULL;
+    newConn->groupCtx = NULL;
+    newConn->iovCtx = NULL;
 
     newConn->writeBuffer = NULL;
     newConn->writeBuffOffset = 0;
@@ -151,6 +153,7 @@ static void RemoveConnection(IoVentConn_t* newConn) {
     SetFreeConnection (newConn);
 
     (*newConn->iovCtx->methods.OnCleanup)(newConn->appCtx
+                                                , newConn->groupCtx
                                                 , newConn->iovCtx
                                                 , newConn); 
 }
@@ -231,12 +234,14 @@ static void OnConnectionEstablshedHelper (IoVentConn_t* newConn) {
         CloseConnection(newConn);
     } else {
         (*newConn->iovCtx->methods.OnEstablish)(newConn->appCtx
+                                                    , newConn->groupCtx
                                                     , newConn->iovCtx
                                                     , newConn);
     }
 }
 
 void NewConnection (IoVentCtx_t* iovCtx
+                        , void* groupCtx
                         , void* appCtx
                         , SockAddr_t* localAddress
                         , LocalPortPool_t* localPortPool 
@@ -251,6 +256,7 @@ void NewConnection (IoVentCtx_t* iovCtx
     } else {
         SetAppState(newConn, CONNAPP_STATE_CONNECTION_IN_PROGRESS);
         newConn->iovCtx = iovCtx;
+        newConn->groupCtx = groupCtx;
         newConn->appCtx = appCtx;
         newConn->localAddress = localAddress;
         newConn->localPortPool = localPortPool;
@@ -301,6 +307,7 @@ void NewConnection (IoVentCtx_t* iovCtx
 }
 
 void InitServer (IoVentCtx_t* iovCtx
+                    , void* groupCtx
                     , void* appCtx
                     , SockAddr_t* localAddress
                     , void* aStats
@@ -311,6 +318,7 @@ void InitServer (IoVentCtx_t* iovCtx
         IncConnStats2(aStats, bStats, tcpListenStructNotAvail);
     } else {
         newConn->iovCtx = iovCtx;
+        newConn->groupCtx = groupCtx;
         newConn->appCtx = appCtx;
         newConn->localAddress = localAddress;
         newConn->summaryStats = aStats;
@@ -356,6 +364,7 @@ static void OnTcpAcceptConnection(IoVentConn_t* lSockConn) {
                     , tcpConnStructNotAvail);
     } else {
         newConn->iovCtx = lSockConn->iovCtx;
+        newConn->groupCtx = lSockConn->groupCtx;
         newConn->appCtx = lSockConn->appCtx;
         newConn->localAddress = lSockConn->localAddress;
         newConn->remoteAddress = &newConn->remoteAddressAccept; 
@@ -435,12 +444,13 @@ static void HandleWriteNextData (IoVentConn_t* newConn) {
         } else {
             //process written data
             (*newConn->iovCtx->methods.OnWriteNextStatus)(newConn->appCtx
-                                                            , newConn->iovCtx
-                                                            , newConn
-                                                            , newConn->writeBuffer
-                                                            , newConn->writeBuffOffset
-                                                            , newConn->writeDataLen
-                                                            , bytesSent);
+                                                        , newConn->groupCtx
+                                                        , newConn->iovCtx
+                                                        , newConn
+                                                        , newConn->writeBuffer
+                                                        , newConn->writeBuffOffset
+                                                        , newConn->writeDataLen
+                                                        , bytesSent);
             newConn->writeBuffer = NULL;
         }
     }
@@ -493,12 +503,13 @@ static void HandleReadNextData (IoVentConn_t* newConn) {
             } else {
                 //process read data
                 (*newConn->iovCtx->methods.OnReadNextStatus)(newConn->appCtx
-                                                            , newConn->iovCtx
-                                                            , newConn
-                                                            , newConn->readBuffer
-                                                            , newConn->readBuffOffset
-                                                            , newConn->readDataLen
-                                                            , bytesReceived);
+                                                        , newConn->groupCtx
+                                                        , newConn->iovCtx
+                                                        , newConn
+                                                        , newConn->readBuffer
+                                                        , newConn->readBuffOffset
+                                                        , newConn->readDataLen
+                                                        , bytesReceived);
                 newConn->readBuffer = NULL;
             }
         }
@@ -650,8 +661,9 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                                 HandleWriteNextData (newConn);
                             } else {
                                 (*newConn->iovCtx->methods.OnWriteNext)(newConn->appCtx
-                                                                        , newConn->iovCtx
-                                                                        , newConn);
+                                                                    , newConn->groupCtx
+                                                                    , newConn->iovCtx
+                                                                    , newConn);
                             }
                         }
                     }
@@ -663,8 +675,9 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                             HandleReadNextData (newConn);
                         } else {
                             (*newConn->iovCtx->methods.OnReadNext)(newConn->appCtx
-                                                                        , newConn->iovCtx
-                                                                        , newConn);
+                                                                , newConn->groupCtx
+                                                                , newConn->iovCtx
+                                                                , newConn);
                         }
                     }
                 }
