@@ -152,10 +152,7 @@ static void RemoveConnection(IoVentConn_t* newConn) {
 
     SetFreeConnection (newConn);
 
-    (*newConn->iovCtx->methods.OnCleanup)(newConn->appCtx
-                                                , newConn->groupCtx
-                                                , newConn->iovCtx
-                                                , newConn); 
+    (*newConn->iovCtx->methods.OnCleanup)(newConn); 
 }
 
 static void CloseConnection(IoVentConn_t* newConn) {
@@ -233,10 +230,7 @@ static void OnConnectionEstablshedHelper (IoVentConn_t* newConn) {
     if ( GetCES(newConn) ) {
         CloseConnection(newConn);
     } else {
-        (*newConn->iovCtx->methods.OnEstablish)(newConn->appCtx
-                                                    , newConn->groupCtx
-                                                    , newConn->iovCtx
-                                                    , newConn);
+        (*newConn->iovCtx->methods.OnEstablish)(newConn);
     }
 }
 
@@ -436,22 +430,16 @@ static void HandleWriteNextData (IoVentConn_t* newConn) {
     }
 
     if ( GetCES(newConn) ) {
-        newConn->writeBuffer = NULL;
+        ClearCS1 (newConn, STATE_CONN_WRITE_PENDING);
         CloseConnection(newConn);
     } else {
         if (bytesSent <= 0) {
             // ssl want read write; skip
         } else {
             //process written data
-            (*newConn->iovCtx->methods.OnWriteNextStatus)(newConn->appCtx
-                                                        , newConn->groupCtx
-                                                        , newConn->iovCtx
-                                                        , newConn
-                                                        , newConn->writeBuffer
-                                                        , newConn->writeBuffOffset
-                                                        , newConn->writeDataLen
-                                                        , bytesSent);
-            newConn->writeBuffer = NULL;
+            ClearCS1 (newConn, STATE_CONN_WRITE_PENDING);
+            (*newConn->iovCtx->methods.OnWriteStatus)(newConn
+                                                    , bytesSent);
         }
     }
 }
@@ -461,6 +449,7 @@ void WriteNextData (IoVentConn_t* newConn
                         , int writeBuffOffset
                         , int writeDataLen) {
 
+    SetCS1 (newConn, STATE_CONN_WRITE_PENDING); 
     newConn->writeBuffer = writeBuffer;
     newConn->writeBuffOffset = writeBuffOffset;
     newConn->writeDataLen = writeDataLen;
@@ -491,26 +480,20 @@ static void HandleReadNextData (IoVentConn_t* newConn) {
         }
 
         if ( GetCES(newConn) ) {
-            newConn->readBuffer = NULL;
+            ClearCS1 (newConn, STATE_CONN_READ_PENDING);
             CloseConnection(newConn);
         } else {
             if (bytesReceived <= 0) {
                 if ( IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) ) {
-                    newConn->readBuffer = NULL;
+                    ClearCS1 (newConn, STATE_CONN_READ_PENDING);
                 } else {
                     // ssl want read write; skip;
                 }
             } else {
                 //process read data
-                (*newConn->iovCtx->methods.OnReadNextStatus)(newConn->appCtx
-                                                        , newConn->groupCtx
-                                                        , newConn->iovCtx
-                                                        , newConn
-                                                        , newConn->readBuffer
-                                                        , newConn->readBuffOffset
-                                                        , newConn->readDataLen
-                                                        , bytesReceived);
-                newConn->readBuffer = NULL;
+                ClearCS1 (newConn, STATE_CONN_READ_PENDING);
+                (*newConn->iovCtx->methods.OnReadStatus)(newConn
+                                                    , bytesReceived);
             }
         }
     }
@@ -520,6 +503,8 @@ void ReadNextData (IoVentConn_t* newConn
                         , char* readBuffer
                         , int readBuffOffset
                         , int readDataLen) {
+    
+    SetCS1 (newConn, STATE_CONN_READ_PENDING);
 
     newConn->readBuffer = readBuffer;
     newConn->readBuffOffset = readBuffOffset;
@@ -657,13 +642,10 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                         if ( IsSetCS1(newConn,  STATE_NO_MORE_WRITE_DATA) ) {
                             CloseConnection (newConn);
                         } else {
-                            if (newConn->writeBuffer) {
+                            if (IsSetCS1 (newConn, STATE_CONN_WRITE_PENDING) ) {
                                 HandleWriteNextData (newConn);
                             } else {
-                                (*newConn->iovCtx->methods.OnWriteNext)(newConn->appCtx
-                                                                    , newConn->groupCtx
-                                                                    , newConn->iovCtx
-                                                                    , newConn);
+                                (*newConn->iovCtx->methods.OnWriteNext)(newConn);
                             }
                         }
                     }
@@ -671,13 +653,10 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                     // Handle Read
                     if (IsReadEventSet(iovCtx->EventArr[eIndex])
                                         && !IsFdClosed(newConn) ) {
-                        if (newConn->readBuffer) {
+                        if ( IsSetCS1 (newConn, STATE_CONN_READ_PENDING) ) {
                             HandleReadNextData (newConn);
                         } else {
-                            (*newConn->iovCtx->methods.OnReadNext)(newConn->appCtx
-                                                                , newConn->groupCtx
-                                                                , newConn->iovCtx
-                                                                , newConn);
+                            (*newConn->iovCtx->methods.OnReadNext)(newConn);
                         }
                     }
                 }

@@ -217,6 +217,8 @@ void DumpCStats(void* aStats);
 #define STATE_TCP_REMOTE_CLOSED                             0x0000000200000000
 #define STATE_SSL_CONN_CLIENT                               0x0000000400000000
 #define STATE_SSL_ENABLED_CONN                              0x0000000800000000
+#define STATE_CONN_WRITE_PENDING                            0x0000001000000000
+#define STATE_CONN_READ_PENDING                             0x0000002000000000
 
 
 #define STATE_TCP_SOCK_CREATE_FAIL                          0x0000000000000001

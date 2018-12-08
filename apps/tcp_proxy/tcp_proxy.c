@@ -15,35 +15,33 @@ static void InitSession (TcpProxyCtx_t* tcpProxyCtx
     newSess->appCtx = tcpProxyCtx;
 }
 
-static void OnEstablish (void* appCtx
-                        , void* groupCtx
-                        , struct IoVentCtx* iovCtx
-                        , struct IoVentConn* iovConn) {
+static void OnEstablish (struct IoVentConn* iovConn) {
     
-    TcpProxyCtx_t* tcpProxyCtx = (TcpProxyCtx_t*) appCtx;
+    TcpProxyCtx_t* appCtx 
+        = (TcpProxyCtx_t*) iovConn->appCtx;
 
     if (iovConn->sessionData == NULL) {
         TcpProxySession_t* newSess 
-            = GetFromPool (tcpProxyCtx->freeSessionPool);
+            = GetFromPool (appCtx->freeSessionPool);
         if (newSess == NULL) {
             //todo; stats; close connection
         } else {
             //init session
-            InitSession (tcpProxyCtx ,newSess);
+            InitSession (appCtx, newSess);
             iovConn->sessionData = newSess;
 
             // store client side of proxied connection
             newSess->acceptConn = iovConn;
             
             // init server side of proxied connection
-            TcpProxyServer_t* server = (TcpProxyServer_t*) groupCtx;
-            NewConnection (iovCtx
+            TcpProxyServer_t* server = (TcpProxyServer_t*) iovConn->groupCtx;
+            NewConnection (iovConn->iovCtx
                             , server
-                            , tcpProxyCtx
+                            , appCtx
                             , &iovConn->remoteAddressAccept
                             , NULL
                             , &server->serverAddrR
-                            , &tcpProxyCtx->appI->gStats
+                            , &appCtx->appI->gStats
                             , &server->cStats);
         }
     } else {
@@ -54,53 +52,29 @@ static void OnEstablish (void* appCtx
     }
 }
 
-static void OnWriteNext (void* appCtx
-                            , void* groupCtx
-                            , struct IoVentCtx* iovCtx
-                            , struct IoVentConn* iovConn) {
+static void OnWriteNext (struct IoVentConn* iovConn) {
 }
 
-static void OnWriteNextStatus (void* appCtx
-                                , void* groupCtx
-                                , struct IoVentCtx* iovCtx
-                                , struct IoVentConn* iovConn
-                                , char* writeBuffer
-                                , int writeBuffOffset
-                                , int writeDataLen 
-                                , int bytesWritten
-                                ) {
+static void OnWriteStatus (struct IoVentConn* iovConn
+                            , int bytesWritten
+                            ) {
 }
 
-static void OnReadNext (void* appCtx
-                                , void* groupCtx
-                                , struct IoVentCtx* iovCtx
-                                , struct IoVentConn* iovConn) {
+static void OnReadNext (struct IoVentConn* iovConn) {
 
 }
 
-static void OnReadNextStatus (void* appCtx
-                                , void* groupCtx
-                                , struct IoVentCtx* iovCtx
-                                , struct IoVentConn* iovConn
-                                , char* readBuffer
-                                , int readBuffOffset
-                                , int readDataLen 
-                                , int bytesReceived
-                                ) {
+static void OnReadStatus (struct IoVentConn* iovConn
+                            , int bytesReceived
+                            ) {
 
 }
 
-static void OnCleanup (void* appCtx
-                                , void* groupCtx
-                                , struct IoVentCtx* iovCtx
-                                , struct IoVentConn* iovConn) {
+static void OnCleanup (struct IoVentConn* iovConn) {
     puts ("OnCleanup\n");
 }
 
-static void OnStatus (void* appCtx
-                                , void* groupCtx
-                                , struct IoVentCtx* iovCtx
-                                , struct IoVentConn* iovConn) {
+static void OnStatus (struct IoVentConn* iovConn) {
 }
 
 static TcpProxyCtx_t* CreateAppCtx (TcpProxyI_t* appI) {
@@ -125,9 +99,9 @@ void TcpProxyRun (TcpProxyI_t* appI) {
 
     iovMethods->OnEstablish = &OnEstablish;
     iovMethods->OnWriteNext = &OnWriteNext;
-    iovMethods->OnWriteNextStatus = &OnWriteNextStatus;
+    iovMethods->OnWriteStatus = &OnWriteStatus;
     iovMethods->OnReadNext = &OnReadNext;
-    iovMethods->OnReadNextStatus = &OnReadNextStatus;
+    iovMethods->OnReadStatus = &OnReadStatus;
     iovMethods->OnCleanup = &OnCleanup;
     iovMethods->OnStatus = &OnStatus;
 
