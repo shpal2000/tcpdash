@@ -237,6 +237,7 @@ static void OnConnectionEstablshedHelper (IoVentConn_t* newConn) {
 void NewConnection (IoVentCtx_t* iovCtx
                         , void* groupCtx
                         , void* appCtx
+                        , void* sessionData
                         , SockAddr_t* localAddress
                         , LocalPortPool_t* localPortPool 
                         , SockAddr_t* remoteAddress
@@ -252,6 +253,7 @@ void NewConnection (IoVentCtx_t* iovCtx
         newConn->iovCtx = iovCtx;
         newConn->groupCtx = groupCtx;
         newConn->appCtx = appCtx;
+        newConn->sessionData = sessionData;
         newConn->localAddress = localAddress;
         newConn->localPortPool = localPortPool;
         newConn->remoteAddress = remoteAddress;

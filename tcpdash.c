@@ -205,25 +205,35 @@ void TcpProxyMain() {
     TcpProxyServer_t* server 
         = &tcpProxyI->serverArr[0];
 
+    // proxy address
+    struct sockaddr_in* serverAddrP 
+        = &(server->serverAddrP.inAddr);
+    memset(serverAddrP, 0, sizeof(SockAddr_t));
+    serverAddrP->sin_family = AF_INET;
+    inet_pton(AF_INET
+                , "12.20.60.2"
+                , &(serverAddrP->sin_addr));
+    serverAddrP->sin_port = htons(443);
+
+    // local address
     struct sockaddr_in* serverAddrL 
         = &(server->serverAddrL.inAddr);
-
     memset(serverAddrL, 0, sizeof(SockAddr_t));
     serverAddrL->sin_family = AF_INET;
     inet_pton(AF_INET
-                , "2.2.2.2"
+                , "10.116.0.62"
                 , &(serverAddrL->sin_addr));
-    serverAddrL->sin_port = htons(443);
+    serverAddrL->sin_port = htons(0);
 
+    // remote address
     struct sockaddr_in* serverAddrR 
         = &(server->serverAddrR.inAddr);
-
     memset(serverAddrR, 0, sizeof(SockAddr_t));
     serverAddrR->sin_family = AF_INET;
     inet_pton(AF_INET
-                , "12.20.60.2"
+                , "172.217.6.36"
                 , &(serverAddrR->sin_addr));
-    serverAddrR->sin_port = htons(443);    
+    serverAddrR->sin_port = htons(80);    
 
     TcpProxyRun(tcpProxyI);
 

@@ -111,6 +111,7 @@ int ProcessIoVent (IoVentCtx_t* iovCtx);
 void NewConnection (IoVentCtx_t* iovCtx
                         , void* groupCtx
                         , void* appCtx
+                        , void* sessionData
                         , SockAddr_t* localAddress
                         , LocalPortPool_t* localPortPool 
                         , SockAddr_t* remoteAddress

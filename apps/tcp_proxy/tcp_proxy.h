@@ -10,6 +10,7 @@ typedef struct TcpProxyStats {
 } TcpProxyStats_t;
 
 typedef struct TcpProxyServer {
+    SockAddr_t serverAddrP;
     SockAddr_t serverAddrL;
     SockAddr_t serverAddrR;
     TcpProxyStats_t cStats;
@@ -42,8 +43,8 @@ typedef struct TcpProxyCtx {
 } TcpProxyCtx_t;
 
 typedef struct TcpProxySession {
-    IoVentConn_t* acceptConn;
-    IoVentConn_t* initConn;
+    IoVentConn_t* acceptedConn;
+    IoVentConn_t* initiatedConn;
     Pool_t* clientData;
     TcpProxyCtx_t* appCtx;
 } TcpProxySession_t;
