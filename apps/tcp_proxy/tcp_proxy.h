@@ -10,7 +10,8 @@ typedef struct TcpProxyStats {
 } TcpProxyStats_t;
 
 typedef struct TcpProxyServer {
-    SockAddr_t serverAddr;
+    SockAddr_t serverAddrL;
+    SockAddr_t serverAddrR;
     TcpProxyStats_t cStats;
 } TcpProxyServer_t;
 
@@ -36,12 +37,14 @@ void DumpTcpProxyStats(TcpProxyStats_t* appConnStats);
 #ifdef __APP__MAIN__
 
 typedef struct TcpProxyCtx {
-
+    Pool_t* freeSessionPool; 
 } TcpProxyCtx_t;
 
 typedef struct TcpProxySession {
-    IoVentConn_t* serverConn;
-    IoVentConn_t* clientConn;
+    IoVentConn_t* acceptConn;
+    IoVentConn_t* initConn;
+    Pool_t* clientData;
+    TcpProxyCtx_t* appCtx;
 } TcpProxySession_t;
 
 #endif //__APP__MAIN__

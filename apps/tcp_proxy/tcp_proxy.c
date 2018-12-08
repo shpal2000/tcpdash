@@ -5,14 +5,61 @@
 #define __APP__MAIN__
 #include "tcp_proxy.h"
 
-static void OnEstablish (void* appCtx, IoVentConn_t* iovConn) {
+
+
+static void InitSession (TcpProxyCtx_t* tcpProxyCtx
+                        , TcpProxySession_t* newSess) {
+
+    newSess->initConn = NULL;
+    newSess->acceptConn = NULL;
+    newSess->appCtx = tcpProxyCtx;
 }
 
-static void OnWriteNext (void* appCtx, IoVentConn_t* iovConn) {
+static void OnEstablish (void* appCtx
+                        , struct IoVentCtx* iovCtx
+                        , struct IoVentConn* iovConn) {
+    
+    TcpProxyCtx_t* tcpProxyCtx = (TcpProxyCtx_t*) appCtx;
+
+    if (iovConn->sessionData == NULL) {
+        TcpProxySession_t* newSess 
+            = GetFromPool (tcpProxyCtx->freeSessionPool);
+        if (newSess == NULL) {
+            //todo; stats; close connection
+        } else {
+            //init session
+            InitSession (tcpProxyCtx ,newSess);
+            iovConn->sessionData = newSess;
+
+            // store client side of proxied connection
+            newSess->acceptConn = iovConn;
+            
+            // init server side of proxied connection
+            NewConnection (iovCtx
+                            , tcpProxyCtx
+                            , localAddress
+                            , NULL //localPortPool
+                            , remoteAddress
+                            , NULL // appConnStats
+                            , NULL // groupConnStats
+                            );
+        }
+    } else {
+        // store server side of proxied connection
+        TcpProxySession_t* extSess 
+            = (TcpProxySession_t*) iovConn->sessionData;
+        extSess->initConn = iovConn;
+    }
+}
+
+static void OnWriteNext (void* appCtx
+                            , struct IoVentCtx* iovCtx
+                            , struct IoVentConn* iovConn) {
 }
 
 static void OnWriteNextStatus (void* appCtx
-                                , IoVentConn_t* iovConn
+                                , struct IoVentCtx* iovCtx
+                                , struct IoVentConn* iovConn
                                 , char* writeBuffer
                                 , int writeBuffOffset
                                 , int writeDataLen 
@@ -20,12 +67,15 @@ static void OnWriteNextStatus (void* appCtx
                                 ) {
 }
 
-static void OnReadNext (void* appCtx, IoVentConn_t* iovConn) {
+static void OnReadNext (void* appCtx
+                                , struct IoVentCtx* iovCtx
+                                , struct IoVentConn* iovConn) {
 
 }
 
 static void OnReadNextStatus (void* appCtx
-                                , IoVentConn_t* iovConn
+                                , struct IoVentCtx* iovCtx
+                                , struct IoVentConn* iovConn
                                 , char* readBuffer
                                 , int readBuffOffset
                                 , int readDataLen 
@@ -34,22 +84,32 @@ static void OnReadNextStatus (void* appCtx
 
 }
 
-static void OnCleanup (void* appCtx, IoVentConn_t* iovConn) {
+static void OnCleanup (void* appCtx
+                                , struct IoVentCtx* iovCtx
+                                , struct IoVentConn* iovConn) {
+    puts ("OnCleanup\n");
 }
 
-static void OnStatus (void* appCtx, IoVentConn_t* iovConn) {
+static void OnStatus (void* appCtx
+                                , struct IoVentCtx* iovCtx
+                                , struct IoVentConn* iovConn) {
 }
 
 static TcpProxyCtx_t* CreateAppCtx (TcpProxyI_t* appI) {
 
     TcpProxyCtx_t* appCtx = CreateStruct0 (TcpProxyCtx_t);
 
+    CreatePool (&appCtx->freeSessionPool
+                , appI->maxActiveSessions
+                , TcpProxySession_t);
+     
     return appCtx;
 }
 
+
 void TcpProxyRun (TcpProxyI_t* appI) {
 
-    TcpProxyCtx_t* appCtx = CreateAppCtx (appI);
+    TcpProxyCtx_t* tcpProxyCtx = CreateAppCtx (appI);
 
     IoVentMethods_t* iovMethods = CreateStruct0 (IoVentMethods_t);
 
@@ -63,8 +123,8 @@ void TcpProxyRun (TcpProxyI_t* appI) {
 
     IoVentOptions_t* iovOptions = CreateStruct0 (IoVentOptions_t);
 
-    iovOptions->maxActiveConnections = appI->maxActiveSessions;
-    iovOptions->maxErrorConnections = appI->maxErrorSessions;
+    iovOptions->maxActiveConnections = appI->maxActiveSessions * 2;
+    iovOptions->maxErrorConnections = appI->maxErrorSessions * 2;
     
     IoVentCtx_t* iovCtx = CreateIoVentCtx (iovMethods, iovOptions);
 
@@ -76,8 +136,8 @@ void TcpProxyRun (TcpProxyI_t* appI) {
     TcpProxyStats_t* groupConnStats = &server->cStats;
 
     InitServer(iovCtx
-                , appCtx
-                , &server->serverAddr
+                , tcpProxyCtx
+                , &server->serverAddrL
                 , appConnStats
                 , groupConnStats);
 

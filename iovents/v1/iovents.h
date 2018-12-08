@@ -58,23 +58,41 @@ typedef struct IoVentConn {
 } IoVentConn_t;
 
 typedef struct IoVentMethods {
-    void (*OnEstablish) (void* appCtx, IoVentConn_t* conn); 
-    void (*OnWriteNext) (void* appCtx, IoVentConn_t* conn); 
-    void (*OnReadNext) (void* appCtx, IoVentConn_t* conn); 
-    void (*OnCleanup) (void* appCtx, IoVentConn_t* conn);
-    void (*OnStatus) (void* appCtx, IoVentConn_t* conn);
+    void (*OnEstablish) (void* appCtx
+                            , struct IoVentCtx* iovCtx 
+                            , struct IoVentConn* iovConn); 
 
-    void (*OnWriteNextStatus) (void* appCtx, IoVentConn_t* conn
-                                    , char* writeBuffer
-                                    , int writeBuffOffset
-                                    , int writeDataLen 
-                                    , int bytesWritten);
+    void (*OnWriteNext) (void* appCtx
+                            , struct IoVentCtx* iovCtx 
+                            , struct IoVentConn* iovConn); 
 
-    void (*OnReadNextStatus) (void* appCtx, IoVentConn_t* conn
-                                    , char* readBuffer
-                                    , int readBuffOffset
-                                    , int readDataLen 
-                                    , int bytesReceived);
+    void (*OnReadNext) (void* appCtx
+                            , struct IoVentCtx* iovCtx 
+                            , struct IoVentConn* iovConn); 
+
+    void (*OnCleanup) (void* appCtx
+                            , struct IoVentCtx* iovCtx 
+                            , struct IoVentConn* iovConn);
+
+    void (*OnStatus) (void* appCtx
+                            , struct IoVentCtx* iovCtx 
+                            , struct IoVentConn* iovConn);
+
+    void (*OnWriteNextStatus) (void* appCtx
+                            , struct IoVentCtx* iovCtx 
+                            , struct IoVentConn* iovConn
+                            , char* writeBuffer
+                            , int writeBuffOffset
+                            , int writeDataLen 
+                            , int bytesWritten);
+
+    void (*OnReadNextStatus) (void* appCtx
+                            , struct IoVentCtx* iovCtx 
+                            , struct IoVentConn* iovConn
+                            , char* readBuffer
+                            , int readBuffOffset
+                            , int readDataLen 
+                            , int bytesReceived);
 } IoVentMethods_t;
 
 typedef struct IoVentOptions {

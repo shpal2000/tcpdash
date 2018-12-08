@@ -6,13 +6,17 @@
 
 static SSL_CTX* GSslContext = NULL;
 
-static void OnEstablish (void* appCtx, IoVentConn_t* iovConn) {
+static void OnEstablish (void* appCtx
+                            , struct IoVentCtx* iovCtx
+                            , struct IoVentConn* iovConn) {
     // iovConn->connData = SSL_new(GSslContext);
     iovConn->bytesSent = 0;
     // SslServerInit (iovConn, (SSL*)iovConn->connData);     
 }
 
-static void OnWriteNext (void* appCtx, IoVentConn_t* iovConn) {
+static void OnWriteNext (void* appCtx
+                            , struct IoVentCtx* iovCtx
+                            , struct IoVentConn* iovConn) {
 
     // TlsSampleServerCtx_t* appData 
     //         = (TlsSampleServerCtx_t*) appCtx;
@@ -34,7 +38,8 @@ static void OnWriteNext (void* appCtx, IoVentConn_t* iovConn) {
 }
 
 static void OnWriteNextStatus (void* appCtx
-                                , IoVentConn_t* iovConn
+                                , struct IoVentCtx* iovCtx
+                                , struct IoVentConn* iovConn
                                 , char* writeBuffer
                                 , int writeBuffOffset
                                 , int writeDataLen 
@@ -53,7 +58,9 @@ static void OnWriteNextStatus (void* appCtx
     // }          
 }
 
-static void OnReadNext (void* appCtx, IoVentConn_t* iovConn) {
+static void OnReadNext (void* appCtx
+                            , struct IoVentCtx* iovCtx
+                            , struct IoVentConn* iovConn) {
 
     TlsSampleServerCtx_t* appData 
             = (TlsSampleServerCtx_t*) appCtx;
@@ -65,7 +72,8 @@ static void OnReadNext (void* appCtx, IoVentConn_t* iovConn) {
 }
 
 static void OnReadNextStatus (void* appCtx
-                                , IoVentConn_t* iovConn
+                                , struct IoVentCtx* iovCtx
+                                , struct IoVentConn* iovConn
                                 , char* readBuffer
                                 , int readBuffOffset
                                 , int readDataLen 
@@ -74,11 +82,15 @@ static void OnReadNextStatus (void* appCtx
 
 }
 
-static void OnCleanup (void* appCtx, IoVentConn_t* iovConn) {
+static void OnCleanup (void* appCtx
+                                , struct IoVentCtx* iovCtx
+                                , struct IoVentConn* iovConn) {
     // SSL_free((SSL*)iovConn->connData);
 }
 
-static void OnStatus (void* appCtx, IoVentConn_t* iovConn) {
+static void OnStatus (void* appCtx
+                                , struct IoVentCtx* iovCtx
+                                , struct IoVentConn* iovConn) {
 
     //todo for more advavanced control
     switch (iovConn->statusId) {

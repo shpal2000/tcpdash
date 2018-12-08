@@ -80,6 +80,7 @@ typedef struct epoll_event PollEvent_t;
 typedef GQueue LocalPortPool_t;
 typedef GQueue SessionPool_t;
 typedef GQueue ConnectionPool_t;
+typedef GQueue Pool_t;
 
 typedef GTimer TimerWheel_t;
 
@@ -257,6 +258,18 @@ void DumpCStats(void* aStats);
 #define GetPoolCount(__pool) g_queue_get_length(__pool)
 #define AddToPool(__pool,__session) g_queue_push_tail (__pool,__session)
 #define RemoveFromPool(__pool,__session) g_queue_remove (__pool,__session)
+
+#define CreateEmptyPool(__pool) *(__pool) = g_queue_new ()
+
+#define CreatePool(__pool, __count,__type) \
+{ \
+    *(__pool) = g_queue_new (); \
+    for (int i = 0; i < __count; i++) \
+    { \
+        __type *__new_item = g_slice_new0 (__type); \
+        g_queue_push_tail (*(__pool), __new_item); \
+    } \
+} \
 
 #define CreateEventQ() epoll_create(1)
 #define DeleteEventQ(__eventQId) close(__eventQId)

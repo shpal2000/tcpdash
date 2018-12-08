@@ -151,6 +151,7 @@ static void RemoveConnection(IoVentConn_t* newConn) {
     SetFreeConnection (newConn);
 
     (*newConn->iovCtx->methods.OnCleanup)(newConn->appCtx
+                                                , newConn->iovCtx
                                                 , newConn); 
 }
 
@@ -230,6 +231,7 @@ static void OnConnectionEstablshedHelper (IoVentConn_t* newConn) {
         CloseConnection(newConn);
     } else {
         (*newConn->iovCtx->methods.OnEstablish)(newConn->appCtx
+                                                    , newConn->iovCtx
                                                     , newConn);
     }
 }
@@ -255,16 +257,23 @@ void NewConnection (IoVentCtx_t* iovCtx
         newConn->remoteAddress = remoteAddress;
         newConn->summaryStats = aStats;
         newConn->groupStats = bStats;
-        AssignSocketLocalPort(newConn->localAddress
-                            , newConn->localPortPool
-                            , aStats
-                            , bStats
-                            , newConn);
+        
+        int localPortAssignError = 0;
+        if (newConn->localPortPool) {
+            AssignSocketLocalPort(newConn->localAddress
+                                , newConn->localPortPool
+                                , aStats
+                                , bStats
+                                , newConn);
+            
+            if ( GetCES(newConn) ) {
+                        localPortAssignError = 1;
+                        StoreErrConnection (newConn);
+                        SetFreeConnection (newConn);
+            }
+        }
 
-        if ( GetCES(newConn) ) {
-            StoreErrConnection (newConn);
-            SetFreeConnection (newConn);
-        } else {
+        if (localPortAssignError == 0) {
             newConn->socketFd 
                 = TcpNewConnection(newConn->localAddress
                         , newConn->remoteAddress
@@ -426,6 +435,7 @@ static void HandleWriteNextData (IoVentConn_t* newConn) {
         } else {
             //process written data
             (*newConn->iovCtx->methods.OnWriteNextStatus)(newConn->appCtx
+                                                            , newConn->iovCtx
                                                             , newConn
                                                             , newConn->writeBuffer
                                                             , newConn->writeBuffOffset
@@ -483,6 +493,7 @@ static void HandleReadNextData (IoVentConn_t* newConn) {
             } else {
                 //process read data
                 (*newConn->iovCtx->methods.OnReadNextStatus)(newConn->appCtx
+                                                            , newConn->iovCtx
                                                             , newConn
                                                             , newConn->readBuffer
                                                             , newConn->readBuffOffset
@@ -557,11 +568,6 @@ static void InitIoVentCtx (IoVentCtx_t* iovCtx
     iovCtx->eventQ = CreateEventQ();
 
     iovCtx->eventPTO = 0;
-    
-    SSL_load_error_strings();
-    ERR_load_crypto_strings();
-    OpenSSL_add_ssl_algorithms();
-    SSL_library_init();
 } 
 
 IoVentCtx_t* CreateIoVentCtx (IoVentMethods_t* methods
@@ -644,6 +650,7 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                                 HandleWriteNextData (newConn);
                             } else {
                                 (*newConn->iovCtx->methods.OnWriteNext)(newConn->appCtx
+                                                                        , newConn->iovCtx
                                                                         , newConn);
                             }
                         }
@@ -656,6 +663,7 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                             HandleReadNextData (newConn);
                         } else {
                             (*newConn->iovCtx->methods.OnReadNext)(newConn->appCtx
+                                                                        , newConn->iovCtx
                                                                         , newConn);
                         }
                     }
