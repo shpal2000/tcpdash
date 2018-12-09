@@ -17,32 +17,15 @@
 #define CONNAPP_STATE_SSL_CONNECTION_ESTABLISHED         6
 #define CONNAPP_STATE_SSL_CONNECTION_ESTABLISH_FAILED    7
 
-typedef struct IoVentConn {
-
-    SockState_t ccState; 
-    int socketFd;
+typedef struct IoVentConnInfo {
 
     SSL* cSSL;
 
-    uint16_t savedLocalPort;
-    uint16_t savedRemotePort;
-    SockAddr_t* localAddress;
-    SockAddr_t* remoteAddress;
-    LocalPortPool_t* localPortPool;   
-    
-    uint32_t statusId;
-    void* statusData;
-
-    uint32_t statusResponseId;
-    void* statusResponseData;
-   
-
-    struct IoVentCtx * iovCtx;
-    void* appCtx; //common to all connection; global application data
-    void* groupCtx; // common to all connection to a particular group/server
-
-    SockStats_t* groupStats;
-    SockStats_t* summaryStats;
+    void* connData;
+    void* sessionData;
+    void* groupCtx;
+    void* appCtx;
+    struct IoVentCtx* iovCtx;
 
     char* writeBuffer;
     int writeBuffOffset;
@@ -52,11 +35,34 @@ typedef struct IoVentConn {
     int readBuffOffset;
     int readDataLen;
 
+    SockStats_t* groupStats;
+    SockStats_t* summaryStats;
+
+    SockAddr_t* localAddress;
+    SockAddr_t* remoteAddress;
+
+    LocalPortPool_t* localPortPool;
+
+} IoVentConnInfo_t;
+
+typedef struct IoVentConn {
+
+    SockState_t ccState; 
+    int socketFd;
+
+    uint16_t savedLocalPort;
+    uint16_t savedRemotePort;
+    SockAddr_t remoteAddressAccept;
+    
+    uint32_t statusId;
+    void* statusData;
+
+    uint32_t statusResponseId;
+    void* statusResponseData;
+
     int bytesSent; //remove this to connData
-    //public data
-    void* connData; //connection specific data ; rename it;
-    void* sessionData; //groupd of related connections; part of a session
-    SockAddr_t remoteAddressAccept; // for accepted connection
+
+    IoVentConnInfo_t cInfo;
 
 } IoVentConn_t;
 

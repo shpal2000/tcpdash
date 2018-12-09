@@ -18,9 +18,9 @@ static void InitSession (TcpProxyCtx_t* tcpProxyCtx
 static void OnEstablish (struct IoVentConn* iovConn) {
     
     TcpProxyCtx_t* appCtx 
-        = (TcpProxyCtx_t*) iovConn->appCtx;
+        = (TcpProxyCtx_t*) iovConn->cInfo.appCtx;
 
-    if (iovConn->sessionData == NULL) {
+    if (iovConn->cInfo.sessionData == NULL) {
         TcpProxySession_t* newSess 
             = GetFromPool (appCtx->freeSessionPool);
         if (newSess == NULL) {
@@ -28,18 +28,19 @@ static void OnEstablish (struct IoVentConn* iovConn) {
         } else {
             //init session
             InitSession (appCtx, newSess);
-            iovConn->sessionData = newSess;
+            iovConn->cInfo.sessionData = newSess;
 
             // store client side of proxied connection
             newSess->acceptedConn = iovConn;
             puts("accepted");
             
             // init server side of proxied connection
-            TcpProxyServer_t* server = (TcpProxyServer_t*) iovConn->groupCtx;
-            NewConnection (iovConn->iovCtx
+            TcpProxyServer_t* server 
+                = (TcpProxyServer_t*) iovConn->cInfo.groupCtx;
+            NewConnection (iovConn->cInfo.iovCtx
                             , server
                             , appCtx
-                            , iovConn->sessionData
+                            , iovConn->cInfo.sessionData
                             , &server->serverAddrL//&iovConn->remoteAddressAccept
                             , NULL
                             , &server->serverAddrR
@@ -49,7 +50,7 @@ static void OnEstablish (struct IoVentConn* iovConn) {
     } else {
         // store server side of proxied connection
         TcpProxySession_t* extSess 
-            = (TcpProxySession_t*) iovConn->sessionData;
+            = (TcpProxySession_t*) iovConn->cInfo.sessionData;
         extSess->initiatedConn = iovConn;
                     puts("established");
 

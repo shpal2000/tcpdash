@@ -12,12 +12,8 @@ static void InitConnection (IoVentConn_t* newConn) {
     CSInit(newConn);
 
     newConn->socketFd = 0;
-    newConn->cSSL = NULL;
     newConn->savedLocalPort = 0;
     newConn->savedRemotePort = 0;
-    newConn->localAddress = NULL;
-    newConn->remoteAddress = NULL;
-    newConn->localPortPool = NULL;  
 
     newConn->statusId = 0;
     newConn->statusData = NULL;
@@ -25,19 +21,23 @@ static void InitConnection (IoVentConn_t* newConn) {
     newConn->statusResponseId = 0;
     newConn->statusResponseData = NULL;
 
-    newConn->connData = NULL;   
-    newConn->sessionData = NULL;   
-    newConn->appCtx = NULL;
-    newConn->groupCtx = NULL;
-    newConn->iovCtx = NULL;
+    newConn->cInfo.cSSL = NULL;
+    newConn->cInfo.localAddress = NULL;
+    newConn->cInfo.remoteAddress = NULL;
+    newConn->cInfo.localPortPool = NULL;  
+    newConn->cInfo.connData = NULL;   
+    newConn->cInfo.sessionData = NULL;   
+    newConn->cInfo.appCtx = NULL;
+    newConn->cInfo.groupCtx = NULL;
+    newConn->cInfo.iovCtx = NULL;
 
-    newConn->writeBuffer = NULL;
-    newConn->writeBuffOffset = 0;
-    newConn->writeDataLen = 0;
+    newConn->cInfo.writeBuffer = NULL;
+    newConn->cInfo.writeBuffOffset = 0;
+    newConn->cInfo.writeDataLen = 0;
 
-    newConn->readBuffer = NULL;
-    newConn->readBuffOffset = 0;
-    newConn->readDataLen = 0;
+    newConn->cInfo.readBuffer = NULL;
+    newConn->cInfo.readBuffOffset = 0;
+    newConn->cInfo.readDataLen = 0;
 
     newConn->bytesSent = 0;
 }
@@ -56,29 +56,29 @@ IoVentConn_t* GetFreeConnection (IoVentCtx_t* iovCtx) {
 }
 
 void SetFreeConnection (IoVentConn_t* newConn) {
-    RemoveFromPool (newConn->iovCtx->activeConnectionPool, newConn);
-    AddToPool (newConn->iovCtx->freeConnectionPool, newConn);
+    RemoveFromPool (newConn->cInfo.iovCtx->activeConnectionPool, newConn);
+    AddToPool (newConn->cInfo.iovCtx->freeConnectionPool, newConn);
 }
 
 static void StoreErrConnection (IoVentConn_t* newConn) {
-    int currentErrCount = newConn->iovCtx->errorConnectionCount;
+    int currentErrCount = newConn->cInfo.iovCtx->errorConnectionCount;
     if (currentErrCount 
-                < newConn->iovCtx->options.maxErrorConnections) {
+                < newConn->cInfo.iovCtx->options.maxErrorConnections) {
 
         IoVentConn_t* errConn 
-            = &newConn->iovCtx->errorConnectionArr[currentErrCount];
+            = &newConn->cInfo.iovCtx->errorConnectionArr[currentErrCount];
 
         *errConn =  *newConn;
 
         uint16_t tmpPort;
 
-        GET_SOCK_PORT (errConn->localAddress, &tmpPort);        
+        GET_SOCK_PORT (errConn->cInfo.localAddress, &tmpPort);        
         errConn->savedLocalPort = ntohs(tmpPort);
 
-        GET_SOCK_PORT (errConn->remoteAddress, &tmpPort);        
+        GET_SOCK_PORT (errConn->cInfo.remoteAddress, &tmpPort);        
         errConn->savedRemotePort = ntohs(tmpPort);
 
-        newConn->iovCtx->errorConnectionCount++;
+        newConn->cInfo.iovCtx->errorConnectionCount++;
     }
 }
 
@@ -87,9 +87,9 @@ static void DumpConnection (IoVentConn_t* newConn) {
     char srcAddr[INET6_ADDRSTRLEN];
     char dstAddr[INET6_ADDRSTRLEN];
 
-    AddressToString (newConn->localAddress, srcAddr);
+    AddressToString (newConn->cInfo.localAddress, srcAddr);
 
-    AddressToString (newConn->remoteAddress, dstAddr);
+    AddressToString (newConn->cInfo.remoteAddress, dstAddr);
 
     printf ("SS1 = %#018" PRIx64 
             ", ES = %#018" PRIx64 
@@ -121,8 +121,8 @@ void DumpErrConnections (IoVentCtx_t* iovCtx) {
 
 static void ReleasePort(IoVentConn_t* newConn) {
     uint16_t localPort;
-    GET_SOCK_PORT(newConn->localAddress, &localPort);
-    SetPortToPool (newConn->localPortPool, localPort);
+    GET_SOCK_PORT(newConn->cInfo.localAddress, &localPort);
+    SetPortToPool (newConn->cInfo.localPortPool, localPort);
 }
 
 static void RemoveConnection(IoVentConn_t* newConn) {
@@ -130,10 +130,10 @@ static void RemoveConnection(IoVentConn_t* newConn) {
     // DumpConnection (newConn);
 
     if ( IsSetCES(newConn, STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) {
-        StopPollReadWriteEvent(newConn->iovCtx->eventQ
+        StopPollReadWriteEvent(newConn->cInfo.iovCtx->eventQ
                                 , newConn->socketFd
-                                , newConn->summaryStats
-                                , newConn->groupStats
+                                , newConn->cInfo.summaryStats
+                                , newConn->cInfo.groupStats
                                 , newConn);
     }       
 
@@ -144,7 +144,7 @@ static void RemoveConnection(IoVentConn_t* newConn) {
     }
 
     //only for client connection
-    if ( newConn->localPortPool 
+    if ( newConn->cInfo.localPortPool 
             && ( IsSetCES(newConn, STATE_TCP_SOCK_FD_CLOSE_FAIL
                         | STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) ) {
         ReleasePort(newConn);
@@ -152,7 +152,7 @@ static void RemoveConnection(IoVentConn_t* newConn) {
 
     SetFreeConnection (newConn);
 
-    (*newConn->iovCtx->methods.OnCleanup)(newConn); 
+    (*newConn->cInfo.iovCtx->methods.OnCleanup)(newConn); 
 }
 
 static void CloseConnection(IoVentConn_t* newConn) {
@@ -170,7 +170,7 @@ static void CloseConnection(IoVentConn_t* newConn) {
         if ( IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED)
                 && pendingSendReceiveCloseNotify ) {
 
-            SSLShutdown (newConn->cSSL, newConn);
+            SSLShutdown (newConn->cInfo.cSSL, newConn);
         }
 
         int sentCloseNotifyOrNotRequired 
@@ -201,11 +201,11 @@ static void CloseConnection(IoVentConn_t* newConn) {
 }
 
 static void DoSslHandshake (IoVentConn_t* newConn) {
-    DoSSLConnect (newConn->cSSL
+    DoSSLConnect (newConn->cInfo.cSSL
                         , newConn->socketFd
                         , IsSetCS1 (newConn, STATE_SSL_CONN_CLIENT) ? 1 : 0
-                        , newConn->summaryStats
-                        , newConn->groupStats
+                        , newConn->cInfo.summaryStats
+                        , newConn->cInfo.groupStats
                         , newConn);
 
     if (IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED)) {
@@ -221,16 +221,16 @@ static void DoSslHandshake (IoVentConn_t* newConn) {
 static void OnConnectionEstablshedHelper (IoVentConn_t* newConn) {
     SetAppState (newConn, CONNAPP_STATE_CONNECTION_ESTABLISHED);
 
-    PollReadWriteEvent(newConn->iovCtx->eventQ
+    PollReadWriteEvent(newConn->cInfo.iovCtx->eventQ
                         , newConn->socketFd
-                        , newConn->summaryStats
-                        , newConn->groupStats
+                        , newConn->cInfo.summaryStats
+                        , newConn->cInfo.groupStats
                         , newConn);
 
     if ( GetCES(newConn) ) {
         CloseConnection(newConn);
     } else {
-        (*newConn->iovCtx->methods.OnEstablish)(newConn);
+        (*newConn->cInfo.iovCtx->methods.OnEstablish)(newConn);
     }
 }
 
@@ -250,20 +250,20 @@ void NewConnection (IoVentCtx_t* iovCtx
         IncConnStats2(aStats, bStats, tcpConnStructNotAvail);
     } else {
         SetAppState(newConn, CONNAPP_STATE_CONNECTION_IN_PROGRESS);
-        newConn->iovCtx = iovCtx;
-        newConn->groupCtx = groupCtx;
-        newConn->appCtx = appCtx;
-        newConn->sessionData = sessionData;
-        newConn->localAddress = localAddress;
-        newConn->localPortPool = localPortPool;
-        newConn->remoteAddress = remoteAddress;
-        newConn->summaryStats = aStats;
-        newConn->groupStats = bStats;
+        newConn->cInfo.iovCtx = iovCtx;
+        newConn->cInfo.groupCtx = groupCtx;
+        newConn->cInfo.appCtx = appCtx;
+        newConn->cInfo.sessionData = sessionData;
+        newConn->cInfo.localAddress = localAddress;
+        newConn->cInfo.localPortPool = localPortPool;
+        newConn->cInfo.remoteAddress = remoteAddress;
+        newConn->cInfo.summaryStats = aStats;
+        newConn->cInfo.groupStats = bStats;
         
         int localPortAssignError = 0;
-        if (newConn->localPortPool) {
-            AssignSocketLocalPort(newConn->localAddress
-                                , newConn->localPortPool
+        if (newConn->cInfo.localPortPool) {
+            AssignSocketLocalPort(newConn->cInfo.localAddress
+                                , newConn->cInfo.localPortPool
                                 , aStats
                                 , bStats
                                 , newConn);
@@ -277,8 +277,8 @@ void NewConnection (IoVentCtx_t* iovCtx
 
         if (localPortAssignError == 0) {
             newConn->socketFd 
-                = TcpNewConnection(newConn->localAddress
-                        , newConn->remoteAddress
+                = TcpNewConnection(newConn->cInfo.localAddress
+                        , newConn->cInfo.remoteAddress
                         , aStats
                         , bStats
                         , newConn);
@@ -313,28 +313,28 @@ void InitServer (IoVentCtx_t* iovCtx
     if (newConn == NULL) {
         IncConnStats2(aStats, bStats, tcpListenStructNotAvail);
     } else {
-        newConn->iovCtx = iovCtx;
-        newConn->groupCtx = groupCtx;
-        newConn->appCtx = appCtx;
-        newConn->localAddress = localAddress;
-        newConn->summaryStats = aStats;
-        newConn->groupStats = bStats;
+        newConn->cInfo.iovCtx = iovCtx;
+        newConn->cInfo.groupCtx = groupCtx;
+        newConn->cInfo.appCtx = appCtx;
+        newConn->cInfo.localAddress = localAddress;
+        newConn->cInfo.summaryStats = aStats;
+        newConn->cInfo.groupStats = bStats;
         
         newConn->socketFd 
-            = TcpListenStart(newConn->localAddress
+            = TcpListenStart(newConn->cInfo.localAddress
                                 , 1000 //remove hardcoded 
-                                , newConn->summaryStats
-                                , newConn->groupStats
+                                , newConn->cInfo.summaryStats
+                                , newConn->cInfo.groupStats
                                 , newConn);
 
         if ( GetCES(newConn) ) {
             StoreErrConnection (newConn);
             SetFreeConnection (newConn);
         } else {
-            PollReadEventOnly(newConn->iovCtx->eventQ
+            PollReadEventOnly(newConn->cInfo.iovCtx->eventQ
                                 , newConn->socketFd
-                                , newConn->summaryStats
-                                , newConn->groupStats
+                                , newConn->cInfo.summaryStats
+                                , newConn->cInfo.groupStats
                                 , newConn);
 
             if ( GetCES(newConn) ) {
@@ -352,25 +352,25 @@ void InitServer (IoVentCtx_t* iovCtx
 
 static void OnTcpAcceptConnection(IoVentConn_t* lSockConn) {
                 
-    IoVentConn_t* newConn = GetFreeConnection (lSockConn->iovCtx);
+    IoVentConn_t* newConn = GetFreeConnection (lSockConn->cInfo.iovCtx);
     
     if (newConn == NULL) {
-        IncConnStats2(lSockConn->summaryStats
-                    , lSockConn->groupStats
+        IncConnStats2(lSockConn->cInfo.summaryStats
+                    , lSockConn->cInfo.groupStats
                     , tcpConnStructNotAvail);
     } else {
-        newConn->iovCtx = lSockConn->iovCtx;
-        newConn->groupCtx = lSockConn->groupCtx;
-        newConn->appCtx = lSockConn->appCtx;
-        newConn->localAddress = lSockConn->localAddress;
-        newConn->remoteAddress = &newConn->remoteAddressAccept; 
-        newConn->summaryStats = lSockConn->summaryStats;
-        newConn->groupStats = lSockConn->groupStats;
+        newConn->cInfo.iovCtx = lSockConn->cInfo.iovCtx;
+        newConn->cInfo.groupCtx = lSockConn->cInfo.groupCtx;
+        newConn->cInfo.appCtx = lSockConn->cInfo.appCtx;
+        newConn->cInfo.localAddress = lSockConn->cInfo.localAddress;
+        newConn->cInfo.remoteAddress = &newConn->remoteAddressAccept; 
+        newConn->cInfo.summaryStats = lSockConn->cInfo.summaryStats;
+        newConn->cInfo.groupStats = lSockConn->cInfo.groupStats;
 
         newConn->socketFd = TcpAcceptConnection(lSockConn->socketFd
-                                            , newConn->remoteAddress
-                                            , newConn->summaryStats
-                                            , newConn->groupStats
+                                            , newConn->cInfo.remoteAddress
+                                            , newConn->cInfo.summaryStats
+                                            , newConn->cInfo.groupStats
                                             , newConn);
 
         if ( GetCES(newConn) ) {
@@ -394,7 +394,7 @@ static void InitSslConnection(IoVentConn_t* newConn
         SetCS1 (newConn,  STATE_SSL_ENABLED_CONN);
     }
 
-    newConn->cSSL = newSSL;
+    newConn->cInfo.cSSL = newSSL;
 
     DoSslHandshake (newConn);
 }
@@ -416,19 +416,19 @@ static void HandleWriteNextData (IoVentConn_t* newConn) {
 
     int bytesSent;
     if ( IsSetCS1 (newConn, STATE_SSL_ENABLED_CONN) ) { 
-        bytesSent = SSLWrite (newConn->cSSL
-                    , newConn->writeBuffer + newConn->writeBuffOffset
-                    , newConn->writeDataLen
-                    , newConn->summaryStats
-                    , newConn->groupStats
-                    , newConn);
+        bytesSent = SSLWrite (newConn->cInfo.cSSL
+            , newConn->cInfo.writeBuffer + newConn->cInfo.writeBuffOffset
+            , newConn->cInfo.writeDataLen
+            , newConn->cInfo.summaryStats
+            , newConn->cInfo.groupStats
+            , newConn);
     } else {
         bytesSent = TcpWrite (newConn->socketFd
-                    , newConn->writeBuffer + newConn->writeBuffOffset
-                    , newConn->writeDataLen
-                    , newConn->summaryStats
-                    , newConn->groupStats
-                    , newConn);
+            , newConn->cInfo.writeBuffer + newConn->cInfo.writeBuffOffset
+            , newConn->cInfo.writeDataLen
+            , newConn->cInfo.summaryStats
+            , newConn->cInfo.groupStats
+            , newConn);
     }
 
     if ( GetCES(newConn) ) {
@@ -440,7 +440,7 @@ static void HandleWriteNextData (IoVentConn_t* newConn) {
         } else {
             //process written data
             ClearCS1 (newConn, STATE_CONN_WRITE_PENDING);
-            (*newConn->iovCtx->methods.OnWriteStatus)(newConn
+            (*newConn->cInfo.iovCtx->methods.OnWriteStatus)(newConn
                                                     , bytesSent);
         }
     }
@@ -452,9 +452,9 @@ void WriteNextData (IoVentConn_t* newConn
                         , int writeDataLen) {
 
     SetCS1 (newConn, STATE_CONN_WRITE_PENDING); 
-    newConn->writeBuffer = writeBuffer;
-    newConn->writeBuffOffset = writeBuffOffset;
-    newConn->writeDataLen = writeDataLen;
+    newConn->cInfo.writeBuffer = writeBuffer;
+    newConn->cInfo.writeBuffOffset = writeBuffOffset;
+    newConn->cInfo.writeDataLen = writeDataLen;
 
     HandleWriteNextData (newConn);
 }
@@ -466,19 +466,21 @@ static void HandleReadNextData (IoVentConn_t* newConn) {
 
         int bytesReceived;
         if ( IsSetCS1 (newConn, STATE_SSL_ENABLED_CONN) ) {
-            bytesReceived  = SSLRead ( newConn->cSSL
-                            , newConn->readBuffer + newConn->readBuffOffset
-                            , newConn->readDataLen
-                            , newConn->summaryStats
-                            , newConn->groupStats
-                            , newConn);
+            bytesReceived  
+                = SSLRead ( newConn->cInfo.cSSL
+                , newConn->cInfo.readBuffer + newConn->cInfo.readBuffOffset
+                , newConn->cInfo.readDataLen
+                , newConn->cInfo.summaryStats
+                , newConn->cInfo.groupStats
+                , newConn);
         } else {
-            bytesReceived  = TcpRead ( newConn->socketFd
-                            , newConn->readBuffer + newConn->readBuffOffset
-                            , newConn->readDataLen
-                            , newConn->summaryStats
-                            , newConn->groupStats
-                            , newConn);
+            bytesReceived  
+                = TcpRead ( newConn->socketFd
+                , newConn->cInfo.readBuffer + newConn->cInfo.readBuffOffset
+                , newConn->cInfo.readDataLen
+                , newConn->cInfo.summaryStats
+                , newConn->cInfo.groupStats
+                , newConn);
         }
 
         if ( GetCES(newConn) ) {
@@ -494,7 +496,7 @@ static void HandleReadNextData (IoVentConn_t* newConn) {
             } else {
                 //process read data
                 ClearCS1 (newConn, STATE_CONN_READ_PENDING);
-                (*newConn->iovCtx->methods.OnReadStatus)(newConn
+                (*newConn->cInfo.iovCtx->methods.OnReadStatus)(newConn
                                                     , bytesReceived);
             }
         }
@@ -508,9 +510,9 @@ void ReadNextData (IoVentConn_t* newConn
     
     SetCS1 (newConn, STATE_CONN_READ_PENDING);
 
-    newConn->readBuffer = readBuffer;
-    newConn->readBuffOffset = readBuffOffset;
-    newConn->readDataLen = readDataLen;
+    newConn->cInfo.readBuffer = readBuffer;
+    newConn->cInfo.readBuffOffset = readBuffOffset;
+    newConn->cInfo.readDataLen = readDataLen;
 
     HandleReadNextData (newConn);
 }
@@ -518,8 +520,8 @@ void ReadNextData (IoVentConn_t* newConn
 static void OnTcpConnectionCompletion (IoVentConn_t* newConn) {
 
     VerifyTcpConnectionEstablished (newConn->socketFd
-                                    , newConn->summaryStats
-                                    , newConn->groupStats
+                                    , newConn->cInfo.summaryStats
+                                    , newConn->cInfo.groupStats
                                     , newConn);
     
     if ( GetCES(newConn) ) {
@@ -647,7 +649,7 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                             if (IsSetCS1 (newConn, STATE_CONN_WRITE_PENDING) ) {
                                 HandleWriteNextData (newConn);
                             } else {
-                                (*newConn->iovCtx->methods.OnWriteNext)(newConn);
+                                (*newConn->cInfo.iovCtx->methods.OnWriteNext)(newConn);
                             }
                         }
                     }
@@ -658,7 +660,7 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                         if ( IsSetCS1 (newConn, STATE_CONN_READ_PENDING) ) {
                             HandleReadNextData (newConn);
                         } else {
-                            (*newConn->iovCtx->methods.OnReadNext)(newConn);
+                            (*newConn->cInfo.iovCtx->methods.OnReadNext)(newConn);
                         }
                     }
                 }

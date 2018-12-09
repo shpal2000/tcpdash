@@ -15,7 +15,7 @@ static void OnEstablish (struct IoVentConn* iovConn) {
 static void OnWriteNext (struct IoVentConn* iovConn) {
 
     TlsSampleClientCtx_t* appCtx 
-        = (TlsSampleClientCtx_t*) iovConn->appCtx;
+        = (TlsSampleClientCtx_t*) iovConn->cInfo.appCtx;
 
     if (iovConn->bytesSent < appCtx->csDataLen ) {
 
@@ -31,7 +31,7 @@ static void OnWriteStatus (struct IoVentConn* iovConn
                             ) {
 
     TlsSampleClientCtx_t* appCtx 
-            = (TlsSampleClientCtx_t*) iovConn->appCtx;
+            = (TlsSampleClientCtx_t*) iovConn->cInfo.appCtx;
 
     iovConn->bytesSent += bytesWritten;
 
@@ -46,7 +46,7 @@ static void OnWriteStatus (struct IoVentConn* iovConn
 static void OnReadNext (struct IoVentConn* iovConn) {
 
     TlsSampleClientCtx_t* appCtx 
-            = (TlsSampleClientCtx_t*) iovConn->appCtx;
+            = (TlsSampleClientCtx_t*) iovConn->cInfo.appCtx;
 
     ReadNextData (iovConn
                     , appCtx->receiveBuffer
