@@ -39,15 +39,26 @@ void DumpTcpProxyStats(TcpProxyStats_t* appConnStats);
 
 typedef struct TcpProxyCtx {
     Pool_t* freeSessionPool;
+    Pool_t* freeBuffPool;
     TcpProxyI_t* appI; 
 } TcpProxyCtx_t;
+
+#define RW_MAX_BUFF_LEN 2048
+typedef struct RwBuff {
+    int buffLen;
+    int buffOffset;
+    int dataLen;
+    char dataBuff[RW_MAX_BUFF_LEN];
+} RwBuff_t;
 
 typedef struct TcpProxySession {
     IoVentConn_t* acceptedConn;
     IoVentConn_t* initiatedConn;
-    Pool_t* clientData;
     TcpProxyCtx_t* appCtx;
+    RwBuff_t* aConnRBuff;
+    RwBuff_t* iConnRBuff;
 } TcpProxySession_t;
+
 
 #endif //__APP__MAIN__
 

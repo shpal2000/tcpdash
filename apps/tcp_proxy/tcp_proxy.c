@@ -13,6 +13,15 @@ static void InitSession (TcpProxyCtx_t* tcpProxyCtx
     newSess->initiatedConn = NULL;
     newSess->acceptedConn = NULL;
     newSess->appCtx = tcpProxyCtx;
+    newSess->aConnRBuff = NULL;
+    newSess->iConnRBuff = NULL;
+}
+
+static void InitRwBuff (RwBuff_t* newBuff) {
+
+    newBuff->buffLen = RW_MAX_BUFF_LEN;
+    newBuff->buffOffset = 0;
+    newBuff->dataLen = 0;
 }
 
 static void OnEstablish (struct IoVentConn* iovConn) {
@@ -58,21 +67,110 @@ static void OnEstablish (struct IoVentConn* iovConn) {
 }
 
 static void OnWriteNext (struct IoVentConn* iovConn) {
+
+    TcpProxySession_t* newSess 
+        = (TcpProxySession_t*) iovConn->cInfo.sessionData;
+
+    if (newSess == NULL
+            || (newSess->acceptedConn == iovConn 
+                                && (newSess->iConnRBuff == NULL
+                                    || newSess->iConnRBuff->dataLen == 0) ) 
+            || (newSess->initiatedConn == iovConn 
+                                && (newSess->aConnRBuff == NULL
+                                    || newSess->aConnRBuff->dataLen == 0) ) 
+                                    ) {
+        return;
+    }
+
+    RwBuff_t* rwBuff;
+
+    if (newSess->acceptedConn == iovConn) {
+        rwBuff = newSess->iConnRBuff;
+    } else {
+        rwBuff = newSess->aConnRBuff;
+    }
+
+    WriteNextData (iovConn
+                , rwBuff->dataBuff
+                , 0
+                , rwBuff->dataLen);
 }
 
 static void OnWriteStatus (struct IoVentConn* iovConn
                             , int bytesWritten
                             ) {
+
+    TcpProxyCtx_t* appCtx 
+        = (TcpProxyCtx_t*) iovConn->cInfo.appCtx;
+
+    TcpProxySession_t* newSess 
+        = (TcpProxySession_t*) iovConn->cInfo.sessionData;
+
+    if (newSess->acceptedConn == iovConn) {
+        newSess->iConnRBuff->buffOffset += bytesWritten;
+
+        if (newSess->iConnRBuff->buffOffset
+                == newSess->iConnRBuff->dataLen) {
+            AddToPool (appCtx->freeBuffPool, newSess->iConnRBuff);
+            newSess->iConnRBuff = NULL;
+        }
+    } else {
+        newSess->aConnRBuff->buffOffset += bytesWritten;
+
+        if (newSess->aConnRBuff->buffOffset
+                == newSess->aConnRBuff->dataLen) {
+            AddToPool (appCtx->freeBuffPool, newSess->aConnRBuff);
+            newSess->aConnRBuff = NULL;
+        }
+    }
 }
 
 static void OnReadNext (struct IoVentConn* iovConn) {
 
+    TcpProxySession_t* newSess 
+        = (TcpProxySession_t*) iovConn->cInfo.sessionData;
+
+    if (newSess == NULL
+            || (newSess->acceptedConn == iovConn && newSess->aConnRBuff) 
+            || (newSess->initiatedConn == iovConn && newSess->iConnRBuff) ) {
+        return;
+    }
+
+    TcpProxyCtx_t* appCtx 
+        = (TcpProxyCtx_t*) iovConn->cInfo.appCtx;
+    
+    RwBuff_t* rwBuff =
+        GetFromPool (appCtx->freeBuffPool);
+
+    if (rwBuff == NULL) {
+        //todo; stats; close connection
+    } else {
+        InitRwBuff (rwBuff);
+        if (newSess->acceptedConn == iovConn) {
+            newSess->aConnRBuff = rwBuff;
+        } else {
+            newSess->iConnRBuff = rwBuff;
+        }
+
+        ReadNextData (iovConn
+                , rwBuff->dataBuff
+                , 0
+                , rwBuff->buffLen);
+    }
 }
 
 static void OnReadStatus (struct IoVentConn* iovConn
                             , int bytesReceived
                             ) {
 
+    TcpProxySession_t* newSess 
+        = (TcpProxySession_t*) iovConn->cInfo.sessionData;
+
+    if (newSess->acceptedConn == iovConn) {
+        newSess->aConnRBuff->dataLen = bytesReceived;
+    } else {
+        newSess->iConnRBuff->dataLen = bytesReceived;
+    }
 }
 
 static void OnCleanup (struct IoVentConn* iovConn) {
@@ -91,7 +189,11 @@ static TcpProxyCtx_t* CreateAppCtx (TcpProxyI_t* appI) {
     CreatePool (&appCtx->freeSessionPool
                 , appI->maxActiveSessions
                 , TcpProxySession_t);
-     
+
+    CreatePool (&appCtx->freeBuffPool
+                , appI->maxActiveSessions * 16
+                , RwBuff_t);
+
     return appCtx;
 }
 
