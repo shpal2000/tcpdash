@@ -55,8 +55,12 @@ typedef struct TcpProxySession {
     IoVentConn_t* acceptedConn;
     IoVentConn_t* initiatedConn;
     TcpProxyCtx_t* appCtx;
-    RwBuff_t* aConnRBuff;
-    RwBuff_t* iConnRBuff;
+    RwBuff_t aConnRBuff;
+    RwBuff_t iConnRBuff;
+    int aConnWriteReady;
+    int aConnReadPending;
+    int iConnWriteReady;
+    int iConnReadPending;
 } TcpProxySession_t;
 
 

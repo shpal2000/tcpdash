@@ -411,6 +411,8 @@ void SslServerInit (IoVentConn_t* newConn
     InitSslConnection(newConn, newSSL, 0);
 }
 
+void WriteNextDataRemaing (IoVentConn_t* newConn);
+
 //handle plain tcp write also
 static void HandleWriteNextData (IoVentConn_t* newConn) {
 
@@ -439,9 +441,27 @@ static void HandleWriteNextData (IoVentConn_t* newConn) {
             // ssl want read write; skip
         } else {
             //process written data
-            ClearCS1 (newConn, STATE_CONN_WRITE_PENDING);
-            (*newConn->cInfo.iovCtx->methods.OnWriteStatus)(newConn
-                                                    , bytesSent);
+            newConn->cInfo.writtenBytesLen += bytesSent;
+
+            int notifyWriteStatus;
+            if ( IsSetCS1 (newConn, STATE_CONN_PARTIAL_WRITE) ){
+                notifyWriteStatus = 1;
+            } else {
+                if (newConn->cInfo.writtenBytesLen 
+                        == newConn->cInfo.writeDataLenOrg) {
+                    notifyWriteStatus = 1;
+                } else {
+                    notifyWriteStatus = 0;
+                }
+            }
+
+            if (notifyWriteStatus) {
+                ClearCS1 (newConn, STATE_CONN_WRITE_PENDING);
+                (*newConn->cInfo.iovCtx->methods.OnWriteStatus)(newConn
+                                            , newConn->cInfo.writtenBytesLen);
+            } else {
+                WriteNextDataRemaing (newConn);
+            }
         }
     }
 }
@@ -449,12 +469,31 @@ static void HandleWriteNextData (IoVentConn_t* newConn) {
 void WriteNextData (IoVentConn_t* newConn
                         , char* writeBuffer
                         , int writeBuffOffset
-                        , int writeDataLen) {
+                        , int writeDataLen
+                        , int partialWrite) {
 
     SetCS1 (newConn, STATE_CONN_WRITE_PENDING); 
     newConn->cInfo.writeBuffer = writeBuffer;
     newConn->cInfo.writeBuffOffset = writeBuffOffset;
     newConn->cInfo.writeDataLen = writeDataLen;
+
+    newConn->cInfo.writeBuffOffsetOrg = writeBuffOffset;
+    newConn->cInfo.writeDataLenOrg = writeDataLen;
+    newConn->cInfo.writtenBytesLen = 0;
+
+    if (partialWrite) {
+        SetCS1 (newConn, STATE_CONN_PARTIAL_WRITE);
+    } else {
+        ClearCS1 (newConn, STATE_CONN_PARTIAL_WRITE);
+    }
+
+    HandleWriteNextData (newConn);
+}
+
+void WriteNextDataRemaing (IoVentConn_t* newConn) {
+
+    newConn->cInfo.writeBuffOffset += newConn->cInfo.writtenBytesLen;
+    newConn->cInfo.writeDataLen -= newConn->cInfo.writtenBytesLen;
 
     HandleWriteNextData (newConn);
 }

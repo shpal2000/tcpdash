@@ -31,6 +31,10 @@ typedef struct IoVentConnInfo {
     int writeBuffOffset;
     int writeDataLen;
 
+    int writeBuffOffsetOrg;
+    int writeDataLenOrg;
+    int writtenBytesLen;
+
     char* readBuffer;
     int readBuffOffset;
     int readDataLen;
@@ -140,7 +144,8 @@ void SslServerInit (IoVentConn_t* newConn
 void WriteNextData (IoVentConn_t* newConn
                         , char* writeBuffer
                         , int writeBuffOffset
-                        , int writeDataLen);
+                        , int writeDataLen
+                        , int partialWrite);
 
 void ReadNextData (IoVentConn_t* newConn
                         , char* readBuffer
