@@ -61,6 +61,9 @@ static void OnReadStatus (struct IoVentConn* iovConn
 
 }
 
+static void OnClose (struct IoVentConn* iovConn) {
+}
+
 static void OnCleanup (struct IoVentConn* iovConn) {
     // SSL_free((SSL*)iovConn->connData);
 }
@@ -118,6 +121,7 @@ void TlsSampleClientRun (TlsSampleClient_t* appI) {
     iovMethods->OnWriteStatus = &OnWriteStatus;
     iovMethods->OnReadNext = &OnReadNext;
     iovMethods->OnReadStatus = &OnReadStatus;
+    iovMethods->OnClose = &OnClose;
     iovMethods->OnCleanup = &OnCleanup;
     iovMethods->OnStatus = &OnStatus;
 

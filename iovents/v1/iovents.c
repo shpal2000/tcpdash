@@ -529,6 +529,7 @@ static void HandleReadNextData (IoVentConn_t* newConn) {
             if (bytesReceived <= 0) {
                 if ( IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) ) {
                     ClearCS1 (newConn, STATE_CONN_READ_PENDING);
+                    (*newConn->cInfo.iovCtx->methods.OnClose)(newConn);
                 } else {
                     // ssl want read write; skip;
                 }

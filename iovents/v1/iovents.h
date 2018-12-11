@@ -77,6 +77,8 @@ typedef struct IoVentMethods {
 
     void (*OnReadNext) (IoVentConn_t* iovConn); 
 
+    void (*OnClose) (IoVentConn_t* iovConn);
+
     void (*OnCleanup) (IoVentConn_t* iovConn);
 
     void (*OnStatus) (IoVentConn_t* iovConn);

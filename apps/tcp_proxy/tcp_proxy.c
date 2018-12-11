@@ -178,6 +178,41 @@ static void OnCleanup (struct IoVentConn* iovConn) {
     puts ("OnCleanup\n");
 }
 
+static void OnClose (struct IoVentConn* iovConn) {
+    puts ("OnOnClose\n");
+
+    //change this to iovent API
+    SetCS1(iovConn, STATE_NO_MORE_WRITE_DATA 
+                    | STATE_TCP_TO_SEND_FIN);
+
+    TcpProxyAppCtx_t* appCtx 
+        = (TcpProxyAppCtx_t*) iovConn->cInfo.appCtx;
+
+    TcpProxySession_t* newSess 
+        = (TcpProxySession_t*) iovConn->cInfo.sessionData;
+
+    if (newSess->acceptedConn) {
+        if (newSess->aConnWriteBuff) {
+            AddToPool (appCtx->freeBuffPool, newSess->aConnWriteBuff);
+            newSess->aConnWriteBuff = NULL;
+        }
+        //change this to iovent API
+        SetCS1(newSess->acceptedConn, STATE_NO_MORE_WRITE_DATA 
+                                        | STATE_TCP_TO_SEND_FIN);
+    }
+
+    if (newSess->initiatedConn) {
+        if (newSess->iConnWriteBuff) {
+            AddToPool (appCtx->freeBuffPool, newSess->iConnWriteBuff);
+            newSess->iConnWriteBuff = NULL;
+        }
+        //change this to iovent API
+        SetCS1(newSess->initiatedConn, STATE_NO_MORE_WRITE_DATA 
+                                        | STATE_TCP_TO_SEND_FIN);
+    }
+
+}
+
 static void OnStatus (struct IoVentConn* iovConn) {
 }
 
@@ -210,6 +245,7 @@ void TcpProxyRun (TcpProxyI_t* appI) {
     iovMethods->OnWriteStatus = &OnWriteStatus;
     iovMethods->OnReadNext = &OnReadNext;
     iovMethods->OnReadStatus = &OnReadStatus;
+    iovMethods->OnClose = &OnClose;
     iovMethods->OnCleanup = &OnCleanup;
     iovMethods->OnStatus = &OnStatus;
 
