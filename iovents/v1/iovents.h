@@ -31,9 +31,9 @@ typedef struct IoVentConnInfo {
     int writeBuffOffset;
     int writeDataLen;
 
-    int writeBuffOffsetOrg;
-    int writeDataLenOrg;
-    int writtenBytesLen;
+    int writeBuffOffsetCur;
+    int writeDataLenCur;
+    int writtenBytesLenCur;
 
     char* readBuffer;
     int readBuffOffset;
