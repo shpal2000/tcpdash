@@ -51,16 +51,17 @@ typedef struct RwBuff {
     char dataBuff[RW_MAX_BUFF_LEN];
 } RwBuff_t;
 
+typedef struct TcpProxyConn {
+    IoVentConn_t* iovConn;
+    RwBuff_t* readBuff;
+    RwBuff_t* writeBuff;
+    Pool_t writeQ;
+} TcpProxyConn_t;
+
 typedef struct TcpProxySession {
-    IoVentConn_t* acceptedConn;
-    IoVentConn_t* initiatedConn;
     TcpProxyAppCtx_t* appCtx;
-    Pool_t aConnWriteBuffQ;
-    Pool_t iConnWriteBuffQ;
-    RwBuff_t* aConnReadBuff;
-    RwBuff_t* iConnReadBuff;
-    RwBuff_t* aConnWriteBuff;
-    RwBuff_t* iConnWriteBuff;
+    TcpProxyConn_t aConn;
+    TcpProxyConn_t iConn;
 } TcpProxySession_t;
 
 

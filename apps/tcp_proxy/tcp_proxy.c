@@ -13,18 +13,20 @@ static void InitRwBuff (RwBuff_t* newBuff) {
     newBuff->dataLen = 0;
 }
 
+static void InitConn (TcpProxyConn_t * tpConn) {
+
+    tpConn->iovConn = NULL;
+    tpConn->readBuff = NULL;
+    tpConn->writeBuff = NULL;
+    InitPool (&tpConn->writeQ);
+}
+
 static void InitSession (TcpProxyAppCtx_t* appCtx
                         , TcpProxySession_t* newSess) {
 
-    newSess->initiatedConn = NULL;
-    newSess->acceptedConn = NULL;
     newSess->appCtx = appCtx;
-
-    newSess->aConnReadBuff = NULL;
-    newSess->iConnReadBuff = NULL;
-    
-    InitPool (&newSess->aConnWriteBuffQ);
-    InitPool (&newSess->iConnWriteBuffQ);
+    InitConn (&newSess->aConn);
+    InitConn (&newSess->iConn);
 }
 
 static void OnEstablish (struct IoVentConn* iovConn) {
@@ -44,7 +46,7 @@ static void OnEstablish (struct IoVentConn* iovConn) {
             iovConn->cInfo.sessionData = newSess;
 
             // store client side of proxied connection
-            newSess->acceptedConn = iovConn;
+            newSess->aConn.iovConn = iovConn;
             
             // init server side of proxied connection
             TcpProxyServer_t* server 
@@ -64,7 +66,22 @@ static void OnEstablish (struct IoVentConn* iovConn) {
         puts ("established");
         TcpProxySession_t* extSess 
             = (TcpProxySession_t*) iovConn->cInfo.sessionData;
-        extSess->initiatedConn = iovConn;
+        extSess->iConn.iovConn = iovConn;
+    }
+}
+
+static void OnWriteNextHelper (struct IoVentConn* iovConn
+                                , Pool_t* writeQ
+                                , RwBuff_t** writeBufStateAddr ) {
+
+    RwBuff_t* tmpBuff = GetFromPool (writeQ);
+    if (tmpBuff) {
+        *writeBufStateAddr = tmpBuff;
+        WriteNextData (iovConn
+                        ,  tmpBuff->dataBuff
+                        , 0
+                        , tmpBuff->dataLen
+                        , 0);
     }
 }
 
@@ -76,27 +93,24 @@ static void OnWriteNext (struct IoVentConn* iovConn) {
         = (TcpProxySession_t*) iovConn->cInfo.sessionData;
 
     
-    if (newSess->acceptedConn == iovConn) {
-        RwBuff_t* writeBuff = GetFromPool (&newSess->aConnWriteBuffQ);
-        if (writeBuff) {
-            newSess->aConnWriteBuff = writeBuff;
-            WriteNextData (newSess->acceptedConn
-                            ,  writeBuff->dataBuff
-                            , 0
-                            , writeBuff->dataLen
-                            , 0);
-        }
-    } else if (newSess->initiatedConn == iovConn) {
-        RwBuff_t* writeBuff = GetFromPool (&newSess->iConnWriteBuffQ);
-        if (writeBuff) {
-            newSess->iConnWriteBuff = writeBuff;
-            WriteNextData (newSess->initiatedConn
-                            ,  writeBuff->dataBuff
-                            , 0
-                            , writeBuff->dataLen
-                            , 0);
-        }
+    if (newSess->aConn.iovConn == iovConn) {
+
+        OnWriteNextHelper (iovConn
+                            , &newSess->aConnWriteBuffQ
+                            , &newSess->aConnWriteBuff);
+
+    } else if (newSess->iConn.iovConn == iovConn) {
+
+        OnWriteNextHelper (iovConn
+                            , &newSess->iConnWriteBuffQ
+                            , &newSess->iConnWriteBuff);
     }
+}
+
+static void OnWriteStatusHelper (Pool_t* freeBuffPool
+                                ,  RwBuff_t** writeBuf) {
+    AddToPool (freeBuffPool, *writeBuf);
+    *writeBuf = NULL;
 }
 
 static void OnWriteStatus (struct IoVentConn* iovConn
@@ -110,13 +124,22 @@ static void OnWriteStatus (struct IoVentConn* iovConn
     TcpProxySession_t* newSess 
         = (TcpProxySession_t*) iovConn->cInfo.sessionData;
 
-    if (newSess->acceptedConn == iovConn) {
-        AddToPool (appCtx->freeBuffPool, newSess->aConnWriteBuff);
-        newSess->aConnWriteBuff = NULL;
-    } else if (newSess->initiatedConn == iovConn) {
-        AddToPool (appCtx->freeBuffPool, newSess->iConnWriteBuff);
-        newSess->iConnWriteBuff = NULL;
+    if (newSess->aConn.iovConn == iovConn) {
+        OnWriteStatusHelper (appCtx->freeBuffPool, &newSess->aConnWriteBuff);
+    } else if (newSess->iConn.iovConn == iovConn) {
+        OnWriteStatusHelper (appCtx->freeBuffPool, &newSess->iConnWriteBuff);
     }
+}
+
+static void OnReadNextHelper (struct IoVentConn* iovConn
+                                , RwBuff_t* nextReadBuff
+                                , RwBuff_t** readBuffStateAddr) {
+
+    *readBuffStateAddr = nextReadBuff;
+    ReadNextData (iovConn
+            , nextReadBuff->dataBuff
+            , 0
+            , nextReadBuff->buffLen);
 }
 
 static void OnReadNext (struct IoVentConn* iovConn) {
@@ -136,22 +159,24 @@ static void OnReadNext (struct IoVentConn* iovConn) {
     } else { 
         InitRwBuff (readBuff);
         
-        if ( newSess->acceptedConn == iovConn ) {
-            newSess->aConnReadBuff = readBuff;
-            ReadNextData (newSess->acceptedConn
-                    , readBuff->dataBuff
-                    , 0
-                    , readBuff->buffLen);
-
-        } else if (newSess->initiatedConn == iovConn) {
-            newSess->iConnReadBuff = readBuff;
-            ReadNextData (newSess->initiatedConn
-                    , readBuff->dataBuff
-                    , 0
-                    , readBuff->buffLen);
-
+        if ( newSess->aConn.iovConn == iovConn ) {
+            OnReadNextHelper (iovConn
+                                , readBuff
+                                , &newSess->aConnReadBuff);
+        } else if (newSess->iConn.iovConn == iovConn) {
+            OnReadNextHelper (iovConn
+                                , readBuff
+                                , &newSess->iConnReadBuff);
         }
     }
+}
+
+static void OnReadStatusHelper (Pool_t* otherWriteQ
+                                , RwBuff_t** readBuffStateAddr
+                                , int bytesReceived) {
+    (*readBuffStateAddr)->dataLen = bytesReceived;
+    AddToPool (otherWriteQ, (*readBuffStateAddr));
+    *readBuffStateAddr = NULL;
 }
 
 static void OnReadStatus (struct IoVentConn* iovConn
@@ -163,14 +188,37 @@ static void OnReadStatus (struct IoVentConn* iovConn
     TcpProxySession_t* newSess 
         = (TcpProxySession_t*) iovConn->cInfo.sessionData;
 
-    if (newSess->acceptedConn == iovConn) {
-        newSess->aConnReadBuff->dataLen = bytesReceived;
-        AddToPool (&newSess->iConnWriteBuffQ, newSess->aConnReadBuff);
-        newSess->aConnReadBuff = NULL;
-    } else if (newSess->initiatedConn == iovConn) {
-        newSess->iConnReadBuff->dataLen = bytesReceived;
-        AddToPool (&newSess->aConnWriteBuffQ, newSess->iConnReadBuff);
-        newSess->iConnReadBuff = NULL;
+    if (newSess->aConn.iovConn == iovConn) {
+        OnReadStatusHelper (&newSess->iConnWriteBuffQ
+                            , &newSess->aConnReadBuff
+                            , bytesReceived);
+    } else if (newSess->iConn.iovConn == iovConn) {
+        OnReadStatusHelper (&newSess->aConnWriteBuffQ
+                            , &newSess->iConnReadBuff
+                            , bytesReceived);
+    }
+}
+
+static void OnCleanupHelper (Pool_t* freeBuffPool
+                                , Pool_t* writeQ
+                                , RwBuff_t** readBufStateAddr
+                                , RwBuff_t** writeBufStateAddr
+                                ) {
+
+    if (*readBufStateAddr) {
+        AddToPool (freeBuffPool, *readBufStateAddr);
+        *readBufStateAddr = NULL;
+    }
+
+    if (*writeBufStateAddr) {
+        AddToPool (freeBuffPool, *writeBufStateAddr);
+        *writeBufStateAddr = NULL;
+    }
+
+    RwBuff_t* tmpBuff = GetFromPool (writeQ); 
+    while (tmpBuff) {
+        AddToPool (freeBuffPool, tmpBuff);
+        tmpBuff = GetFromPool (writeQ);
     }
 }
 
@@ -184,35 +232,24 @@ static void OnCleanup (struct IoVentConn* iovConn) {
     TcpProxySession_t* newSess 
         = (TcpProxySession_t*) iovConn->cInfo.sessionData;
 
-    if (newSess->acceptedConn == iovConn) {
-        if (newSess->aConnWriteBuff) {
-            AddToPool (appCtx->freeBuffPool, newSess->aConnWriteBuff);
-            newSess->aConnWriteBuff = NULL;
-        }
-        if (newSess->aConnReadBuff) {
-            AddToPool (appCtx->freeBuffPool, newSess->aConnReadBuff);
-            newSess->aConnReadBuff = NULL;
-        }
-        RwBuff_t* tmpBuff = GetFromPool (&newSess->aConnWriteBuffQ); 
-        while (tmpBuff) {
-            AddToPool (appCtx->freeBuffPool, tmpBuff);
-            tmpBuff = GetFromPool (&newSess->aConnWriteBuffQ);
-        }
-    } else if (newSess->initiatedConn == iovConn) {
-        if (newSess->iConnWriteBuff) {
-            AddToPool (appCtx->freeBuffPool, newSess->iConnWriteBuff);
-            newSess->iConnWriteBuff = NULL;
-        }
-        if (newSess->iConnReadBuff) {
-            AddToPool (appCtx->freeBuffPool, newSess->iConnReadBuff);
-            newSess->iConnReadBuff = NULL;
-        }
-        RwBuff_t* tmpBuff = GetFromPool (&newSess->iConnWriteBuffQ); 
-        while (tmpBuff) {
-            AddToPool (appCtx->freeBuffPool, tmpBuff);
-            tmpBuff = GetFromPool (&newSess->iConnWriteBuffQ);
-        }
+    if (newSess->aConn.iovConn == iovConn) {
+        OnCleanupHelper (appCtx->freeBuffPool
+                            , &newSess->aConnWriteBuffQ
+                            , &newSess->aConnReadBuff
+                            , &newSess->aConnWriteBuff);
+    } else if (newSess->iConn.iovConn == iovConn) {
+        OnCleanupHelper (appCtx->freeBuffPool
+                            , &newSess->iConnWriteBuffQ
+                            , &newSess->iConnReadBuff
+                            , &newSess->iConnWriteBuff);
     }
+}
+
+static void OnCloseHelper (struct IoVentConn* iovConn) {
+
+    //change this to iovent API
+    SetCS1(iovConn, STATE_NO_MORE_WRITE_DATA 
+                                    | STATE_TCP_TO_SEND_FIN);
 }
 
 static void OnClose (struct IoVentConn* iovConn) {
@@ -221,17 +258,13 @@ static void OnClose (struct IoVentConn* iovConn) {
     TcpProxySession_t* newSess 
         = (TcpProxySession_t*) iovConn->cInfo.sessionData;
 
-    if (newSess->acceptedConn == iovConn) {
-        //change this to iovent API
-        if (newSess->initiatedConn) {
-            SetCS1(newSess->initiatedConn, STATE_NO_MORE_WRITE_DATA 
-                                            | STATE_TCP_TO_SEND_FIN);
+    if (newSess->aConn.iovConn == iovConn) {
+        if (newSess->iConn.iovConn) {
+            OnCloseHelper (newSess->iConn.iovConn);
         }
-    } else if (newSess->initiatedConn == iovConn) {
-        //change this to iovent API
-        if (newSess->acceptedConn) {
-            SetCS1(newSess->acceptedConn, STATE_NO_MORE_WRITE_DATA 
-                                            | STATE_TCP_TO_SEND_FIN);
+    } else if (newSess->iConn.iovConn == iovConn) {
+        if (newSess->aConn.iovConn) {
+            OnCloseHelper (newSess->aConn.iovConn);
         }
     }
 }
