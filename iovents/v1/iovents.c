@@ -720,3 +720,26 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
     return 1;
 }
 
+void DisableWriteNotification (IoVentConn_t* newConn) {
+    PollReadEventOnly(newConn->cInfo.iovCtx->eventQ
+                        , newConn->socketFd
+                        , newConn->cInfo.summaryStats
+                        , newConn->cInfo.groupStats
+                        , newConn);
+
+    if ( GetCES(newConn) ) {
+        CloseConnection(newConn);
+    }
+}
+
+void EnableWriteNotification (IoVentConn_t* newConn) {
+    PollReadWriteEvent(newConn->cInfo.iovCtx->eventQ
+                        , newConn->socketFd
+                        , newConn->cInfo.summaryStats
+                        , newConn->cInfo.groupStats
+                        , newConn);
+
+    if ( GetCES(newConn) ) {
+        CloseConnection(newConn);
+    }
+}

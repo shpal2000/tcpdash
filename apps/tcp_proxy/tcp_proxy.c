@@ -48,6 +48,7 @@ static void OnEstablish (struct IoVentConn* iovConn) {
 
             // store client side of proxied connection
             newSess->aConn.iovConn = iovConn;
+            DisableWriteNotification (newSess->aConn.iovConn);
             
             // init server side of proxied connection
             TcpProxyServer_t* server 
@@ -68,12 +69,13 @@ static void OnEstablish (struct IoVentConn* iovConn) {
         TcpProxySession_t* extSess 
             = (TcpProxySession_t*) iovConn->cInfo.sessionData;
         extSess->iConn.iovConn = iovConn;
+        DisableWriteNotification (extSess->iConn.iovConn);
     }
 }
 
 static void OnWriteNext (struct IoVentConn* iovConn) {
 
-    // puts ("OnWriteNext");
+    puts ("OnWriteNext");
 
     TcpProxySession_t* newSess 
         = (TcpProxySession_t*) iovConn->cInfo.sessionData;
@@ -117,16 +119,20 @@ static void OnWriteStatus (struct IoVentConn* iovConn
 
     if (tpConn) {
 
-        AddToPool (newSess->appCtx->freeBuffPool
-                        , tpConn->writeBuff);
+        if (IsPoolEmpty (&tpConn->writeQ) ) {
+            DisableWriteNotification (tpConn->iovConn);
+        }      
 
-        tpConn->writeBuff = NULL;        
+        AddToPool (newSess->appCtx->freeBuffPool
+                            , tpConn->writeBuff);
+
+        tpConn->writeBuff = NULL;
     }
 }
 
 static void OnReadNext (struct IoVentConn* iovConn) {
 
-    // puts ("OnReadNext");
+    puts ("OnReadNext");
 
     TcpProxyAppCtx_t* appCtx 
         = (TcpProxyAppCtx_t*) iovConn->cInfo.appCtx;
@@ -169,13 +175,16 @@ static void OnReadStatus (struct IoVentConn* iovConn
         = (TcpProxySession_t*) iovConn->cInfo.sessionData;
 
     TcpProxyConn_t* tpConn = NULL;
+    TcpProxyConn_t* tpConnOther = NULL;
     Pool_t* otherWriteQ = NULL;
 
     if (newSess->aConn.iovConn == iovConn) {
         tpConn = &newSess->aConn;
+        tpConnOther = &newSess->iConn;
         otherWriteQ = &newSess->iConn.writeQ;
     } else if (newSess->iConn.iovConn == iovConn) {
         tpConn = &newSess->iConn;
+        tpConnOther = &newSess->aConn;
         otherWriteQ = &newSess->aConn.writeQ;
     }
 
@@ -183,7 +192,10 @@ static void OnReadStatus (struct IoVentConn* iovConn
         tpConn->readBuff->dataLen = bytesReceived;
         AddToPool (otherWriteQ, tpConn->readBuff);
         tpConn->readBuff = NULL;
-    }
+        if (tpConnOther && tpConnOther->iovConn) {
+            EnableWriteNotification (tpConnOther->iovConn);
+        }
+   }
 }
 
 static void OnCleanup (struct IoVentConn* iovConn) {
@@ -266,6 +278,7 @@ static void OnClose (struct IoVentConn* iovConn) {
 
     if (tpConnOther) {
         //change this to iovent API
+        EnableWriteNotification (tpConnOther->iovConn);
         SetCS1(tpConnOther->iovConn, STATE_NO_MORE_WRITE_DATA 
                                     | STATE_TCP_TO_SEND_FIN);
     }
