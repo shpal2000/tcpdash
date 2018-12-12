@@ -223,6 +223,31 @@ static void OnCleanup (struct IoVentConn* iovConn) {
             AddToPool (newSess->appCtx->freeBuffPool, tmpBuff);
         }
     }
+
+    int aConnClosed = 0;
+    if (newSess->aConn.iovConn) {
+        if ( IsSetCS1 (newSess->aConn.iovConn, STATE_TCP_SOCK_FD_CLOSE) ) {
+            aConnClosed = 1;
+        }
+    } else {
+        aConnClosed = 1;
+    }
+
+    int iConnClosed = 0;
+    if (newSess->iConn.iovConn) {
+        if ( IsSetCS1 (newSess->iConn.iovConn, STATE_TCP_SOCK_FD_CLOSE) ) {
+            iConnClosed = 1;
+        }
+    } else {
+        iConnClosed = 1;
+    }
+
+    if (aConnClosed && iConnClosed) {
+        //todo; update stats
+        AddToPool (newSess->appCtx->freeSessionPool, newSess);
+
+        puts ("Return Session to free pool\n");
+    }
 }
 
 static void OnClose (struct IoVentConn* iovConn) {
@@ -231,18 +256,18 @@ static void OnClose (struct IoVentConn* iovConn) {
     TcpProxySession_t* newSess 
         = (TcpProxySession_t*) iovConn->cInfo.sessionData;
 
-    TcpProxyConn_t* tpConn = NULL;
+    TcpProxyConn_t* tpConnOther = NULL;
 
     if (newSess->aConn.iovConn == iovConn) {
-        tpConn = &newSess->aConn;
+        tpConnOther = &newSess->iConn;
     } else if (newSess->iConn.iovConn == iovConn) {
-        tpConn = &newSess->iConn;
+        tpConnOther = &newSess->aConn;
     }
 
-    if (tpConn) {
+    if (tpConnOther) {
         //change this to iovent API
-        SetCS1(tpConn->iovConn, STATE_NO_MORE_WRITE_DATA 
-                                | STATE_TCP_TO_SEND_FIN);
+        SetCS1(tpConnOther->iovConn, STATE_NO_MORE_WRITE_DATA 
+                                    | STATE_TCP_TO_SEND_FIN);
     }
 }
 
