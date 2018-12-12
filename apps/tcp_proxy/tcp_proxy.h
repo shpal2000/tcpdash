@@ -37,6 +37,9 @@ void DumpTcpProxyStats(TcpProxyStats_t* appConnStats);
 
 #ifdef __APP__MAIN__
 
+#define TP_CONN_TYPE_ACCEPTED       1
+#define TP_CONN_TYPE_INITIATED      2
+
 typedef struct TcpProxyAppCtx {
     Pool_t* freeSessionPool;
     Pool_t* freeBuffPool;
