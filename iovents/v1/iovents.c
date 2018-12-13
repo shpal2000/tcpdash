@@ -682,12 +682,12 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                     // Handle Write
                     if ( IsWriteEventSet(iovCtx->EventArr[eIndex]) 
                                         && !IsFdClosed(newConn) ) {
-                        
-                        if ( IsSetCS1(newConn,  STATE_NO_MORE_WRITE_DATA) ) {
-                            CloseConnection (newConn);
+
+                        if (IsSetCS1 (newConn, STATE_CONN_WRITE_PENDING) ) {
+                            HandleWriteNextData (newConn);
                         } else {
-                            if (IsSetCS1 (newConn, STATE_CONN_WRITE_PENDING) ) {
-                                HandleWriteNextData (newConn);
+                            if ( IsSetCS1(newConn,  STATE_NO_MORE_WRITE_DATA) ) {
+                                CloseConnection (newConn);
                             } else {
                                 (*newConn->cInfo.iovCtx->methods.OnWriteNext)(newConn);
                             }
@@ -703,6 +703,8 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                             (*newConn->cInfo.iovCtx->methods.OnReadNext)(newConn);
                         }
                     }
+
+                    //Reset Connection immeidiatetly ???
                 }
             }
         }

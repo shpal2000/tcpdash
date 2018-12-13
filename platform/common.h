@@ -280,8 +280,8 @@ void DumpCStats(void* aStats);
 #define GetIOEvents(__eventQId, __eventArray, __maxEvents, __to) epoll_wait(__eventQId, __eventArray, __maxEvents, __to)
 
 #define GetIOEventData(__event) __event.data.ptr
-#define IsWriteEventSet(__event) (__event.events && EPOLLOUT)
-#define IsReadEventSet(__event) (__event.events && EPOLLIN) 
+#define IsWriteEventSet(__event) (__event.events & EPOLLOUT)
+#define IsReadEventSet(__event) (__event.events & EPOLLIN) 
 
 #define CreateTimerWheel() g_timer_new()
 #define DeleteTimerWheel(__timer) g_timer_destroy(__timer)
