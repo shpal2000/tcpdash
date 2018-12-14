@@ -5,8 +5,6 @@
 
 typedef struct TcpProxyStats {
     SockStats_t connStats;
-
-    //add application specific stats
 } TcpProxyStats_t;
 
 typedef struct TcpProxyServer {
@@ -44,6 +42,7 @@ typedef struct TcpProxyAppCtx {
     Pool_t* freeSessionPool;
     Pool_t* freeBuffPool;
     TcpProxyI_t* appI; 
+    Pool_t activeSessionPool;
 } TcpProxyAppCtx_t;
 
 #define RW_MAX_BUFF_LEN 2048

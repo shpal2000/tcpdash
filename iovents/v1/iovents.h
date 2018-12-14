@@ -111,6 +111,8 @@ typedef struct IoVentCtx {
     int eventPTO;
 } IoVentCtx_t;
 
+void DumpConnection (IoVentConn_t* newConn);
+
 void DumpErrConnections (IoVentCtx_t* iovCtx);
 
 IoVentCtx_t* CreateIoVentCtx (IoVentMethods_t* methods

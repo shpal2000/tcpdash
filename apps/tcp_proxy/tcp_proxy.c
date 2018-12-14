@@ -36,13 +36,15 @@ static void OnEstablish (struct IoVentConn* iovConn) {
         = (TcpProxyAppCtx_t*) iovConn->cInfo.appCtx;
 
     if (iovConn->cInfo.sessionData == NULL) {
-        puts ("accepted");
+        // puts ("accepted");
         TcpProxySession_t* newSess 
             = GetFromPool (appCtx->freeSessionPool);
         if (newSess == NULL) {
             //todo; stats; close connection
         } else {
             //init session
+            AddToPool (&appCtx->activeSessionPool, newSess);
+
             InitSession (appCtx, newSess);
             iovConn->cInfo.sessionData = newSess;
 
@@ -65,7 +67,7 @@ static void OnEstablish (struct IoVentConn* iovConn) {
         }
     } else {
         // store server side of proxied connection
-        puts ("established");
+        // puts ("established");
         TcpProxySession_t* extSess 
             = (TcpProxySession_t*) iovConn->cInfo.sessionData;
         extSess->iConn.iovConn = iovConn;
@@ -75,7 +77,7 @@ static void OnEstablish (struct IoVentConn* iovConn) {
 
 static void OnWriteNext (struct IoVentConn* iovConn) {
 
-    puts ("OnWriteNext");
+    // puts ("OnWriteNext");
 
     TcpProxySession_t* newSess 
         = (TcpProxySession_t*) iovConn->cInfo.sessionData;
@@ -104,7 +106,7 @@ static void OnWriteNext (struct IoVentConn* iovConn) {
 static void OnWriteStatus (struct IoVentConn* iovConn
                             , int bytesWritten
                             ) {
-    puts ("OnWriteStatus");
+    // puts ("OnWriteStatus");
 
     TcpProxySession_t* newSess 
         = (TcpProxySession_t*) iovConn->cInfo.sessionData;
@@ -132,7 +134,7 @@ static void OnWriteStatus (struct IoVentConn* iovConn
 
 static void OnReadNext (struct IoVentConn* iovConn) {
 
-    puts ("OnReadNext");
+    // puts ("OnReadNext");
 
     TcpProxyAppCtx_t* appCtx 
         = (TcpProxyAppCtx_t*) iovConn->cInfo.appCtx;
@@ -169,7 +171,7 @@ static void OnReadStatus (struct IoVentConn* iovConn
                             , int bytesReceived
                             ) {
 
-    puts ("OnReadStatus");
+    // puts ("OnReadStatus");
 
     TcpProxySession_t* newSess 
         = (TcpProxySession_t*) iovConn->cInfo.sessionData;
@@ -200,7 +202,7 @@ static void OnReadStatus (struct IoVentConn* iovConn
 
 static void OnCleanup (struct IoVentConn* iovConn) {
 
-    puts ("OnCleanup\n");
+    // puts ("OnCleanup\n");
 
     TcpProxySession_t* newSess 
         = (TcpProxySession_t*) iovConn->cInfo.sessionData;
@@ -258,12 +260,13 @@ static void OnCleanup (struct IoVentConn* iovConn) {
         //todo; update stats
         AddToPool (newSess->appCtx->freeSessionPool, newSess);
 
-        puts ("Return Session to free pool\n");
+        RemoveFromPool (&newSess->appCtx->activeSessionPool, newSess);
     }
 }
 
 static void OnClose (struct IoVentConn* iovConn) {
-    puts ("OnOnClose\n");
+    
+    // puts ("OnOnClose\n");
 
     TcpProxySession_t* newSess 
         = (TcpProxySession_t*) iovConn->cInfo.sessionData;
@@ -276,11 +279,11 @@ static void OnClose (struct IoVentConn* iovConn) {
         tpConnOther = &newSess->aConn;
     }
 
-    if (tpConnOther) {
+    if (tpConnOther && tpConnOther->iovConn) {
         //change this to iovent API
         EnableWriteNotification (tpConnOther->iovConn);
         SetCS1(tpConnOther->iovConn, STATE_NO_MORE_WRITE_DATA 
-                                    | STATE_TCP_TO_SEND_FIN);
+                                    | STATE_TCP_TO_SEND_FIN);    
     }
 }
 
@@ -292,7 +295,7 @@ static TcpProxyAppCtx_t* CreateAppCtx (TcpProxyI_t* appI) {
     TcpProxyAppCtx_t* appCtx = CreateStruct0 (TcpProxyAppCtx_t);
 
     appCtx->appI = appI;
-
+                
     CreatePool (&appCtx->freeSessionPool
                 , appI->maxActiveSessions
                 , TcpProxySession_t);
@@ -300,6 +303,8 @@ static TcpProxyAppCtx_t* CreateAppCtx (TcpProxyI_t* appI) {
     CreatePool (&appCtx->freeBuffPool
                 , appI->maxActiveSessions * 16
                 , RwBuff_t);
+
+    InitPool (&appCtx->activeSessionPool);
 
     return appCtx;
 }
@@ -337,9 +342,23 @@ void TcpProxyRun (TcpProxyI_t* appI) {
                 , &TcpProxyAppCtx->appI->gStats
                 , &server->cStats);
 
+    int printSessions = 0;
     while (1) {
 
         ProcessIoVent (iovCtx);
+
+        if (printSessions) {
+            while (1) {
+                TcpProxySession_t* tmpSession 
+                    = GetFromPool (&TcpProxyAppCtx->activeSessionPool);
+                if (tmpSession == NULL) {
+                    break;
+                }
+
+                DumpConnection (tmpSession->aConn.iovConn);
+                DumpConnection (tmpSession->iConn.iovConn);
+            }
+        }
 
     }
 
@@ -374,30 +393,7 @@ void DeleteTcpProxyInterface (TcpProxyI_t* iFace){
     //todo
 }
 
-void DumpTcpProxyStats(TcpProxyStats_t* appConnStats) {
-    
-    char statsString[120];
 
-    sprintf (statsString, 
-                        "%" PRIu64 "\n" 
-                        "%" PRIu64 "\n"
-                        "%" PRIu64 "\n"
-                        "%" PRIu64 "\n"
-                        "%" PRIu64 "\n"
-                        "%" PRIu64 "\n"
-                        "%" PRIu64 "\n"
-                        "\n"
-        , GetConnStats(appConnStats, tcpConnInit)
-        , GetConnStats(appConnStats, tcpConnInitSuccess)
-        , GetConnStats(appConnStats, tcpConnInitFail)
-        , GetConnStats(appConnStats, tcpConnInitFailImmediateOther)
-        , GetConnStats(appConnStats, tcpConnInitFailImmediateEaddrNotAvail)
-        , GetConnStats(appConnStats, tcpPollRegUnregFail)
-        , GetConnStats(appConnStats, dummyCount)
-        );
-
-    puts (statsString);
-}
 
 
 

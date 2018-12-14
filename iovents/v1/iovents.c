@@ -72,17 +72,25 @@ static void StoreErrConnection (IoVentConn_t* newConn) {
 
         uint16_t tmpPort;
 
-        GET_SOCK_PORT (errConn->cInfo.localAddress, &tmpPort);        
-        errConn->savedLocalPort = ntohs(tmpPort);
+        if (errConn->cInfo.localAddress) {
+            GET_SOCK_PORT (errConn->cInfo.localAddress, &tmpPort);        
+            errConn->savedLocalPort = ntohs(tmpPort);
+        } else {
+            errConn->savedLocalPort = 0;
+        }
 
-        GET_SOCK_PORT (errConn->cInfo.remoteAddress, &tmpPort);        
-        errConn->savedRemotePort = ntohs(tmpPort);
+        if (errConn->cInfo.remoteAddress) {
+            GET_SOCK_PORT (errConn->cInfo.remoteAddress, &tmpPort);        
+            errConn->savedRemotePort = ntohs(tmpPort);
+        } else {
+            errConn->savedRemotePort = 0;
+        }
 
         newConn->cInfo.iovCtx->errorConnectionCount++;
     }
 }
 
-static void DumpConnection (IoVentConn_t* newConn) {
+void DumpConnection (IoVentConn_t* newConn) {
 
     char srcAddr[INET6_ADDRSTRLEN];
     char dstAddr[INET6_ADDRSTRLEN];
