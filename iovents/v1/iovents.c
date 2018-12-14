@@ -294,7 +294,9 @@ void NewConnection (IoVentCtx_t* iovCtx
             if ( GetCES(newConn) ) {
                 StoreErrConnection (newConn);
                 SetFreeConnection (newConn);
-                ReleasePort (newConn);
+                if (newConn->cInfo.localPortPool) {
+                    ReleasePort (newConn);
+                }
             } else {
                 PollWriteEventOnly(iovCtx->eventQ
                                     , newConn->socketFd

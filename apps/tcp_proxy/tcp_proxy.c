@@ -43,8 +43,6 @@ static void OnEstablish (struct IoVentConn* iovConn) {
             //todo; stats; close connection
         } else {
             //init session
-            AddToPool (&appCtx->activeSessionPool, newSess);
-
             InitSession (appCtx, newSess);
             iovConn->cInfo.sessionData = newSess;
 
@@ -259,8 +257,6 @@ static void OnCleanup (struct IoVentConn* iovConn) {
     if (aConnClosed && iConnClosed) {
         //todo; update stats
         AddToPool (newSess->appCtx->freeSessionPool, newSess);
-
-        RemoveFromPool (&newSess->appCtx->activeSessionPool, newSess);
     }
 }
 
@@ -304,8 +300,6 @@ static TcpProxyAppCtx_t* CreateAppCtx (TcpProxyI_t* appI) {
                 , appI->maxActiveSessions * 16
                 , RwBuff_t);
 
-    InitPool (&appCtx->activeSessionPool);
-
     return appCtx;
 }
 
@@ -342,24 +336,8 @@ void TcpProxyRun (TcpProxyI_t* appI) {
                 , &TcpProxyAppCtx->appI->gStats
                 , &server->cStats);
 
-    int printSessions = 0;
     while (1) {
-
         ProcessIoVent (iovCtx);
-
-        if (printSessions) {
-            while (1) {
-                TcpProxySession_t* tmpSession 
-                    = GetFromPool (&TcpProxyAppCtx->activeSessionPool);
-                if (tmpSession == NULL) {
-                    break;
-                }
-
-                DumpConnection (tmpSession->aConn.iovConn);
-                DumpConnection (tmpSession->iConn.iovConn);
-            }
-        }
-
     }
 
     DumpErrConnections (iovCtx);
