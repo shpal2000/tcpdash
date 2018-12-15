@@ -709,12 +709,24 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                                         && !IsFdClosed(newConn) ) {
                         if ( IsSetCS1 (newConn, STATE_CONN_READ_PENDING) ) {
                             HandleReadNextData (newConn);
-                        } else {
+                        } else if (IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) == 0 ) {
                             (*newConn->cInfo.iovCtx->methods.OnReadNext)(newConn);
                         }
                     }
 
                     //Reset Connection immeidiatetly ???
+
+                    // if (IsOtherEventSet(iovCtx->EventArr[eIndex])
+                    //                     && !IsFdClosed(newConn) ) {
+                    //          printf ("SS1 = %#018" PRIx64 
+                    //             ", ES = %#018" PRIx64 
+                    //             ", SysErr = %d"
+                    //             ", SockErr = %d\n\n"
+                    //            , GetCS1(newConn)
+                    //             , GetCES(newConn)
+                    //             , GetSysErrno(newConn) 
+                    //             , GetSockErrno(newConn));
+                    // }
                 }
             }
         }

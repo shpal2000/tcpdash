@@ -7,6 +7,7 @@
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
 
@@ -99,7 +100,9 @@ static inline void CSInit(void* cState) {
 
 #define GetAppState(__aConn) ((SockState_t*)__aConn)->appState
 
-#define SetCS1(__aConn, __state) ((SockState_t*)__aConn)->state1 |= __state
+// #define SetCS1(__aConn, __state) ((SockState_t*)__aConn)->state1 |= __state
+
+void SetCS1 (void*, uint64_t); 
 
 #define ClearCS1(__aConn, __state) ((SockState_t*)__aConn)->state1 &= ~__state
 
@@ -282,6 +285,8 @@ void DumpCStats(void* aStats);
 #define GetIOEventData(__event) __event.data.ptr
 #define IsWriteEventSet(__event) (__event.events & EPOLLOUT)
 #define IsReadEventSet(__event) (__event.events & EPOLLIN) 
+#define IsReadHupEventSet(__event) (__event.events & EPOLLRDHUP)
+#define IsOtherEventSet(__event) (__event.events & ~EPOLLOUT & ~EPOLLIN)
 
 #define CreateTimerWheel() g_timer_new()
 #define DeleteTimerWheel(__timer) g_timer_destroy(__timer)

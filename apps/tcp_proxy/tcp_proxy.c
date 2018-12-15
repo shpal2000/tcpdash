@@ -275,7 +275,9 @@ static void OnClose (struct IoVentConn* iovConn) {
         tpConnOther = &newSess->aConn;
     }
 
-    if (tpConnOther && tpConnOther->iovConn) {
+    if (tpConnOther 
+            && tpConnOther->iovConn 
+            && IsSetCS1 (tpConnOther->iovConn, STATE_NO_MORE_WRITE_DATA) == 0 ) {
         //change this to iovent API
         EnableWriteNotification (tpConnOther->iovConn);
         SetCS1(tpConnOther->iovConn, STATE_NO_MORE_WRITE_DATA 

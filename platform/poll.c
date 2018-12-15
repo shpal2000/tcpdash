@@ -48,9 +48,11 @@ void SetPollEvent(int pollId
         int status = -1;
         switch (pollAction) {
             case PollAdd:
+                setEvent.events |= EPOLLRDHUP;
                 status = epoll_ctl(pollId, EPOLL_CTL_ADD, fd, &setEvent);
                 break;
             case PollMod:
+                setEvent.events |= EPOLLRDHUP;
                 status = epoll_ctl(pollId, EPOLL_CTL_MOD, fd, &setEvent);
                 break;
             case PollDel:

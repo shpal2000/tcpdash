@@ -283,6 +283,17 @@ int TcpRead(int fd
 
     if (bytesRead == 0) {
         SetCS1 (cState, STATE_TCP_REMOTE_CLOSED);
+        int socketErr;
+        socklen_t socketErrBufLen = sizeof(int);
+
+        int retGetsockopt = getsockopt(fd
+                                        , SOL_SOCKET
+                                        , SO_ERROR
+                                        , &socketErr
+                                        , &socketErrBufLen);
+        if ((retGetsockopt|socketErr)) {
+            SetCES(cState, STATE_TCP_SOCK_READ_FAIL);
+        }
     } else if (bytesRead < 0) {
         if (errno == EAGAIN) {
             //nothing to read; retry
@@ -319,6 +330,15 @@ int TcpAcceptConnection(int listenerFd
         IncConnStats2(aStats
                     , bStats 
                     , tcpAcceptSuccess);
+
+
+        setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int));
+
+        setsockopt(socket_fd, SOL_TCP, TCP_KEEPCNT, &(int){ 1 }, sizeof(int));
+        setsockopt(socket_fd, SOL_TCP, TCP_KEEPIDLE, &(int){ 5 }, sizeof(int));
+        setsockopt(socket_fd, SOL_TCP, TCP_KEEPINTVL, &(int){ 1 }, sizeof(int));
+
+        setsockopt(socket_fd, SOL_TCP, TCP_USER_TIMEOUT, &(int){ 10000 }, sizeof(int));
 
         int flags = fcntl(socket_fd, F_GETFL, 0);
         if (flags < 0) {
@@ -508,5 +528,13 @@ void SSLShutdown (SSL* newSSL
                     break;
             }
             break;
+    }
+}
+
+void SetCS1 (void* cState, uint64_t state) {
+    ((SockState_t*)cState)->state1 |= state;
+
+    if ( state == STATE_TCP_REMOTE_CLOSED ) {
+        puts ("STATE_TCP_REMOTE_CLOSED");
     }
 }
