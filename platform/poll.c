@@ -116,3 +116,24 @@ void StopPollReadWriteEvent(int pollId
                         , void* cState) {
     SetPollEvent(pollId, fd, 0, 0, aStats, bStats, cState);
 }
+
+void StopPollReadEvent(int pollId
+                        , int fd
+                        , void* aStats
+                        , void* bStats
+                        , void* cState) {
+
+   if ( IsSetCS1(cState, STATE_TCP_POLL_READ_CURRENT) ) {
+        int pollWrite = 0;
+        if ( IsSetCS1(cState, STATE_TCP_POLL_WRITE_CURRENT) ) {
+            pollWrite = 1;
+            SetPollEvent(pollId
+                        , fd
+                        , 0
+                        , pollWrite
+                        , aStats
+                        , bStats
+                        , cState);
+        }
+    }
+}

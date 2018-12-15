@@ -511,44 +511,50 @@ void WriteNextDataRemaing (IoVentConn_t* newConn) {
 //handle plain tcp read also
 static void HandleReadNextData (IoVentConn_t* newConn) {
 
-    if ( IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) == 0) {
+    int bytesReceived;
+    if ( IsSetCS1 (newConn, STATE_SSL_ENABLED_CONN) ) {
+        bytesReceived  
+            = SSLRead ( newConn->cInfo.cSSL
+            , newConn->cInfo.readBuffer + newConn->cInfo.readBuffOffset
+            , newConn->cInfo.readDataLen
+            , newConn->cInfo.summaryStats
+            , newConn->cInfo.groupStats
+            , newConn);
+    } else {
+        bytesReceived  
+            = TcpRead ( newConn->socketFd
+            , newConn->cInfo.readBuffer + newConn->cInfo.readBuffOffset
+            , newConn->cInfo.readDataLen
+            , newConn->cInfo.summaryStats
+            , newConn->cInfo.groupStats
+            , newConn);
+    }
 
-        int bytesReceived;
-        if ( IsSetCS1 (newConn, STATE_SSL_ENABLED_CONN) ) {
-            bytesReceived  
-                = SSLRead ( newConn->cInfo.cSSL
-                , newConn->cInfo.readBuffer + newConn->cInfo.readBuffOffset
-                , newConn->cInfo.readDataLen
-                , newConn->cInfo.summaryStats
-                , newConn->cInfo.groupStats
-                , newConn);
-        } else {
-            bytesReceived  
-                = TcpRead ( newConn->socketFd
-                , newConn->cInfo.readBuffer + newConn->cInfo.readBuffOffset
-                , newConn->cInfo.readDataLen
-                , newConn->cInfo.summaryStats
-                , newConn->cInfo.groupStats
-                , newConn);
-        }
-
-        if ( GetCES(newConn) ) {
-            ClearCS1 (newConn, STATE_CONN_READ_PENDING);
-            CloseConnection(newConn);
-        } else {
-            if (bytesReceived <= 0) {
-                if ( IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) ) {
-                    ClearCS1 (newConn, STATE_CONN_READ_PENDING);
-                    (*newConn->cInfo.iovCtx->methods.OnClose)(newConn);
+    if ( GetCES(newConn) ) {
+        ClearCS1 (newConn, STATE_CONN_READ_PENDING);
+        CloseConnection(newConn);
+    } else {
+        if (bytesReceived <= 0) {
+            if ( IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) ) {
+                ClearCS1 (newConn, STATE_CONN_READ_PENDING);
+                StopPollReadEvent (newConn->cInfo.iovCtx->eventQ
+                                    , newConn->socketFd
+                                    , newConn->cInfo.summaryStats
+                                    , newConn->cInfo.groupStats
+                                    , newConn);
+                if ( GetCES(newConn) ) {
+                    CloseConnection(newConn);
                 } else {
-                    // ssl want read write; skip;
+                    (*newConn->cInfo.iovCtx->methods.OnClose)(newConn);
                 }
             } else {
-                //process read data
-                ClearCS1 (newConn, STATE_CONN_READ_PENDING);
-                (*newConn->cInfo.iovCtx->methods.OnReadStatus)(newConn
-                                                    , bytesReceived);
+                // ssl want read write; skip;
             }
+        } else {
+            //process read data
+            ClearCS1 (newConn, STATE_CONN_READ_PENDING);
+            (*newConn->cInfo.iovCtx->methods.OnReadStatus)(newConn
+                                                , bytesReceived);
         }
     }
 }
@@ -558,13 +564,16 @@ void ReadNextData (IoVentConn_t* newConn
                         , int readBuffOffset
                         , int readDataLen) {
     
-    SetCS1 (newConn, STATE_CONN_READ_PENDING);
+    if ( IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) == 0) {
 
-    newConn->cInfo.readBuffer = readBuffer;
-    newConn->cInfo.readBuffOffset = readBuffOffset;
-    newConn->cInfo.readDataLen = readDataLen;
+        SetCS1 (newConn, STATE_CONN_READ_PENDING);
 
-    HandleReadNextData (newConn);
+        newConn->cInfo.readBuffer = readBuffer;
+        newConn->cInfo.readBuffOffset = readBuffOffset;
+        newConn->cInfo.readDataLen = readDataLen;
+
+        HandleReadNextData (newConn);
+    }
 }
 
 static void OnTcpConnectionCompletion (IoVentConn_t* newConn) {
@@ -716,17 +725,17 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
 
                     //Reset Connection immeidiatetly ???
 
-                    // if (IsOtherEventSet(iovCtx->EventArr[eIndex])
-                    //                     && !IsFdClosed(newConn) ) {
-                    //          printf ("SS1 = %#018" PRIx64 
-                    //             ", ES = %#018" PRIx64 
-                    //             ", SysErr = %d"
-                    //             ", SockErr = %d\n\n"
-                    //            , GetCS1(newConn)
-                    //             , GetCES(newConn)
-                    //             , GetSysErrno(newConn) 
-                    //             , GetSockErrno(newConn));
-                    // }
+                    if (IsOtherEventSet(iovCtx->EventArr[eIndex])
+                                        && !IsFdClosed(newConn) ) {
+                             printf ("SS1 = %#018" PRIx64 
+                                ", ES = %#018" PRIx64 
+                                ", SysErr = %d"
+                                ", SockErr = %d\n\n"
+                               , GetCS1(newConn)
+                                , GetCES(newConn)
+                                , GetSysErrno(newConn) 
+                                , GetSockErrno(newConn));
+                    }
                 }
             }
         }

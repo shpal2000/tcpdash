@@ -172,6 +172,12 @@ void StopPollReadWriteEvent(int pollId
                         , void* bStats
                         , void* cState);
 
+void StopPollReadEvent(int pollId
+                        , int fd
+                        , void* aStats
+                        , void* bStats
+                        , void* cState);
+
 void AssignSocketLocalPort(SockAddr_t* localAddres
                         , LocalPortPool_t* portPool
                         , void* aStats
