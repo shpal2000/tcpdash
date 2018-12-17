@@ -61,7 +61,8 @@ static void OnReadStatus (struct IoVentConn* iovConn
 
 }
 
-static void OnClose (struct IoVentConn* iovConn) {
+static void OnClose (struct IoVentConn* iovConn
+                        , int iovConnErr) {
 }
 
 static void OnCleanup (struct IoVentConn* iovConn) {

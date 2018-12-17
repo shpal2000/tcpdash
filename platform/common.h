@@ -100,9 +100,9 @@ static inline void CSInit(void* cState) {
 
 #define GetAppState(__aConn) ((SockState_t*)__aConn)->appState
 
-// #define SetCS1(__aConn, __state) ((SockState_t*)__aConn)->state1 |= __state
+#define SetCS1(__aConn, __state) ((SockState_t*)__aConn)->state1 |= __state
 
-void SetCS1 (void*, uint64_t); 
+// void SetCS1 (void*, uint64_t); 
 
 #define ClearCS1(__aConn, __state) ((SockState_t*)__aConn)->state1 &= ~__state
 
@@ -254,6 +254,12 @@ void DumpCStats(void* aStats);
 #define STATE_TCP_RESET_SEND_FAIL                           0x0000000000100000
 #define STATE_TCP_REMOTE_CLOSED_ERROR                       0x0000000000200000
 #define STATE_TCP_TIMEOUT_CLOSED_ERROR                      0x0000000000400000
+
+#define TCP_ON_CLOSE_ERROR_NONE                             0
+#define TCP_ON_CLOSE_ERROR_GENERAL                          1
+#define TCP_ON_CLOSE_ERROR_TIMEOUT                          2
+#define TCP_ON_CLOSE_ERROR_RESET                            3
+                             
 
 #define AllocSession(__type) g_slice_new(__type)
 #define SetSessionToPool(__pool,__session) g_queue_push_tail (__pool,__session)

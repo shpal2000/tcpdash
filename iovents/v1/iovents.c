@@ -423,6 +423,10 @@ void SslServerInit (IoVentConn_t* newConn
 
 void WriteNextDataRemaing (IoVentConn_t* newConn);
 
+// int MapConnectionError () {
+
+// }
+
 //handle plain tcp write also
 static void HandleWriteNextData (IoVentConn_t* newConn) {
 
@@ -533,6 +537,7 @@ static void HandleReadNextData (IoVentConn_t* newConn) {
     if ( GetCES(newConn) ) {
         ClearCS1 (newConn, STATE_CONN_READ_PENDING);
         CloseConnection(newConn);
+        (*newConn->cInfo.iovCtx->methods.OnClose)(newConn, 1);
     } else {
         if (bytesReceived <= 0) {
             if ( IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) ) {
@@ -544,8 +549,9 @@ static void HandleReadNextData (IoVentConn_t* newConn) {
                                     , newConn);
                 if ( GetCES(newConn) ) {
                     CloseConnection(newConn);
+                    (*newConn->cInfo.iovCtx->methods.OnClose)(newConn, 1);
                 } else {
-                    (*newConn->cInfo.iovCtx->methods.OnClose)(newConn);
+                    (*newConn->cInfo.iovCtx->methods.OnClose)(newConn, 0);
                 }
             } else {
                 // ssl want read write; skip;
@@ -723,21 +729,34 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                         }
                     }
 
+                    // printf ("fd = %d"
+                    //         ", SS1 = %#018" PRIx64 
+                    //         ", ES = %#018" PRIx64 
+                    //         ", SysErr = %d"
+                    //         ", SockErr = %d"
+                    //         ", Events = %d\n\n"
+                    //         , newConn->socketFd
+                    //         , GetCS1(newConn)
+                    //         , GetCES(newConn)
+                    //         , GetSysErrno(newConn) 
+                    //         , GetSockErrno(newConn)
+                    //         , iovCtx->EventArr[eIndex].events);
+
                     //Reset Connection immeidiatetly ???
 
-                    if (IsOtherEventSet(iovCtx->EventArr[eIndex])
-                                        && !IsFdClosed(newConn) ) {
-                             printf ("SS1 = %#018" PRIx64 
-                                ", ES = %#018" PRIx64 
-                                ", SysErr = %d"
-                                ", SockErr = %d"
-                                ", Events = %d\n\n"
-                               , GetCS1(newConn)
-                                , GetCES(newConn)
-                                , GetSysErrno(newConn) 
-                                , GetSockErrno(newConn)
-                                , iovCtx->EventArr[eIndex].events);
-                    }
+                    // if (IsOtherEventSet(iovCtx->EventArr[eIndex])
+                    //                     && !IsFdClosed(newConn) ) {
+                    //          printf ("SS1 = %#018" PRIx64 
+                    //             ", ES = %#018" PRIx64 
+                    //             ", SysErr = %d"
+                    //             ", SockErr = %d"
+                    //             ", Events = %d\n\n"
+                    //            , GetCS1(newConn)
+                    //             , GetCES(newConn)
+                    //             , GetSysErrno(newConn) 
+                    //             , GetSockErrno(newConn)
+                    //             , iovCtx->EventArr[eIndex].events);
+                    // }
                 }
             }
         }

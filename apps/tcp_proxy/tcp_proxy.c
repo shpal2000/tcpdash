@@ -256,11 +256,13 @@ static void OnCleanup (struct IoVentConn* iovConn) {
 
     if (aConnClosed && iConnClosed) {
         //todo; update stats
+        puts ("Session freeed\n");
         AddToPool (newSess->appCtx->freeSessionPool, newSess);
     }
 }
 
-static void OnClose (struct IoVentConn* iovConn) {
+static void OnClose (struct IoVentConn* iovConn
+                                , int iovConnErr) {
     
     // puts ("OnOnClose\n");
 
@@ -275,13 +277,25 @@ static void OnClose (struct IoVentConn* iovConn) {
         tpConnOther = &newSess->aConn;
     }
 
-    if (tpConnOther 
-            && tpConnOther->iovConn 
-            && IsSetCS1 (tpConnOther->iovConn, STATE_NO_MORE_WRITE_DATA) == 0 ) {
-        //change this to iovent API
-        EnableWriteNotification (tpConnOther->iovConn);
-        SetCS1(tpConnOther->iovConn, STATE_NO_MORE_WRITE_DATA 
-                                    | STATE_TCP_TO_SEND_FIN);    
+    if (tpConnOther && tpConnOther->iovConn) {
+
+        switch (iovConnErr) {
+
+            case TCP_ON_CLOSE_ERROR_NONE:
+                EnableWriteNotification (tpConnOther->iovConn);
+                SetCS1(tpConnOther->iovConn
+                    , STATE_NO_MORE_WRITE_DATA | STATE_TCP_TO_SEND_FIN);
+                break;
+
+            case TCP_ON_CLOSE_ERROR_RESET:
+                EnableWriteNotification (tpConnOther->iovConn);
+                SetCS1(tpConnOther->iovConn
+                    , STATE_NO_MORE_WRITE_DATA | STATE_TCP_TO_SEND_RST);
+                break;
+
+            default:
+                break;
+        }
     }
 }
 

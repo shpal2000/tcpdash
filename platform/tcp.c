@@ -333,7 +333,7 @@ int TcpAcceptConnection(int listenerFd
 
 
         setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int));
-
+        setsockopt(socket_fd, SOL_SOCKET, SO_KEEPALIVE, &(int){ 1 }, sizeof(int));
         setsockopt(socket_fd, SOL_TCP, TCP_KEEPCNT, &(int){ 1 }, sizeof(int));
         setsockopt(socket_fd, SOL_TCP, TCP_KEEPIDLE, &(int){ 5 }, sizeof(int));
         setsockopt(socket_fd, SOL_TCP, TCP_KEEPINTVL, &(int){ 1 }, sizeof(int));
@@ -531,10 +531,10 @@ void SSLShutdown (SSL* newSSL
     }
 }
 
-void SetCS1 (void* cState, uint64_t state) {
-    ((SockState_t*)cState)->state1 |= state;
+// void SetCS1 (void* cState, uint64_t state) {
+//     ((SockState_t*)cState)->state1 |= state;
 
-    if ( state == STATE_TCP_REMOTE_CLOSED ) {
-        puts ("STATE_TCP_REMOTE_CLOSED");
-    }
-}
+//     if ( state == STATE_TCP_REMOTE_CLOSED ) {
+//         puts ("STATE_TCP_REMOTE_CLOSED");
+//     }
+// }
