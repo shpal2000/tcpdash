@@ -127,13 +127,13 @@ void StopPollReadEvent(int pollId
         int pollWrite = 0;
         if ( IsSetCS1(cState, STATE_TCP_POLL_WRITE_CURRENT) ) {
             pollWrite = 1;
-            SetPollEvent(pollId
-                        , fd
-                        , 0
-                        , pollWrite
-                        , aStats
-                        , bStats
-                        , cState);
         }
+        SetPollEvent(pollId
+                    , fd
+                    , 0
+                    , pollWrite
+                    , aStats
+                    , bStats
+                    , cState);
     }
 }

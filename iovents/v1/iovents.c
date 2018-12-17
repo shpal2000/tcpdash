@@ -730,11 +730,13 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                              printf ("SS1 = %#018" PRIx64 
                                 ", ES = %#018" PRIx64 
                                 ", SysErr = %d"
-                                ", SockErr = %d\n\n"
+                                ", SockErr = %d"
+                                ", Events = %d\n\n"
                                , GetCS1(newConn)
                                 , GetCES(newConn)
                                 , GetSysErrno(newConn) 
-                                , GetSockErrno(newConn));
+                                , GetSockErrno(newConn)
+                                , iovCtx->EventArr[eIndex].events);
                     }
                 }
             }
