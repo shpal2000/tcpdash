@@ -17,6 +17,12 @@
 #define CONNAPP_STATE_SSL_CONNECTION_ESTABLISHED         6
 #define CONNAPP_STATE_SSL_CONNECTION_ESTABLISH_FAILED    7
 
+#define ON_CLOSE_ERROR_NONE                                 0
+#define ON_CLOSE_ERROR_GENERAL                              1
+#define ON_CLOSE_ERROR_TCP_TIMEOUT                          2
+#define ON_CLOSE_ERROR_TCP_RESET                            3
+                             
+
 typedef struct IoVentConnInfo {
 
     SSL* cSSL;

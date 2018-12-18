@@ -423,9 +423,30 @@ void SslServerInit (IoVentConn_t* newConn
 
 void WriteNextDataRemaing (IoVentConn_t* newConn);
 
-// int MapConnectionError () {
+int MapConnectionError (IoVentConn_t* newConn) {
 
-// }
+    int iovConnErr  = ON_CLOSE_ERROR_NONE;
+
+    if ( GetCES (newConn) ) {
+
+        switch ( GetSysErrno (newConn) ) {
+
+            case ETIMEDOUT:
+                iovConnErr = ON_CLOSE_ERROR_TCP_TIMEOUT; 
+                break;
+
+            case ECONNRESET:
+                iovConnErr = ON_CLOSE_ERROR_TCP_RESET;
+                break;
+
+            default:
+                iovConnErr = ON_CLOSE_ERROR_GENERAL; 
+                break;
+        }
+    }
+
+    return iovConnErr;
+}
 
 //handle plain tcp write also
 static void HandleWriteNextData (IoVentConn_t* newConn) {
@@ -535,9 +556,10 @@ static void HandleReadNextData (IoVentConn_t* newConn) {
     }
 
     if ( GetCES(newConn) ) {
+        int iovConnErr = MapConnectionError (newConn);
         ClearCS1 (newConn, STATE_CONN_READ_PENDING);
         CloseConnection(newConn);
-        (*newConn->cInfo.iovCtx->methods.OnClose)(newConn, 1);
+        (*newConn->cInfo.iovCtx->methods.OnClose)(newConn, iovConnErr);
     } else {
         if (bytesReceived <= 0) {
             if ( IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) ) {
@@ -548,10 +570,12 @@ static void HandleReadNextData (IoVentConn_t* newConn) {
                                     , newConn->cInfo.groupStats
                                     , newConn);
                 if ( GetCES(newConn) ) {
+                    int iovConnErr = MapConnectionError (newConn);
                     CloseConnection(newConn);
-                    (*newConn->cInfo.iovCtx->methods.OnClose)(newConn, 1);
+                    (*newConn->cInfo.iovCtx->methods.OnClose)(newConn, iovConnErr);
                 } else {
-                    (*newConn->cInfo.iovCtx->methods.OnClose)(newConn, 0);
+                    (*newConn->cInfo.iovCtx->methods.OnClose)(newConn
+                                                        , ON_CLOSE_ERROR_NONE);
                 }
             } else {
                 // ssl want read write; skip;

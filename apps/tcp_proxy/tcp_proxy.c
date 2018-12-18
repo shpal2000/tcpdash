@@ -281,13 +281,19 @@ static void OnClose (struct IoVentConn* iovConn
 
         switch (iovConnErr) {
 
-            case TCP_ON_CLOSE_ERROR_NONE:
+            case ON_CLOSE_ERROR_NONE:
                 EnableWriteNotification (tpConnOther->iovConn);
                 SetCS1(tpConnOther->iovConn
                     , STATE_NO_MORE_WRITE_DATA | STATE_TCP_TO_SEND_FIN);
                 break;
 
-            case TCP_ON_CLOSE_ERROR_RESET:
+            case ON_CLOSE_ERROR_TCP_RESET:
+                EnableWriteNotification (tpConnOther->iovConn);
+                SetCS1(tpConnOther->iovConn
+                    , STATE_NO_MORE_WRITE_DATA | STATE_TCP_TO_SEND_RST);
+                break;
+
+            case ON_CLOSE_ERROR_TCP_TIMEOUT:
                 EnableWriteNotification (tpConnOther->iovConn);
                 SetCS1(tpConnOther->iovConn
                     , STATE_NO_MORE_WRITE_DATA | STATE_TCP_TO_SEND_RST);

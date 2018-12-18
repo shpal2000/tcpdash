@@ -147,6 +147,14 @@ void VerifyTcpConnectionEstablished(int fd
     
     if ((retGetsockopt|socketErr) == 0){
         SetCS1 (cState, STATE_TCP_CONN_ESTABLISHED);
+
+        setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int));
+        setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &(int){ 1 }, sizeof(int));
+        setsockopt(fd, SOL_TCP, TCP_KEEPCNT, &(int){ 1 }, sizeof(int));
+        setsockopt(fd, SOL_TCP, TCP_KEEPIDLE, &(int){ 5 }, sizeof(int));
+        setsockopt(fd, SOL_TCP, TCP_KEEPINTVL, &(int){ 1 }, sizeof(int));
+        setsockopt(fd, SOL_TCP, TCP_USER_TIMEOUT, &(int){ 10000 }, sizeof(int));
+        
         IncConnStats2(aStats
                     , bStats 
                     , tcpConnInitSuccess);
