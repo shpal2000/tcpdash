@@ -163,8 +163,14 @@ void ReadNextData (IoVentConn_t* newConn
                         , int readBuffOffset
                         , int readDataLen);
 
-void DisableWriteNotification (IoVentConn_t* newConn);
+void EnableReadNotification (IoVentConn_t* newConn);
+
+void DisableReadNotification (IoVentConn_t* newConn);
 
 void EnableWriteNotification (IoVentConn_t* newConn);
+
+void DisableWriteNotification (IoVentConn_t* newConn);
+
+void CloseConnection(IoVentConn_t* newConn);
 
 #endif

@@ -163,7 +163,7 @@ static void RemoveConnection(IoVentConn_t* newConn) {
     (*newConn->cInfo.iovCtx->methods.OnCleanup)(newConn); 
 }
 
-static void CloseConnection(IoVentConn_t* newConn) {
+void CloseConnection(IoVentConn_t* newConn) {
 
     if ( GetCES(newConn) ) {
 
@@ -197,6 +197,8 @@ static void CloseConnection(IoVentConn_t* newConn) {
                 && sentCloseNotifyOrNotRequired ) {
 
             TcpWrShutdown (newConn->socketFd, newConn);
+
+            DisableWriteNotification (newConn);
         }
 
         if ( GetCES(newConn) 
@@ -736,7 +738,7 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                             HandleWriteNextData (newConn);
                         } else {
                             if ( IsSetCS1(newConn,  STATE_NO_MORE_WRITE_DATA) ) {
-                                CloseConnection (newConn);
+                                CloseConnection(newConn);
                             } else {
                                 (*newConn->cInfo.iovCtx->methods.OnWriteNext)(newConn);
                             }
@@ -798,8 +800,22 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
     return 1;
 }
 
-void DisableWriteNotification (IoVentConn_t* newConn) {
-    PollReadEventOnly(newConn->cInfo.iovCtx->eventQ
+void EnableReadNotification (IoVentConn_t* newConn) {
+
+    PollReadEvent(newConn->cInfo.iovCtx->eventQ
+                        , newConn->socketFd
+                        , newConn->cInfo.summaryStats
+                        , newConn->cInfo.groupStats
+                        , newConn);
+
+    if ( GetCES(newConn) ) {
+        CloseConnection(newConn);
+    }
+}
+
+void DisableReadNotification (IoVentConn_t* newConn) {
+
+    StopPollReadEvent(newConn->cInfo.iovCtx->eventQ
                         , newConn->socketFd
                         , newConn->cInfo.summaryStats
                         , newConn->cInfo.groupStats
@@ -811,7 +827,8 @@ void DisableWriteNotification (IoVentConn_t* newConn) {
 }
 
 void EnableWriteNotification (IoVentConn_t* newConn) {
-    PollReadWriteEvent(newConn->cInfo.iovCtx->eventQ
+
+    PollWriteEvent(newConn->cInfo.iovCtx->eventQ
                         , newConn->socketFd
                         , newConn->cInfo.summaryStats
                         , newConn->cInfo.groupStats
@@ -821,3 +838,17 @@ void EnableWriteNotification (IoVentConn_t* newConn) {
         CloseConnection(newConn);
     }
 }
+
+void DisableWriteNotification (IoVentConn_t* newConn) {
+
+    StopPollWriteEvent(newConn->cInfo.iovCtx->eventQ
+                        , newConn->socketFd
+                        , newConn->cInfo.summaryStats
+                        , newConn->cInfo.groupStats
+                        , newConn);
+
+    if ( GetCES(newConn) ) {
+        CloseConnection(newConn);
+    }
+}
+

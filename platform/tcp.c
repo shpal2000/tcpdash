@@ -153,7 +153,7 @@ void VerifyTcpConnectionEstablished(int fd
         setsockopt(fd, SOL_TCP, TCP_KEEPCNT, &(int){ 1 }, sizeof(int));
         setsockopt(fd, SOL_TCP, TCP_KEEPIDLE, &(int){ 5 }, sizeof(int));
         setsockopt(fd, SOL_TCP, TCP_KEEPINTVL, &(int){ 1 }, sizeof(int));
-        setsockopt(fd, SOL_TCP, TCP_USER_TIMEOUT, &(int){ 10000 }, sizeof(int));
+        setsockopt(fd, SOL_TCP, TCP_USER_TIMEOUT, &(int){ 15000 }, sizeof(int));
         
         IncConnStats2(aStats
                     , bStats 
@@ -346,7 +346,7 @@ int TcpAcceptConnection(int listenerFd
         setsockopt(socket_fd, SOL_TCP, TCP_KEEPIDLE, &(int){ 5 }, sizeof(int));
         setsockopt(socket_fd, SOL_TCP, TCP_KEEPINTVL, &(int){ 1 }, sizeof(int));
 
-        setsockopt(socket_fd, SOL_TCP, TCP_USER_TIMEOUT, &(int){ 10000 }, sizeof(int));
+        setsockopt(socket_fd, SOL_TCP, TCP_USER_TIMEOUT, &(int){ 15000 }, sizeof(int));
 
         int flags = fcntl(socket_fd, F_GETFL, 0);
         if (flags < 0) {

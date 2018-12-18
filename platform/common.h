@@ -160,11 +160,24 @@ void PollReadEventOnly(int pollId
                         , void* bStats
                         , void* cState);
 
+void PollReadEvent(int pollId
+                        , int fd
+                        , void* aStats
+                        , void* bStats
+                        , void* cState);
+
 void PollWriteEventOnly(int pollId
                         , int fd
                         , void* aStats
                         , void* bStats
                         , void* cState);
+
+void PollWriteEvent(int pollId
+                        , int fd
+                        , void* aStats
+                        , void* bStats
+                        , void* cState);
+
 
 void StopPollReadWriteEvent(int pollId
                         , int fd
@@ -173,6 +186,12 @@ void StopPollReadWriteEvent(int pollId
                         , void* cState);
 
 void StopPollReadEvent(int pollId
+                        , int fd
+                        , void* aStats
+                        , void* bStats
+                        , void* cState);
+
+void StopPollWriteEvent(int pollId
                         , int fd
                         , void* aStats
                         , void* bStats
