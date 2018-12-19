@@ -511,7 +511,8 @@ void WriteNextData (IoVentConn_t* newConn
                         , int writeDataLen
                         , int partialWrite) {
 
-    SetCS1 (newConn, STATE_CONN_WRITE_PENDING); 
+    SetCS1 (newConn, STATE_CONN_WRITE_PENDING);
+
     newConn->cInfo.writeBuffer = writeBuffer;
     newConn->cInfo.writeBuffOffset = writeBuffOffset;
     newConn->cInfo.writeDataLen = writeDataLen;
@@ -525,8 +526,6 @@ void WriteNextData (IoVentConn_t* newConn
     } else {
         ClearCS1 (newConn, STATE_CONN_PARTIAL_WRITE);
     }
-
-    HandleWriteNextData (newConn);
 }
 
 void WriteNextDataRemaing (IoVentConn_t* newConn) {
@@ -598,14 +597,11 @@ void ReadNextData (IoVentConn_t* newConn
                         , int readBuffOffset
                         , int readDataLen) {
     
-    if ( IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) == 0) {
+    SetCS1 (newConn, STATE_CONN_READ_PENDING);
 
-        SetCS1 (newConn, STATE_CONN_READ_PENDING);
-
-        newConn->cInfo.readBuffer = readBuffer;
-        newConn->cInfo.readBuffOffset = readBuffOffset;
-        newConn->cInfo.readDataLen = readDataLen;
-    }
+    newConn->cInfo.readBuffer = readBuffer;
+    newConn->cInfo.readBuffOffset = readBuffOffset;
+    newConn->cInfo.readDataLen = readDataLen;
 }
 
 static void OnTcpConnectionCompletion (IoVentConn_t* newConn) {
@@ -751,14 +747,22 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                     if ( IsWriteEventSet(iovCtx->EventArr[eIndex]) 
                                         && !IsFdClosed(newConn) ) {
 
-                        if (IsSetCS1 (newConn, STATE_CONN_WRITE_PENDING) ) {
-                            HandleWriteNextData (newConn);
-                        } else {
-                            if ( IsSetCS1(newConn,  STATE_NO_MORE_WRITE_DATA) ) {
+                        if ( IsSetCS1 (newConn, STATE_CONN_WRITE_PENDING) == 0) {
+
+                           if ( IsSetCS1(newConn,  STATE_NO_MORE_WRITE_DATA) ) {
+
                                 CloseConnection(newConn);
+
                             } else {
+
                                 (*newConn->cInfo.iovCtx->methods.OnWriteNext)(newConn);
-                            }
+                            } 
+                        }
+
+                        if ( IsSetCS1 (newConn, STATE_CONN_WRITE_PENDING) 
+                                                    && !IsFdClosed(newConn)) {
+
+                            HandleWriteNextData (newConn);
                         }
                     }
 
@@ -774,13 +778,14 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                             }
 
                             if ( IsSetCS1 (newConn, STATE_CONN_READ_PENDING) 
-                                        && !IsFdClosed(newConn) ) {
-                                            
+                                                    && !IsFdClosed(newConn) ) {
+
                                 HandleReadNextData (newConn);
                             }
                         }
                     }
 
+                    //If closed both end; cleanup
                     if ( !IsFdClosed(newConn) 
                             && IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) 
                             && (IsSetCS1 (newConn, STATE_TCP_SENT_FIN)
