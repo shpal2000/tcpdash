@@ -735,18 +735,18 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                                 ) {
 
 
-                   printf ("<<<\nfd = %d"
-                            ", SS1 = %#018" PRIx64 
-                            ", ES = %#018" PRIx64 
-                            ", SysErr = %d"
-                            ", SockErr = %d"
-                            ", Events = %x\n"
-                            , newConn->socketFd
-                            , GetCS1(newConn)
-                            , GetCES(newConn)
-                            , GetSysErrno(newConn) 
-                            , GetSockErrno(newConn)
-                            , iovCtx->EventArr[eIndex].events);
+                //    printf ("<<<\nfd = %d"
+                //             ", SS1 = %#018" PRIx64 
+                //             ", ES = %#018" PRIx64 
+                //             ", SysErr = %d"
+                //             ", SockErr = %d"
+                //             ", Events = %x\n"
+                //             , newConn->socketFd
+                //             , GetCS1(newConn)
+                //             , GetCES(newConn)
+                //             , GetSysErrno(newConn) 
+                //             , GetSockErrno(newConn)
+                //             , iovCtx->EventArr[eIndex].events);
 
 
                     // Handle Write
@@ -774,24 +774,25 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                         }
                     }
 
-                    if ( IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) 
+                    if ( !IsFdClosed(newConn) 
+                            && IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) 
                             && (IsSetCS1 (newConn, STATE_TCP_SENT_FIN)
                                 || IsSetCES (newConn, STATE_TCP_FIN_SEND_FAIL)) ) {
                         CloseConnection(newConn);
                     }
 
-                   printf ("\nfd = %d"
-                            ", SS1 = %#018" PRIx64 
-                            ", ES = %#018" PRIx64 
-                            ", SysErr = %d"
-                            ", SockErr = %d"
-                            ", Events = %x>>\n"
-                            , newConn->socketFd
-                            , GetCS1(newConn)
-                            , GetCES(newConn)
-                            , GetSysErrno(newConn) 
-                            , GetSockErrno(newConn)
-                            , iovCtx->EventArr[eIndex].events);
+                //    printf ("\nfd = %d"
+                //             ", SS1 = %#018" PRIx64 
+                //             ", ES = %#018" PRIx64 
+                //             ", SysErr = %d"
+                //             ", SockErr = %d"
+                //             ", Events = %x\n>>\n"
+                //             , newConn->socketFd
+                //             , GetCS1(newConn)
+                //             , GetCES(newConn)
+                //             , GetSysErrno(newConn) 
+                //             , GetSockErrno(newConn)
+                //             , iovCtx->EventArr[eIndex].events);
                 }
             }
         }

@@ -255,8 +255,8 @@ static void OnCleanup (struct IoVentConn* iovConn) {
     }
 
     if (aConnClosed && iConnClosed) {
-        //todo; update stats
-        puts ("Session freeed\n");
+        // todo; update stats
+        // puts ("Session freeed\n");
         AddToPool (newSess->appCtx->freeSessionPool, newSess);
     }
 }
