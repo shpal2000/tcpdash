@@ -35,8 +35,8 @@ static void OnEstablish (struct IoVentConn* iovConn) {
     TcpProxyAppCtx_t* appCtx 
         = (TcpProxyAppCtx_t*) iovConn->cInfo.appCtx;
 
-    int isPollSetupErr = DisableWriteNotification (iovConn);
-    if (isPollSetupErr) {
+    DisableWriteNotification (iovConn);
+    if (0) {
         //todo; stats
     } else {
         if (iovConn->cInfo.sessionData == NULL) {

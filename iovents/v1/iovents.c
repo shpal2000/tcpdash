@@ -605,8 +605,6 @@ void ReadNextData (IoVentConn_t* newConn
         newConn->cInfo.readBuffer = readBuffer;
         newConn->cInfo.readBuffOffset = readBuffOffset;
         newConn->cInfo.readDataLen = readDataLen;
-
-        HandleReadNextData (newConn);
     }
 }
 
@@ -767,10 +765,19 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                     // Handle Read
                     if (IsReadEventSet(iovCtx->EventArr[eIndex])
                                         && !IsFdClosed(newConn) ) {
-                        if ( IsSetCS1 (newConn, STATE_CONN_READ_PENDING) ) {
-                            HandleReadNextData (newConn);
-                        } else if (IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) == 0 ) {
-                            (*newConn->cInfo.iovCtx->methods.OnReadNext)(newConn);
+                        
+                        if (IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) == 0 ) {
+
+                            if ( IsSetCS1 (newConn, STATE_CONN_READ_PENDING) == 0 ) {
+
+                                (*newConn->cInfo.iovCtx->methods.OnReadNext)(newConn);
+                            }
+
+                            if ( IsSetCS1 (newConn, STATE_CONN_READ_PENDING) 
+                                        && !IsFdClosed(newConn) ) {
+                                            
+                                HandleReadNextData (newConn);
+                            }
                         }
                     }
 
