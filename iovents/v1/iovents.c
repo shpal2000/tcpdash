@@ -231,6 +231,7 @@ static void DoSslHandshake (IoVentConn_t* newConn) {
 }
 
 static void OnConnectionEstablshedHelper (IoVentConn_t* newConn) {
+
     SetAppState (newConn, CONNAPP_STATE_CONNECTION_ESTABLISHED);
 
     PollReadWriteEvent(newConn->cInfo.iovCtx->eventQ
@@ -672,6 +673,28 @@ IoVentCtx_t* CreateIoVentCtx (IoVentMethods_t* methods
 void DeleteIoVentCtx (IoVentCtx_t* iovCtx) {
 }
 
+static void ShowConnIfo (   char* prefix
+                            , IoVentConn_t* newConn
+                            , uint16_t events
+                            , char* postfix) {
+
+       printf ("%sfd = %d"
+                ", SS1 = %#018" PRIx64 
+                ", ES = %#018" PRIx64 
+                ", SysErr = %d"
+                ", SockErr = %d"
+                ", Events = %x%s"
+                , prefix
+                , newConn->socketFd
+                , GetCS1(newConn)
+                , GetCES(newConn)
+                , GetSysErrno(newConn) 
+                , GetSockErrno(newConn)
+                , events
+                , postfix);
+
+}
+
 int ProcessIoVent (IoVentCtx_t* iovCtx) {
 
     int eCount = GetIOEvents(iovCtx->eventQ
@@ -722,26 +745,16 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
 
                 // Handle Read, Write Data
                 } else if ( ( GetAppState(newConn) 
-                                == CONNAPP_STATE_SSL_CONNECTION_ESTABLISHED )
-                            || ( (GetAppState(newConn)
-                                == CONNAPP_STATE_CONNECTION_ESTABLISHED) 
-                                    && (IsSetCS1 (newConn, STATE_SSL_ENABLED_CONN) == 0) )
-                                ) {
+                        == CONNAPP_STATE_SSL_CONNECTION_ESTABLISHED )
+                        || ( (GetAppState(newConn)
+                            == CONNAPP_STATE_CONNECTION_ESTABLISHED) 
+                            && (IsSetCS1 (newConn, STATE_SSL_ENABLED_CONN) == 0) )
+                        ) {
 
-
-                //    printf ("<<<\nfd = %d"
-                //             ", SS1 = %#018" PRIx64 
-                //             ", ES = %#018" PRIx64 
-                //             ", SysErr = %d"
-                //             ", SockErr = %d"
-                //             ", Events = %x\n"
-                //             , newConn->socketFd
-                //             , GetCS1(newConn)
-                //             , GetCES(newConn)
-                //             , GetSysErrno(newConn) 
-                //             , GetSockErrno(newConn)
-                //             , iovCtx->EventArr[eIndex].events);
-
+                    ShowConnIfo ( "\n<<<\n"
+                                , newConn
+                                , iovCtx->EventArr[eIndex].events
+                                , "\n");
 
                     // Handle Write
                     if ( IsWriteEventSet(iovCtx->EventArr[eIndex]) 
@@ -785,7 +798,7 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                         }
                     }
 
-                    //If closed both end; cleanup
+                    //Handle Cleanup; If both end connection closed
                     if ( !IsFdClosed(newConn) 
                             && IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) 
                             && (IsSetCS1 (newConn, STATE_TCP_SENT_FIN)
@@ -793,10 +806,15 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                         CloseConnection(newConn);
                     }
 
-                    
+                    ShowConnIfo ( "\n"
+                                , newConn
+                                , iovCtx->EventArr[eIndex].events
+                                , "\n>>>\n");
+
+
+                    //Handle Defered Cleanup; Application Cleanup
                     IoVentConn_t* newConn 
                         = GetFromPool (iovCtx->cleanupConnectionPool);
-
                     while (newConn) {
 
                         (*newConn->cInfo.iovCtx->methods.OnCleanup)(newConn);
@@ -805,19 +823,6 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
 
                         newConn = GetFromPool (iovCtx->cleanupConnectionPool);
                     }
-
-                //    printf ("\nfd = %d"
-                //             ", SS1 = %#018" PRIx64 
-                //             ", ES = %#018" PRIx64 
-                //             ", SysErr = %d"
-                //             ", SockErr = %d"
-                //             ", Events = %x\n>>\n"
-                //             , newConn->socketFd
-                //             , GetCS1(newConn)
-                //             , GetCES(newConn)
-                //             , GetSysErrno(newConn) 
-                //             , GetSockErrno(newConn)
-                //             , iovCtx->EventArr[eIndex].events);
                 }
             }
         }

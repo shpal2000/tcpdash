@@ -78,63 +78,6 @@ static void OnEstablish (struct IoVentConn* iovConn) {
     }
 }
 
-static void OnWriteNext (struct IoVentConn* iovConn) {
-
-    // puts ("OnWriteNext");
-
-    TcpProxySession_t* newSess 
-        = (TcpProxySession_t*) iovConn->cInfo.sessionData;
-    
-    TcpProxyConn_t* tpConn = NULL;
-
-    if (newSess->aConn.iovConn == iovConn) {
-        tpConn = &newSess->aConn;
-    } else if (newSess->iConn.iovConn == iovConn) {
-        tpConn = &newSess->iConn;
-    }
-
-    if (tpConn) {
-        RwBuff_t* tmpBuff = GetFromPool (&tpConn->writeQ);
-        if (tmpBuff) {
-            tpConn->writeBuff = tmpBuff;
-            WriteNextData (tpConn->iovConn
-                            , tmpBuff->dataBuff
-                            , 0
-                            , tmpBuff->dataLen
-                            , 0);
-        }
-    }
-}
-
-static void OnWriteStatus (struct IoVentConn* iovConn
-                            , int bytesWritten
-                            ) {
-    // puts ("OnWriteStatus");
-
-    TcpProxySession_t* newSess 
-        = (TcpProxySession_t*) iovConn->cInfo.sessionData;
-
-    TcpProxyConn_t* tpConn = NULL;
-
-    if (newSess->aConn.iovConn == iovConn) {
-        tpConn = &newSess->aConn;
-    } else if (newSess->iConn.iovConn == iovConn) {
-        tpConn = &newSess->iConn;
-    }
-
-    if (tpConn) {
-
-        if (IsPoolEmpty (&tpConn->writeQ) ) {
-            DisableWriteNotification (tpConn->iovConn);
-        }      
-
-        AddToPool (newSess->appCtx->freeBuffPool
-                            , tpConn->writeBuff);
-
-        tpConn->writeBuff = NULL;
-    }
-}
-
 static void OnReadNext (struct IoVentConn* iovConn) {
 
     // puts ("OnReadNext");
@@ -203,6 +146,107 @@ static void OnReadStatus (struct IoVentConn* iovConn
    }
 }
 
+static void OnWriteNext (struct IoVentConn* iovConn) {
+
+    // puts ("OnWriteNext");
+
+    TcpProxySession_t* newSess 
+        = (TcpProxySession_t*) iovConn->cInfo.sessionData;
+    
+    TcpProxyConn_t* tpConn = NULL;
+
+    if (newSess->aConn.iovConn == iovConn) {
+        tpConn = &newSess->aConn;
+    } else if (newSess->iConn.iovConn == iovConn) {
+        tpConn = &newSess->iConn;
+    }
+
+    if (tpConn) {
+        RwBuff_t* tmpBuff = GetFromPool (&tpConn->writeQ);
+        if (tmpBuff) {
+            tpConn->writeBuff = tmpBuff;
+            WriteNextData (tpConn->iovConn
+                            , tmpBuff->dataBuff
+                            , 0
+                            , tmpBuff->dataLen
+                            , 0);
+        }
+    }
+}
+
+static void OnWriteStatus (struct IoVentConn* iovConn
+                            , int bytesWritten
+                            ) {
+    // puts ("OnWriteStatus");
+
+    TcpProxySession_t* newSess 
+        = (TcpProxySession_t*) iovConn->cInfo.sessionData;
+
+    TcpProxyConn_t* tpConn = NULL;
+
+    if (newSess->aConn.iovConn == iovConn) {
+        tpConn = &newSess->aConn;
+    } else if (newSess->iConn.iovConn == iovConn) {
+        tpConn = &newSess->iConn;
+    }
+
+    if (tpConn) {
+
+        if (IsPoolEmpty (&tpConn->writeQ) ) {
+            DisableWriteNotification (tpConn->iovConn);
+        }      
+
+        AddToPool (newSess->appCtx->freeBuffPool
+                            , tpConn->writeBuff);
+
+        tpConn->writeBuff = NULL;
+    }
+}
+
+static void OnClose (struct IoVentConn* iovConn
+                                , int iovConnErr) {
+    
+    // puts ("OnOnClose\n");
+
+    TcpProxySession_t* newSess 
+        = (TcpProxySession_t*) iovConn->cInfo.sessionData;
+
+    TcpProxyConn_t* tpConnOther = NULL;
+
+    if (newSess->aConn.iovConn == iovConn) {
+        tpConnOther = &newSess->iConn;
+    } else if (newSess->iConn.iovConn == iovConn) {
+        tpConnOther = &newSess->aConn;
+    }
+
+    if (tpConnOther && tpConnOther->iovConn) {
+
+        switch (iovConnErr) {
+
+            case ON_CLOSE_ERROR_NONE:
+                EnableWriteNotification (tpConnOther->iovConn);
+                SetCS1(tpConnOther->iovConn
+                    , STATE_NO_MORE_WRITE_DATA | STATE_TCP_TO_SEND_FIN);
+                break;
+
+            case ON_CLOSE_ERROR_TCP_RESET:
+                EnableWriteNotification (tpConnOther->iovConn);
+                SetCS1(tpConnOther->iovConn
+                    , STATE_NO_MORE_WRITE_DATA | STATE_TCP_TO_SEND_RST);
+                break;
+
+            case ON_CLOSE_ERROR_TCP_TIMEOUT:
+                EnableWriteNotification (tpConnOther->iovConn);
+                SetCS1(tpConnOther->iovConn
+                    , STATE_NO_MORE_WRITE_DATA | STATE_TCP_TO_SEND_RST);
+                break;
+
+            default:
+                break;
+        }
+    }
+}
+
 static void OnCleanup (struct IoVentConn* iovConn) {
 
     // puts ("OnCleanup\n");
@@ -266,50 +310,6 @@ static void OnCleanup (struct IoVentConn* iovConn) {
     }
 }
 
-static void OnClose (struct IoVentConn* iovConn
-                                , int iovConnErr) {
-    
-    // puts ("OnOnClose\n");
-
-    TcpProxySession_t* newSess 
-        = (TcpProxySession_t*) iovConn->cInfo.sessionData;
-
-    TcpProxyConn_t* tpConnOther = NULL;
-
-    if (newSess->aConn.iovConn == iovConn) {
-        tpConnOther = &newSess->iConn;
-    } else if (newSess->iConn.iovConn == iovConn) {
-        tpConnOther = &newSess->aConn;
-    }
-
-    if (tpConnOther && tpConnOther->iovConn) {
-
-        switch (iovConnErr) {
-
-            case ON_CLOSE_ERROR_NONE:
-                EnableWriteNotification (tpConnOther->iovConn);
-                SetCS1(tpConnOther->iovConn
-                    , STATE_NO_MORE_WRITE_DATA | STATE_TCP_TO_SEND_FIN);
-                break;
-
-            case ON_CLOSE_ERROR_TCP_RESET:
-                EnableWriteNotification (tpConnOther->iovConn);
-                SetCS1(tpConnOther->iovConn
-                    , STATE_NO_MORE_WRITE_DATA | STATE_TCP_TO_SEND_RST);
-                break;
-
-            case ON_CLOSE_ERROR_TCP_TIMEOUT:
-                EnableWriteNotification (tpConnOther->iovConn);
-                SetCS1(tpConnOther->iovConn
-                    , STATE_NO_MORE_WRITE_DATA | STATE_TCP_TO_SEND_RST);
-                break;
-
-            default:
-                break;
-        }
-    }
-}
-
 static void OnStatus (struct IoVentConn* iovConn) {
 }
 
@@ -329,7 +329,6 @@ static TcpProxyAppCtx_t* CreateAppCtx (TcpProxyI_t* appI) {
 
     return appCtx;
 }
-
 
 void TcpProxyRun (TcpProxyI_t* appI) {
 
