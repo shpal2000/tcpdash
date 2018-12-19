@@ -158,9 +158,7 @@ static void RemoveConnection(IoVentConn_t* newConn) {
         ReleasePort(newConn);
     }
 
-    SetFreeConnection (newConn);
-
-    (*newConn->cInfo.iovCtx->methods.OnCleanup)(newConn); 
+    AddToPool (newConn->cInfo.iovCtx->cleanupConnectionPool, newConn);
 }
 
 void CloseConnection(IoVentConn_t* newConn) {
@@ -643,6 +641,8 @@ static void InitIoVentCtx (IoVentCtx_t* iovCtx
     
     iovCtx->activeConnectionPool = AllocEmptyPool ();
 
+    iovCtx->cleanupConnectionPool = AllocEmptyPool ();
+
     for (int i = 0; i < iovCtx->options.maxActiveConnections; i++) {
 
         IoVentConn_t* newConn = CreateStruct (IoVentConn_t);
@@ -779,6 +779,19 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                             && (IsSetCS1 (newConn, STATE_TCP_SENT_FIN)
                                 || IsSetCES (newConn, STATE_TCP_FIN_SEND_FAIL)) ) {
                         CloseConnection(newConn);
+                    }
+
+                    
+                    IoVentConn_t* newConn 
+                        = GetFromPool (iovCtx->cleanupConnectionPool);
+
+                    while (newConn) {
+
+                        (*newConn->cInfo.iovCtx->methods.OnCleanup)(newConn);
+
+                        SetFreeConnection (newConn);
+
+                        newConn = GetFromPool (iovCtx->cleanupConnectionPool);
                     }
 
                 //    printf ("\nfd = %d"

@@ -109,6 +109,7 @@ typedef struct IoVentCtx {
     IoVentMethods_t methods;
     ConnectionPool_t* freeConnectionPool; 
     ConnectionPool_t* activeConnectionPool;
+    ConnectionPool_t* cleanupConnectionPool;
 
     uint32_t errorConnectionCount;
     IoVentConn_t* errorConnectionArr;
@@ -170,7 +171,5 @@ void DisableReadNotification (IoVentConn_t* newConn);
 void EnableWriteNotification (IoVentConn_t* newConn);
 
 void DisableWriteNotification (IoVentConn_t* newConn);
-
-void CloseConnection(IoVentConn_t* newConn);
 
 #endif

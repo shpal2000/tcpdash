@@ -35,41 +35,46 @@ static void OnEstablish (struct IoVentConn* iovConn) {
     TcpProxyAppCtx_t* appCtx 
         = (TcpProxyAppCtx_t*) iovConn->cInfo.appCtx;
 
-    if (iovConn->cInfo.sessionData == NULL) {
-        // puts ("accepted");
-        TcpProxySession_t* newSess 
-            = GetFromPool (appCtx->freeSessionPool);
-        if (newSess == NULL) {
-            //todo; stats; close connection
-        } else {
-            //init session
-            InitSession (appCtx, newSess);
-            iovConn->cInfo.sessionData = newSess;
-
-            // store client side of proxied connection
-            newSess->aConn.iovConn = iovConn;
-            DisableWriteNotification (newSess->aConn.iovConn);
-            
-            // init server side of proxied connection
-            TcpProxyServer_t* server 
-                = (TcpProxyServer_t*) iovConn->cInfo.groupCtx;
-            NewConnection (iovConn->cInfo.iovCtx
-                            , server
-                            , appCtx
-                            , iovConn->cInfo.sessionData
-                            , &server->serverAddrL//&iovConn->remoteAddressAccept
-                            , NULL
-                            , &server->serverAddrR
-                            , &appCtx->appI->gStats
-                            , &server->cStats);
-        }
+    int isPollSetupErr = DisableWriteNotification (iovConn);
+    if (isPollSetupErr) {
+        //todo; stats
     } else {
-        // store server side of proxied connection
-        // puts ("established");
-        TcpProxySession_t* extSess 
-            = (TcpProxySession_t*) iovConn->cInfo.sessionData;
-        extSess->iConn.iovConn = iovConn;
-        DisableWriteNotification (extSess->iConn.iovConn);
+        if (iovConn->cInfo.sessionData == NULL) {
+            // puts ("accepted");
+            TcpProxySession_t* newSess 
+                = GetFromPool (appCtx->freeSessionPool);
+            if (newSess == NULL) {
+                //todo; stats; close connection
+            } else {
+                //init session
+                InitSession (appCtx, newSess);
+                iovConn->cInfo.sessionData = newSess;
+
+                // store client side of proxied connection
+                newSess->aConn.iovConn = iovConn;
+                
+                // init server side of proxied connection
+                TcpProxyServer_t* server 
+                    = (TcpProxyServer_t*) iovConn->cInfo.groupCtx;
+                    
+                NewConnection (iovConn->cInfo.iovCtx
+                                , server
+                                , appCtx
+                                , iovConn->cInfo.sessionData
+                                , &server->serverAddrL//&iovConn->remoteAddressAccept
+                                , NULL
+                                , &server->serverAddrR
+                                , &appCtx->appI->gStats
+                                , &server->cStats);
+            }
+        } else {
+            // store server side of proxied connection
+            // puts ("established");
+            TcpProxySession_t* extSess 
+                = (TcpProxySession_t*) iovConn->cInfo.sessionData;
+
+            extSess->iConn.iovConn = iovConn;
+        }
     }
 }
 
@@ -256,7 +261,7 @@ static void OnCleanup (struct IoVentConn* iovConn) {
 
     if (aConnClosed && iConnClosed) {
         // todo; update stats
-        // puts ("Session freeed\n");
+        puts ("Session freeed\n");
         AddToPool (newSess->appCtx->freeSessionPool, newSess);
     }
 }
