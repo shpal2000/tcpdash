@@ -50,7 +50,13 @@ static void OnEstablish (struct IoVentConn* iovConn) {
 
             // store client side of proxied connection
             newSess->aConn.iovConn = iovConn;
-            
+
+            setsockopt(iovConn->socketFd, SOL_SOCKET, SO_KEEPALIVE, &(int){ 1 }, sizeof(int));
+            setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPCNT, &(int){ 3 }, sizeof(int));
+            setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPIDLE, &(int){ 5 }, sizeof(int));
+            setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPINTVL, &(int){ 1 }, sizeof(int));
+            setsockopt(iovConn->socketFd, SOL_TCP, TCP_USER_TIMEOUT, &(int){ 15000 }, sizeof(int));
+
             // init server side of proxied connection
             TcpProxyServer_t* server 
                 = (TcpProxyServer_t*) iovConn->cInfo.groupCtx;

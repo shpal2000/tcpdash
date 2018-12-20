@@ -147,13 +147,6 @@ void VerifyTcpConnectionEstablished(int fd
     
     if ((retGetsockopt|socketErr) == 0){
         SetCS1 (cState, STATE_TCP_CONN_ESTABLISHED);
-
-        setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int));
-        setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &(int){ 1 }, sizeof(int));
-        setsockopt(fd, SOL_TCP, TCP_KEEPCNT, &(int){ 1 }, sizeof(int));
-        setsockopt(fd, SOL_TCP, TCP_KEEPIDLE, &(int){ 5 }, sizeof(int));
-        setsockopt(fd, SOL_TCP, TCP_KEEPINTVL, &(int){ 1 }, sizeof(int));
-        setsockopt(fd, SOL_TCP, TCP_USER_TIMEOUT, &(int){ 15000 }, sizeof(int));
         
         IncConnStats2(aStats
                     , bStats 
@@ -338,15 +331,6 @@ int TcpAcceptConnection(int listenerFd
         IncConnStats2(aStats
                     , bStats 
                     , tcpAcceptSuccess);
-
-
-        setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int));
-        setsockopt(socket_fd, SOL_SOCKET, SO_KEEPALIVE, &(int){ 1 }, sizeof(int));
-        setsockopt(socket_fd, SOL_TCP, TCP_KEEPCNT, &(int){ 1 }, sizeof(int));
-        setsockopt(socket_fd, SOL_TCP, TCP_KEEPIDLE, &(int){ 5 }, sizeof(int));
-        setsockopt(socket_fd, SOL_TCP, TCP_KEEPINTVL, &(int){ 1 }, sizeof(int));
-
-        setsockopt(socket_fd, SOL_TCP, TCP_USER_TIMEOUT, &(int){ 15000 }, sizeof(int));
 
         int flags = fcntl(socket_fd, F_GETFL, 0);
         if (flags < 0) {
@@ -538,11 +522,3 @@ void SSLShutdown (SSL* newSSL
             break;
     }
 }
-
-// void SetCS1 (void* cState, uint64_t state) {
-//     ((SockState_t*)cState)->state1 |= state;
-
-//     if ( state == STATE_TCP_REMOTE_CLOSED ) {
-//         puts ("STATE_TCP_REMOTE_CLOSED");
-//     }
-// }
