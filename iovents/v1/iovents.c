@@ -135,30 +135,31 @@ static void ReleasePort(IoVentConn_t* newConn) {
 
 static void RemoveConnection(IoVentConn_t* newConn) {
 
-    // DumpConnection (newConn);
+    if ( IsFdClosed (newConn) == 0 ) {
 
-    if ( IsSetCES(newConn, STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) {
-        StopPollReadWriteEvent(newConn->cInfo.iovCtx->eventQ
-                                , newConn->socketFd
-                                , newConn->cInfo.summaryStats
-                                , newConn->cInfo.groupStats
-                                , newConn);
-    }       
+        if ( IsSetCES(newConn, STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) {
+            StopPollReadWriteEvent(newConn->cInfo.iovCtx->eventQ
+                                    , newConn->socketFd
+                                    , newConn->cInfo.summaryStats
+                                    , newConn->cInfo.groupStats
+                                    , newConn);
+        }       
 
-    TcpClose(newConn->socketFd, newConn);
+        TcpClose(newConn->socketFd, newConn);
 
-    if ( GetCES(newConn) ) {
-        StoreErrConnection (newConn);
+        if ( GetCES(newConn) ) {
+            StoreErrConnection (newConn);
+        }
+
+        //only for client connection
+        if ( newConn->cInfo.localPortPool 
+                && ( IsSetCES(newConn, STATE_TCP_SOCK_FD_CLOSE_FAIL
+                            | STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) ) {
+            ReleasePort(newConn);
+        }
+
+        AddToPool (newConn->cInfo.iovCtx->cleanupConnectionPool, newConn);
     }
-
-    //only for client connection
-    if ( newConn->cInfo.localPortPool 
-            && ( IsSetCES(newConn, STATE_TCP_SOCK_FD_CLOSE_FAIL
-                        | STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) ) {
-        ReleasePort(newConn);
-    }
-
-    AddToPool (newConn->cInfo.iovCtx->cleanupConnectionPool, newConn);
 }
 
 void CloseConnection(IoVentConn_t* newConn) {
@@ -679,6 +680,8 @@ static void ShowConnIfo (   char* prefix
                             , IoVentConn_t* newConn
                             , uint16_t events
                             , char* postfix) {
+
+    return;
 
        printf ("%sfd = %d"
                 ", SS1 = %#018" PRIx64 

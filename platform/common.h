@@ -338,24 +338,24 @@ void DumpCStats(void* aStats);
 
 #define GET_SOCK_PORT(__addr,__sockport) \
 { \
-    struct sockaddr* __uaddr = (struct sockaddr*) __addr; \
+    struct sockaddr* __uaddr = (struct sockaddr*) (__addr); \
     if (__uaddr->sa_family == AF_INET6) { \
         struct sockaddr_in6* __addr_in6 = (struct sockaddr_in6*) __addr; \
         *(__sockport) = __addr_in6->sin6_port; \
     } else { \
-        struct sockaddr_in* __addr_in = (struct sockaddr_in*) __addr; \
+        struct sockaddr_in* __addr_in = (struct sockaddr_in*) (__addr); \
         *(__sockport) = __addr_in->sin_port; \
     } \
 } \
 
 #define SET_SOCK_PORT(__addr,__sockport) \
 { \
-    struct sockaddr* __uaddr = (struct sockaddr*) __addr; \
+    struct sockaddr* __uaddr = (struct sockaddr*) (__addr); \
     if (__uaddr->sa_family == AF_INET6) { \
         struct sockaddr_in6* __addr_in6 = (struct sockaddr_in6*) __addr; \
         __addr_in6->sin6_port = __sockport; \
     } else { \
-        struct sockaddr_in* __addr_in = (struct sockaddr_in*) __addr; \
+        struct sockaddr_in* __addr_in = (struct sockaddr_in*) (__addr); \
         __addr_in->sin_port = __sockport; \
     } \
 } \

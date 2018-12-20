@@ -221,7 +221,7 @@ void TcpProxyMain() {
     memset(serverAddrL, 0, sizeof(SockAddr_t));
     serverAddrL->sin_family = AF_INET;
     inet_pton(AF_INET
-                , "10.116.0.62"
+                , "12.20.60.2"
                 , &(serverAddrL->sin_addr));
     serverAddrL->sin_port = htons(0);
 
@@ -231,9 +231,9 @@ void TcpProxyMain() {
     memset(serverAddrR, 0, sizeof(SockAddr_t));
     serverAddrR->sin_family = AF_INET;
     inet_pton(AF_INET
-                , "172.217.6.36"
+                , "12.20.53.240"
                 , &(serverAddrR->sin_addr));
-    serverAddrR->sin_port = htons(80);    
+    serverAddrR->sin_port = htons(444);    
 
     TcpProxyRun(tcpProxyI);
 

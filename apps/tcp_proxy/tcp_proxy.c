@@ -60,12 +60,17 @@ static void OnEstablish (struct IoVentConn* iovConn) {
             // init server side of proxied connection
             TcpProxyServer_t* server 
                 = (TcpProxyServer_t*) iovConn->cInfo.groupCtx;
-                
+
+            uint16_t localPort;
+            GET_SOCK_PORT (&iovConn->remoteAddressAccept, &localPort);
+            iovConn->remoteAddressAccept = server->serverAddrL;
+            SET_SOCK_PORT (&iovConn->remoteAddressAccept, localPort);
+
             NewConnection (iovConn->cInfo.iovCtx
                             , server
                             , appCtx
                             , iovConn->cInfo.sessionData
-                            , &server->serverAddrL//&iovConn->remoteAddressAccept
+                            , &iovConn->remoteAddressAccept //&server->serverAddrL
                             , NULL
                             , &server->serverAddrR
                             , &appCtx->appI->gStats
@@ -91,22 +96,27 @@ static void OnReadNext (struct IoVentConn* iovConn) {
     TcpProxySession_t* newSess 
         = (TcpProxySession_t*) iovConn->cInfo.sessionData;
 
-    RwBuff_t* readBuff = GetFromPool (appCtx->freeBuffPool);
 
-    if (readBuff == NULL) {
-        //todo
-    } else { 
-        InitRwBuff (readBuff);
 
-        TcpProxyConn_t* tpConn = NULL;
+    TcpProxyConn_t* tpConn = NULL;
+    TcpProxyConn_t* tpConnOther = NULL;
 
-        if (newSess->aConn.iovConn == iovConn) {
-            tpConn = &newSess->aConn;
-        } else if (newSess->iConn.iovConn == iovConn) {
-            tpConn = &newSess->iConn;
-        }
+    if (newSess->aConn.iovConn == iovConn) {
+        tpConn = &newSess->aConn;
+        tpConnOther = &newSess->iConn;
+    } else if (newSess->iConn.iovConn == iovConn) {
+        tpConn = &newSess->iConn;
+        tpConnOther = &newSess->aConn;
+    }
 
-        if (tpConn) {
+    if (tpConn && tpConnOther && tpConnOther->iovConn) {
+
+        RwBuff_t* readBuff = GetFromPool (appCtx->freeBuffPool);
+
+        if (readBuff == NULL) {
+            //todo
+        } else {
+            InitRwBuff (readBuff);
             tpConn->readBuff = readBuff;
             ReadNextData (tpConn->iovConn
                         , readBuff->dataBuff
@@ -214,15 +224,29 @@ static void OnClose (struct IoVentConn* iovConn
     TcpProxySession_t* newSess 
         = (TcpProxySession_t*) iovConn->cInfo.sessionData;
 
+    TcpProxyConn_t* tpConn = NULL;
     TcpProxyConn_t* tpConnOther = NULL;
 
     if (newSess->aConn.iovConn == iovConn) {
+        tpConn = &newSess->aConn;
         tpConnOther = &newSess->iConn;
     } else if (newSess->iConn.iovConn == iovConn) {
+        tpConn = &newSess->iConn;
         tpConnOther = &newSess->aConn;
     }
 
     if (tpConnOther && tpConnOther->iovConn) {
+        
+        if (iovConnErr != ON_CLOSE_ERROR_NONE) {
+            printf ("OnClose = %d\n", iovConnErr);
+            RwBuff_t* tmpBuff = GetFromPool (&tpConn->writeQ);
+            while (tmpBuff) {
+                AddToPool (newSess->appCtx->freeBuffPool, tmpBuff);
+                tmpBuff = GetFromPool (&tpConn->writeQ);
+                tpConn->writeBuff = NULL;
+                ClearCS1 (iovConn, STATE_CONN_WRITE_PENDING);
+            }
+        }
 
         switch (iovConnErr) {
 
@@ -239,6 +263,7 @@ static void OnClose (struct IoVentConn* iovConn
                 break;
 
             default:
+                MarkEof (tpConnOther->iovConn, MARK_EOF_WITH_TCP_RST);
                 break;
         }
     }
@@ -302,8 +327,8 @@ static void OnCleanup (struct IoVentConn* iovConn) {
 
     if (aConnClosed && iConnClosed) {
         // todo; update stats
-        puts ("Session freeed\n");
         AddToPool (newSess->appCtx->freeSessionPool, newSess);
+        printf ("Free Sessions = %d\n", GetPoolCount (newSess->appCtx->freeSessionPool) );
     }
 }
 
