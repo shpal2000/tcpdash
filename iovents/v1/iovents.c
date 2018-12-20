@@ -638,6 +638,8 @@ static void InitIoVentCtx (IoVentCtx_t* iovCtx
 
     iovCtx->cleanupConnectionPool = AllocEmptyPool ();
 
+    iovCtx->pendingActionPool = AllocEmptyPool ();
+
     for (int i = 0; i < iovCtx->options.maxActiveConnections; i++) {
 
         IoVentConn_t* newConn = CreateStruct (IoVentConn_t);
@@ -812,7 +814,7 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                                 , "\n>>>\n");
 
 
-                    //Handle Defered Cleanup; Application Cleanup
+                    //Handle Application Cleanup
                     IoVentConn_t* newConn 
                         = GetFromPool (iovCtx->cleanupConnectionPool);
                     while (newConn) {
@@ -838,32 +840,6 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
     }
 
     return 1;
-}
-
-void EnableReadNotification (IoVentConn_t* newConn) {
-
-    PollReadEvent(newConn->cInfo.iovCtx->eventQ
-                        , newConn->socketFd
-                        , newConn->cInfo.summaryStats
-                        , newConn->cInfo.groupStats
-                        , newConn);
-
-    if ( GetCES(newConn) ) {
-        CloseConnection(newConn);
-    }
-}
-
-void DisableReadNotification (IoVentConn_t* newConn) {
-
-    StopPollReadEvent(newConn->cInfo.iovCtx->eventQ
-                        , newConn->socketFd
-                        , newConn->cInfo.summaryStats
-                        , newConn->cInfo.groupStats
-                        , newConn);
-
-    if ( GetCES(newConn) ) {
-        CloseConnection(newConn);
-    }
 }
 
 void EnableWriteNotification (IoVentConn_t* newConn) {
@@ -892,3 +868,18 @@ void DisableWriteNotification (IoVentConn_t* newConn) {
     }
 }
 
+void MarkEof (IoVentConn_t* newConn, uint32_t options) {
+    
+    PollWriteEvent(newConn->cInfo.iovCtx->eventQ
+                        , newConn->socketFd
+                        , newConn->cInfo.summaryStats
+                        , newConn->cInfo.groupStats
+                        , newConn);
+
+    if ( GetCES(newConn) ) {
+        CloseConnection(newConn);
+    } else {
+        SetCS1(newConn, STATE_NO_MORE_WRITE_DATA 
+                        | STATE_TCP_TO_SEND_FIN);
+    }    
+}

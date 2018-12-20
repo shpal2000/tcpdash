@@ -21,7 +21,11 @@
 #define ON_CLOSE_ERROR_GENERAL                              1
 #define ON_CLOSE_ERROR_TCP_TIMEOUT                          2
 #define ON_CLOSE_ERROR_TCP_RESET                            3
-                             
+
+#define MARK_EOF_WITH_TCP_RST                               0x00000001
+#define MARK_EOF_WITH_TCP_FIN                               0x00000002
+#define MARK_EOF_SEND_SSL_CLOSE_NOTIFY                      0x00000004
+#define MARK_EOF_WAIT_SSL_CLOSE_NOTIFY                      0x00000008
 
 typedef struct IoVentConnInfo {
 
@@ -110,6 +114,8 @@ typedef struct IoVentCtx {
     ConnectionPool_t* freeConnectionPool; 
     ConnectionPool_t* activeConnectionPool;
     ConnectionPool_t* cleanupConnectionPool;
+    ConnectionPool_t* pendingActionPool;
+    
 
     uint32_t errorConnectionCount;
     IoVentConn_t* errorConnectionArr;
@@ -164,12 +170,10 @@ void ReadNextData (IoVentConn_t* newConn
                         , int readBuffOffset
                         , int readDataLen);
 
-void EnableReadNotification (IoVentConn_t* newConn);
-
-void DisableReadNotification (IoVentConn_t* newConn);
-
 void EnableWriteNotification (IoVentConn_t* newConn);
 
 void DisableWriteNotification (IoVentConn_t* newConn);
+
+void MarkEof (IoVentConn_t* newConn, uint32_t options);
 
 #endif

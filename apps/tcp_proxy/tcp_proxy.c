@@ -35,46 +35,43 @@ static void OnEstablish (struct IoVentConn* iovConn) {
     TcpProxyAppCtx_t* appCtx 
         = (TcpProxyAppCtx_t*) iovConn->cInfo.appCtx;
 
-    DisableWriteNotification (iovConn);
-    if (0) {
-        //todo; stats
-    } else {
-        if (iovConn->cInfo.sessionData == NULL) {
-            // puts ("accepted");
-            TcpProxySession_t* newSess 
-                = GetFromPool (appCtx->freeSessionPool);
-            if (newSess == NULL) {
-                //todo; stats; close connection
-            } else {
-                //init session
-                InitSession (appCtx, newSess);
-                iovConn->cInfo.sessionData = newSess;
+   DisableWriteNotification (iovConn);
 
-                // store client side of proxied connection
-                newSess->aConn.iovConn = iovConn;
-                
-                // init server side of proxied connection
-                TcpProxyServer_t* server 
-                    = (TcpProxyServer_t*) iovConn->cInfo.groupCtx;
-                    
-                NewConnection (iovConn->cInfo.iovCtx
-                                , server
-                                , appCtx
-                                , iovConn->cInfo.sessionData
-                                , &server->serverAddrL//&iovConn->remoteAddressAccept
-                                , NULL
-                                , &server->serverAddrR
-                                , &appCtx->appI->gStats
-                                , &server->cStats);
-            }
+    if (iovConn->cInfo.sessionData == NULL) {
+        // puts ("accepted");
+        TcpProxySession_t* newSess 
+            = GetFromPool (appCtx->freeSessionPool);
+        if (newSess == NULL) {
+            //todo; stats; close connection
         } else {
-            // store server side of proxied connection
-            // puts ("established");
-            TcpProxySession_t* extSess 
-                = (TcpProxySession_t*) iovConn->cInfo.sessionData;
+            //init session
+            InitSession (appCtx, newSess);
+            iovConn->cInfo.sessionData = newSess;
 
-            extSess->iConn.iovConn = iovConn;
+            // store client side of proxied connection
+            newSess->aConn.iovConn = iovConn;
+            
+            // init server side of proxied connection
+            TcpProxyServer_t* server 
+                = (TcpProxyServer_t*) iovConn->cInfo.groupCtx;
+                
+            NewConnection (iovConn->cInfo.iovCtx
+                            , server
+                            , appCtx
+                            , iovConn->cInfo.sessionData
+                            , &server->serverAddrL//&iovConn->remoteAddressAccept
+                            , NULL
+                            , &server->serverAddrR
+                            , &appCtx->appI->gStats
+                            , &server->cStats);
         }
+    } else {
+        // store server side of proxied connection
+        // puts ("established");
+        TcpProxySession_t* extSess 
+            = (TcpProxySession_t*) iovConn->cInfo.sessionData;
+
+        extSess->iConn.iovConn = iovConn;
     }
 }
 
@@ -224,21 +221,15 @@ static void OnClose (struct IoVentConn* iovConn
         switch (iovConnErr) {
 
             case ON_CLOSE_ERROR_NONE:
-                EnableWriteNotification (tpConnOther->iovConn);
-                SetCS1(tpConnOther->iovConn
-                    , STATE_NO_MORE_WRITE_DATA | STATE_TCP_TO_SEND_FIN);
+                MarkEof (tpConnOther->iovConn, MARK_EOF_WITH_TCP_FIN);
                 break;
 
             case ON_CLOSE_ERROR_TCP_RESET:
-                EnableWriteNotification (tpConnOther->iovConn);
-                SetCS1(tpConnOther->iovConn
-                    , STATE_NO_MORE_WRITE_DATA | STATE_TCP_TO_SEND_RST);
+                MarkEof (tpConnOther->iovConn, MARK_EOF_WITH_TCP_RST);
                 break;
 
             case ON_CLOSE_ERROR_TCP_TIMEOUT:
-                EnableWriteNotification (tpConnOther->iovConn);
-                SetCS1(tpConnOther->iovConn
-                    , STATE_NO_MORE_WRITE_DATA | STATE_TCP_TO_SEND_RST);
+                MarkEof (tpConnOther->iovConn, MARK_EOF_WITH_TCP_RST);
                 break;
 
             default:

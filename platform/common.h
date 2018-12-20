@@ -102,11 +102,11 @@ static inline void CSInit(void* cState) {
 
 #define SetCS1(__aConn, __state) ((SockState_t*)__aConn)->state1 |= __state
 
-// void SetCS1 (void*, uint64_t); 
+#define SetCS2(__aConn, __state) ((SockState_t*)__aConn)->state2 |= __state
 
 #define ClearCS1(__aConn, __state) ((SockState_t*)__aConn)->state1 &= ~__state
 
-#define SetCS2(__aConn, __state) ((SockState_t*)__aConn)->state2 |= __state
+#define ClearCS2(__aConn, __state) ((SockState_t*)__aConn)->state2 &= ~__state
 
 #define GetCS1(__aConn) ((SockState_t*)__aConn)->state1
 
@@ -248,7 +248,6 @@ void DumpCStats(void* aStats);
 #define STATE_CONN_WRITE_PENDING                            0x0000001000000000
 #define STATE_CONN_READ_PENDING                             0x0000002000000000
 #define STATE_CONN_PARTIAL_WRITE                            0x0000004000000000
-
 
 #define STATE_TCP_SOCK_CREATE_FAIL                          0x0000000000000001
 #define STATE_TCP_SOCK_BIND_FAIL                            0x0000000000000002
