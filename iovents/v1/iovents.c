@@ -243,12 +243,10 @@ static void OnConnectionEstablshedHelper (IoVentConn_t* newConn) {
 
     if ( GetCES(newConn) ) {
         CloseConnection(newConn);
-    } else {
-        (*newConn->cInfo.iovCtx->methods.OnEstablish)(newConn);
     }
 }
 
-void NewConnection (IoVentCtx_t* iovCtx
+int NewConnection (IoVentCtx_t* iovCtx
                         , void* groupCtx
                         , void* appCtx
                         , void* sessionData
@@ -257,6 +255,8 @@ void NewConnection (IoVentCtx_t* iovCtx
                         , SockAddr_t* remoteAddress
                         , void* aStats
                         , void* bStats) {
+    
+    int isErr = -1;
 
     IoVentConn_t* newConn = GetFreeConnection (iovCtx); 
 
@@ -312,10 +312,14 @@ void NewConnection (IoVentCtx_t* iovCtx
 
                 if ( GetCES(newConn) ) {
                     CloseConnection(newConn);
+                } else {
+                    isErr = 0;
                 }
             }
         }
     }
+
+    return isErr;
 }
 
 void InitServer (IoVentCtx_t* iovCtx
@@ -338,7 +342,7 @@ void InitServer (IoVentCtx_t* iovCtx
         
         newConn->socketFd 
             = TcpListenStart(newConn->cInfo.localAddress
-                                , 1000 //remove hardcoded 
+                                , 1000 //remoee hardcoded 
                                 , newConn->cInfo.summaryStats
                                 , newConn->cInfo.groupStats
                                 , newConn);
@@ -394,6 +398,10 @@ static void OnTcpAcceptConnection(IoVentConn_t* lSockConn) {
             SetFreeConnection (newConn);
         } else {
             OnConnectionEstablshedHelper (newConn);
+
+            if ( GetCES(newConn) == 0 ) {
+                (*newConn->cInfo.iovCtx->methods.OnEstablish)(newConn);
+            } 
         }
     }
 }
@@ -431,7 +439,7 @@ void WriteNextDataRemaing (IoVentConn_t* newConn);
 
 int MapConnectionError (IoVentConn_t* newConn) {
 
-    int iovConnErr  = ON_CLOSE_ERROR_NONE;
+    int iovConnErr  = ON_CLOSE_ERROR_UNKNOWN;
 
     if ( GetCES (newConn) ) {
 
@@ -564,7 +572,7 @@ static void HandleReadNextData (IoVentConn_t* newConn) {
         int iovConnErr = MapConnectionError (newConn);
         ClearCS1 (newConn, STATE_CONN_READ_PENDING);
         CloseConnection(newConn);
-        (*newConn->cInfo.iovCtx->methods.OnClose)(newConn, iovConnErr);
+        (*newConn->cInfo.iovCtx->methods.OnCloseR)(newConn, iovConnErr);
     } else {
         if (bytesReceived <= 0) {
             if ( IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) ) {
@@ -576,10 +584,10 @@ static void HandleReadNextData (IoVentConn_t* newConn) {
                                     , newConn);
                 if ( GetCES(newConn) ) {
                     int iovConnErr = MapConnectionError (newConn);
-                    (*newConn->cInfo.iovCtx->methods.OnClose)(newConn, iovConnErr);
+                    (*newConn->cInfo.iovCtx->methods.OnCloseR)(newConn, iovConnErr);
                     CloseConnection(newConn);
                 } else {
-                    (*newConn->cInfo.iovCtx->methods.OnClose)(newConn
+                    (*newConn->cInfo.iovCtx->methods.OnCloseR)(newConn
                                                         , ON_CLOSE_ERROR_NONE);
                 }
             } else {
@@ -619,6 +627,8 @@ static void OnTcpConnectionCompletion (IoVentConn_t* newConn) {
     } else {
         OnConnectionEstablshedHelper (newConn);
     }
+
+    (*newConn->cInfo.iovCtx->methods.OnEstablish)(newConn);
 }
 
 static void InitIoVentCtx (IoVentCtx_t* iovCtx
@@ -638,8 +648,6 @@ static void InitIoVentCtx (IoVentCtx_t* iovCtx
     iovCtx->activeConnectionPool = AllocEmptyPool ();
 
     iovCtx->cleanupConnectionPool = AllocEmptyPool ();
-
-    iovCtx->pendingActionPool = AllocEmptyPool ();
 
     for (int i = 0; i < iovCtx->options.maxActiveConnections; i++) {
 
@@ -761,6 +769,27 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                                 , iovCtx->EventArr[eIndex].events
                                 , "\n");
 
+                    // Handle Read
+                    if (IsReadEventSet(iovCtx->EventArr[eIndex])
+                                        && !IsFdClosed(newConn) ) {
+                        
+                        if (IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) == 0 ) {
+
+                            if ( IsSetCS1 (newConn, STATE_CONN_READ_PENDING) == 0 ) {
+
+                                (*newConn->cInfo.iovCtx->methods.OnReadNext)(newConn);
+                            }
+
+                            if ( IsSetCS1 (newConn, STATE_CONN_READ_PENDING) 
+                                                    && !IsFdClosed(newConn) ) {
+
+                                HandleReadNextData (newConn);
+                            }
+                        }
+                    }
+
+
+
                     // Handle Write
                     if ( IsWriteEventSet(iovCtx->EventArr[eIndex]) 
                                         && !IsFdClosed(newConn) ) {
@@ -784,24 +813,6 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                         }
                     }
 
-                    // Handle Read
-                    if (IsReadEventSet(iovCtx->EventArr[eIndex])
-                                        && !IsFdClosed(newConn) ) {
-                        
-                        if (IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) == 0 ) {
-
-                            if ( IsSetCS1 (newConn, STATE_CONN_READ_PENDING) == 0 ) {
-
-                                (*newConn->cInfo.iovCtx->methods.OnReadNext)(newConn);
-                            }
-
-                            if ( IsSetCS1 (newConn, STATE_CONN_READ_PENDING) 
-                                                    && !IsFdClosed(newConn) ) {
-
-                                HandleReadNextData (newConn);
-                            }
-                        }
-                    }
 
                     //Handle Cleanup; If both end connection closed
                     if ( !IsFdClosed(newConn) 
@@ -885,4 +896,39 @@ void MarkEof (IoVentConn_t* newConn, uint32_t options) {
         SetCS1(newConn, STATE_NO_MORE_WRITE_DATA 
                         | STATE_TCP_TO_SEND_FIN);
     }    
+}
+
+void DeleteConnection (IoVentConn_t* newConn) {
+    if ( IsFdClosed (newConn) == 0 ) {
+        struct linger sl;
+        sl.l_onoff = 1;
+        sl.l_linger = 0;
+
+        setsockopt(newConn->socketFd
+                    , SOL_SOCKET
+                    , SO_LINGER
+                    , &sl
+                    , sizeof(sl));
+
+        if ( IsSetCES(newConn, STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) {
+            StopPollReadWriteEvent(newConn->cInfo.iovCtx->eventQ
+                                    , newConn->socketFd
+                                    , newConn->cInfo.summaryStats
+                                    , newConn->cInfo.groupStats
+                                    , newConn);
+        }       
+
+        TcpClose(newConn->socketFd, newConn);
+
+        if ( GetCES(newConn) ) {
+            StoreErrConnection (newConn);
+        }
+
+        //only for client connection
+        if ( newConn->cInfo.localPortPool 
+                && ( IsSetCES(newConn, STATE_TCP_SOCK_FD_CLOSE_FAIL
+                            | STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) ) {
+            ReleasePort(newConn);
+        }
+    }
 }

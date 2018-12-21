@@ -18,9 +18,10 @@
 #define CONNAPP_STATE_SSL_CONNECTION_ESTABLISH_FAILED    7
 
 #define ON_CLOSE_ERROR_NONE                                 0
-#define ON_CLOSE_ERROR_GENERAL                              1
-#define ON_CLOSE_ERROR_TCP_TIMEOUT                          2
-#define ON_CLOSE_ERROR_TCP_RESET                            3
+#define ON_CLOSE_ERROR_UNKNOWN                              1
+#define ON_CLOSE_ERROR_GENERAL                              2
+#define ON_CLOSE_ERROR_TCP_TIMEOUT                          3
+#define ON_CLOSE_ERROR_TCP_RESET                            4
 
 #define MARK_EOF_WITH_TCP_RST                               0x00000001
 #define MARK_EOF_WITH_TCP_FIN                               0x00000002
@@ -87,7 +88,7 @@ typedef struct IoVentMethods {
 
     void (*OnReadNext) (IoVentConn_t* iovConn); 
 
-    void (*OnClose) (IoVentConn_t* iovConn
+    void (*OnCloseR) (IoVentConn_t* iovConn
                             , int iovConnErr);
 
     void (*OnCleanup) (IoVentConn_t* iovConn);
@@ -114,8 +115,6 @@ typedef struct IoVentCtx {
     ConnectionPool_t* freeConnectionPool; 
     ConnectionPool_t* activeConnectionPool;
     ConnectionPool_t* cleanupConnectionPool;
-    ConnectionPool_t* pendingActionPool;
-    
 
     uint32_t errorConnectionCount;
     IoVentConn_t* errorConnectionArr;
@@ -136,7 +135,7 @@ void DeleteIoVentCtx (IoVentCtx_t* iovCtx);
 
 int ProcessIoVent (IoVentCtx_t* iovCtx);
 
-void NewConnection (IoVentCtx_t* iovCtx
+int NewConnection (IoVentCtx_t* iovCtx
                         , void* groupCtx
                         , void* appCtx
                         , void* sessionData
@@ -175,5 +174,7 @@ void EnableWriteNotification (IoVentConn_t* newConn);
 void DisableWriteNotification (IoVentConn_t* newConn);
 
 void MarkEof (IoVentConn_t* newConn, uint32_t options);
+
+void DeleteConnection (IoVentConn_t* newConn);
 
 #endif

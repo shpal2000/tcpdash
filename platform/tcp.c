@@ -260,7 +260,7 @@ int TcpWrite(int fd
                 , void* aStats
                 , void* bStats
                 , void* cState) {
-    int bytesSent = write(fd, dataBuffer, dataLen);
+    int bytesSent = send(fd, dataBuffer, dataLen, MSG_NOSIGNAL);
 
     if (bytesSent <= 0){
         SetCES(cState, STATE_TCP_SOCK_WRITE_FAIL);

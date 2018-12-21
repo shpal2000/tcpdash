@@ -122,6 +122,8 @@ static inline void CSInit(void* cState) {
 
 #define IsFdClosed(__aConn) ((((SockState_t*)__aConn)->state1&STATE_TCP_SOCK_FD_CLOSE) || (((SockState_t*)__aConn)->errState&STATE_TCP_SOCK_FD_CLOSE_FAIL))
 
+#define IsConnErr(__aConn) ((SockState_t*)__aConn)->errState
+
 #define InitConLastErr(__aConn, __err) ((SockState_t*)__aConn)->lastErr = __err
 
 #define IncConnStats(__aStats, __stat) ((SockStats_t*)__aStats)->__stat++

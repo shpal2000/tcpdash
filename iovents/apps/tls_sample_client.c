@@ -61,7 +61,7 @@ static void OnReadStatus (struct IoVentConn* iovConn
 
 }
 
-static void OnClose (struct IoVentConn* iovConn
+static void OnCloseR (struct IoVentConn* iovConn
                         , int iovConnErr) {
 }
 
@@ -122,7 +122,7 @@ void TlsSampleClientRun (TlsSampleClient_t* appI) {
     iovMethods->OnWriteStatus = &OnWriteStatus;
     iovMethods->OnReadNext = &OnReadNext;
     iovMethods->OnReadStatus = &OnReadStatus;
-    iovMethods->OnClose = &OnClose;
+    iovMethods->OnCloseR = &OnCloseR;
     iovMethods->OnCleanup = &OnCleanup;
     iovMethods->OnStatus = &OnStatus;
 

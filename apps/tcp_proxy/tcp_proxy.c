@@ -35,8 +35,6 @@ static void OnEstablish (struct IoVentConn* iovConn) {
     TcpProxyAppCtx_t* appCtx 
         = (TcpProxyAppCtx_t*) iovConn->cInfo.appCtx;
 
-   DisableWriteNotification (iovConn);
-
     if (iovConn->cInfo.sessionData == NULL) {
         // puts ("accepted");
         TcpProxySession_t* newSess 
@@ -66,23 +64,43 @@ static void OnEstablish (struct IoVentConn* iovConn) {
             iovConn->remoteAddressAccept = server->serverAddrL;
             SET_SOCK_PORT (&iovConn->remoteAddressAccept, localPort);
 
-            NewConnection (iovConn->cInfo.iovCtx
+            int newConnInitErr 
+                        = NewConnection (iovConn->cInfo.iovCtx
                             , server
                             , appCtx
                             , iovConn->cInfo.sessionData
-                            , &iovConn->remoteAddressAccept //&server->serverAddrL
+                            //, &server->serverAddrL
+                            , &iovConn->remoteAddressAccept 
                             , NULL
                             , &server->serverAddrR
                             , &appCtx->appI->gStats
                             , &server->cStats);
+            
+            if (newConnInitErr) {
+                //update stats
+                newSess->aConn.iovConn->cInfo.sessionData = NULL;
+                DeleteConnection (newSess->aConn.iovConn); 
+                AddToPool (newSess->appCtx->freeSessionPool, newSess);
+            } else {
+                DisableWriteNotification (iovConn);
+            }
         }
     } else {
         // store server side of proxied connection
         // puts ("established");
-        TcpProxySession_t* extSess 
+        TcpProxySession_t* newSess 
             = (TcpProxySession_t*) iovConn->cInfo.sessionData;
 
-        extSess->iConn.iovConn = iovConn;
+        newSess->iConn.iovConn = iovConn;
+
+        if ( IsConnErr (iovConn) ) {
+            //update stats
+            newSess->aConn.iovConn->cInfo.sessionData = NULL;
+            DeleteConnection (newSess->aConn.iovConn);
+            AddToPool (newSess->appCtx->freeSessionPool, newSess);
+        } else {
+            DisableWriteNotification (iovConn);
+        }
     }
 }
 
@@ -216,8 +234,8 @@ static void OnWriteStatus (struct IoVentConn* iovConn
     }
 }
 
-static void OnClose (struct IoVentConn* iovConn
-                                , int iovConnErr) {
+static void OnCloseR (struct IoVentConn* iovConn
+                                    , int iovConnErr) {
     
     // puts ("OnOnClose\n");
 
@@ -238,7 +256,7 @@ static void OnClose (struct IoVentConn* iovConn
     if (tpConnOther && tpConnOther->iovConn) {
         
         if (iovConnErr != ON_CLOSE_ERROR_NONE) {
-            printf ("OnClose = %d\n", iovConnErr);
+            printf ("OnCloseR = %d\n", iovConnErr);
             RwBuff_t* tmpBuff = GetFromPool (&tpConn->writeQ);
             while (tmpBuff) {
                 AddToPool (newSess->appCtx->freeBuffPool, tmpBuff);
@@ -272,6 +290,7 @@ static void OnClose (struct IoVentConn* iovConn
 static void OnCleanup (struct IoVentConn* iovConn) {
 
     // puts ("OnCleanup\n");
+
 
     TcpProxySession_t* newSess 
         = (TcpProxySession_t*) iovConn->cInfo.sessionData;
@@ -363,7 +382,7 @@ void TcpProxyRun (TcpProxyI_t* appI) {
     iovMethods->OnWriteStatus = &OnWriteStatus;
     iovMethods->OnReadNext = &OnReadNext;
     iovMethods->OnReadStatus = &OnReadStatus;
-    iovMethods->OnClose = &OnClose;
+    iovMethods->OnCloseR = &OnCloseR;
     iovMethods->OnCleanup = &OnCleanup;
     iovMethods->OnStatus = &OnStatus;
 
