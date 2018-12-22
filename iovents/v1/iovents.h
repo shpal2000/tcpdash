@@ -17,11 +17,11 @@
 #define CONNAPP_STATE_SSL_CONNECTION_ESTABLISHED         6
 #define CONNAPP_STATE_SSL_CONNECTION_ESTABLISH_FAILED    7
 
-#define ON_CLOSE_ERROR_NONE                                 0
-#define ON_CLOSE_ERROR_UNKNOWN                              1
-#define ON_CLOSE_ERROR_GENERAL                              2
-#define ON_CLOSE_ERROR_TCP_TIMEOUT                          3
-#define ON_CLOSE_ERROR_TCP_RESET                            4
+#define ON_CLOSE_ERROR_NONE                                  0
+#define ON_CLOSE_ERROR_UNKNOWN                              -1
+#define ON_CLOSE_ERROR_GENERAL                              -2
+#define ON_CLOSE_ERROR_TCP_TIMEOUT                          -3
+#define ON_CLOSE_ERROR_TCP_RESET                            -4
 
 #define MARK_EOF_WITH_TCP_RST                               0x00000001
 #define MARK_EOF_WITH_TCP_FIN                               0x00000002
@@ -169,12 +169,24 @@ void ReadNextData (IoVentConn_t* newConn
                         , int readBuffOffset
                         , int readDataLen);
 
+void EnableReadNotification (IoVentConn_t* newConn);
+
+void DisableReadNotification (IoVentConn_t* newConn);
+
 void EnableWriteNotification (IoVentConn_t* newConn);
 
 void DisableWriteNotification (IoVentConn_t* newConn);
 
-void MarkEof (IoVentConn_t* newConn, uint32_t options);
+void EnableReadWriteNotification (IoVentConn_t* newConn);
 
-void DeleteConnection (IoVentConn_t* newConn);
+void DisableReadWriteNotification (IoVentConn_t* newConn);
+
+void EnableReadOnlyNotification (IoVentConn_t* newConn);
+
+void EnableWriteOnlyNotification (IoVentConn_t* newConn);
+
+void WriteClose (IoVentConn_t* newConn);
+
+void AbortConnection (IoVentConn_t* newConn);
 
 #endif

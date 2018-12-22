@@ -124,7 +124,7 @@ int TcpNewConnection(SockAddr_t* lAddr
         IncConnStats2(aStats, bStats, tcpConnInitFail);
 
         if (socket_fd != -1){
-            TcpClose(socket_fd, cState);
+            TcpClose(socket_fd, 0, 0, aStats, bStats, cState);
         }
         return -1;
     }
@@ -230,7 +230,7 @@ int TcpListenStart(SockAddr_t* lAddr
         IncConnStats2(aStats, bStats, tcpListenStartFail);
 
         if (socket_fd != -1){
-            TcpClose(socket_fd, cState);
+            TcpClose(socket_fd, 0, 0, aStats, bStats, cState);
         }
         return -1;
     }
@@ -238,7 +238,30 @@ int TcpListenStart(SockAddr_t* lAddr
     return socket_fd;
 }
 
-void TcpClose(int fd, void* cState){
+void TcpClose(int fd
+                , int isLinger
+                , int lingerTime
+                , void* aStats
+                , void* bStats
+                , void* cState) {
+
+    if (isLinger) {
+        struct linger sl;
+        sl.l_onoff = 1;
+        sl.l_linger = lingerTime;
+
+        int lingerStatus 
+            = setsockopt(fd, SOL_SOCKET, SO_LINGER, &sl, sizeof(sl));
+        
+        if (lingerStatus < 0) {
+            IncConnStats2(aStats, bStats, socketLingerSetFail);
+            SetCES(cState, STATE_TCP_SOCK_LINGER_FAIL);
+        } else {
+            IncConnStats2(aStats, bStats, socketLingerSet);
+            SetCS1(cState, STATE_TCP_SOCK_LINGER);
+        }
+    }
+
     if ( close(fd) ) {
         SetCES(cState, STATE_TCP_SOCK_FD_CLOSE_FAIL);
     } else {
@@ -359,7 +382,7 @@ int TcpAcceptConnection(int listenerFd
 
     if ( GetCES(cState) ){
         if (socket_fd != -1){
-            TcpClose(socket_fd, cState);
+            TcpClose(socket_fd, 0, 0, aStats, bStats, cState);
         }
         return -1;
     }

@@ -18,6 +18,7 @@ static void InitConn (TcpProxyConn_t * tpConn) {
     tpConn->iovConn = NULL;
     tpConn->readBuff = NULL;
     tpConn->writeBuff = NULL;
+    tpConn->isActive = 1;
 
     InitPool (&tpConn->writeQ);
 }
@@ -78,11 +79,9 @@ static void OnEstablish (struct IoVentConn* iovConn) {
             
             if (newConnInitErr) {
                 //update stats
-                newSess->aConn.iovConn->cInfo.sessionData = NULL;
-                DeleteConnection (newSess->aConn.iovConn); 
-                AddToPool (newSess->appCtx->freeSessionPool, newSess);
+                AbortConnection (newSess->aConn.iovConn);
             } else {
-                DisableWriteNotification (iovConn);
+                DisableReadWriteNotification (newSess->aConn.iovConn);
             }
         }
     } else {
@@ -95,11 +94,10 @@ static void OnEstablish (struct IoVentConn* iovConn) {
 
         if ( IsConnErr (iovConn) ) {
             //update stats
-            newSess->aConn.iovConn->cInfo.sessionData = NULL;
-            DeleteConnection (newSess->aConn.iovConn);
-            AddToPool (newSess->appCtx->freeSessionPool, newSess);
+            AbortConnection (newSess->aConn.iovConn);
         } else {
-            DisableWriteNotification (iovConn);
+            EnableReadOnlyNotification (newSess->iConn.iovConn);
+            EnableReadOnlyNotification (newSess->aConn.iovConn);
         }
     }
 }
@@ -145,8 +143,7 @@ static void OnReadNext (struct IoVentConn* iovConn) {
 }
 
 static void OnReadStatus (struct IoVentConn* iovConn
-                            , int bytesReceived
-                            ) {
+                            , int bytesReceived) {
 
     // puts ("OnReadStatus");
 
@@ -168,12 +165,28 @@ static void OnReadStatus (struct IoVentConn* iovConn
     }
 
     if (tpConn) {
-        tpConn->readBuff->dataLen = bytesReceived;
-        AddToPool (otherWriteQ, tpConn->readBuff);
-        tpConn->readBuff = NULL;
-        if (tpConnOther && tpConnOther->iovConn) {
+        if (bytesReceived > 0) { //data
+
+            tpConn->readBuff->dataLen = bytesReceived;
+            AddToPool (otherWriteQ, tpConn->readBuff);
+            tpConn->readBuff = NULL;
             EnableWriteNotification (tpConnOther->iovConn);
+
+        } else { // remote close
+
+            int closeErr = bytesReceived;
+
+            switch (closeErr) {
+                case ON_CLOSE_ERROR_NONE:
+                    WriteClose (tpConnOther->iovConn);
+                    break;
+                default:
+                    AbortConnection (tpConnOther->iovConn);
+                    break;
+            }
         }
+   }else {
+       //update stats
    }
 }
 
@@ -234,10 +247,9 @@ static void OnWriteStatus (struct IoVentConn* iovConn
     }
 }
 
-static void OnCloseR (struct IoVentConn* iovConn
-                                    , int iovConnErr) {
-    
-    // puts ("OnOnClose\n");
+static void OnCleanup (struct IoVentConn* iovConn) {
+
+    // puts ("OnCleanup\n");
 
     TcpProxySession_t* newSess 
         = (TcpProxySession_t*) iovConn->cInfo.sessionData;
@@ -253,56 +265,6 @@ static void OnCloseR (struct IoVentConn* iovConn
         tpConnOther = &newSess->aConn;
     }
 
-    if (tpConnOther && tpConnOther->iovConn) {
-        
-        if (iovConnErr != ON_CLOSE_ERROR_NONE) {
-            printf ("OnCloseR = %d\n", iovConnErr);
-            RwBuff_t* tmpBuff = GetFromPool (&tpConn->writeQ);
-            while (tmpBuff) {
-                AddToPool (newSess->appCtx->freeBuffPool, tmpBuff);
-                tmpBuff = GetFromPool (&tpConn->writeQ);
-                tpConn->writeBuff = NULL;
-                ClearCS1 (iovConn, STATE_CONN_WRITE_PENDING);
-            }
-        }
-
-        switch (iovConnErr) {
-
-            case ON_CLOSE_ERROR_NONE:
-                MarkEof (tpConnOther->iovConn, MARK_EOF_WITH_TCP_FIN);
-                break;
-
-            case ON_CLOSE_ERROR_TCP_RESET:
-                MarkEof (tpConnOther->iovConn, MARK_EOF_WITH_TCP_RST);
-                break;
-
-            case ON_CLOSE_ERROR_TCP_TIMEOUT:
-                MarkEof (tpConnOther->iovConn, MARK_EOF_WITH_TCP_RST);
-                break;
-
-            default:
-                MarkEof (tpConnOther->iovConn, MARK_EOF_WITH_TCP_RST);
-                break;
-        }
-    }
-}
-
-static void OnCleanup (struct IoVentConn* iovConn) {
-
-    // puts ("OnCleanup\n");
-
-
-    TcpProxySession_t* newSess 
-        = (TcpProxySession_t*) iovConn->cInfo.sessionData;
-
-    TcpProxyConn_t* tpConn = NULL;
-
-    if (newSess->aConn.iovConn == iovConn) {
-        tpConn = &newSess->aConn;
-    } else if (newSess->iConn.iovConn == iovConn) {
-        tpConn = &newSess->iConn;
-    }
-
     if (tpConn) {
         if (tpConn->readBuff) {
             AddToPool (newSess->appCtx->freeBuffPool
@@ -316,7 +278,6 @@ static void OnCleanup (struct IoVentConn* iovConn) {
             tpConn->writeBuff = NULL;
         }
 
-         
         while (1) {
             RwBuff_t* tmpBuff = GetFromPool (&tpConn->writeQ);
             if (tmpBuff == NULL) {
@@ -324,30 +285,16 @@ static void OnCleanup (struct IoVentConn* iovConn) {
             }
             AddToPool (newSess->appCtx->freeBuffPool, tmpBuff);
         }
-    }
 
-    int aConnClosed = 0;
-    if (newSess->aConn.iovConn) {
-        if ( IsSetCS1 (newSess->aConn.iovConn, STATE_TCP_SOCK_FD_CLOSE) ) {
-            aConnClosed = 1;
+        tpConn->isActive = 0;
+
+        if (tpConnOther->isActive == 0) {
+            AddToPool (newSess->appCtx->freeSessionPool, newSess);
+            printf ("Free Sessions = %d\n", GetPoolCount (newSess->appCtx->freeSessionPool) );
         }
-    } else {
-        aConnClosed = 1;
-    }
 
-    int iConnClosed = 0;
-    if (newSess->iConn.iovConn) {
-        if ( IsSetCS1 (newSess->iConn.iovConn, STATE_TCP_SOCK_FD_CLOSE) ) {
-            iConnClosed = 1;
-        }
     } else {
-        iConnClosed = 1;
-    }
-
-    if (aConnClosed && iConnClosed) {
-        // todo; update stats
-        AddToPool (newSess->appCtx->freeSessionPool, newSess);
-        printf ("Free Sessions = %d\n", GetPoolCount (newSess->appCtx->freeSessionPool) );
+        //update stats
     }
 }
 
@@ -382,7 +329,6 @@ void TcpProxyRun (TcpProxyI_t* appI) {
     iovMethods->OnWriteStatus = &OnWriteStatus;
     iovMethods->OnReadNext = &OnReadNext;
     iovMethods->OnReadStatus = &OnReadStatus;
-    iovMethods->OnCloseR = &OnCloseR;
     iovMethods->OnCleanup = &OnCleanup;
     iovMethods->OnStatus = &OnStatus;
 

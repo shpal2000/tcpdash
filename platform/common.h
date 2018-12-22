@@ -27,6 +27,8 @@ typedef struct SockStats{
     uint64_t socketListenFail;
     uint64_t socketReuseSet;
     uint64_t socketReuseSetFail;
+    uint64_t socketLingerSet;
+    uint64_t socketLingerSetFail;
     uint64_t socketBindIpv4;    
     uint64_t socketBindIpv4Fail;
     uint64_t socketBindIpv6;    
@@ -250,6 +252,8 @@ void DumpCStats(void* aStats);
 #define STATE_CONN_WRITE_PENDING                            0x0000001000000000
 #define STATE_CONN_READ_PENDING                             0x0000002000000000
 #define STATE_CONN_PARTIAL_WRITE                            0x0000004000000000
+#define STATE_CONN_MARK_DELETE                              0x0000008000000000
+#define STATE_TCP_SOCK_LINGER                               0x0000010000000000
 
 #define STATE_TCP_SOCK_CREATE_FAIL                          0x0000000000000001
 #define STATE_TCP_SOCK_BIND_FAIL                            0x0000000000000002
@@ -274,6 +278,8 @@ void DumpCStats(void* aStats);
 #define STATE_TCP_RESET_SEND_FAIL                           0x0000000000100000
 #define STATE_TCP_REMOTE_CLOSED_ERROR                       0x0000000000200000
 #define STATE_TCP_TIMEOUT_CLOSED_ERROR                      0x0000000000400000
+#define STATE_TCP_SOCK_LINGER_FAIL                          0x0000000000800000
+
 
 #define AllocSession(__type) g_slice_new(__type)
 #define SetSessionToPool(__pool,__session) g_queue_push_tail (__pool,__session)
@@ -396,8 +402,13 @@ int TcpAcceptConnection(int listenerFd
                         , void* bStats
                         , void* cState);
                         
-void TcpClose(int fd, void* cState);
-
+void TcpClose(int fd
+                , int isLinger
+                , int lingerTime
+                , void* aStats
+                , void* bStats
+                , void* cState);
+                
 void TcpWrShutdown(int fd, void* cState);
 
 int TcpWrite(int fd

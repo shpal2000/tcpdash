@@ -58,6 +58,7 @@ typedef struct TcpProxyConn {
     RwBuff_t* readBuff;
     RwBuff_t* writeBuff;
     Pool_t writeQ;
+    int isActive;
 } TcpProxyConn_t;
 
 typedef struct TcpProxySession {
