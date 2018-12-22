@@ -115,6 +115,7 @@ typedef struct IoVentCtx {
     ConnectionPool_t* freeConnectionPool; 
     ConnectionPool_t* activeConnectionPool;
     ConnectionPool_t* cleanupConnectionPool;
+    ConnectionPool_t* abortConnectionPool;
 
     uint32_t errorConnectionCount;
     IoVentConn_t* errorConnectionArr;

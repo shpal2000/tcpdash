@@ -228,8 +228,24 @@ void CloseConnection(IoVentConn_t* newConn) {
 
 void AbortConnection (IoVentConn_t* newConn) {
 
-    SetCS1 (newConn, STATE_CONN_MARK_DELETE 
-                    | STATE_TCP_TO_SEND_RST);
+    if ( IsSetCS1 (newConn, STATE_CONN_MARK_DELETE) == 0) {
+        
+        SetCS1 (newConn, STATE_CONN_MARK_DELETE 
+                        | STATE_TCP_TO_SEND_RST);
+        
+        AddToPool (newConn->cInfo.iovCtx->abortConnectionPool, newConn);
+    }
+}
+
+static void ProcessAbortConnections (IoVentCtx_t* iovCtx) {
+
+    IoVentConn_t* newConn 
+            = GetFromPool (iovCtx->abortConnectionPool);
+
+    while (newConn) {
+        CloseConnection (newConn);
+        newConn = GetFromPool (iovCtx->abortConnectionPool);
+    }
 }
 
 static void DoSslHandshake (IoVentConn_t* newConn) {
@@ -422,9 +438,7 @@ static void OnTcpAcceptConnection(IoVentConn_t* lSockConn) {
 
                 (*newConn->cInfo.iovCtx->methods.OnEstablish)(newConn);
 
-                if IsSetCS1 (newConn, STATE_CONN_MARK_DELETE) {
-                    CloseConnection (newConn);
-                }
+                ProcessAbortConnections (newConn->cInfo.iovCtx);
             } 
         }
     }
@@ -534,9 +548,7 @@ static void HandleWriteNextData (IoVentConn_t* newConn) {
                 (*newConn->cInfo.iovCtx->methods.OnWriteStatus)(newConn
                                             , newConn->cInfo.writtenBytesLenCur);
                 
-                if IsSetCS1 (newConn, STATE_CONN_MARK_DELETE) {
-                    CloseConnection (newConn);
-                }
+                ProcessAbortConnections (newConn->cInfo.iovCtx);
 
             } else {
                 WriteNextDataRemaing (newConn);
@@ -603,10 +615,7 @@ static void HandleReadNextData (IoVentConn_t* newConn) {
         ClearCS1 (newConn, STATE_CONN_READ_PENDING);
         CloseConnection(newConn);
         (*newConn->cInfo.iovCtx->methods.OnReadStatus)(newConn, iovConnErr);
-
-        if IsSetCS1 (newConn, STATE_CONN_MARK_DELETE) {
-            CloseConnection (newConn);
-        }        
+        ProcessAbortConnections (newConn->cInfo.iovCtx);        
     } else {
         if (bytesReceived <= 0) {
             if ( IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) ) {
@@ -618,15 +627,14 @@ static void HandleReadNextData (IoVentConn_t* newConn) {
                                     , newConn);
                 if ( GetCES(newConn) ) {
                     int iovConnErr = MapConnectionError (newConn);
-                    (*newConn->cInfo.iovCtx->methods.OnReadStatus)(newConn, iovConnErr);
                     CloseConnection(newConn);
+                    (*newConn->cInfo.iovCtx->methods.OnReadStatus)(newConn, iovConnErr);
+                    ProcessAbortConnections (newConn->cInfo.iovCtx);
                 } else {
                     (*newConn->cInfo.iovCtx->methods.OnReadStatus)(newConn
                                                         , ON_CLOSE_ERROR_NONE);
 
-                    if IsSetCS1 (newConn, STATE_CONN_MARK_DELETE) {
-                        CloseConnection (newConn);
-                    }
+                    ProcessAbortConnections (newConn->cInfo.iovCtx);
                 }
             } else {
                 // ssl want read write; skip;
@@ -637,9 +645,7 @@ static void HandleReadNextData (IoVentConn_t* newConn) {
             (*newConn->cInfo.iovCtx->methods.OnReadStatus)(newConn
                                                 , bytesReceived);
 
-            if IsSetCS1 (newConn, STATE_CONN_MARK_DELETE) {
-                CloseConnection (newConn);
-            }                                                
+            ProcessAbortConnections (newConn->cInfo.iovCtx);                            
         }
     }
 }
@@ -672,9 +678,7 @@ static void OnTcpConnectionCompletion (IoVentConn_t* newConn) {
 
     (*newConn->cInfo.iovCtx->methods.OnEstablish)(newConn);
 
-    if IsSetCS1 (newConn, STATE_CONN_MARK_DELETE) {
-        CloseConnection (newConn);
-    }    
+    ProcessAbortConnections (newConn->cInfo.iovCtx);    
 }
 
 static void InitIoVentCtx (IoVentCtx_t* iovCtx
@@ -694,6 +698,8 @@ static void InitIoVentCtx (IoVentCtx_t* iovCtx
     iovCtx->activeConnectionPool = AllocEmptyPool ();
 
     iovCtx->cleanupConnectionPool = AllocEmptyPool ();
+
+    iovCtx->abortConnectionPool = AllocEmptyPool ();
 
     for (int i = 0; i < iovCtx->options.maxActiveConnections; i++) {
 
@@ -775,11 +781,6 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                 OnTcpAcceptConnection(newConn);
             } else {
 
-                if IsSetCS1 (newConn, STATE_CONN_MARK_DELETE) {
-                    CloseConnection (newConn);
-                    continue;
-                }
-
                 //Handle Tcp Connect
                 if ( (GetAppState(newConn) 
                             == CONNAPP_STATE_CONNECTION_IN_PROGRESS)
@@ -831,9 +832,7 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
 
                                 (*newConn->cInfo.iovCtx->methods.OnReadNext)(newConn);
 
-                                if IsSetCS1 (newConn, STATE_CONN_MARK_DELETE) {
-                                    CloseConnection (newConn);
-                                }                                
+                                ProcessAbortConnections (newConn->cInfo.iovCtx);                                
                             }
 
                             if ( IsSetCS1 (newConn, STATE_CONN_READ_PENDING) 
@@ -860,9 +859,7 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
 
                                 (*newConn->cInfo.iovCtx->methods.OnWriteNext)(newConn);
 
-                                if IsSetCS1 (newConn, STATE_CONN_MARK_DELETE) {
-                                    CloseConnection (newConn);
-                                }
+                                ProcessAbortConnections (newConn->cInfo.iovCtx);
                             } 
                         }
 
