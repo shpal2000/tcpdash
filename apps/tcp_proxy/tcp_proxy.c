@@ -65,7 +65,7 @@ static void OnEstablish (struct IoVentConn* iovConn) {
             iovConn->remoteAddressAccept = server->serverAddrL;
             SET_SOCK_PORT (&iovConn->remoteAddressAccept, localPort);
 
-            int newConnInitErr 
+            int newConnInitErr
                         = NewConnection (iovConn->cInfo.iovCtx
                             , server
                             , appCtx
@@ -79,6 +79,7 @@ static void OnEstablish (struct IoVentConn* iovConn) {
             
             if (newConnInitErr) {
                 //update stats
+                newSess->iConn.isActive = 0;
                 AbortConnection (newSess->aConn.iovConn);
             } else {
                 DisableReadWriteNotification (newSess->aConn.iovConn);
@@ -289,8 +290,30 @@ static void OnCleanup (struct IoVentConn* iovConn) {
         tpConn->isActive = 0;
 
         if (tpConnOther->isActive == 0) {
+
+            if (tpConnOther->readBuff) {
+                AddToPool (newSess->appCtx->freeBuffPool
+                                    , tpConnOther->readBuff);
+                tpConnOther->readBuff = NULL;
+            }
+
+            if (tpConnOther->writeBuff) {
+                AddToPool (newSess->appCtx->freeBuffPool
+                                    , tpConnOther->writeBuff);
+                tpConnOther->writeBuff = NULL;
+            }
+
+            while (1) {
+                RwBuff_t* tmpBuff = GetFromPool (&tpConnOther->writeQ);
+                if (tmpBuff == NULL) {
+                    break;
+                }
+                AddToPool (newSess->appCtx->freeBuffPool, tmpBuff);
+            }
+
             AddToPool (newSess->appCtx->freeSessionPool, newSess);
             printf ("Free Sessions = %d\n", GetPoolCount (newSess->appCtx->freeSessionPool) );
+            printf ("Free Buffs = %d\n", GetPoolCount (newSess->appCtx->freeBuffPool) );
         }
 
     } else {
