@@ -43,6 +43,7 @@ static void OnEstablish (struct IoVentConn* iovConn) {
         if (newSess == NULL) {
             //todo; stats; close connection
         } else {
+            AddToPool (&appCtx->activeSessionPool, newSess);
             //init session
             InitSession (appCtx, newSess);
             iovConn->cInfo.sessionData = newSess;
@@ -228,23 +229,42 @@ static void OnWriteStatus (struct IoVentConn* iovConn
         = (TcpProxySession_t*) iovConn->cInfo.sessionData;
 
     TcpProxyConn_t* tpConn = NULL;
+    TcpProxyConn_t* tpConnOther = NULL;
 
     if (newSess->aConn.iovConn == iovConn) {
         tpConn = &newSess->aConn;
+        tpConnOther = &newSess->iConn;
     } else if (newSess->iConn.iovConn == iovConn) {
         tpConn = &newSess->iConn;
+        tpConnOther = &newSess->aConn;
     }
 
     if (tpConn) {
 
-        if (IsPoolEmpty (&tpConn->writeQ) ) {
-            DisableWriteNotification (tpConn->iovConn);
-        }      
+        if (bytesWritten > 0) {
 
-        AddToPool (newSess->appCtx->freeBuffPool
-                            , tpConn->writeBuff);
+            if (IsPoolEmpty (&tpConn->writeQ) ) {
+                DisableWriteNotification (tpConn->iovConn);
+            }      
 
-        tpConn->writeBuff = NULL;
+            AddToPool (newSess->appCtx->freeBuffPool
+                                , tpConn->writeBuff);
+
+            tpConn->writeBuff = NULL;
+            
+        } else {
+
+            int closeErr = bytesWritten;
+
+            switch (closeErr) {
+                case ON_CLOSE_ERROR_NONE:
+                    WriteClose (tpConnOther->iovConn);
+                    break;
+                default:
+                    AbortConnection (tpConnOther->iovConn);
+                    break;
+            }            
+        }
     }
 }
 
@@ -312,6 +332,7 @@ static void OnCleanup (struct IoVentConn* iovConn) {
             }
 
             AddToPool (newSess->appCtx->freeSessionPool, newSess);
+            RemoveFromPool (&newSess->appCtx->activeSessionPool, newSess);
             printf ("Free Sessions = %d\n", GetPoolCount (newSess->appCtx->freeSessionPool) );
             printf ("Free Buffs = %d\n", GetPoolCount (newSess->appCtx->freeBuffPool) );
         }
@@ -337,6 +358,8 @@ static TcpProxyAppCtx_t* CreateAppCtx (TcpProxyI_t* appI) {
     CreatePool (&appCtx->freeBuffPool
                 , appI->maxActiveSessions * 16
                 , RwBuff_t);
+
+    InitPool (&appCtx->activeSessionPool);
 
     return appCtx;
 }

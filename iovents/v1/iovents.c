@@ -521,8 +521,11 @@ static void HandleWriteNextData (IoVentConn_t* newConn) {
     }
 
     if ( GetCES(newConn) ) {
+        int iovConnErr = MapConnectionError (newConn);
         ClearCS1 (newConn, STATE_CONN_WRITE_PENDING);
         CloseConnection(newConn);
+        (*newConn->cInfo.iovCtx->methods.OnWriteStatus)(newConn, iovConnErr);
+        ProcessAbortConnections (newConn->cInfo.iovCtx);
     } else {
         if (bytesSent <= 0) {
             // ssl want read write; skip
