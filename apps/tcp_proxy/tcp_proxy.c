@@ -22,8 +22,8 @@ static void InitConn (TcpProxyConn_t * tpConn) {
     InitPool (&tpConn->writeQ);
 }
 
-static void InitSession (TcpProxyAppCtx_t* appCtx
-                        , TcpProxySession_t* newSess) {
+static void InitSession (TcpProxySession_t* newSess
+                            , TcpProxyAppCtx_t* appCtx) {
 
     newSess->appCtx = appCtx;
     InitConn (&newSess->aConn);
@@ -44,7 +44,7 @@ static void OnEstablish (struct IoVentConn* iovConn) {
         } else {
             AddToPool (&appCtx->activeSessionPool, newSess);
             //init session
-            InitSession (appCtx, newSess);
+            InitSession (newSess, appCtx);
             iovConn->cInfo.sessionData = newSess;
 
             // store client side of proxied connection
