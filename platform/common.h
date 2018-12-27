@@ -14,7 +14,6 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-
 //#####################Socket#####################
 typedef union SockAddr {
     struct sockaddr_in inAddr;

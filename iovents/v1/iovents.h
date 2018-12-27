@@ -88,9 +88,6 @@ typedef struct IoVentMethods {
 
     void (*OnReadNext) (IoVentConn_t* iovConn); 
 
-    void (*OnCloseR) (IoVentConn_t* iovConn
-                            , int iovConnErr);
-
     void (*OnCleanup) (IoVentConn_t* iovConn);
 
     void (*OnStatus) (IoVentConn_t* iovConn);
@@ -100,6 +97,8 @@ typedef struct IoVentMethods {
 
     void (*OnReadStatus) (IoVentConn_t* iovConn
                             , int bytesReceived);
+
+    void (*OnMilliTick) (int elapsedMilliTicks);
 
 } IoVentMethods_t;
 
