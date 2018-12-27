@@ -100,6 +100,8 @@ typedef struct IoVentMethods {
 
     void (*OnMilliTick) (int elapsedMilliTicks);
 
+    int (*OnContinue) (void* iovData);
+
 } IoVentMethods_t;
 
 typedef struct IoVentOptions {
@@ -109,6 +111,7 @@ typedef struct IoVentOptions {
 } IoVentOptions_t;
 
 typedef struct IoVentCtx {
+
     IoVentOptions_t options;
     IoVentMethods_t methods;
     ConnectionPool_t* freeConnectionPool; 
@@ -122,16 +125,28 @@ typedef struct IoVentCtx {
     PollEvent_t* EventArr;
     int eventQ;
     int eventPTO;
+
+    TimerWheel_t* timerWheel;
+
+    void* appCtx;
+
 } IoVentCtx_t;
+
+enum ToContinueAppState { EmAppExit
+                            , EmAppContinue
+                            , EmAppContinueZeroActive};
 
 void DumpConnection (IoVentConn_t* newConn);
 
 void DumpErrConnections (IoVentCtx_t* iovCtx);
 
 IoVentCtx_t* CreateIoVentCtx (IoVentMethods_t* methods
-                        , IoVentOptions_t* options);
+                        , IoVentOptions_t* options
+                        , void* appCtx);
 
 void DeleteIoVentCtx (IoVentCtx_t* iovCtx);
+
+double TimeElapsedIoVentCtx(IoVentCtx_t* iovCtx);
 
 int ProcessIoVent (IoVentCtx_t* iovCtx);
 

@@ -365,7 +365,7 @@ static TcpProxyAppCtx_t* CreateAppCtx (TcpProxyI_t* appI) {
 
 void TcpProxyRun (TcpProxyI_t* appI) {
 
-    TcpProxyAppCtx_t* TcpProxyAppCtx = CreateAppCtx (appI);
+    TcpProxyAppCtx_t* appCtx = CreateAppCtx (appI);
 
     IoVentMethods_t* iovMethods = CreateStruct0 (IoVentMethods_t);
 
@@ -382,16 +382,17 @@ void TcpProxyRun (TcpProxyI_t* appI) {
     iovOptions->maxActiveConnections = appI->maxActiveSessions * 2;
     iovOptions->maxErrorConnections = appI->maxErrorSessions * 2;
     
-    IoVentCtx_t* iovCtx = CreateIoVentCtx (iovMethods, iovOptions);
+    IoVentCtx_t* iovCtx 
+        = CreateIoVentCtx (iovMethods, iovOptions, appCtx);
 
     TcpProxyServer_t* server 
         = &appI->serverArr[0];
 
     InitServer(iovCtx
                 , server
-                , TcpProxyAppCtx
+                , appCtx
                 , &server->serverAddrP
-                , &TcpProxyAppCtx->appI->gStats
+                , &appCtx->appI->gStats
                 , &server->cStats);
 
     while (1) {

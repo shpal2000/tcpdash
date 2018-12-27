@@ -686,11 +686,14 @@ static void OnTcpConnectionCompletion (IoVentConn_t* newConn) {
 
 static void InitIoVentCtx (IoVentCtx_t* iovCtx
                     , IoVentMethods_t* methods
-                    , IoVentOptions_t* options) {
+                    , IoVentOptions_t* options
+                    , void* appCtx) {
 
     iovCtx->methods = *methods;
 
     iovCtx->options = *options;
+
+    iovCtx->appCtx = appCtx;
 
     if (iovCtx->options.maxEvents == 0) {
         iovCtx->options.maxEvents = DEFAULT_MAX_EVENTS;
@@ -718,25 +721,34 @@ static void InitIoVentCtx (IoVentCtx_t* iovCtx
     iovCtx->errorConnectionArr 
         = CreateArray (IoVentConn_t, iovCtx->options.maxErrorConnections); 
 
-    iovCtx->EventArr = CreateArray(PollEvent_t
-                                , iovCtx->options.maxEvents);
+    iovCtx->EventArr = CreateArray (PollEvent_t
+                                   , iovCtx->options.maxEvents);
 
-    iovCtx->eventQ = CreateEventQ();
+    iovCtx->eventQ = CreateEventQ ();
 
     iovCtx->eventPTO = 0;
+
+    iovCtx->timerWheel = CreateTimerWheel ();
 } 
 
 IoVentCtx_t* CreateIoVentCtx (IoVentMethods_t* methods
-                            , IoVentOptions_t* options) {
+                            , IoVentOptions_t* options
+                            , void* appCtx) {
 
     IoVentCtx_t* iovCtx = CreateStruct0 (IoVentCtx_t);
 
-    InitIoVentCtx (iovCtx, methods, options);
+    InitIoVentCtx (iovCtx, methods, options, appCtx);
 
     return iovCtx;
 }
 
 void DeleteIoVentCtx (IoVentCtx_t* iovCtx) {
+
+    DeleteTimerWheel (iovCtx->timerWheel);
+}
+
+double TimeElapsedIoVentCtx(IoVentCtx_t* iovCtx) {
+    return TimeElapsedTimerWheel (iovCtx->timerWheel);
 }
 
 static void ShowConnIfo (   char* prefix
@@ -908,12 +920,33 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
             iovCtx->eventPTO++;
         }
     }
-    
-    if ( IsPoolEmpty (iovCtx->activeConnectionPool) ) {
-        return 0;
+
+    int toContinue = 1;
+
+    if (iovCtx->methods.OnContinue) {
+
+        enum ToContinueAppState  toContinueAppState 
+            = (*iovCtx->methods.OnContinue) (iovCtx->appCtx);
+        
+        if (toContinueAppState == EmAppExit) {
+
+            toContinue = 0;
+
+        } else if (toContinueAppState == EmAppContinueZeroActive) {
+
+            if ( IsPoolEmpty (iovCtx->activeConnectionPool) ) {
+                toContinue = 0;
+            }
+        }
+        
+    } else {
+
+        if ( IsPoolEmpty (iovCtx->activeConnectionPool) ) {
+            toContinue = 0;
+        }
     }
 
-    return 1;
+    return toContinue;
 }
 
 void EnableReadNotification (IoVentConn_t* newConn) {

@@ -18,8 +18,8 @@ typedef struct TcpClientServerGroup {
     enum ConnCloseMethod cCloseMethod;
     enum ConnCloseMethod sCloseMethod;
     enum ConnCloseType csCloseType;
-    uint32_t grWeight;
-    TcpClientServerStats_t grStats;
+    uint32_t csWeight;
+    TcpClientServerStats_t cStats;
 } TcpClientServerGroup_t;
 
 typedef struct TcpClientServerI {
@@ -31,14 +31,15 @@ typedef struct TcpClientServerI {
     uint64_t maxSessions;
     uint32_t csGroupCount;
     TcpProxyServer_t* csGroupArr;
-    TcpClientServerStats_t glStats;
+    uint32_t nextCsGroupIndex;
+    TcpClientServerStats_t gStats;
 } TcpClientServerI_t;
 
-void TcpClientRun(TcpClientServerI_t* appIface);
+void TcpClientRun(TcpClientServerI_t* appI);
 
 TcpClientServerI_t* CreateTcpClientServerInterface(int csGroupCount);
 
-void DeleteTcpClientServerInterface(TcpClientServerI_t* iFace);
+void DeleteTcpClientServerInterface(TcpClientServerI_t* appI);
 
 void DumpTcpClientStats(TcpClientServerI_t* appConnStats);
 

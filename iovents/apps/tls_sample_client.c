@@ -126,7 +126,8 @@ void TlsSampleClientRun (TlsSampleClient_t* appI) {
     iovOptions->maxErrorConnections = appI->maxErrorSessions;
     iovOptions->maxEvents = appI->maxEvents; 
     
-    IoVentCtx_t* iovCtx = CreateIoVentCtx (iovMethods, iovOptions);
+    IoVentCtx_t* iovCtx 
+        = CreateIoVentCtx (iovMethods, iovOptions, appCtx);
 
     TimerWheel_t* timerWheel = CreateTimerWheel();
     double lastConnectionInitTime = TimeElapsedTimerWheel(timerWheel);

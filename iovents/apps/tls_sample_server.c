@@ -140,7 +140,9 @@ void TlsSampleServerRun (TlsSampleServer_t* appI) {
     iovOptions->maxErrorConnections = appI->maxErrorSessions;
     iovOptions->maxEvents = appI->maxEvents; 
     
-    IoVentCtx_t* iovCtx = CreateIoVentCtx (iovMethods, iovOptions);
+    IoVentCtx_t* iovCtx 
+        = CreateIoVentCtx (iovMethods, iovOptions, appCtx);
+
     TlsSampleServerStats_t* appConnStats = &appI->appConnStats;
     // TlsSampleServerAppStats_t* appStats = &appI->appStats;
 

@@ -1,11 +1,11 @@
 #ifndef __APP_COMMON_H
 #define __APP_COMMON_H
 
-enum ConnCloseMethod {TcpFIN
-                    , TcpRST
-                    , CloseNotify};
+enum ConnCloseMethod {EmTcpFIN
+                    , EmTcpRST
+                    , EmCloseNotify};
 
-enum ConnCloseType {ClientClose
-                    , ServerClose
-                    , DataClose};
+enum ConnCloseType {EmClientClose
+                    , EmServerClose
+                    , EmDataFinish};
 #endif
