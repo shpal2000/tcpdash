@@ -100,7 +100,7 @@ typedef struct IoVentMethods {
 
     void (*OnMilliTick) (int elapsedMilliTicks);
 
-    int (*OnContinue) (void* iovData);
+    int (*OnContinue) (void* appData);
 
 } IoVentMethods_t;
 

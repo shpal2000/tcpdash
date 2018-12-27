@@ -50,9 +50,9 @@ static void OnCleanup (struct IoVentConn* iovConn) {
 static void OnStatus (struct IoVentConn* iovConn) {
 }
 
-static int OnContinue (void* iovData) {
+static int OnContinue (void* appData) {
     
-    TcpClientAppCtx_t* appCtx = (TcpClientAppCtx_t*) iovData;
+    TcpClientAppCtx_t* appCtx = (TcpClientAppCtx_t*) appData;
 
     TcpClientServerI_t* appI = appCtx->appI;
 
@@ -65,7 +65,7 @@ static int OnContinue (void* iovData) {
     }
 
     //achived desired total connections
-    uint32_t tcpConnInitCount 
+    uint64_t tcpConnInitCount 
         = GetConnStats(appI->gStats, tcpConnInit);
 
     if (tcpConnInitCount == appI->maxSessions) {
@@ -123,7 +123,62 @@ void TcpClientRun (TcpClientServerI_t* appI) {
         if ( ProcessIoVent (iovCtx) == 0 ) {
             break;
         }
-        
+
+        uint64_t tcpConnInitCount 
+            = GetConnStats(appI->gStats, tcpConnInit);
+
+        int newConnectionInits 
+            = (TimeElapsedIoVentCtx (iovCtx) - lastConnInitTime) 
+                * appI->connectionPerSec;
+
+        while (newConnectionInits > 0
+                && tcpConnInitCount < appI->maxSessions) {
+
+
+            //new connection init
+            TcpClientServerGroup_t* csGroup
+                = &appI->csGroupArr[appI->nextCsGroupIndex];
+
+            SockAddr_t* localAddress 
+                = &(csGroup->clientAddrArr[csGroup->nextClientAddrIndex]);
+
+            SockAddr_t* remoteAddress 
+                = &(csGroup->serverAddr);
+
+            TcpClientServerStats_t* groupConnStats 
+                = &csGroup->cStats;
+
+            LocalPortPool_t* localPortPool 
+                = &csGroup->LocalPortPoolArr[csGroup->nextClientAddrIndex];
+
+            appI->nextCsGroupIndex += 1;
+            if (appI->nextCsGroupIndex == appI->csGroupCount){
+                appI->nextCsGroupIndex = 0;
+            }
+            
+            csGroup->nextClientAddrIndex += 1;
+            if (csGroup->nextClientAddrIndex == csGroup->clientAddrCount) {
+                csGroup->nextClientAddrIndex = 0;
+            }
+
+            NewConnection (iovCtx
+                            , csGroup
+                            , appCtx
+                            , NULL
+                            , localAddress
+                            , localPortPool
+                            , remoteAddress
+                            , appConnStats
+                            , groupConnStats);       
+
+            newConnectionInits -= 1;
+
+            lastConnInitTime = TimeElapsedIoVentCtx (iovCtx);
+
+            tcpConnInitCount 
+                = GetConnStats(appI->gStats, tcpConnInit);
+        }
+
     }
 
     DeleteIoVentCtx (iovCtx);
