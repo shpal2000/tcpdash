@@ -1,12 +1,11 @@
 #ifndef __TCP_CLIENT_SERVER_APP_H
+#define __TCP_CLIENT_SERVER_APP_H
 
 #include "app/common.h"
 #include "platform/common.h"
 
 typedef struct TcpClientServerStats {
-    
     SockStats_t connStats;
-
 } TcpClientServerStats_t;
 
 typedef struct TcpClientServerGroup {
@@ -15,8 +14,8 @@ typedef struct TcpClientServerGroup {
     uint32_t nextClientAddrIndex;
     LocalPortPool_t* LocalPortPoolArr;
     SockAddr_t serverAddr;
-    uint32_t csDataLen;
-    uint32_t scDataLen;
+    uint64_t csDataLen;
+    uint64_t scDataLen;
     enum ConnCloseMethod cCloseMethod;
     enum ConnCloseMethod sCloseMethod;
     enum ConnCloseType csCloseType;
@@ -47,28 +46,24 @@ void DumpTcpClientStats(TcpClientServerI_t* appConnStats);
 
 #ifdef __APP__MAIN__
 
-#define RW_MAX_BUFF_LEN 2048
-typedef struct RwBuff {
-    int buffLen;
-    int buffOffset;
-    int dataLen;
-    char dataBuff[RW_MAX_BUFF_LEN];
-} RwBuff_t;
-#endif
+#define COMMON_READBUFF_MAXLEN      2048
+#define COMMON_WRITEBUFF_MAXLEN     1048576
 
 // --------TcpClient---------//
 
 typedef struct TcpClientAppCtx {
     Pool_t* freeSessionPool;
-    Pool_t* freeBuffPool;
     Pool_t activeSessionPool;
+    char commonReadBuff[COMMON_READBUFF_MAXLEN];
+    char commonWriteBuff[COMMON_WRITEBUFF_MAXLEN];
     TcpClientServerI_t* appI; 
 } TcpClientAppCtx_t;
 
 typedef struct TcpClientConn {
     IoVentConn_t* iovConn;
-    RwBuff_t* readBuff;
-    RwBuff_t* writeBuff;
+    uint64_t bytesRead;
+    uint64_t bytesWritten;
+    uint32_t writeBuffOffset;
 } TcpClientConn_t;
 
 typedef struct TcpClientSession {
@@ -95,6 +90,5 @@ typedef struct TcpClientSession {
 //     TcpServerAppCtx* appCtx;
 //     TcpServerConn_t aConn;
 // } TcpServerSession_t;
-
-#define __TCP_CLIENT_SERVER_APP_H
+#endif
 #endif

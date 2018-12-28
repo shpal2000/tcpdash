@@ -114,7 +114,6 @@ static void OnReadNext (struct IoVentConn* iovConn) {
         = (TcpProxySession_t*) iovConn->cInfo.sessionData;
 
 
-
     TcpProxyConn_t* tpConn = NULL;
     TcpProxyConn_t* tpConnOther = NULL;
 
