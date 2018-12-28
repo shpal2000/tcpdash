@@ -23,10 +23,18 @@ static void InitSession (TcpClientSession_t* newSess
                             TcpClientAppCtx_t* appCtx ) {
 
     newSess->appCtx = appCtx;
+
     InitConn (&newSess->tcpConn);
 }
 
 static void OnEstablish (struct IoVentConn* iovConn) {
+
+    TcpClientAppCtx_t* appCtx 
+        = (TcpClientAppCtx_t*) iovConn->cInfo.appCtx;
+
+    
+    
+
 }
 
 static void OnWriteNext (struct IoVentConn* iovConn) {
@@ -72,7 +80,6 @@ static int OnContinue (void* appData) {
         return EmAppContinueZeroActive; 
     }
 
-    
     //continue to run
     return EmAppContinue;
 }
@@ -132,8 +139,19 @@ void TcpClientRun (TcpClientServerI_t* appI) {
                 * appI->connectionPerSec;
 
         while (newConnectionInits > 0
-                && tcpConnInitCount < appI->maxSessions) {
+                    && tcpConnInitCount < appI->maxSessions) {
 
+            TcpClientSession_t* newSess =         
+                GetFromPool (appCtx->freeSessionPool);
+
+            if (newSess == NULL) {
+                IncConnStats2 ( &appI->gStats
+                                , &csGroup->cStats
+                                , appSessStructNotAvail );
+                break;
+            }
+
+            InitSession (newSess, appCtx);
 
             //new connection init
             TcpClientServerGroup_t* csGroup
@@ -144,9 +162,6 @@ void TcpClientRun (TcpClientServerI_t* appI) {
 
             SockAddr_t* remoteAddress 
                 = &(csGroup->serverAddr);
-
-            TcpClientServerStats_t* groupConnStats 
-                = &csGroup->cStats;
 
             LocalPortPool_t* localPortPool 
                 = &csGroup->LocalPortPoolArr[csGroup->nextClientAddrIndex];
@@ -164,12 +179,12 @@ void TcpClientRun (TcpClientServerI_t* appI) {
             NewConnection (iovCtx
                             , csGroup
                             , appCtx
-                            , NULL
+                            , newSess
                             , localAddress
                             , localPortPool
                             , remoteAddress
-                            , appConnStats
-                            , groupConnStats);       
+                            , &csGroup->cStats
+                            , &appI->gStats);      
 
             newConnectionInits -= 1;
 
@@ -178,10 +193,13 @@ void TcpClientRun (TcpClientServerI_t* appI) {
             tcpConnInitCount 
                 = GetConnStats(appI->gStats, tcpConnInit);
         }
-
     }
 
+    DumpErrConnections (iovCtx);
+
     DeleteIoVentCtx (iovCtx);
+
+    appI->isRunning = 0;
 }
 
 TcpClientServerI_t* CreateTcpClientServerInterface(int csGroupCount

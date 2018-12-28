@@ -203,8 +203,8 @@ void TlsSampleClientRun (TlsSampleClient_t* appI) {
     DumpErrConnections (iovCtx);
 
     DeleteIoVentCtx (iovCtx);
-    DeleteTimerWheel(timerWheel);
 
+    DeleteTimerWheel(timerWheel);
 
     appI->isRunning = 0;
 }

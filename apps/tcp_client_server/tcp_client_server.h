@@ -4,7 +4,9 @@
 #include "platform/common.h"
 
 typedef struct TcpClientServerStats {
+    
     SockStats_t connStats;
+
 } TcpClientServerStats_t;
 
 typedef struct TcpClientServerGroup {
