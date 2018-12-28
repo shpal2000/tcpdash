@@ -23,7 +23,6 @@ static void InitSession (TcpClientSession_t* newSess
                             TcpClientAppCtx_t* appCtx ) {
 
     newSess->appCtx = appCtx;
-
     InitConn (&newSess->tcpConn);
 }
 
@@ -32,9 +31,13 @@ static void OnEstablish (struct IoVentConn* iovConn) {
     TcpClientAppCtx_t* appCtx 
         = (TcpClientAppCtx_t*) iovConn->cInfo.appCtx;
 
-    
-    
-
+    TcpClientSession_t* newSess 
+        = (TcpClientSession_t*) iovConn->cInfo.sessionData;
+ 
+    if ( IsConnErr (iovConn) ) {
+        RemoveFromPool (&appCtx->activeSessionPool, newSess);
+        AddToPool (&appCtx->freeSessionPool, newSess);
+    }
 }
 
 static void OnWriteNext (struct IoVentConn* iovConn) {
@@ -150,6 +153,8 @@ void TcpClientRun (TcpClientServerI_t* appI) {
                                 , appSessStructNotAvail );
                 break;
             }
+
+            AddToPool (&appCtx->activeSessionPool, newSess);
 
             InitSession (newSess, appCtx);
 
