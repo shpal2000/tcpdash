@@ -31,11 +31,11 @@ static TcpClientSession_t* GetSession (TcpClientAppCtx_t* appCtx) {
 }
 
 static void FreeSession (TcpClientSession_t* newSess
-                            TcpClientAppCtx_t* appCtx ) {
+                            , TcpClientAppCtx_t* appCtx ) {
 
     RemoveFromPool (&appCtx->activeSessionPool, newSess);
 
-    AddToPool (&appCtx->freeSessionPool, newSess);
+    AddToPool (appCtx->freeSessionPool, newSess);
 }
 
 static void OnEstablish (struct IoVentConn* iovConn) {
@@ -62,9 +62,6 @@ static void OnReadNext (struct IoVentConn* iovConn) {
     TcpClientAppCtx_t* appCtx 
         = (TcpClientAppCtx_t*) iovConn->cInfo.appCtx;
 
-    TcpClientSession_t* newSess 
-        = (TcpClientSession_t*) iovConn->cInfo.sessionData;
-
     ReadNextData (iovConn
                 , appCtx->commonReadBuff
                 , 0
@@ -72,22 +69,19 @@ static void OnReadNext (struct IoVentConn* iovConn) {
 }
 
 static void OnReadStatus (struct IoVentConn* iovConn
-                                    , int bytesReceived) {
-
-    TcpClientAppCtx_t* appCtx 
-        = (TcpClientAppCtx_t*) iovConn->cInfo.appCtx;
+                                    , int bytesRead) {
 
     TcpClientSession_t* newSess 
         = (TcpClientSession_t*) iovConn->cInfo.sessionData;
 
     
-    if (bytesReceived > 0) {
+    if (bytesRead > 0) {
 
-        iovConn->bytesRead += bytesReceived;
+        newSess->tcpConn.bytesRead += bytesRead;
     
     } else {
 
-        int closeErr = bytesReceived;
+        int closeErr = bytesRead;
 
         if (closeErr != ON_CLOSE_ERROR_NONE) {
             AbortConnection (iovConn);    
@@ -107,33 +101,31 @@ static void OnWriteNext (struct IoVentConn* iovConn) {
         = (TcpClientServerGroup_t*) iovConn->cInfo.groupCtx;
   
 
-    if (iovConn->bytesWritten < groupCtx->csDataLen) {
+    if (newSess->tcpConn.bytesWritten < groupCtx->csDataLen) {
 
         int nextChunkLen = 0;
 
-        if ( (groupCtx->csDataLen - iovConn->bytesWritten) 
+        if ( (groupCtx->csDataLen - newSess->tcpConn.bytesWritten) 
                                 > COMMON_WRITEBUFF_MAXLEN ) {
 
             nextChunkLen = COMMON_WRITEBUFF_MAXLEN;
 
         } else {
 
-            nextChunkLen = (int) (groupCtx->csDataLen - iovConn->bytesWritten);
+            nextChunkLen 
+                = (int) (groupCtx->csDataLen - newSess->tcpConn.bytesWritten);
         }
 
         WriteNextData (iovConn
                         , appCtx->commonWriteBuff
                         , 0
-                        , tmpBuff->nextChunkLen
+                        , nextChunkLen
                         , 0);
     }
 }
 
 static void OnWriteStatus (struct IoVentConn* iovConn
                                     , int bytesWritten) {
-
-    TcpClientAppCtx_t* appCtx 
-        = (TcpClientAppCtx_t*) iovConn->cInfo.appCtx;
 
     TcpClientSession_t* newSess 
         = (TcpClientSession_t*) iovConn->cInfo.sessionData;
@@ -144,9 +136,9 @@ static void OnWriteStatus (struct IoVentConn* iovConn
 
     if (bytesWritten > 0) {
 
-        iovConn->bytesWritten += bytesWritten;
+        newSess->tcpConn.bytesWritten += bytesWritten;
 
-        if (iovConn->bytesWritten == groupCtx->csDataLen) {
+        if (newSess->tcpConn.bytesWritten == groupCtx->csDataLen) {
             WriteClose (iovConn);
         }
     } else {
@@ -175,16 +167,16 @@ static int OnContinue (void* appData) {
     TcpClientServerI_t* appI = appCtx->appI;
 
     //exceeded error connections
-    uint32_t tcpConnInitFailCount 
-        = GetConnStats(appI->gStats, tcpConnInitFail);
+    uint64_t tcpConnInitFailCount 
+        = GetConnStats(&appI->gStats, tcpConnInitFail);
 
-    if (tcpConnInitFailCount >= appI->maxErrorSessions) {
+    if (tcpConnInitFailCount >= appI->maxErrSessions) {
         return EmAppExit; 
     }
 
     //achived desired total connections
     uint64_t tcpConnInitCount 
-        = GetConnStats(appI->gStats, tcpConnInit);
+        = GetConnStats(&appI->gStats, tcpConnInit);
 
     if (tcpConnInitCount == appI->maxSessions) {
         return EmAppContinueZeroActive; 
@@ -201,8 +193,8 @@ static TcpClientAppCtx_t* CreateAppCtx (TcpClientServerI_t* appI) {
     appCtx->appI = appI;
 
     CreatePool (&appCtx->freeSessionPool
-                , appI->maxActiveSessions
-                , TcpProxySession_t);
+                , appI->maxActSessions
+                , TcpClientSession_t);
 
     InitPool (&appCtx->activeSessionPool);
 
@@ -211,7 +203,8 @@ static TcpClientAppCtx_t* CreateAppCtx (TcpClientServerI_t* appI) {
 
 void TcpClientRun (TcpClientServerI_t* appI) {
 
-    TcpClientAppCtx_t* appCtx = CreateAppCtx (appI);
+    TcpClientAppCtx_t* appCtx 
+        = CreateAppCtx (appI);
 
     IoVentMethods_t* iovMethods = CreateStruct0 (IoVentMethods_t);
     iovMethods->OnEstablish = &OnEstablish;
@@ -224,12 +217,14 @@ void TcpClientRun (TcpClientServerI_t* appI) {
     iovMethods->OnContinue = &OnContinue;
 
     IoVentOptions_t* iovOptions = CreateStruct0 (IoVentOptions_t);
-    iovOptions->maxActiveConnections = appI->maxActiveSessions;
-    iovOptions->maxErrorConnections = appI->maxErrorSessions;
+    iovOptions->maxActiveConnections = appI->maxActSessions;
+    iovOptions->maxErrorConnections = appI->maxErrSessions;
 
-    IoVentCtx_t* iovCtx = CreateIoVentCtx (iovMethods, iovOptions);
+    IoVentCtx_t* iovCtx 
+        = CreateIoVentCtx (iovMethods, iovOptions, appCtx);
 
-    double lastConnInitTime = TimeElapsedIoVentCtx (iovCtx);
+    double lastConnInitTime 
+        = TimeElapsedIoVentCtx (iovCtx);
 
     while (1) {
 
@@ -238,24 +233,14 @@ void TcpClientRun (TcpClientServerI_t* appI) {
         }
 
         uint64_t tcpConnInitCount 
-            = GetConnStats(appI->gStats, tcpConnInit);
+            = GetConnStats(&appI->gStats, tcpConnInit);
 
         int newConnectionInits 
             = (TimeElapsedIoVentCtx (iovCtx) - lastConnInitTime) 
-                * appI->connectionPerSec;
+                * appI->connPerSec;
 
         while (newConnectionInits > 0
                     && tcpConnInitCount < appI->maxSessions) {
-
-            TcpClientSession_t* newSess = GetSession (appCtx);
-
-            if (newSess == NULL) {
-
-                IncConnStats2 ( &appI->gStats
-                                , &csGroup->cStats
-                                , appSessStructNotAvail );
-                break;
-            }
 
             //new connection init
             TcpClientServerGroup_t* csGroup
@@ -269,6 +254,16 @@ void TcpClientRun (TcpClientServerI_t* appI) {
 
             LocalPortPool_t* localPortPool 
                 = &csGroup->LocalPortPoolArr[csGroup->nextClientAddrIndex];
+
+            TcpClientSession_t* newSess = GetSession (appCtx);
+
+            if (newSess == NULL) {
+
+                IncConnStats2 ( &appI->gStats
+                                , &csGroup->cStats
+                                , appSessStructNotAvail );
+                break;
+            }
 
             appI->nextCsGroupIndex += 1;
             if (appI->nextCsGroupIndex == appI->csGroupCount){
@@ -300,7 +295,7 @@ void TcpClientRun (TcpClientServerI_t* appI) {
             lastConnInitTime = TimeElapsedIoVentCtx (iovCtx);
 
             tcpConnInitCount 
-                = GetConnStats(appI->gStats, tcpConnInit);
+                = GetConnStats(&appI->gStats, tcpConnInit);
         }
     }
 

@@ -1,7 +1,7 @@
 #ifndef __TCP_CLIENT_SERVER_APP_H
 #define __TCP_CLIENT_SERVER_APP_H
 
-#include "app/common.h"
+#include "apps/common.h"
 #include "platform/common.h"
 
 typedef struct TcpClientServerStats {
@@ -31,18 +31,19 @@ typedef struct TcpClientServerI {
     uint32_t maxErrSessions;
     uint64_t maxSessions;
     uint32_t csGroupCount;
-    TcpProxyServer_t* csGroupArr;
+    TcpClientServerGroup_t* csGroupArr;
     uint32_t nextCsGroupIndex;
     TcpClientServerStats_t gStats;
 } TcpClientServerI_t;
 
 void TcpClientRun(TcpClientServerI_t* appI);
 
-TcpClientServerI_t* CreateTcpClientServerInterface(int csGroupCount);
+TcpClientServerI_t* CreateTcpClientServerInterface(int csGroupCount
+                                                , int* clientAddrCounts);
 
 void DeleteTcpClientServerInterface(TcpClientServerI_t* appI);
 
-void DumpTcpClientStats(TcpClientServerI_t* appConnStats);
+void DumpTcpClientStats();
 
 #ifdef __APP__MAIN__
 
@@ -67,7 +68,7 @@ typedef struct TcpClientConn {
 } TcpClientConn_t;
 
 typedef struct TcpClientSession {
-    TcpClientServerAppCtx_t* appCtx;
+    TcpClientAppCtx_t* appCtx;
     TcpClientConn_t tcpConn;
 } TcpClientSession_t;
 
