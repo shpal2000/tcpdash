@@ -20,6 +20,7 @@ executable('tcpdash.exe'
             , dependencies : [glib_dep, json_glib_dep]
             , link_with : [tls_sample_client_lib
                             , tls_sample_server_lib
-                            , tcp_proxy_lib]) 
+                            , tcp_proxy_lib
+                            , tcp_load_lib]) 
 
 

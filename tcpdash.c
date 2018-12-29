@@ -263,20 +263,9 @@ void TcpClientServerMain (int isServer) {
                 , "12.20.50.19"
                 , "12.20.50.20"};
 
-    char* srcIpGroup2 [] = {"12.20.50.12"
-                , "12.20.50.13"
-                , "12.20.50.14"
-                , "12.20.50.15"
-                , "12.20.50.16"
-                , "12.20.50.17"
-                , "12.20.50.18"
-                , "12.20.50.19"
-                , "12.20.50.20"};
-    char** srcIpGroups[2];
+    char** srcIpGroups[1];
     srcIpGroups[0] = srcIpGroup1;
-    srcIpGroups[1] = srcIpGroup2;
-        
-    // char* dstIpGroups[2] = { "12.20.60.2", "12.20.60.3" };
+
     char* dstIpGroups[1] = { "12.20.60.2"};
     int dstPort = 443;
 
@@ -304,7 +293,7 @@ void TcpClientServerMain (int isServer) {
     appI->nextCsGroupIndex = 0;
     for (int gIndex = 0; gIndex < appI->csGroupCount; gIndex++) {
         TcpClientServerGroup_t* csGroup = &appI->csGroupArr[gIndex];
-        csGroup->clientAddrCount = clientAddrCounts[gIndex];
+        csGroup->clientAddrCount = csGroupClientAddrCountArr[gIndex];
         csGroup->nextClientAddrIndex = 0;
         csGroup->clientAddrArr
             = (SockAddr_t*) mmap(NULL
@@ -323,14 +312,45 @@ void TcpClientServerMain (int isServer) {
         for (int cIndex = 0
                 ; cIndex < csGroup->clientAddrCount
                 ; cIndex++) {
-            InitPortBindQ(&csGroup->LocalPortPoolArr[cIndex]);
+        
+            struct sockaddr_in* localAddr 
+                = &(csGroup->clientAddrArr[cIndex].inAddr);
+            memset(localAddr, 0, sizeof(SockAddr_t));
+            localAddr->sin_family = AF_INET;
+            inet_pton(AF_INET
+                        , srcIpGroups[gIndex][cIndex]
+                        , &(localAddr->sin_addr));
+
+            LocalPortPool_t* portQ = &csGroup->LocalPortPoolArr[cIndex];
+            InitPortBindQ(portQ);
+            for (int srcPort = 5000; srcPort <= 65000; srcPort++) {
+                SetPortToPool(portQ, htons(srcPort));
+            }
         }
 
+        struct sockaddr_in* remoteAddr 
+            = &(csGroup->serverAddr.inAddr);
+        memset(remoteAddr, 0, sizeof(SockAddr_t));
+        remoteAddr->sin_family = AF_INET;
+        inet_pton(AF_INET
+                    , dstIpGroups[gIndex]
+                    , &(remoteAddr->sin_addr));
+        remoteAddr->sin_port = htons(dstPort);
+
+        csGroup->csDataLen = 100;
+        csGroup->scDataLen = 100;
         csGroup->cCloseMethod = EmTcpFIN; 
         csGroup->sCloseMethod = EmTcpFIN;
         csGroup->csCloseType = EmDataFinish;
-        csGroup->csWeight = 1; 
+        csGroup->csWeight = 1;  
     }
+
+    appI->isRunning = 1;
+    appI->maxEvents = 0;
+    appI->connPerSec = 10;
+    appI->maxActSessions = 10000;
+    appI->maxErrSessions = 100;
+    appI->maxSessions = 100;
 
     if (isServer) {
         // TcpServerRun (appI);
