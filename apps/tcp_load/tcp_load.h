@@ -38,13 +38,6 @@ typedef struct TcpClientServerI {
 
 void TcpClientRun(TcpClientServerI_t* appI);
 
-TcpClientServerI_t* CreateTcpClientServerInterface(int csGroupCount
-                                                , int* clientAddrCounts);
-
-void DeleteTcpClientServerInterface(TcpClientServerI_t* appI);
-
-void DumpTcpClientStats();
-
 #ifdef __APP__MAIN__
 
 #define COMMON_READBUFF_MAXLEN      2048

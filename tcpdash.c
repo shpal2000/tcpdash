@@ -21,6 +21,7 @@
 #include "iovents/apps/tls_sample_client.h"
 #include "iovents/apps/tls_sample_server.h"
 #include "apps/tcp_proxy/tcp_proxy.h"
+#include "apps/tcp_load/tcp_load.h"
 
 #define APP_MAX_EVENTS 1000
 #define APP_MAX_LISTENQ_LENGTH 10000
@@ -240,6 +241,104 @@ void TcpProxyMain() {
     return;
 }
 
+void TcpClientServerMain (int isServer) {
+
+    char* srcIpGroup1[] = {"12.20.50.2"
+                , "12.20.50.3"
+                , "12.20.50.4"
+                , "12.20.50.5"
+                , "12.20.50.6"
+                , "12.20.50.7"
+                , "12.20.50.8"
+                , "12.20.50.9"
+                , "12.20.50.10"
+                , "12.20.50.11"
+                , "12.20.50.12"
+                , "12.20.50.13"
+                , "12.20.50.14"
+                , "12.20.50.15"
+                , "12.20.50.16"
+                , "12.20.50.17"
+                , "12.20.50.18"
+                , "12.20.50.19"
+                , "12.20.50.20"};
+
+    char* srcIpGroup2 [] = {"12.20.50.12"
+                , "12.20.50.13"
+                , "12.20.50.14"
+                , "12.20.50.15"
+                , "12.20.50.16"
+                , "12.20.50.17"
+                , "12.20.50.18"
+                , "12.20.50.19"
+                , "12.20.50.20"};
+    char** srcIpGroups[2];
+    srcIpGroups[0] = srcIpGroup1;
+    srcIpGroups[1] = srcIpGroup2;
+        
+    // char* dstIpGroups[2] = { "12.20.60.2", "12.20.60.3" };
+    char* dstIpGroups[1] = { "12.20.60.2"};
+    int dstPort = 443;
+
+    int csGroupClientAddrCountArr[1] = {19};
+
+    int csGroupCount = 1;
+
+    TcpClientServerI_t* appI 
+        = (TcpClientServerI_t*) mmap(NULL
+            , sizeof (TcpClientServerI_t)
+            , PROT_READ | PROT_WRITE
+            , MAP_SHARED | MAP_ANONYMOUS
+            , -1
+            , 0);
+
+    appI->csGroupCount = csGroupCount;
+    appI->csGroupArr 
+        = (TcpClientServerGroup_t*) mmap(NULL
+            , sizeof (TcpClientServerGroup_t) * appI->csGroupCount
+            , PROT_READ | PROT_WRITE
+            , MAP_SHARED | MAP_ANONYMOUS
+            , -1
+            , 0);
+    
+    appI->nextCsGroupIndex = 0;
+    for (int gIndex = 0; gIndex < appI->csGroupCount; gIndex++) {
+        TcpClientServerGroup_t* csGroup = &appI->csGroupArr[gIndex];
+        csGroup->clientAddrCount = clientAddrCounts[gIndex];
+        csGroup->nextClientAddrIndex = 0;
+        csGroup->clientAddrArr
+            = (SockAddr_t*) mmap(NULL
+                , sizeof (SockAddr_t) * csGroup->clientAddrCount
+                , PROT_READ | PROT_WRITE
+                , MAP_SHARED | MAP_ANONYMOUS
+                , -1
+                , 0);
+        csGroup->LocalPortPoolArr 
+            = (LocalPortPool_t*) mmap(NULL
+                , sizeof (LocalPortPool_t) * csGroup->clientAddrCount
+                , PROT_READ | PROT_WRITE
+                , MAP_SHARED | MAP_ANONYMOUS
+                , -1
+                , 0);
+        for (int cIndex = 0
+                ; cIndex < csGroup->clientAddrCount
+                ; cIndex++) {
+            InitPortBindQ(&csGroup->LocalPortPoolArr[cIndex]);
+        }
+
+        csGroup->cCloseMethod = EmTcpFIN; 
+        csGroup->sCloseMethod = EmTcpFIN;
+        csGroup->csCloseType = EmDataFinish;
+        csGroup->csWeight = 1; 
+    }
+
+    if (isServer) {
+        // TcpServerRun (appI);
+    } else {
+       TcpClientRun (appI); 
+    }
+}
+
 int main(int argc, char** argv)
 {
     if (strcmp (argv[1], "TlsSampleClient") == 0) {
@@ -248,6 +347,10 @@ int main(int argc, char** argv)
         TlsSampleServerMain();
     } else if (strcmp (argv[1], "TcpProxy") == 0) {
         TcpProxyMain();
+    } else if (strcmp (argv[1], "TcpClient") == 0) {
+        TcpClientServerMain(0);
+    } else if (strcmp (argv[1], "TcpServer") == 0) {
+        TcpClientServerMain(1);
     }
 
     return 0;
