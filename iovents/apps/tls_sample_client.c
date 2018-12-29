@@ -189,7 +189,6 @@ void TlsSampleClientRun (TlsSampleClient_t* appI) {
 
                 NewConnection (iovCtx
                                 , csGroup
-                                , appCtx
                                 , NULL
                                 , localAddress
                                 , localPortPool

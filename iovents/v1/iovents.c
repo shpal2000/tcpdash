@@ -283,7 +283,6 @@ static void OnConnectionEstablshedHelper (IoVentConn_t* newConn) {
 
 int NewConnection (IoVentCtx_t* iovCtx
                         , void* groupCtx
-                        , void* appCtx
                         , void* sessionData
                         , SockAddr_t* localAddress
                         , LocalPortPool_t* localPortPool 
@@ -301,7 +300,7 @@ int NewConnection (IoVentCtx_t* iovCtx
         SetAppState(newConn, CONNAPP_STATE_CONNECTION_IN_PROGRESS);
         newConn->cInfo.iovCtx = iovCtx;
         newConn->cInfo.groupCtx = groupCtx;
-        newConn->cInfo.appCtx = appCtx;
+        newConn->cInfo.appCtx = iovCtx->appCtx;
         newConn->cInfo.sessionData = sessionData;
         newConn->cInfo.localAddress = localAddress;
         newConn->cInfo.localPortPool = localPortPool;
@@ -359,7 +358,6 @@ int NewConnection (IoVentCtx_t* iovCtx
 
 void InitServer (IoVentCtx_t* iovCtx
                     , void* groupCtx
-                    , void* appCtx
                     , SockAddr_t* localAddress
                     , void* aStats
                     , void* bStats) {
@@ -370,7 +368,7 @@ void InitServer (IoVentCtx_t* iovCtx
     } else {
         newConn->cInfo.iovCtx = iovCtx;
         newConn->cInfo.groupCtx = groupCtx;
-        newConn->cInfo.appCtx = appCtx;
+        newConn->cInfo.appCtx = iovCtx->appCtx;
         newConn->cInfo.localAddress = localAddress;
         newConn->cInfo.summaryStats = aStats;
         newConn->cInfo.groupStats = bStats;

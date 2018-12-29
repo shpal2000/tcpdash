@@ -160,7 +160,6 @@ void TlsSampleServerRun (TlsSampleServer_t* appI) {
 
         InitServer(iovCtx
                     , csGroup
-                    , appCtx
                     , localAddress
                     , appConnStats
                     , groupConnStats);

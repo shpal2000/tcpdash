@@ -152,7 +152,6 @@ int ProcessIoVent (IoVentCtx_t* iovCtx);
 
 int NewConnection (IoVentCtx_t* iovCtx
                         , void* groupCtx
-                        , void* appCtx
                         , void* sessionData
                         , SockAddr_t* localAddress
                         , LocalPortPool_t* localPortPool 
@@ -162,7 +161,6 @@ int NewConnection (IoVentCtx_t* iovCtx
 
 void InitServer (IoVentCtx_t* iovCtx
                         , void* groupCtx
-                        , void* appCtx
                         , SockAddr_t* localAddress
                         , void* aStats
                         , void* bStats);

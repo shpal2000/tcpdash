@@ -30,24 +30,20 @@ static TcpClientSession_t* GetSession (TcpClientAppCtx_t* appCtx) {
     return newSess;
 }
 
-static void FreeSession (TcpClientSession_t* newSess
-                            , TcpClientAppCtx_t* appCtx ) {
+static void FreeSession (TcpClientSession_t* newSess) {
 
-    RemoveFromPool (&appCtx->activeSessionPool, newSess);
+    RemoveFromPool (&newSess->appCtx->activeSessionPool, newSess);
 
-    AddToPool (appCtx->freeSessionPool, newSess);
+    AddToPool (newSess->appCtx->freeSessionPool, newSess);
 }
 
 static void OnEstablish (struct IoVentConn* iovConn) {
-
-    TcpClientAppCtx_t* appCtx 
-        = (TcpClientAppCtx_t*) iovConn->cInfo.appCtx;
 
     TcpClientSession_t* newSess 
         = (TcpClientSession_t*) iovConn->cInfo.sessionData;
  
     if ( IsConnErr (iovConn) ) {
-        FreeSession (newSess, appCtx);
+        FreeSession (newSess);
     } else {
         setsockopt(iovConn->socketFd, SOL_SOCKET, SO_KEEPALIVE, &(int){ 1 }, sizeof(int));
         setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPCNT, &(int){ 3 }, sizeof(int));
@@ -148,13 +144,10 @@ static void OnWriteStatus (struct IoVentConn* iovConn
 
 static void OnCleanup (struct IoVentConn* iovConn) {
 
-    TcpClientAppCtx_t* appCtx 
-        = (TcpClientAppCtx_t*) iovConn->cInfo.appCtx;
-
     TcpClientSession_t* newSess 
         = (TcpClientSession_t*) iovConn->cInfo.sessionData;
 
-    FreeSession (newSess, appCtx);
+    FreeSession (newSess);
 }
 
 static void OnStatus (struct IoVentConn* iovConn) {
@@ -186,7 +179,7 @@ static int OnContinue (void* appData) {
     return EmAppContinue;
 }
 
-static TcpClientAppCtx_t* CreateAppCtx (TcpClientServerI_t* appI) {
+static IoVentCtx_t* InitApp (TcpClientServerI_t* appI) {
 
     TcpClientAppCtx_t* appCtx = CreateStruct0 (TcpClientAppCtx_t);
 
@@ -197,14 +190,6 @@ static TcpClientAppCtx_t* CreateAppCtx (TcpClientServerI_t* appI) {
                 , TcpClientSession_t);
 
     InitPool (&appCtx->activeSessionPool);
-
-    return appCtx;
-}
-
-void TcpClientRun (TcpClientServerI_t* appI) {
-
-    TcpClientAppCtx_t* appCtx 
-        = CreateAppCtx (appI);
 
     IoVentMethods_t* iovMethods = CreateStruct0 (IoVentMethods_t);
     iovMethods->OnEstablish = &OnEstablish;
@@ -217,11 +202,18 @@ void TcpClientRun (TcpClientServerI_t* appI) {
     iovMethods->OnContinue = &OnContinue;
 
     IoVentOptions_t* iovOptions = CreateStruct0 (IoVentOptions_t);
-    iovOptions->maxActiveConnections = appI->maxActSessions;
-    iovOptions->maxErrorConnections = appI->maxErrSessions;
+    iovOptions->maxActiveConnections = appCtx->appI->maxActSessions;
+    iovOptions->maxErrorConnections = appCtx->appI->maxErrSessions;
 
     IoVentCtx_t* iovCtx 
         = CreateIoVentCtx (iovMethods, iovOptions, appCtx);
+
+    return iovCtx;
+}
+
+void TcpClientRun (TcpClientServerI_t* appI) {
+
+    IoVentCtx_t* iovCtx = InitApp (appI);
 
     double lastConnInitTime 
         = TimeElapsedIoVentCtx (iovCtx);
@@ -255,7 +247,7 @@ void TcpClientRun (TcpClientServerI_t* appI) {
             LocalPortPool_t* localPortPool 
                 = &csGroup->LocalPortPoolArr[csGroup->nextClientAddrIndex];
 
-            TcpClientSession_t* newSess = GetSession (appCtx);
+            TcpClientSession_t* newSess = GetSession (iovCtx->appCtx);
 
             if (newSess == NULL) {
 
@@ -278,7 +270,6 @@ void TcpClientRun (TcpClientServerI_t* appI) {
             int newConnInitErr = 
                 NewConnection (iovCtx
                                 , csGroup
-                                , appCtx
                                 , newSess
                                 , localAddress
                                 , localPortPool
@@ -287,7 +278,7 @@ void TcpClientRun (TcpClientServerI_t* appI) {
                                 , &appI->gStats);
 
             if (newConnInitErr) {
-                FreeSession (newSess, appCtx);
+                FreeSession (newSess);
             }  
 
             newConnectionInits -= 1;

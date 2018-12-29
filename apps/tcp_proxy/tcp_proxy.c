@@ -68,7 +68,6 @@ static void OnEstablish (struct IoVentConn* iovConn) {
             int newConnInitErr
                         = NewConnection (iovConn->cInfo.iovCtx
                             , server
-                            , appCtx
                             , iovConn->cInfo.sessionData
                             //, &server->serverAddrL
                             , &iovConn->remoteAddressAccept 
@@ -389,7 +388,6 @@ void TcpProxyRun (TcpProxyI_t* appI) {
 
     InitServer(iovCtx
                 , server
-                , appCtx
                 , &server->serverAddrP
                 , &appCtx->appI->gStats
                 , &server->cStats);
