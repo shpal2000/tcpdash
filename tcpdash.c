@@ -241,7 +241,7 @@ void TcpProxyMain() {
     return;
 }
 
-void TcpClientServerMain (int isServer) {
+void TcpCSMain (int isServer) {
 
     char* srcIpGroup1[] = {"12.20.50.2"
                 , "12.20.50.3"
@@ -273,9 +273,9 @@ void TcpClientServerMain (int isServer) {
 
     int csGroupCount = 1;
 
-    TcpClientServerI_t* appI 
-        = (TcpClientServerI_t*) mmap(NULL
-            , sizeof (TcpClientServerI_t)
+    TcpCSI_t* appI 
+        = (TcpCSI_t*) mmap(NULL
+            , sizeof (TcpCSI_t)
             , PROT_READ | PROT_WRITE
             , MAP_SHARED | MAP_ANONYMOUS
             , -1
@@ -283,8 +283,8 @@ void TcpClientServerMain (int isServer) {
 
     appI->csGroupCount = csGroupCount;
     appI->csGroupArr 
-        = (TcpClientServerGroup_t*) mmap(NULL
-            , sizeof (TcpClientServerGroup_t) * appI->csGroupCount
+        = (TcpCSGroup_t*) mmap(NULL
+            , sizeof (TcpCSGroup_t) * appI->csGroupCount
             , PROT_READ | PROT_WRITE
             , MAP_SHARED | MAP_ANONYMOUS
             , -1
@@ -292,7 +292,7 @@ void TcpClientServerMain (int isServer) {
     
     appI->nextCsGroupIndex = 0;
     for (int gIndex = 0; gIndex < appI->csGroupCount; gIndex++) {
-        TcpClientServerGroup_t* csGroup = &appI->csGroupArr[gIndex];
+        TcpCSGroup_t* csGroup = &appI->csGroupArr[gIndex];
         csGroup->clientAddrCount = csGroupClientAddrCountArr[gIndex];
         csGroup->nextClientAddrIndex = 0;
         csGroup->clientAddrArr
@@ -350,12 +350,12 @@ void TcpClientServerMain (int isServer) {
     appI->connPerSec = 10;
     appI->maxActSessions = 10000;
     appI->maxErrSessions = 100;
-    appI->maxSessions = 100;
+    appI->maxSessions = 1000000;
 
     if (isServer) {
-        // TcpServerRun (appI);
+        TcpServerRun (appI);
     } else {
-       TcpClientRun (appI); 
+        TcpClientRun (appI); 
     }
 }
 
@@ -368,9 +368,9 @@ int main(int argc, char** argv)
     } else if (strcmp (argv[1], "TcpProxy") == 0) {
         TcpProxyMain();
     } else if (strcmp (argv[1], "TcpClient") == 0) {
-        TcpClientServerMain(0);
+        TcpCSMain(0);
     } else if (strcmp (argv[1], "TcpServer") == 0) {
-        TcpClientServerMain(1);
+        TcpCSMain(1);
     }
 
     return 0;

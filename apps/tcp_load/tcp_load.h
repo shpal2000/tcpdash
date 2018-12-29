@@ -4,11 +4,11 @@
 #include "apps/common.h"
 #include "platform/common.h"
 
-typedef struct TcpClientServerStats {
+typedef struct TcpCSStats {
     SockStats_t connStats;
-} TcpClientServerStats_t;
+} TcpCSStats_t;
 
-typedef struct TcpClientServerGroup {
+typedef struct TcpCSGroup {
     uint32_t clientAddrCount;
     SockAddr_t* clientAddrArr;
     uint32_t nextClientAddrIndex;
@@ -20,10 +20,10 @@ typedef struct TcpClientServerGroup {
     enum ConnCloseMethod sCloseMethod;
     enum ConnCloseType csCloseType;
     uint32_t csWeight;
-    TcpClientServerStats_t cStats;
-} TcpClientServerGroup_t;
+    TcpCSStats_t cStats;
+} TcpCSGroup_t;
 
-typedef struct TcpClientServerI {
+typedef struct TcpCSI {
     uint32_t isRunning;
     uint32_t maxEvents;
     uint32_t connPerSec;
@@ -31,12 +31,13 @@ typedef struct TcpClientServerI {
     uint32_t maxErrSessions;
     uint64_t maxSessions;
     uint32_t csGroupCount;
-    TcpClientServerGroup_t* csGroupArr;
+    TcpCSGroup_t* csGroupArr;
     uint32_t nextCsGroupIndex;
-    TcpClientServerStats_t gStats;
-} TcpClientServerI_t;
+    TcpCSStats_t gStats;
+} TcpCSI_t;
 
-void TcpClientRun(TcpClientServerI_t* appI);
+void TcpClientRun(TcpCSI_t* appI);
+void TcpServerRun(TcpCSI_t* appI);
 
 #ifdef __APP__MAIN__
 
@@ -45,44 +46,25 @@ void TcpClientRun(TcpClientServerI_t* appI);
 
 // --------TcpClient---------//
 
-typedef struct TcpClientAppCtx {
+typedef struct TcpCSAppCtx {
     Pool_t* freeSessionPool;
     Pool_t activeSessionPool;
     char commonReadBuff[COMMON_READBUFF_MAXLEN];
     char commonWriteBuff[COMMON_WRITEBUFF_MAXLEN];
-    TcpClientServerI_t* appI; 
-} TcpClientAppCtx_t;
+    TcpCSI_t* appI; 
+} TcpCSAppCtx_t;
 
-typedef struct TcpClientConn {
+typedef struct TcpCSConn {
     IoVentConn_t* iovConn;
     uint64_t bytesRead;
     uint64_t bytesWritten;
     uint32_t writeBuffOffset;
-} TcpClientConn_t;
+} TcpCSConn_t;
 
-typedef struct TcpClientSession {
-    TcpClientAppCtx_t* appCtx;
-    TcpClientConn_t tcpConn;
-} TcpClientSession_t;
+typedef struct TcpCSSession {
+    TcpCSAppCtx_t* appCtx;
+    TcpCSConn_t tcpConn;
+} TcpCSSession_t;
 
-// --------TcpServer---------//
-
-// typedef struct TcpServerAppCtx {
-//     Pool_t* freeSessionPool;
-//     Pool_t* freeBuffPool;
-//     Pool_t activeSessionPool;
-//     TcpClientServerI_t* appI; 
-// } TcpServerAppCtx_t;
-
-// typedef struct TcpServerConn {
-//     IoVentConn_t* iovConn;
-//     RwBuff_t* readBuff;
-//     RwBuff_t* writeBuff;
-// } TcpServerConn_t;
-
-// typedef struct TcpServerSession {
-//     TcpServerAppCtx* appCtx;
-//     TcpServerConn_t aConn;
-// } TcpServerSession_t;
 #endif
 #endif
