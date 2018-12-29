@@ -347,16 +347,43 @@ void TcpCSMain (int isServer) {
 
     appI->isRunning = 1;
     appI->maxEvents = 0;
-    appI->connPerSec = 10;
+    appI->connPerSec = 15000;
     appI->maxActSessions = 10000;
     appI->maxErrSessions = 100;
     appI->maxSessions = 1000000;
 
-    if (isServer) {
-        TcpServerRun (appI);
-    } else {
-        TcpClientRun (appI); 
+    // if (isServer) {
+    //     TcpServerRun (appI);
+    // } else {
+    //     TcpClientRun (appI); 
+    // }
+    // return;
+
+    int forkPid = fork();
+
+    if (forkPid < 0) {
+        exit(-1);
     }
+
+    if (forkPid == 0) {
+        if (isServer) {
+            TcpServerRun (appI);
+        } else {
+            TcpClientRun (appI); 
+        }
+    }else{
+        while (appI->isRunning) {
+            sleep(2);
+            if (isServer) {
+                DumpTcpServerStats(&appI->gStats);
+            } else {
+                DumpTcpClientStats(&appI->gStats);
+            }
+        }
+
+        int status;
+        wait(&status);
+    }    
 }
 
 int main(int argc, char** argv)

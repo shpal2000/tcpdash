@@ -297,5 +297,28 @@ void TcpClientRun (TcpCSI_t* appI) {
     appI->isRunning = 0;
 }
 
+void DumpTcpClientStats(TcpCSStats_t* appConnStats) {
+    
+    char statsString[120];
 
+    sprintf (statsString, 
+                        "%" PRIu64 "\n" 
+                        "%" PRIu64 "\n"
+                        "%" PRIu64 "\n"
+                        "%" PRIu64 "\n"
+                        "%" PRIu64 "\n"
+                        "%" PRIu64 "\n"
+                        "%" PRIu64 "\n"
+                        "\n"
+        , GetConnStats(appConnStats, tcpConnInit)
+        , GetConnStats(appConnStats, tcpConnInitSuccess)
+        , GetConnStats(appConnStats, tcpConnInitFail)
+        , GetConnStats(appConnStats, tcpConnInitFailImmediateOther)
+        , GetConnStats(appConnStats, tcpConnInitFailImmediateEaddrNotAvail)
+        , GetConnStats(appConnStats, tcpPollRegUnregFail)
+        , GetConnStats(appConnStats, dummyCount)
+        );
+
+    puts (statsString);
+}
 

@@ -38,6 +38,8 @@ typedef struct TcpCSI {
 
 void TcpClientRun(TcpCSI_t* appI);
 void TcpServerRun(TcpCSI_t* appI);
+void DumpTcpClientStats(TcpCSStats_t* appConnStats);
+void DumpTcpServerStats(TcpCSStats_t* appConnStats);
 
 #ifdef __APP__MAIN__
 
