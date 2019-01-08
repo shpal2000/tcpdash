@@ -7,6 +7,7 @@
 
 #include "platform/common.h"
 
+
 /** @brief Initiate the TCP connection etablishment process 
  *         to remote host.
  *         
@@ -185,6 +186,12 @@ int TcpListenStart(SockAddr_t* lAddr
         IncConnStats2(aStats, bStats, socketCreate);
         SetCS1(cState, STATE_TCP_SOCK_CREATE);
 
+        //???
+        int ret_val = setsockopt(socket_fd, SOL_IP, IP_TRANSPARENT, &(int){ 1 }, sizeof(int));
+        printf ("IP_TRANSPARENT = %d\n", ret_val);
+
+        
+
         //bind local socket
         int bind_status = -1;
         if (is_ipv6){
@@ -192,6 +199,17 @@ int TcpListenStart(SockAddr_t* lAddr
                                 , (struct sockaddr*)lAddr
                                 , sizeof(struct sockaddr_in6));
         }else{
+
+            //???
+            // struct addrinfo hints, *res;            
+            // memset(&hints, 0, sizeof(hints));
+            // if(getaddrinfo(NULL, "883", &hints, &res) != 0){
+            //     perror("getaddrinfo: ");
+            //     exit(EXIT_FAILURE);
+            // }
+
+            // bind_status = bind(socket_fd, res->ai_addr, res->ai_addrlen);
+
             bind_status = bind(socket_fd
                                 , (struct sockaddr*)lAddr
                                 , sizeof(struct sockaddr_in));
@@ -331,6 +349,7 @@ int TcpRead(int fd
 }
 
 int TcpAcceptConnection(int listenerFd
+                        , SockAddr_t* lAddr
                         , SockAddr_t* rAddr
                         , void* aStats
                         , void* bStats
@@ -374,7 +393,14 @@ int TcpAcceptConnection(int listenerFd
                     SetCES(cState, STATE_TCP_SOCK_REUSE_FAIL);
                 } else {
                     IncConnStats2(aStats, bStats, socketReuseSet);
-                    SetCS1(cState, STATE_TCP_SOCK_REUSE); 
+                    SetCS1(cState, STATE_TCP_SOCK_REUSE);
+
+                    addrLen = sizeof (SockAddr_t);
+                    ret = getsockname(socket_fd, (struct sockaddr*) lAddr, &addrLen);
+                    if (ret < 0) {
+                        IncConnStats2(aStats, bStats, tcpGetSockNameFail);
+                        SetCES(cState, STATE_TCP_GETSOCKNAME_FAIL);
+                    }
                 }
             }
         }

@@ -67,6 +67,7 @@ typedef struct IoVentConn {
 
     uint16_t savedLocalPort;
     uint16_t savedRemotePort;
+    SockAddr_t localAddressAccept;
     SockAddr_t remoteAddressAccept;
     
     uint32_t statusId;

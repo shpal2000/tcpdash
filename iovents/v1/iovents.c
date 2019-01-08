@@ -415,12 +415,13 @@ static void OnTcpAcceptConnection(IoVentConn_t* lSockConn) {
         newConn->cInfo.iovCtx = lSockConn->cInfo.iovCtx;
         newConn->cInfo.groupCtx = lSockConn->cInfo.groupCtx;
         newConn->cInfo.appCtx = lSockConn->cInfo.appCtx;
-        newConn->cInfo.localAddress = lSockConn->cInfo.localAddress;
+        newConn->cInfo.localAddress = &newConn->localAddressAccept;
         newConn->cInfo.remoteAddress = &newConn->remoteAddressAccept; 
         newConn->cInfo.summaryStats = lSockConn->cInfo.summaryStats;
         newConn->cInfo.groupStats = lSockConn->cInfo.groupStats;
 
         newConn->socketFd = TcpAcceptConnection(lSockConn->socketFd
+                                            , newConn->cInfo.localAddress
                                             , newConn->cInfo.remoteAddress
                                             , newConn->cInfo.summaryStats
                                             , newConn->cInfo.groupStats

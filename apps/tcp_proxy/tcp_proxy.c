@@ -56,7 +56,6 @@ static void OnEstablish (struct IoVentConn* iovConn) {
             setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPINTVL, &(int){ 1 }, sizeof(int));
             setsockopt(iovConn->socketFd, SOL_TCP, TCP_USER_TIMEOUT, &(int){ 15000 }, sizeof(int));
 
-            // init server side of proxied connection
             TcpProxyServer_t* server 
                 = (TcpProxyServer_t*) iovConn->cInfo.groupCtx;
 
@@ -75,6 +74,16 @@ static void OnEstablish (struct IoVentConn* iovConn) {
                             , &server->serverAddrR
                             , &appCtx->appI->gStats
                             , &server->cStats);
+
+            // int newConnInitErr
+            //             = NewConnection (iovConn->cInfo.iovCtx
+            //                 , server
+            //                 , iovConn->cInfo.sessionData
+            //                 , &iovConn->remoteAddressAccept 
+            //                 , NULL
+            //                 , &iovConn->localAddressAccept
+            //                 , &appCtx->appI->gStats
+            //                 , &server->cStats);
             
             if (newConnInitErr) {
                 //update stats
@@ -330,8 +339,8 @@ static void OnCleanup (struct IoVentConn* iovConn) {
 
             AddToPool (newSess->appCtx->freeSessionPool, newSess);
             RemoveFromPool (&newSess->appCtx->activeSessionPool, newSess);
-            printf ("Free Sessions = %d\n", GetPoolCount (newSess->appCtx->freeSessionPool) );
-            printf ("Free Buffs = %d\n", GetPoolCount (newSess->appCtx->freeBuffPool) );
+            // printf ("Free Sessions = %d\n", GetPoolCount (newSess->appCtx->freeSessionPool) );
+            // printf ("Free Buffs = %d\n", GetPoolCount (newSess->appCtx->freeBuffPool) );
         }
 
     } else {

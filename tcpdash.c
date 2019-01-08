@@ -71,7 +71,7 @@ void TlsSampleClientMain () {
 
     // char* dstIpGroups[2] = { "12.20.60.2", "12.20.60.3" };
     char* dstIpGroups[1] = { "12.20.60.2"};
-    int dstPort = 443;
+    int dstPort = 444;
 
     int csGroupClientAddrCountArr[1] = {19};
     TlsSampleClient_t* TcpClientI 
@@ -140,7 +140,7 @@ void TlsSampleClientMain () {
 
 void TlsSampleServerMain() {
     char* dstIpGroups[2] = { "12.20.60.2", "12.20.60.3" };
-    int dstPort = 443;
+    int dstPort = 444;
 
     TlsSampleServer_t* TcpServerI 
         = CreateTlsSampleServerInterface(1); 
@@ -195,6 +195,53 @@ void TlsSampleServerMain() {
 
 }
 
+// void TcpProxyMain() {
+
+//     TcpProxyI_t* tcpProxyI 
+//         = CreateTcpProxyInterface(1); 
+
+//     tcpProxyI->maxActiveSessions = 100000;
+//     tcpProxyI->maxErrorSessions = 100;
+
+//     TcpProxyServer_t* server 
+//         = &tcpProxyI->serverArr[0];
+
+//     // proxy address
+//     struct sockaddr_in* serverAddrP 
+//         = &(server->serverAddrP.inAddr);
+//     memset(serverAddrP, 0, sizeof(SockAddr_t));
+//     serverAddrP->sin_family = AF_INET;
+//     inet_pton(AF_INET
+//                 , "0.0.0.0"
+//                 , &(serverAddrP->sin_addr));
+//     serverAddrP->sin_port = htons(883);
+
+//     // local address
+//     struct sockaddr_in* serverAddrL 
+//         = &(server->serverAddrL.inAddr);
+//     memset(serverAddrL, 0, sizeof(SockAddr_t));
+//     serverAddrL->sin_family = AF_INET;
+//     inet_pton(AF_INET
+//                 , "2.2.2.2"
+//                 , &(serverAddrL->sin_addr));
+//     serverAddrL->sin_port = htons(0);
+
+//     // remote address
+//     struct sockaddr_in* serverAddrR 
+//         = &(server->serverAddrR.inAddr);
+//     memset(serverAddrR, 0, sizeof(SockAddr_t));
+//     serverAddrR->sin_family = AF_INET;
+//     inet_pton(AF_INET
+//                 , "12.20.60.2"
+//                 , &(serverAddrR->sin_addr));
+//     serverAddrR->sin_port = htons(443);    
+
+//     TcpProxyRun(tcpProxyI);
+
+//     return;
+// }
+
+
 void TcpProxyMain() {
 
     TcpProxyI_t* tcpProxyI 
@@ -212,7 +259,7 @@ void TcpProxyMain() {
     memset(serverAddrP, 0, sizeof(SockAddr_t));
     serverAddrP->sin_family = AF_INET;
     inet_pton(AF_INET
-                , "12.20.60.2"
+                , "2.2.2.2"
                 , &(serverAddrP->sin_addr));
     serverAddrP->sin_port = htons(443);
 
@@ -222,7 +269,7 @@ void TcpProxyMain() {
     memset(serverAddrL, 0, sizeof(SockAddr_t));
     serverAddrL->sin_family = AF_INET;
     inet_pton(AF_INET
-                , "12.20.60.2"
+                , "3.3.3.3"
                 , &(serverAddrL->sin_addr));
     serverAddrL->sin_port = htons(0);
 
@@ -232,14 +279,15 @@ void TcpProxyMain() {
     memset(serverAddrR, 0, sizeof(SockAddr_t));
     serverAddrR->sin_family = AF_INET;
     inet_pton(AF_INET
-                , "12.20.53.240"
+                , "12.20.60.2"
                 , &(serverAddrR->sin_addr));
-    serverAddrR->sin_port = htons(444);    
+    serverAddrR->sin_port = htons(443);    
 
     TcpProxyRun(tcpProxyI);
 
     return;
 }
+
 
 void TcpCSMain (int isServer) {
 
@@ -269,7 +317,7 @@ void TcpCSMain (int isServer) {
     char* dstIpGroups[1] = { "12.20.60.2"};
     int dstPort = 443;
 
-    int csGroupClientAddrCountArr[1] = {19};
+    int csGroupClientAddrCountArr[1] = {1};
 
     int csGroupCount = 1;
 
@@ -347,10 +395,10 @@ void TcpCSMain (int isServer) {
 
     appI->isRunning = 1;
     appI->maxEvents = 0;
-    appI->connPerSec = 15000;
+    appI->connPerSec = 2000;
     appI->maxActSessions = 10000;
-    appI->maxErrSessions = 100;
-    appI->maxSessions = 1000000;
+    appI->maxErrSessions = 10000;
+    appI->maxSessions = 100000;
 
     // if (isServer) {
     //     TcpServerRun (appI);

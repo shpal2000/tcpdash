@@ -10,7 +10,7 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
-
+#include <netdb.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
@@ -66,6 +66,8 @@ typedef struct SockStats{
     uint64_t appSessStructNotAvail;
 
     uint64_t tcpInitServerFail;
+
+    uint64_t tcpGetSockNameFail;
 
     uint64_t dummyCount;
 } SockStats_t;
@@ -280,6 +282,7 @@ void DumpCStats(void* aStats);
 #define STATE_TCP_REMOTE_CLOSED_ERROR                       0x0000000000200000
 #define STATE_TCP_TIMEOUT_CLOSED_ERROR                      0x0000000000400000
 #define STATE_TCP_SOCK_LINGER_FAIL                          0x0000000000800000
+#define STATE_TCP_GETSOCKNAME_FAIL                          0x0000000001000000
 
 
 #define AllocSession(__type) g_slice_new(__type)
@@ -398,6 +401,7 @@ int TcpListenStart(SockAddr_t* localAddress
                     , void* cState);
 
 int TcpAcceptConnection(int listenerFd
+                        , SockAddr_t* lAddr
                         , SockAddr_t* rAddr
                         , void* aStats
                         , void* bStats
