@@ -50,6 +50,10 @@ int TcpNewConnection(SockAddr_t* lAddr
         setsockopt_status = setsockopt(socket_fd, SOL_SOCKET
                                 , SO_REUSEADDR, &(int){ 1 }, sizeof(int));
 
+        //???
+        setsockopt(socket_fd, SOL_IP, IP_TRANSPARENT, &(int){ 1 }, sizeof(int));
+        // printf ("IP_TRANSPARENT = %d\n", ret_val);
+
         if (setsockopt_status == -1){
             IncConnStats2(aStats, bStats, socketReuseSetFail);
             SetCES(cState, STATE_TCP_SOCK_REUSE_FAIL);
@@ -187,8 +191,8 @@ int TcpListenStart(SockAddr_t* lAddr
         SetCS1(cState, STATE_TCP_SOCK_CREATE);
 
         //???
-        int ret_val = setsockopt(socket_fd, SOL_IP, IP_TRANSPARENT, &(int){ 1 }, sizeof(int));
-        printf ("IP_TRANSPARENT = %d\n", ret_val);
+        setsockopt(socket_fd, SOL_IP, IP_TRANSPARENT, &(int){ 1 }, sizeof(int));
+        // printf ("IP_TRANSPARENT = %d\n", ret_val);
 
         
 

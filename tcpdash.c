@@ -212,9 +212,9 @@ void TlsSampleServerMain() {
 //     memset(serverAddrP, 0, sizeof(SockAddr_t));
 //     serverAddrP->sin_family = AF_INET;
 //     inet_pton(AF_INET
-//                 , "0.0.0.0"
+//                 , "2.2.2.2"
 //                 , &(serverAddrP->sin_addr));
-//     serverAddrP->sin_port = htons(883);
+//     serverAddrP->sin_port = htons(443);
 
 //     // local address
 //     struct sockaddr_in* serverAddrL 
@@ -222,7 +222,7 @@ void TlsSampleServerMain() {
 //     memset(serverAddrL, 0, sizeof(SockAddr_t));
 //     serverAddrL->sin_family = AF_INET;
 //     inet_pton(AF_INET
-//                 , "2.2.2.2"
+//                 , "3.3.3.3"
 //                 , &(serverAddrL->sin_addr));
 //     serverAddrL->sin_port = htons(0);
 
@@ -259,9 +259,9 @@ void TcpProxyMain() {
     memset(serverAddrP, 0, sizeof(SockAddr_t));
     serverAddrP->sin_family = AF_INET;
     inet_pton(AF_INET
-                , "2.2.2.2"
+                , "0.0.0.0"
                 , &(serverAddrP->sin_addr));
-    serverAddrP->sin_port = htons(443);
+    serverAddrP->sin_port = htons(883);
 
     // local address
     struct sockaddr_in* serverAddrL 
@@ -288,10 +288,9 @@ void TcpProxyMain() {
     return;
 }
 
-
 void TcpCSMain (int isServer) {
 
-    char* srcIpGroup1[] = {"12.20.50.2"
+    char* srcIpGroup1[] = { "12.20.50.2"
                 , "12.20.50.3"
                 , "12.20.50.4"
                 , "12.20.50.5"
@@ -309,7 +308,18 @@ void TcpCSMain (int isServer) {
                 , "12.20.50.17"
                 , "12.20.50.18"
                 , "12.20.50.19"
-                , "12.20.50.20"};
+                , "12.20.50.20"
+                , "12.20.50.21"
+                , "12.20.50.22"
+                , "12.20.50.23"
+                , "12.20.50.24"
+                , "12.20.50.25"
+                , "12.20.50.26"
+                , "12.20.50.27"
+                , "12.20.50.28"
+                , "12.20.50.29"
+                , "12.20.50.30"
+                , "12.20.50.31"};
 
     char** srcIpGroups[1];
     srcIpGroups[0] = srcIpGroup1;
@@ -317,7 +327,7 @@ void TcpCSMain (int isServer) {
     char* dstIpGroups[1] = { "12.20.60.2"};
     int dstPort = 443;
 
-    int csGroupClientAddrCountArr[1] = {1};
+    int csGroupClientAddrCountArr[1] = {30};
 
     int csGroupCount = 1;
 
@@ -395,10 +405,10 @@ void TcpCSMain (int isServer) {
 
     appI->isRunning = 1;
     appI->maxEvents = 0;
-    appI->connPerSec = 2000;
-    appI->maxActSessions = 10000;
+    appI->connPerSec = 10000;
+    appI->maxActSessions = 100000;
     appI->maxErrSessions = 10000;
-    appI->maxSessions = 100000;
+    appI->maxSessions = 1000000;
 
     // if (isServer) {
     //     TcpServerRun (appI);
