@@ -195,63 +195,32 @@ void TlsSampleServerMain() {
 
 }
 
-// void TcpProxyMain() {
-
-//     TcpProxyI_t* tcpProxyI 
-//         = CreateTcpProxyInterface(1); 
-
-//     tcpProxyI->maxActiveSessions = 100000;
-//     tcpProxyI->maxErrorSessions = 100;
-
-//     TcpProxyServer_t* server 
-//         = &tcpProxyI->serverArr[0];
-
-//     // proxy address
-//     struct sockaddr_in* serverAddrP 
-//         = &(server->serverAddrP.inAddr);
-//     memset(serverAddrP, 0, sizeof(SockAddr_t));
-//     serverAddrP->sin_family = AF_INET;
-//     inet_pton(AF_INET
-//                 , "2.2.2.2"
-//                 , &(serverAddrP->sin_addr));
-//     serverAddrP->sin_port = htons(443);
-
-//     // local address
-//     struct sockaddr_in* serverAddrL 
-//         = &(server->serverAddrL.inAddr);
-//     memset(serverAddrL, 0, sizeof(SockAddr_t));
-//     serverAddrL->sin_family = AF_INET;
-//     inet_pton(AF_INET
-//                 , "3.3.3.3"
-//                 , &(serverAddrL->sin_addr));
-//     serverAddrL->sin_port = htons(0);
-
-//     // remote address
-//     struct sockaddr_in* serverAddrR 
-//         = &(server->serverAddrR.inAddr);
-//     memset(serverAddrR, 0, sizeof(SockAddr_t));
-//     serverAddrR->sin_family = AF_INET;
-//     inet_pton(AF_INET
-//                 , "12.20.60.2"
-//                 , &(serverAddrR->sin_addr));
-//     serverAddrR->sin_port = htons(443);    
-
-//     TcpProxyRun(tcpProxyI);
-
-//     return;
-// }
-
-
 void TcpProxyMain() {
 
-    TcpProxyI_t* tcpProxyI 
-        = CreateTcpProxyInterface(1); 
+    int csGroupCount = 1;
 
-    tcpProxyI->maxActiveSessions = 100000;
-    tcpProxyI->maxErrorSessions = 100;
+    TcpProxyAppI_t* appI 
+        = (TcpProxyAppI_t*) mmap(NULL
+            , sizeof (TcpProxyAppI_t)
+            , PROT_READ | PROT_WRITE
+            , MAP_SHARED | MAP_ANONYMOUS
+            , -1
+            , 0);
 
-    TcpProxyServer_t* server 
-        = &tcpProxyI->serverArr[0];
+    appI->csGroupCount = csGroupCount;
+    appI->csGroupArr 
+        = (TcpProxyAppGroup_t*) mmap(NULL
+            , sizeof (TcpProxyAppGroup_t) * appI->csGroupCount
+            , PROT_READ | PROT_WRITE
+            , MAP_SHARED | MAP_ANONYMOUS
+            , -1
+            , 0);
+
+    appI->maxActiveSessions = 100000;
+    appI->maxErrorSessions = 100;
+
+    TcpProxyAppGroup_t* server 
+        = &appI->csGroupArr[0];
 
     // proxy address
     struct sockaddr_in* serverAddrP 
@@ -263,27 +232,7 @@ void TcpProxyMain() {
                 , &(serverAddrP->sin_addr));
     serverAddrP->sin_port = htons(883);
 
-    // local address
-    struct sockaddr_in* serverAddrL 
-        = &(server->serverAddrL.inAddr);
-    memset(serverAddrL, 0, sizeof(SockAddr_t));
-    serverAddrL->sin_family = AF_INET;
-    inet_pton(AF_INET
-                , "3.3.3.3"
-                , &(serverAddrL->sin_addr));
-    serverAddrL->sin_port = htons(0);
-
-    // remote address
-    struct sockaddr_in* serverAddrR 
-        = &(server->serverAddrR.inAddr);
-    memset(serverAddrR, 0, sizeof(SockAddr_t));
-    serverAddrR->sin_family = AF_INET;
-    inet_pton(AF_INET
-                , "12.20.60.2"
-                , &(serverAddrR->sin_addr));
-    serverAddrR->sin_port = htons(443);    
-
-    TcpProxyRun(tcpProxyI);
+    TcpProxyRun(appI);
 
     return;
 }
@@ -331,9 +280,9 @@ void TcpCSMain (int isServer) {
 
     int csGroupCount = 1;
 
-    TcpCSI_t* appI 
-        = (TcpCSI_t*) mmap(NULL
-            , sizeof (TcpCSI_t)
+    TcpCsAppI_t* appI 
+        = (TcpCsAppI_t*) mmap(NULL
+            , sizeof (TcpCsAppI_t)
             , PROT_READ | PROT_WRITE
             , MAP_SHARED | MAP_ANONYMOUS
             , -1
@@ -341,8 +290,8 @@ void TcpCSMain (int isServer) {
 
     appI->csGroupCount = csGroupCount;
     appI->csGroupArr 
-        = (TcpCSGroup_t*) mmap(NULL
-            , sizeof (TcpCSGroup_t) * appI->csGroupCount
+        = (TcpCsAppGroup_t*) mmap(NULL
+            , sizeof (TcpCsAppGroup_t) * appI->csGroupCount
             , PROT_READ | PROT_WRITE
             , MAP_SHARED | MAP_ANONYMOUS
             , -1
@@ -350,7 +299,7 @@ void TcpCSMain (int isServer) {
     
     appI->nextCsGroupIndex = 0;
     for (int gIndex = 0; gIndex < appI->csGroupCount; gIndex++) {
-        TcpCSGroup_t* csGroup = &appI->csGroupArr[gIndex];
+        TcpCsAppGroup_t* csGroup = &appI->csGroupArr[gIndex];
         csGroup->clientAddrCount = csGroupClientAddrCountArr[gIndex];
         csGroup->nextClientAddrIndex = 0;
         csGroup->clientAddrArr

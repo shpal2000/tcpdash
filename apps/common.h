@@ -8,4 +8,7 @@ enum ConnCloseMethod {EmTcpFIN
 enum ConnCloseType {EmClientClose
                     , EmServerClose
                     , EmDataFinish};
+
+
+
 #endif

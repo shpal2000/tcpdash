@@ -2,36 +2,30 @@
 #define __TCP_PROXY_APP_H
 
 #include "platform/common.h"
+#include "apps/common.h"
 
-typedef struct TcpProxyStats {
+typedef struct TcpProxyAppStats {
     SockStats_t connStats;
-} TcpProxyStats_t;
+} TcpProxyAppStats_t;
 
-typedef struct TcpProxyServer {
+typedef struct TcpProxyAppGroup {
     SockAddr_t serverAddrP;
-    SockAddr_t serverAddrL;
-    SockAddr_t serverAddrR;
-    TcpProxyStats_t cStats;
-} TcpProxyServer_t;
+    TcpProxyAppStats_t cStats;
+} TcpProxyAppGroup_t;
 
-typedef struct TcpProxyI {
+typedef struct TcpProxyAppI {
 
     uint32_t maxActiveSessions;
     uint32_t maxErrorSessions;
 
-    uint32_t serverCount;
-    TcpProxyServer_t* serverArr;
+    uint32_t csGroupCount;
+    TcpProxyAppGroup_t* csGroupArr;
 
-    TcpProxyStats_t gStats;
-} TcpProxyI_t;
+    TcpProxyAppStats_t gStats;
+} TcpProxyAppI_t;
 
-void TcpProxyRun(TcpProxyI_t* appIface);
-
-TcpProxyI_t* CreateTcpProxyInterface(int serverCount);
-
-void DeleteTcpProxyInterface(TcpProxyI_t* iFace);
-
-void DumpTcpProxyStats(TcpProxyStats_t* appConnStats);
+void TcpProxyRun(TcpProxyAppI_t* appIface);
+void DumpTcpProxyStats(TcpProxyAppStats_t* appConnStats);
 
 #ifdef __APP__MAIN__
 
@@ -41,7 +35,7 @@ void DumpTcpProxyStats(TcpProxyStats_t* appConnStats);
 typedef struct TcpProxyAppCtx {
     Pool_t* freeSessionPool;
     Pool_t* freeBuffPool;
-    TcpProxyI_t* appI; 
+    TcpProxyAppI_t* appI; 
     Pool_t activeSessionPool;
 } TcpProxyAppCtx_t;
 
@@ -53,19 +47,19 @@ typedef struct RwBuff {
     char dataBuff[RW_MAX_BUFF_LEN];
 } RwBuff_t;
 
-typedef struct TcpProxyConn {
+typedef struct TcpProxyAppConn {
     IoVentConn_t* iovConn;
     RwBuff_t* readBuff;
     RwBuff_t* writeBuff;
     Pool_t writeQ;
     int isActive;
-} TcpProxyConn_t;
+} TcpProxyAppConn_t;
 
-typedef struct TcpProxySession {
+typedef struct TcpProxyAppSession {
     TcpProxyAppCtx_t* appCtx;
-    TcpProxyConn_t aConn;
-    TcpProxyConn_t iConn;
-} TcpProxySession_t;
+    TcpProxyAppConn_t aConn;
+    TcpProxyAppConn_t iConn;
+} TcpProxyAppSession_t;
 
 
 #endif //__APP__MAIN__
