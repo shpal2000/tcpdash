@@ -1,9 +1,7 @@
 #include <sys/mman.h>
 #include "iovents.h"
 
-#define __APP__MAIN__
 #include "tcp_proxy.h"
-
 
 static void InitRwBuff (RwBuff_t* newBuff) {
 
@@ -370,7 +368,9 @@ static TcpProxyAppCtx_t* CreateAppCtx (TcpProxyAppI_t* appI) {
     return appCtx;
 }
 
-void TcpProxyRun (TcpProxyAppI_t* appI) {
+void TcpProxyRun (void* paramAppI) {
+
+    TcpProxyAppI_t* appI = (TcpProxyAppI_t*) paramAppI;
 
     TcpProxyAppCtx_t* appCtx = CreateAppCtx (appI);
 
@@ -408,6 +408,26 @@ void TcpProxyRun (TcpProxyAppI_t* appI) {
     DumpErrConnections (iovCtx);
 
     DeleteIoVentCtx (iovCtx);
+}
+
+void DumpTcpProxyStats (void* paramAppI) {
+
+    TcpProxyAppI_t* appI = (TcpProxyAppI_t*) paramAppI;
+    TcpProxyAppStats_t* appConnStats = &appI->gStats; 
+
+    char statsString[120];
+
+    sprintf (statsString, 
+                        "%" PRIu64 " : " 
+                        "%" PRIu64 " : "
+                        "%" PRIu64
+                        "\n"
+        , GetConnStats(appConnStats, tcpAcceptSuccess)
+        , GetConnStats(appConnStats, tcpConnInit)
+        , GetConnStats(appConnStats, tcpConnInitSuccess)
+        );
+
+    puts (statsString);
 }
 
 

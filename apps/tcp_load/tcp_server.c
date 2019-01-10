@@ -204,7 +204,9 @@ static IoVentCtx_t* InitApp (TcpCsAppI_t* appI) {
     return iovCtx;
 }
 
-void TcpServerRun (TcpCsAppI_t* appI) {
+void TcpServerRun (void* paramAppI) {
+
+    TcpCsAppI_t* appI = (TcpCsAppI_t*) paramAppI;
 
     IoVentCtx_t* iovCtx = InitApp (appI);
 
@@ -237,26 +239,17 @@ void TcpServerRun (TcpCsAppI_t* appI) {
     appI->isRunning = 0;
 }
 
-void DumpTcpServerStats(TcpCsAppStats_t* appConnStats) {
-    
+void DumpTcpServerStats(void* paramAppI) {
+
+    TcpCsAppI_t* appI = (TcpCsAppI_t*) paramAppI;
+    TcpCsAppStats_t* appConnStats = &appI->gStats; 
+
     char statsString[120];
 
     sprintf (statsString, 
-                        "%" PRIu64 "\n" 
-                        "%" PRIu64 "\n"
-                        "%" PRIu64 "\n"
-                        "%" PRIu64 "\n"
-                        "%" PRIu64 "\n"
-                        "%" PRIu64 "\n"
-                        "%" PRIu64 "\n"
+                        "%" PRIu64 
                         "\n"
-        , GetConnStats(appConnStats, tcpConnInit)
         , GetConnStats(appConnStats, tcpAcceptSuccess)
-        , GetConnStats(appConnStats, tcpAcceptFail)
-        , GetConnStats(appConnStats, tcpConnInitFailImmediateOther)
-        , GetConnStats(appConnStats, tcpConnInitFailImmediateEaddrNotAvail)
-        , GetConnStats(appConnStats, tcpPollRegUnregFail)
-        , GetConnStats(appConnStats, dummyCount)
         );
 
     puts (statsString);

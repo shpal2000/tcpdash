@@ -1,9 +1,7 @@
 #include <sys/mman.h>
 #include "iovents.h"
 
-#define __APP__MAIN__
 #include "tcp_load.h"
-
 
 static void InitConn (TcpCsAppConn_t * tcpConn) {
 
@@ -211,7 +209,9 @@ static IoVentCtx_t* InitApp (TcpCsAppI_t* appI) {
     return iovCtx;
 }
 
-void TcpClientRun (TcpCsAppI_t* appI) {
+void TcpClientRun (void* paramAppI) {
+
+    TcpCsAppI_t* appI = (TcpCsAppI_t*) paramAppI;
 
     IoVentCtx_t* iovCtx = InitApp (appI);
 
@@ -297,26 +297,19 @@ void TcpClientRun (TcpCsAppI_t* appI) {
     appI->isRunning = 0;
 }
 
-void DumpTcpClientStats(TcpCsAppStats_t* appConnStats) {
-    
+void DumpTcpClientStats(void* paramAppI) {
+
+    TcpCsAppI_t* appI = (TcpCsAppI_t*) paramAppI;
+    TcpCsAppStats_t* appConnStats = &appI->gStats; 
+ 
     char statsString[120];
 
     sprintf (statsString, 
-                        "%" PRIu64 "\n" 
-                        "%" PRIu64 "\n"
-                        "%" PRIu64 "\n"
-                        "%" PRIu64 "\n"
-                        "%" PRIu64 "\n"
-                        "%" PRIu64 "\n"
-                        "%" PRIu64 "\n"
-                        "\n"
+                        "%" PRIu64 " : " 
+                        "%" PRIu64
+                       "\n"
         , GetConnStats(appConnStats, tcpConnInit)
         , GetConnStats(appConnStats, tcpConnInitSuccess)
-        , GetConnStats(appConnStats, tcpConnInitFail)
-        , GetConnStats(appConnStats, tcpConnInitFailImmediateOther)
-        , GetConnStats(appConnStats, tcpConnInitFailImmediateEaddrNotAvail)
-        , GetConnStats(appConnStats, tcpPollRegUnregFail)
-        , GetConnStats(appConnStats, dummyCount)
         );
 
     puts (statsString);

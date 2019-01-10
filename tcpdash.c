@@ -20,8 +20,8 @@
 
 #include "iovents/apps/tls_sample_client.h"
 #include "iovents/apps/tls_sample_server.h"
-#include "apps/tcp_proxy/tcp_proxy.h"
-#include "apps/tcp_load/tcp_load.h"
+
+#include "apps/common.h"
 
 #define APP_MAX_EVENTS 1000
 #define APP_MAX_LISTENQ_LENGTH 10000
@@ -31,7 +31,37 @@
 #define TCP_SERVER_MAX_EVENTS APP_MAX_EVENTS
 #define TCP_SERVER_MAX_LISTENQ_LENGTH APP_MAX_LISTENQ_LENGTH
 
+typedef void (*pAppRunFunc_t) (void*);
+typedef void (*pDumpStatsFunc_t) (void*);
 
+void RunMain (pAppRunFunc_t pAppRun 
+                , pDumpStatsFunc_t pDumpStats
+                , void* appI) {
+
+    int forkPid = fork();
+
+    if (forkPid < 0) {
+        exit(-1);
+    }
+
+    if (forkPid == 0) {
+
+        (*pAppRun) (appI);
+
+    }else{
+
+        while (kill(forkPid, 0) == 0) {
+
+            sleep(2);
+
+            (*pDumpStats) (appI);
+        }
+
+        int status;
+
+        wait(&status);
+    }        
+}
 
 void TlsSampleClientMain () {
         char* srcIpGroup1[] = {"12.20.50.2"
@@ -232,9 +262,10 @@ void TcpProxyMain() {
                 , &(serverAddrP->sin_addr));
     serverAddrP->sin_port = htons(883);
 
-    TcpProxyRun(appI);
+    // TcpProxyRun(appI);
+    // return;
 
-    return;
+    RunMain (&TcpProxyRun, &DumpTcpProxyStats, appI);
 }
 
 void TcpCSMain (int isServer) {
@@ -366,31 +397,11 @@ void TcpCSMain (int isServer) {
     // }
     // return;
 
-    int forkPid = fork();
-
-    if (forkPid < 0) {
-        exit(-1);
+    if (isServer) {
+        RunMain (&TcpServerRun, &DumpTcpServerStats, appI);
+    } else {
+        RunMain (&TcpClientRun, &DumpTcpClientStats, appI);
     }
-
-    if (forkPid == 0) {
-        if (isServer) {
-            TcpServerRun (appI);
-        } else {
-            TcpClientRun (appI); 
-        }
-    }else{
-        while (appI->isRunning) {
-            sleep(2);
-            if (isServer) {
-                DumpTcpServerStats(&appI->gStats);
-            } else {
-                DumpTcpClientStats(&appI->gStats);
-            }
-        }
-
-        int status;
-        wait(&status);
-    }    
 }
 
 int main(int argc, char** argv)
