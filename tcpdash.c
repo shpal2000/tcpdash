@@ -36,33 +36,41 @@ typedef void (*pDumpStatsFunc_t) (AppI_t*);
 
 void RunMain (pAppRunFunc_t pAppRun 
                 , pDumpStatsFunc_t pDumpStats
-                , AppI_t* appI) {
+                , AppI_t* appI
+                , int isDebug) {
 
-    int forkPid = fork();
-
-    if (forkPid < 0) {
-        exit(-1);
-    }
-
-    appI->isRunning = 1;
-
-    if (forkPid == 0) {
+    if (isDebug) {
 
         (*pAppRun) (appI);
 
-    }else{
+    } else {
 
-        while (appI->isRunning) {
+        int forkPid = fork();
 
-            sleep(2);
-
-            (*pDumpStats) (appI);
+        if (forkPid < 0) {
+            exit(-1);
         }
 
-        int status;
+        appI->isRunning = 1;
 
-        wait(&status);
-    }        
+        if (forkPid == 0) {
+
+            (*pAppRun) (appI);
+
+        }else{
+
+            while (appI->isRunning) {
+
+                sleep(2);
+
+                (*pDumpStats) (appI);
+            }
+
+            int status;
+
+            wait(&status);
+        }
+    }       
 }
 
 void TlsSampleClientMain () {
@@ -264,10 +272,7 @@ void TcpProxyMain() {
                 , &(serverAddrP->sin_addr));
     serverAddrP->sin_port = htons(883);
 
-    // TcpProxyRun(appI);
-    // return;
-
-    RunMain (&TcpProxyRun, &DumpTcpProxyStats, (AppI_t*) appI);
+    RunMain (&TcpProxyRun, &DumpTcpProxyStats, (AppI_t*) appI, 0);
 }
 
 void TcpCSMain (int isServer) {
@@ -389,19 +394,12 @@ void TcpCSMain (int isServer) {
     appI->connPerSec = 2000;
     appI->maxActSessions = 100000;
     appI->maxErrSessions = 10000;
-    appI->maxSessions = 10000;
-
-    // if (isServer) {
-    //     TcpServerRun (appI);
-    // } else {
-    //     TcpClientRun (appI); 
-    // }
-    // return;
+    appI->maxSessions = 1000000;
 
     if (isServer) {
-        RunMain (&TcpServerRun, &DumpTcpServerStats, (AppI_t*) appI);
+        RunMain (&TcpServerRun, &DumpTcpServerStats, (AppI_t*) appI, 0);
     } else {
-        RunMain (&TcpClientRun, &DumpTcpClientStats, (AppI_t*) appI);
+        RunMain (&TcpClientRun, &DumpTcpClientStats, (AppI_t*) appI, 0);
     }
 }
 
