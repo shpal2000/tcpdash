@@ -368,9 +368,9 @@ static TcpProxyAppCtx_t* CreateAppCtx (TcpProxyAppI_t* appI) {
     return appCtx;
 }
 
-void TcpProxyRun (void* paramAppI) {
+void TcpProxyRun (AppI_t* appBase) {
 
-    TcpProxyAppI_t* appI = (TcpProxyAppI_t*) paramAppI;
+    TcpProxyAppI_t* appI = (TcpProxyAppI_t*) appBase;
 
     TcpProxyAppCtx_t* appCtx = CreateAppCtx (appI);
 
@@ -410,9 +410,10 @@ void TcpProxyRun (void* paramAppI) {
     DeleteIoVentCtx (iovCtx);
 }
 
-void DumpTcpProxyStats (void* paramAppI) {
+void DumpTcpProxyStats (AppI_t* appBase) {
 
-    TcpProxyAppI_t* appI = (TcpProxyAppI_t*) paramAppI;
+    TcpCsAppI_t* appI = (TcpCsAppI_t*) appBase;
+
     TcpProxyAppStats_t* appConnStats = &appI->gStats; 
 
     char statsString[120];

@@ -204,9 +204,9 @@ static IoVentCtx_t* InitApp (TcpCsAppI_t* appI) {
     return iovCtx;
 }
 
-void TcpServerRun (void* paramAppI) {
+void TcpServerRun (AppI_t* appBase) {
 
-    TcpCsAppI_t* appI = (TcpCsAppI_t*) paramAppI;
+    TcpCsAppI_t* appI = (TcpCsAppI_t*) appBase;
 
     IoVentCtx_t* iovCtx = InitApp (appI);
 
@@ -236,12 +236,13 @@ void TcpServerRun (void* paramAppI) {
 
     DeleteIoVentCtx (iovCtx);
 
-    appI->isRunning = 0;
+    appI->ctrlInfo.isRunning = 0;
 }
 
-void DumpTcpServerStats(void* paramAppI) {
+void DumpTcpServerStats(AppI_t* appBase) {
 
-    TcpCsAppI_t* appI = (TcpCsAppI_t*) paramAppI;
+    TcpCsAppI_t* appI = (TcpCsAppI_t*) appBase;
+
     TcpCsAppStats_t* appConnStats = &appI->gStats; 
 
     char statsString[120];

@@ -31,12 +31,12 @@
 #define TCP_SERVER_MAX_EVENTS APP_MAX_EVENTS
 #define TCP_SERVER_MAX_LISTENQ_LENGTH APP_MAX_LISTENQ_LENGTH
 
-typedef void (*pAppRunFunc_t) (void*);
-typedef void (*pDumpStatsFunc_t) (void*);
+typedef void (*pAppRunFunc_t) (AppI_t*);
+typedef void (*pDumpStatsFunc_t) (AppI_t*);
 
 void RunMain (pAppRunFunc_t pAppRun 
                 , pDumpStatsFunc_t pDumpStats
-                , void* appI) {
+                , AppI_t* appI) {
 
     int forkPid = fork();
 
@@ -44,13 +44,15 @@ void RunMain (pAppRunFunc_t pAppRun
         exit(-1);
     }
 
+    appI->isRunning = 1;
+
     if (forkPid == 0) {
 
         (*pAppRun) (appI);
 
     }else{
 
-        while (kill(forkPid, 0) == 0) {
+        while (appI->isRunning) {
 
             sleep(2);
 
@@ -265,7 +267,7 @@ void TcpProxyMain() {
     // TcpProxyRun(appI);
     // return;
 
-    RunMain (&TcpProxyRun, &DumpTcpProxyStats, appI);
+    RunMain (&TcpProxyRun, &DumpTcpProxyStats, (AppI_t*) appI);
 }
 
 void TcpCSMain (int isServer) {
@@ -383,12 +385,11 @@ void TcpCSMain (int isServer) {
         csGroup->csWeight = 1;  
     }
 
-    appI->isRunning = 1;
     appI->maxEvents = 0;
-    appI->connPerSec = 10000;
+    appI->connPerSec = 2000;
     appI->maxActSessions = 100000;
     appI->maxErrSessions = 10000;
-    appI->maxSessions = 1000000;
+    appI->maxSessions = 10000;
 
     // if (isServer) {
     //     TcpServerRun (appI);
@@ -398,9 +399,9 @@ void TcpCSMain (int isServer) {
     // return;
 
     if (isServer) {
-        RunMain (&TcpServerRun, &DumpTcpServerStats, appI);
+        RunMain (&TcpServerRun, &DumpTcpServerStats, (AppI_t*) appI);
     } else {
-        RunMain (&TcpClientRun, &DumpTcpClientStats, appI);
+        RunMain (&TcpClientRun, &DumpTcpClientStats, (AppI_t*) appI);
     }
 }
 

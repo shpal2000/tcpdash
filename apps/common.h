@@ -27,7 +27,8 @@ typedef struct TcpProxyAppGroup {
 } TcpProxyAppGroup_t;
 
 typedef struct TcpProxyAppI {
-
+    AppI_t ctrlInfo;
+     
     uint32_t maxActiveSessions;
     uint32_t maxErrorSessions;
 
@@ -37,9 +38,9 @@ typedef struct TcpProxyAppI {
     TcpProxyAppStats_t gStats;
 } TcpProxyAppI_t;
 
-void TcpProxyRun(void* appI);
+void TcpProxyRun(AppI_t* appBase);
 
-void DumpTcpProxyStats(void* appI);
+void DumpTcpProxyStats(AppI_t* appBase);
 
 ////////////////////////////////////TcpCsApp///////////////////////////////
 
@@ -63,7 +64,8 @@ typedef struct TcpCsAppGroup {
 } TcpCsAppGroup_t;
 
 typedef struct TcpCsAppI {
-    uint32_t isRunning;
+    AppI_t ctrlInfo;
+
     uint32_t maxEvents;
     uint32_t connPerSec;
     uint32_t maxActSessions;
@@ -75,11 +77,11 @@ typedef struct TcpCsAppI {
     TcpCsAppStats_t gStats;
 } TcpCsAppI_t;
 
-void TcpClientRun(void* appI);
-void DumpTcpClientStats(void* appI);
+void TcpClientRun(AppI_t* appBase);
+void DumpTcpClientStats(AppI_t* appBase);
 
-void TcpServerRun(void* appI);
-void DumpTcpServerStats(void* appI);
+void TcpServerRun(AppI_t* appBase);
+void DumpTcpServerStats(AppI_t* appBase);
 
 ///////////////////////////////////////////////////////////////////////////
 
