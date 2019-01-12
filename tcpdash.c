@@ -262,6 +262,8 @@ void TcpProxyMain() {
     TcpProxyAppGroup_t* server 
         = &appI->csGroupArr[0];
 
+    server->keepSourcePort = 0;
+
     // proxy address
     struct sockaddr_in* serverAddrP 
         = &(server->serverAddrP.inAddr);
@@ -394,7 +396,7 @@ void TcpCSMain (int isServer) {
     appI->connPerSec = 2000;
     appI->maxActSessions = 100000;
     appI->maxErrSessions = 10000;
-    appI->maxSessions = 1000000;
+    appI->maxSessions = 110000;
 
     if (isServer) {
         RunMain (&TcpServerRun, &DumpTcpServerStats, (AppI_t*) appI, 0);

@@ -57,32 +57,20 @@ static void OnEstablish (struct IoVentConn* iovConn) {
             TcpProxyAppGroup_t* server 
                 = (TcpProxyAppGroup_t*) iovConn->cInfo.groupCtx;
 
-            // uint16_t localPort;
-            // GET_SOCK_PORT (&iovConn->remoteAddressAccept, &localPort);
-            // iovConn->remoteAddressAccept = server->serverAddrL;
-            // SET_SOCK_PORT (&iovConn->remoteAddressAccept, localPort);
-
-            // int newConnInitErr
-            //             = NewConnection (iovConn->cInfo.iovCtx
-            //                 , server
-            //                 , iovConn->cInfo.sessionData
-            //                 //, &server->serverAddrL
-            //                 , &iovConn->remoteAddressAccept 
-            //                 , NULL
-            //                 , &server->serverAddrR
-            //                 , &appCtx->appI->gStats
-            //                 , &server->cStats);
+            if (server->keepSourcePort == 0) {
+                SET_SOCK_PORT (&iovConn->remoteAddressAccept, 0);
+            }
 
             int newConnInitErr
-                        = NewConnection (iovConn->cInfo.iovCtx
-                            , server
-                            , iovConn->cInfo.sessionData
-                            , &iovConn->remoteAddressAccept 
-                            , NULL
-                            , &iovConn->localAddressAccept
-                            , &appCtx->appI->gStats
-                            , &server->cStats);
-            
+                = NewConnection (iovConn->cInfo.iovCtx
+                    , server
+                    , iovConn->cInfo.sessionData
+                    , &iovConn->remoteAddressAccept 
+                    , NULL
+                    , &iovConn->localAddressAccept
+                    , &appCtx->appI->gStats
+                    , &server->cStats);
+
             if (newConnInitErr) {
                 //update stats
                 newSess->iConn.isActive = 0;
@@ -412,7 +400,7 @@ void TcpProxyRun (AppI_t* appBase) {
 
 void DumpTcpProxyStats (AppI_t* appBase) {
 
-    TcpCsAppI_t* appI = (TcpCsAppI_t*) appBase;
+    TcpProxyAppI_t* appI = (TcpProxyAppI_t*) appBase;
 
     TcpProxyAppStats_t* appConnStats = &appI->gStats; 
 

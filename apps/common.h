@@ -22,6 +22,7 @@ typedef struct TcpProxyAppStats {
 } TcpProxyAppStats_t;
 
 typedef struct TcpProxyAppGroup {
+    uint32_t keepSourcePort;
     SockAddr_t serverAddrP;
     TcpProxyAppStats_t cStats;
 } TcpProxyAppGroup_t;
@@ -76,6 +77,51 @@ typedef struct TcpCsAppI {
     uint32_t nextCsGroupIndex;
     TcpCsAppStats_t gStats;
 } TcpCsAppI_t;
+
+/*
+{
+    "maxSessions" : 0, 
+
+    "maxActSessions" : 0,
+    
+    "maxErrSessions" : 0,
+
+    "csGroupList" : [
+        {
+            "clientAddrList" : [
+                {
+                    "addr" : ""
+                    "mask" : ""
+                },
+                {
+                    "addr" : ""
+                    "mask" : ""
+                }
+            ],
+
+            "serverAddr" : "",
+
+            "serverPort" : 0,
+        }, 
+        {
+            "clientAddrList" : [
+                {
+                    "addr" : ""
+                    "mask" : ""
+                },
+                {
+                    "addr" : ""
+                    "mask" : ""
+                }
+            ],
+
+            "serverAddr" : "",
+
+            "serverPort" : 0,
+        }        
+    ]
+}
+*/
 
 void TcpClientRun(AppI_t* appBase);
 void DumpTcpClientStats(AppI_t* appBase);
