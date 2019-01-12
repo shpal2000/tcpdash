@@ -3,20 +3,34 @@
 
 #include "apps/common.h"
 
-typedef struct MsgIoCtx {
-    Pool_t* freeSessionPool;
-    Pool_t activeSessionPool;
-    TcpCsAppI_t* appI; 
-} MsgIoCtx_t;
+#define MSG_IO_DELEMETER "--MsgIoDelemeter--"
 
-typedef struct MsgIoConn {
+typedef struct MsgIoChannel {
     IoVentConn_t* iovConn;
-} MsgIoConn_t;
+    IoVentCtx_t* iovCtx;
+} MsgIoChannel_t;
 
-typedef struct MsgIoSession {
-    MsgIoCtx_t* appCtx;
-    MsgIoConn_t tcpConn;
-} MsgIoSession_t;
+typedef struct MsgIoMethods {
+
+    void (*OnOpen) (MsgIoChannel_t* iovConn); 
+
+    void (*OnClose) (MsgIoChannel_t* iovConn);
+
+    void (*OnError) (MsgIoChannel_t* iovConn); 
+
+    void (*OnMsg) (MsgIoChannel_t* iovConn); 
+
+} MsgIoMethods_t;
+
+MsgIoChannel_t* MsgIoNew (SockAddr_t* remoteAddress
+                            , MsgIoMethods_t* mIoMethods);
+
+void MsgIoDelete (MsgIoChannel_t* mIoConn);
+
+void MsgIoSend (MsgIoChannel_t* mIoConn
+                            , char* msgBuff
+                            , int msgOffset
+                            , int msgLen);
 
 #endif
 
