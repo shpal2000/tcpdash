@@ -435,7 +435,7 @@ int TcpRead(int fd
 #define CreateArray(__type,__count) g_new(__type, __count)
 #define CreateStruct0(__type) g_slice_new0(__type) 
 #define CreateStruct(__type) g_slice_new(__type) 
-
+#define DeleteStruct(__type, __memptr) g_slice_free(__type,__memptr)
 //##################TLS######################
 void DoSSLConnect(SSL* newSSL
                     , int fd

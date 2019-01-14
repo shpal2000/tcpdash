@@ -6,7 +6,7 @@ subdir('platform')
 subdir('lab')
 subdir('iovents')
 subdir('apps')
-subdir('msg_io')
+#subdir('msg_io')
 
 tcpdash_src = ['tcpdash.c']
 

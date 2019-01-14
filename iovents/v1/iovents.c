@@ -683,7 +683,7 @@ static void OnTcpConnectionCompletion (IoVentConn_t* newConn) {
     ProcessAbortConnections (newConn->cInfo.iovCtx);    
 }
 
-static void InitIoVentCtx (IoVentCtx_t* iovCtx
+void InitIoVentCtx (IoVentCtx_t* iovCtx
                     , IoVentMethods_t* methods
                     , IoVentOptions_t* options
                     , void* appCtx) {
@@ -744,6 +744,10 @@ IoVentCtx_t* CreateIoVentCtx (IoVentMethods_t* methods
 void DeleteIoVentCtx (IoVentCtx_t* iovCtx) {
 
     DeleteTimerWheel (iovCtx->timerWheel);
+
+    //cleanup
+
+    DeleteStruct (IoVentCtx_t, iovCtx);
 }
 
 double TimeElapsedIoVentCtx(IoVentCtx_t* iovCtx) {

@@ -145,6 +145,11 @@ IoVentCtx_t* CreateIoVentCtx (IoVentMethods_t* methods
                         , IoVentOptions_t* options
                         , void* appCtx);
 
+void InitIoVentCtx (IoVentCtx_t* iovCtx
+                    , IoVentMethods_t* methods
+                    , IoVentOptions_t* options
+                    , void* appCtx);
+
 void DeleteIoVentCtx (IoVentCtx_t* iovCtx);
 
 double TimeElapsedIoVentCtx(IoVentCtx_t* iovCtx);
