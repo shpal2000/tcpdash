@@ -257,6 +257,7 @@ void DumpCStats(void* aStats);
 #define STATE_CONN_PARTIAL_WRITE                            0x0000004000000000
 #define STATE_CONN_MARK_DELETE                              0x0000008000000000
 #define STATE_TCP_SOCK_LINGER                               0x0000010000000000
+#define STATE_CONN_PARTIAL_READ                             0x0000020000000000
 
 #define STATE_TCP_SOCK_CREATE_FAIL                          0x0000000000000001
 #define STATE_TCP_SOCK_BIND_FAIL                            0x0000000000000002

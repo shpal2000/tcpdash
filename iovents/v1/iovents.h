@@ -50,6 +50,10 @@ typedef struct IoVentConnInfo {
     int readBuffOffset;
     int readDataLen;
 
+    int readBuffOffsetCur;
+    int readDataLenCur;
+    int readBytesLenCur;
+
     SockStats_t* groupStats;
     SockStats_t* summaryStats;
 
@@ -186,7 +190,8 @@ void WriteNextData (IoVentConn_t* newConn
 void ReadNextData (IoVentConn_t* newConn
                         , char* readBuffer
                         , int readBuffOffset
-                        , int readDataLen);
+                        , int readDataLen
+                        , int partialRead);
 
 void EnableReadNotification (IoVentConn_t* newConn);
 
