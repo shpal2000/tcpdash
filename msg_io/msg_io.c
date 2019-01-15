@@ -3,19 +3,43 @@
 
 #include "msg_io.h"
 
+static void InitMsgIoLenBuff (MsgIoLenBuff_t* newBuff) {
+
+    newBuff->buffLen = MSG_IO_MESSAGEL_LENGTH_BYTES;
+    newBuff->buffOffset = 0;
+    newBuff->dataLen = 0;
+}
+
+static void InitMsgIoDataBuff (MsgIoDataBuff_t* newBuff) {
+
+    newBuff->buffLen = MSG_IO_READ_WRITE_BUFF_MAXLEN;
+    newBuff->buffOffset = 0;
+    newBuff->dataLen = 0;
+}
+
+static void SetNextReadMsg (MsgIoChannel_t* mioChanel) {
+
+    mioChanel->onMsgState = MSG_IO_ON_MESSAGE_STATE_READ_LENGTH;
+
+    InitMsgIoLenBuff (&mioChanel->msgLenBuff);
+
+    InitMsgIoDataBuff (&mioChanel->msgDataBuff);
+}
+
 static void OnEstablish (struct IoVentConn* iovConn) {
 
     MsgIoChannel_t* mioChanel 
         = (MsgIoChannel_t*) iovConn->cInfo.sessionData;
  
     if ( IsConnErr (iovConn) ) {
-        mioChanel->ioChannelMethods.OnError( (MsgIoChannelId_t) mioChanel );
-    } else {
-        mioChanel->onMsgState = MSG_IO_ON_MESSAGE_STATE_READ_LENGTH;
-        mioChanel->currReadDataOff = 0;
-        mioChanel->currReadDataLen = 0;
 
-        mioChanel->ioChannelMethods.OnOpen( (MsgIoChannelId_t) mioChanel );
+        (*mioChanel->ioChannelMethods.OnError)( (MsgIoChannelId_t) mioChanel );
+
+    } else {
+
+        SetNextReadMsg (mioChanel);
+
+        (*mioChanel->ioChannelMethods.OnOpen)( (MsgIoChannelId_t) mioChanel );
     }
 }
 
@@ -24,17 +48,26 @@ static void OnReadNext (struct IoVentConn* iovConn) {
     MsgIoChannel_t* mioChanel 
         = (MsgIoChannel_t*) iovConn->cInfo.sessionData;
 
+    int nextReadBuff;
+    int nextReadOff;
     int nextReadLen;
 
     if (onMsgState->onMsgState == MSG_IO_ON_MESSAGE_STATE_READ_LENGTH) {
-        nextReadLen = MSG_IO_READ_WRITE_BUFF_MAXLEN - mioChanel->currReadDataLen; 
+
+        nextReadBuff = mioChanel->msgLenBuff.dataBuff;
+        nextReadOff = mioChanel->msgLenBuff.buffOffset;
+        nextReadLen = MSG_IO_MESSAGEL_LENGTH_BYTES - mioChanel->msgLenBuff.dataLen;
+
     } else {
-        nextReadLen = mioChanel->totalReadDataLen - mioChanel->currReadDataLen; 
+
+        nextReadBuff = mioChanel->msgDataBuff.dataBuff;
+        nextReadOff = mioChanel->msgDataBuff.buffOffset;
+        nextReadLen =  mioChanel->rcvMsgLen - mioChanel->msgDataBuff.dataLen;
     }
 
     ReadNextData (iovConn
-                , mioChanel->readDataBuff
-                , mioChanel->currReadDataOff
+                , nextReadBuff
+                , nextReadOff
                 , nextReadLen);
 }
 
@@ -46,33 +79,49 @@ static void OnReadStatus (struct IoVentConn* iovConn
     
     if (bytesRead > 0) {
 
-        mioChanel->currReadDataLen += bytesRead;
-
-        mioChanel->currReadDataOff += bytesRead;
-
-        if ( onMsgState->onMsgState == MSG_IO_ON_MESSAGE_STATE_READ_LENGTH ) {
-
-            if ( mioChanel->currReadDataLen >= MSG_IO_MESSAGEL_LENGTH_BYTES ) {
-                
-            }
-        }
-
-        if (mioChanel->currReadDataLen >= MSG_IO_MESSAGEL_LENGTH_BYTES) {
-
-            if ()
-        }
-
-
         if (onMsgState->onMsgState == MSG_IO_ON_MESSAGE_STATE_READ_LENGTH) {
 
-            if (mioChanel->currReadDataLen >= MSG_IO_MESSAGEL_LENGTH_BYTES) {
+            mioChanel->msgLenBuff.dataLen += bytesRead;
 
-                onMsgState->onMsgState = MSG_IO_ON_MESSAGE_STATE_READ_DATA; 
+            if (mioChanel->msgLenBuff.dataLen == MSG_IO_MESSAGEL_LENGTH_BYTES) {
+
+                onMsgState->onMsgState = MSG_IO_ON_MESSAGE_STATE_READ_DATA;
+
+                mioChanel->msgLenBuff.dataBuff[mioChanel->msgLenBuff.dataLen -1] = '\0';
+
+                char *endptr;
+                mioChanel->rcvMsgLen = (int) strtol (mioChanel->msgLenBuff.dataBuff
+                                                ,  &endptr
+                                                , 10);
+                
+                if ( (errno != 0 && mioChanel->rcvMsgLen == 0)
+                        || (endptr == mioChanel->msgLenBuff.dataBuff)
+                        || (errno == ERANGE && (val == LONG_MAX || val == LONG_MIN))
+                        || (mioChanel->rcvMsgLen <= 0)
+                        || (mioChanel->rcvMsgLen >= MSG_IO_READ_WRITE_BUFF_MAXLEN) ) {
+
+                    AbortConnection (iovConn);
+
+                    (*mioChanel->ioChannelMethods.OnError)((MsgIoChannelId_t) mioChanel);
+
+                }
             }
 
         } else {
-            
+
+            mioChanel->msgDataBuff.dataLen += bytesRead;
+
+            if (mioChanel->msgDataBuff.dataLen == mioChanel->rcvMsgLen) {
+
+                (*mioChanel->ioChannelMethods.OnMsg)( (MsgIoChannelId_t) mioChanel
+                                                    , mioChanel->msgDataBuff.dataBuff
+                                                    , mioChanel->msgDataBuff.dataLen);
+
+                SetNextReadMsg (mioChanel);
+
+            }
         }
+
 
     } else {
 
@@ -80,8 +129,11 @@ static void OnReadStatus (struct IoVentConn* iovConn
 
         if (closeErr != ON_CLOSE_ERROR_NONE) {
             AbortConnection (iovConn);    
+            (*mioChanel->ioChannelMethods.OnError)((MsgIoChannelId_t) mioChanel);
+
         } else {
             WriteClose (iovConn);
+            (*mioChanel->ioChannelMethods.OnClose)((MsgIoChannelId_t) mioChanel);
         }
     }
 }
@@ -105,126 +157,6 @@ static void OnStatus (struct IoVentConn* iovConn) {
 static int OnContinue (void* appData) {
 
     return EmAppContinue;
-}
-
-static IoVentCtx_t* InitApp (TcpCsAppI_t* appI) {
-
-    MsgIoCtx_t* appCtx = CreateStruct0 (MsgIoCtx_t);
-
-    appCtx->appI = appI;
-
-    CreatePool (&appCtx->freeSessionPool
-                , appI->maxActSessions
-                , MsgIoSession_t);
-
-    InitPool (&appCtx->activeSessionPool);
-
-    IoVentMethods_t* iovMethods = CreateStruct0 (IoVentMethods_t);
-    iovMethods->OnEstablish = &OnEstablish;
-    iovMethods->OnWriteNext = &OnWriteNext;
-    iovMethods->OnWriteStatus = &OnWriteStatus;
-    iovMethods->OnReadNext = &OnReadNext;
-    iovMethods->OnReadStatus = &OnReadStatus;
-    iovMethods->OnCleanup = &OnCleanup;
-    iovMethods->OnStatus = &OnStatus;
-    iovMethods->OnContinue = &OnContinue;
-
-    IoVentOptions_t* iovOptions = CreateStruct0 (IoVentOptions_t);
-    iovOptions->maxActiveConnections = appCtx->appI->maxActSessions;
-    iovOptions->maxErrorConnections = appCtx->appI->maxErrSessions;
-
-    IoVentCtx_t* iovCtx 
-        = CreateIoVentCtx (iovMethods, iovOptions, appCtx);
-
-    return iovCtx;
-}
-
-void TcpClientRun (AppI_t* appBase) {
-
-    TcpCsAppI_t* appI = (TcpCsAppI_t*) appBase;
-
-    IoVentCtx_t* iovCtx = InitApp (appI);
-
-    double lastConnInitTime 
-        = TimeElapsedIoVentCtx (iovCtx);
-
-    while (1) {
-
-        if ( ProcessIoVent (iovCtx) == 0 ) {
-            break;
-        }
-
-        uint64_t tcpConnInitCount 
-            = GetConnStats(&appI->gStats, tcpConnInit);
-
-        int newConnectionInits 
-            = (TimeElapsedIoVentCtx (iovCtx) - lastConnInitTime) 
-                * appI->connPerSec;
-
-        while (newConnectionInits > 0
-                    && tcpConnInitCount < appI->maxSessions) {
-
-            //new connection init
-            TcpCsAppGroup_t* csGroup
-                = &appI->csGroupArr[appI->nextCsGroupIndex];
-
-            SockAddr_t* localAddress 
-                = &(csGroup->clientAddrArr[csGroup->nextClientAddrIndex]);
-
-            SockAddr_t* remoteAddress 
-                = &(csGroup->serverAddr);
-
-            LocalPortPool_t* localPortPool 
-                = &csGroup->LocalPortPoolArr[csGroup->nextClientAddrIndex];
-
-            MsgIoSession_t* newSess = GetSession (iovCtx->appCtx);
-
-            if (newSess == NULL) {
-
-                IncConnStats2 ( &appI->gStats
-                                , &csGroup->cStats
-                                , appSessStructNotAvail );
-                break;
-            }
-
-            appI->nextCsGroupIndex += 1;
-            if (appI->nextCsGroupIndex == appI->csGroupCount){
-                appI->nextCsGroupIndex = 0;
-            }
-            
-            csGroup->nextClientAddrIndex += 1;
-            if (csGroup->nextClientAddrIndex == csGroup->clientAddrCount) {
-                csGroup->nextClientAddrIndex = 0;
-            }
-
-            int newConnInitErr = 
-                NewConnection (iovCtx
-                                , csGroup
-                                , newSess
-                                , localAddress
-                                , localPortPool
-                                , remoteAddress
-                                , &csGroup->cStats
-                                , &appI->gStats);
-
-            if (newConnInitErr) {
-                FreeSession (newSess);
-            }  
-
-            newConnectionInits -= 1;
-
-            lastConnInitTime = TimeElapsedIoVentCtx (iovCtx);
-
-            tcpConnInitCount 
-                = GetConnStats(&appI->gStats, tcpConnInit);
-        }
-    }
-
-    DumpErrConnections (iovCtx);
-
-    DeleteIoVentCtx (iovCtx);
-
-    appI->ctrlInfo.isRunning = 0;
 }
 
 static void MsgIoCleanup (MsgIoChannel_t* mioChannel) {
@@ -297,7 +229,7 @@ MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
         }
     }
 
-    return (MsgIoChannelId_t) mioChannel;  
+    return (MsgIoChannelId_t) mioChannel; 
 }
 
 void MsgIoProcess (MsgIoChannelId_t mioChanelId) {

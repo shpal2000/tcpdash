@@ -5,13 +5,27 @@
 
 #define MSG_IO_DELEMETER "--MsgIoDelemeter--"
 
-#define MSG_IO_MESSAGEL_LENGTH_BYTES            6                    
+#define MSG_IO_MESSAGEL_LENGTH_BYTES            7                    
 #define MSG_IO_READ_WRITE_BUFF_MAXLEN           1000000
 
 #define MSG_IO_ON_MESSAGE_STATE_READ_LENGTH      1
 #define MSG_IO_ON_MESSAGE_STATE_READ_DATA        2
 
 typedef void* MsgIoChannelId_t;
+
+typedef struct MsgIoLenBuff {
+    int buffLen;
+    int buffOffset;
+    int dataLen;
+    char dataBuff[MSG_IO_MESSAGEL_LENGTH_BYTES];
+} MsgIoLenBuff_t;
+
+typedef struct MsgIoDataBuff {
+    int buffLen;
+    int buffOffset;
+    int dataLen;
+    char dataBuff[MSG_IO_READ_WRITE_BUFF_MAXLEN];
+} MsgIoDataBuff_t;
 
 typedef struct MsgIoChannelStats {
     SockStats_t connStats;
@@ -35,15 +49,13 @@ typedef struct MsgIoChannel {
     MsgIoMethods_t ioChannelMethods;
     MsgIoChannelStats_t cStats;
     MsgIoChannelStats_t gStats;
+    
     int onMsgState;
-    int currReadDataOff;
-    int currReadDataLen;
-    int totalReadDataLen;
-    char readDataBuff[MSG_IO_READ_WRITE_BUFF_MAXLEN];
-    char writeDataBuff[MSG_IO_READ_WRITE_BUFF_MAXLEN];
+    int rcvMsgLen; 
+    MsgIoLenBuff_t msgLenBuff;
+    MsgIoDataBuff_t msgDataBuff;
+
 } MsgIoChannel_t;
-
-
 
 MsgIoChannelId_t MsgIoNew (SockAddr_t* remoteAddress
                             , MsgIoMethods_t* mIoMethods);
