@@ -3,7 +3,7 @@
 
 #include "apps/common.h"
 
-#define COMMON_READBUFF_MAXLEN      2048
+#define COMMON_READBUFF_MAXLEN      100000
 #define COMMON_WRITEBUFF_MAXLEN     1048576
 
 typedef struct TcpCsAppCtx {

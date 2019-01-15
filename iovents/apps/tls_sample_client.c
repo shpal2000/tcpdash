@@ -53,7 +53,7 @@ static void OnReadNext (struct IoVentConn* iovConn) {
                     , appCtx->receiveBuffer
                     , 0
                     , appCtx->scDataLen
-                    , 0);
+                    , 1);
 }
 
 static void OnReadStatus (struct IoVentConn* iovConn

@@ -68,7 +68,8 @@ static void OnReadNext (struct IoVentConn* iovConn) {
     ReadNextData (iovConn
                 , nextReadBuff
                 , nextReadOff
-                , nextReadLen);
+                , nextReadLen
+                , 0);
 }
 
 static void OnReadStatus (struct IoVentConn* iovConn

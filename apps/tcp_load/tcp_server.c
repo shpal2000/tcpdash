@@ -76,7 +76,7 @@ static void OnReadNext (struct IoVentConn* iovConn) {
                 , appCtx->commonReadBuff
                 , 0
                 , COMMON_READBUFF_MAXLEN
-                , 0);
+                , 1);
 }
 
 static void OnReadStatus (struct IoVentConn* iovConn

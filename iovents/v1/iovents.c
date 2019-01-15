@@ -36,8 +36,8 @@ static void InitConnection (IoVentConn_t* newConn) {
     newConn->cInfo.writeDataLenCur = 0;
 
     newConn->cInfo.readBuffer = NULL;
-    newConn->cInfo.readBuffOffset = 0;
-    newConn->cInfo.readDataLen = 0;
+    newConn->cInfo.readBuffOffsetCur = 0;
+    newConn->cInfo.readDataLenCur = 0;
 
     newConn->bytesSent = 0;
 }
@@ -472,9 +472,6 @@ void SslServerInit (IoVentConn_t* newConn
     InitSslConnection(newConn, newSSL, 0);
 }
 
-void ReadNextDataRemaing (IoVentConn_t* newConn);
-void WriteNextDataRemaing (IoVentConn_t* newConn);
-
 int MapConnectionError (IoVentConn_t* newConn) {
 
     int iovConnErr  = ON_CLOSE_ERROR_UNKNOWN;
@@ -532,6 +529,8 @@ static void HandleWriteNextData (IoVentConn_t* newConn) {
         } else {
             //process written data
             newConn->cInfo.writtenBytesLenCur += bytesSent;
+            newConn->cInfo.writeBuffOffsetCur += bytesSent;
+            newConn->cInfo.writeDataLenCur -= bytesSent;
 
             int notifyWriteStatus;
             if ( IsSetCS1 (newConn, STATE_CONN_PARTIAL_WRITE) ){
@@ -553,8 +552,6 @@ static void HandleWriteNextData (IoVentConn_t* newConn) {
                 
                 ProcessAbortConnections (newConn->cInfo.iovCtx);
 
-            } else {
-                WriteNextDataRemaing (newConn);
             }
         }
     }
@@ -581,14 +578,6 @@ void WriteNextData (IoVentConn_t* newConn
     } else {
         ClearCS1 (newConn, STATE_CONN_PARTIAL_WRITE);
     }
-}
-
-void WriteNextDataRemaing (IoVentConn_t* newConn) {
-
-    newConn->cInfo.writeBuffOffsetCur += newConn->cInfo.writtenBytesLenCur;
-    newConn->cInfo.writeDataLenCur -= newConn->cInfo.writtenBytesLenCur;
-
-    // HandleWriteNextData (newConn);
 }
 
 //handle plain tcp read also
@@ -645,6 +634,8 @@ static void HandleReadNextData (IoVentConn_t* newConn) {
         } else {
             //process read data
             newConn->cInfo.readBytesLenCur += bytesReceived;
+            newConn->cInfo.readBuffOffsetCur += bytesReceived;
+            newConn->cInfo.readDataLenCur -= bytesReceived;
 
             int notifyReadStatus;
             if ( IsSetCS1 (newConn, STATE_CONN_PARTIAL_READ) ){
@@ -665,20 +656,9 @@ static void HandleReadNextData (IoVentConn_t* newConn) {
                                         , newConn->cInfo.readBytesLenCur);
 
                 ProcessAbortConnections (newConn->cInfo.iovCtx);
-
-            } else {
-                ReadNextDataRemaing (newConn);
             }
         }
     }
-}
-
-void ReadNextDataRemaing (IoVentConn_t* newConn) {
-
-    newConn->cInfo.readBuffOffsetCur += newConn->cInfo.readBytesLenCur;
-    newConn->cInfo.readDataLenCur -= newConn->cInfo.readBytesLenCur;
-
-    // HandleReadNextData (newConn);
 }
 
 void ReadNextData (IoVentConn_t* newConn

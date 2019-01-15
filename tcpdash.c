@@ -384,8 +384,8 @@ void TcpCSMain (int isServer) {
                     , &(remoteAddr->sin_addr));
         remoteAddr->sin_port = htons(dstPort);
 
-        csGroup->csDataLen = 100;
-        csGroup->scDataLen = 100;
+        csGroup->csDataLen = 100000;
+        csGroup->scDataLen = 100000;
         csGroup->cCloseMethod = EmTcpFIN; 
         csGroup->sCloseMethod = EmTcpFIN;
         csGroup->csCloseType = EmDataFinish;
@@ -395,8 +395,8 @@ void TcpCSMain (int isServer) {
     appI->maxEvents = 0;
     appI->connPerSec = 2000;
     appI->maxActSessions = 100000;
-    appI->maxErrSessions = 10000;
-    appI->maxSessions = 110000;
+    appI->maxErrSessions = 4;
+    appI->maxSessions = 4;
 
     if (isServer) {
         RunMain (&TcpServerRun, &DumpTcpServerStats, (AppI_t*) appI, 0);
