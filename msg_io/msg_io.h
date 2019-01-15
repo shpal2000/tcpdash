@@ -5,26 +5,18 @@
 
 #define MSG_IO_DELEMETER "--MsgIoDelemeter--"
 
-#define MSG_IO_MESSAGEL_LENGTH_BYTES            7                    
-#define MSG_IO_READ_WRITE_BUFF_MAXLEN           1000000
+#define MSG_IO_MESSAGEL_LENGTH_BYTES            7
+#define MSG_IO_READ_WRITE_DATA_MAXLEN           1048576
+#define MSG_IO_READ_WRITE_BUFF_MAXLEN           1048583
 
 #define MSG_IO_ON_MESSAGE_STATE_READ_LENGTH      1
 #define MSG_IO_ON_MESSAGE_STATE_READ_DATA        2
 
 typedef void* MsgIoChannelId_t;
 
-typedef struct MsgIoLenBuff {
-    int buffLen;
-    int buffOffset;
-    int dataLen;
-    char dataBuff[MSG_IO_MESSAGEL_LENGTH_BYTES];
-} MsgIoLenBuff_t;
-
 typedef struct MsgIoDataBuff {
-    int buffLen;
-    int buffOffset;
-    int dataLen;
-    char dataBuff[MSG_IO_READ_WRITE_BUFF_MAXLEN];
+    char* data;
+    int len;
 } MsgIoDataBuff_t;
 
 typedef struct MsgIoChannelStats {
@@ -37,9 +29,11 @@ typedef struct MsgIoMethods {
 
     void (*OnClose) (MsgIoChannelId_t mioChanelId);
 
-    void (*OnError) (MsgIoChannelId_t mioChanelId); 
+    void (*OnError) (MsgIoChannelId_t mioChanelId);
 
-    void (*OnMsg) (MsgIoChannelId_t mioChanelId); 
+    void (*OnMsgRecv) (MsgIoChannelId_t mioChanelId, MsgIoDataBuff_t* msg);
+
+    void (*OnMsgSent) (MsgIoChannelId_t mioChanelId);
 
 } MsgIoMethods_t;
 
@@ -51,9 +45,13 @@ typedef struct MsgIoChannel {
     MsgIoChannelStats_t gStats;
     
     int onMsgState;
-    int rcvMsgLen; 
-    MsgIoLenBuff_t msgLenBuff;
-    MsgIoDataBuff_t msgDataBuff;
+    int expectedRecvMsgLen;
+
+    char recvBuff[MSG_IO_READ_WRITE_BUFF_MAXLEN];
+    char sendBuff[MSG_IO_READ_WRITE_BUFF_MAXLEN];
+
+    MsgIoDataBuff_t sendMsg;
+    MsgIoDataBuff_t recvMsg;
 
 } MsgIoChannel_t;
 
@@ -62,10 +60,11 @@ MsgIoChannelId_t MsgIoNew (SockAddr_t* remoteAddress
 
 void MsgIoDelete (MsgIoChannelId_t mioChanelId);
 
-void MsgIoSend (MsgIoChannelId_t mioChanelId
-                            , char* msgBuff
-                            , int msgOffset
-                            , int msgLen);
+MsgIoDataBuff_t* MsgIoGetRecvBuff (MsgIoChannelId_t mioChanelId);
+void MsgIoResetRecvBuff (MsgIoChannelId_t mioChanelId);
+
+MsgIoDataBuff_t* MsgIoGetSendBuff (MsgIoChannelId_t mioChanelId);
+void MsgIoEmitSendBuff (MsgIoChannelId_t mioChanelId);
 
 #endif
 
