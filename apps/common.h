@@ -15,6 +15,40 @@ typedef struct AppI {
     uint32_t isRunning;
 } AppI_t;
 
+typedef void* MsgIoChannelId_t;
+
+typedef struct MsgIoDataBuff {
+    char* data;
+    int len;
+} MsgIoDataBuff_t;
+
+typedef struct MsgIoChannelStats {
+    SockStats_t connStats;
+} MsgIoChannelStats_t;
+
+typedef struct MsgIoMethods {
+
+    void (*OnOpen) (MsgIoChannelId_t mioChanelId); 
+
+    void (*OnError) (MsgIoChannelId_t mioChanelId);
+
+    void (*OnMsgRecv) (MsgIoChannelId_t mioChanelId);
+
+    void (*OnMsgSent) (MsgIoChannelId_t mioChanelId);
+
+} MsgIoMethods_t;
+
+MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
+                            , SockAddr_t* remoteAddress
+                            , MsgIoMethods_t* mioMethods);
+
+void MsgIoDelete (MsgIoChannelId_t mioChanelId);
+
+MsgIoDataBuff_t* MsgIoGetRecvBuff (MsgIoChannelId_t mioChanelId);
+
+MsgIoDataBuff_t* MsgIoGetSendBuff (MsgIoChannelId_t mioChanelId);
+void MsgIoSendNextInit (MsgIoChannelId_t mioChanelId);
+
 /////////////////////////////////TcpProxyApp////////////////////////////// 
 
 typedef struct TcpProxyAppStats {

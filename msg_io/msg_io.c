@@ -1,6 +1,3 @@
-#include <sys/mman.h>
-#include "iovents.h"
-
 #include "msg_io.h"
 
 static void MsgIoRecvNextInit (MsgIoChannelId_t mioChannelId) {
@@ -18,6 +15,22 @@ void MsgIoSendNextInit (MsgIoChannelId_t mioChannelId) {
         = (MsgIoChannel_t*) mioChannelId;
 
     EnableWriteNotification ( mioChannel->iovConn );
+}
+
+MsgIoDataBuff_t* MsgIoGetRecvBuff (MsgIoChannelId_t mioChannelId) {
+
+    MsgIoChannel_t* mioChannel 
+        = (MsgIoChannel_t*) mioChannelId;
+
+    return &mioChannel->recvMsg;
+}
+
+MsgIoDataBuff_t* MsgIoGetSendBuff (MsgIoChannelId_t mioChannelId) {
+
+    MsgIoChannel_t* mioChannel 
+        = (MsgIoChannel_t*) mioChannelId;
+
+    return &mioChannel->sendMsg;
 }
 
 static void OnEstablish (struct IoVentConn* iovConn) {

@@ -34,6 +34,26 @@
 typedef void (*pAppRunFunc_t) (AppI_t*);
 typedef void (*pDumpStatsFunc_t) (AppI_t*);
 
+void MsgIoOnOpen (MsgIoChannelId_t mioChanelId) {
+
+}
+
+void MsgIoOnError (MsgIoChannelId_t mioChanelId) {
+
+}
+
+void MsgIoOnMsgRecv (MsgIoChannelId_t mioChanelId) {
+
+    MsgIoDataBuff_t* rcvBuff = MsgIoGetRecvBuff (mioChanelId);
+    rcvBuff->data[rcvBuff->len] = '\0';
+    puts (rcvBuff->data);
+    puts("\n\n");
+}
+
+void MsgIoOnMsgSent (MsgIoChannelId_t mioChanelId) {
+
+}
+
 void RunMain (pAppRunFunc_t pAppRun 
                 , pDumpStatsFunc_t pDumpStats
                 , AppI_t* appI
@@ -58,7 +78,29 @@ void RunMain (pAppRunFunc_t pAppRun
             (*pAppRun) (appI);
 
         }else{
+            SockAddr_t localAddress;
+            memset(&localAddress, 0, sizeof(SockAddr_t));
 
+            SockAddr_t remoteAddress;
+            memset(&remoteAddress, 0, sizeof(SockAddr_t));
+
+            struct sockaddr_in* remoteAddrIn = &remoteAddress.inAddr;
+
+            inet_pton(AF_INET
+                        , "10.116.0.62"
+                        , &(remoteAddrIn->sin_addr));
+            remoteAddrIn->sin_port = htons(9999);
+
+            MsgIoMethods_t mioMethods;
+
+            mioMethods.OnOpen = &MsgIoOnOpen;
+            mioMethods.OnError = &MsgIoOnError;
+            mioMethods.OnMsgRecv = &MsgIoOnMsgRecv;
+            mioMethods.OnMsgSent = &MsgIoOnMsgSent;
+
+            MsgIoChannelId_t channelId =  MsgIoNew (&localAddress
+                                                    , &remoteAddress
+                                                    , &mioMethods);
             while (appI->isRunning) {
 
                 sleep(2);
@@ -66,8 +108,9 @@ void RunMain (pAppRunFunc_t pAppRun
                 (*pDumpStats) (appI);
             }
 
-            int status;
+            MsgIoDelete (channelId);
 
+            int status;
             wait(&status);
         }
     }       
@@ -395,8 +438,8 @@ void TcpCSMain (int isServer) {
     appI->maxEvents = 0;
     appI->connPerSec = 2000;
     appI->maxActSessions = 100000;
-    appI->maxErrSessions = 4;
-    appI->maxSessions = 4;
+    appI->maxErrSessions = 10000;
+    appI->maxSessions = 100000;
 
     if (isServer) {
         RunMain (&TcpServerRun, &DumpTcpServerStats, (AppI_t*) appI, 0);

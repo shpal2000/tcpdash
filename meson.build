@@ -22,6 +22,7 @@ executable('tcpdash.exe'
             , link_with : [tls_sample_client_lib
                             , tls_sample_server_lib
                             , tcp_proxy_lib
-                            , tcp_load_lib]) 
+                            , tcp_load_lib
+                            , msg_io_lib]) 
 
 
