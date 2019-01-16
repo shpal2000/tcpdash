@@ -3,56 +3,63 @@
 
 #include "msg_io.h"
 
-void MsgIoResetRecvBuff (MsgIoChannelId_t mioChanelId) {
+static void MsgIoRecvNextInit (MsgIoChannelId_t mioChannelId) {
 
-    MsgIoChannel_t* mioChanel 
-        = (MsgIoChannel_t*) mioChanelId;
+    MsgIoChannel_t* mioChannel
+        = (MsgIoChannel_t*) mioChannelId;
 
     mioChannel->recvMsg.len = 0;
-    onMsgState->onMsgState = MSG_IO_ON_MESSAGE_STATE_READ_LENGTH;
+    mioChannel->onMsgState = MSG_IO_ON_MESSAGE_STATE_READ_LENGTH;
 }
 
-void MsgIoEmitSendBuff (MsgIoChannelId_t mioChanelId) {
+void MsgIoSendNextInit (MsgIoChannelId_t mioChannelId) {
 
-    MsgIoChannel_t* mioChanel 
-        = (MsgIoChannel_t*) mioChanelId;
+    MsgIoChannel_t* mioChannel 
+        = (MsgIoChannel_t*) mioChannelId;
 
+    EnableWriteNotification ( mioChannel->iovConn );
 }
 
 static void OnEstablish (struct IoVentConn* iovConn) {
 
-    MsgIoChannel_t* mioChanel 
+    MsgIoChannel_t* mioChannel 
         = (MsgIoChannel_t*) iovConn->cInfo.sessionData;
  
     if ( IsConnErr (iovConn) ) {
 
-        (*mioChanel->ioChannelMethods.OnError)( (MsgIoChannelId_t) mioChanel);
+        mioChannel->iovConn = NULL;
+
+        (*mioChannel->mioMethods.OnError)( (MsgIoChannelId_t) mioChannel);
 
     } else {
 
-        MsgIoResetRecvBuff ((MsgIoChannelId_t) mioChanel);
+        mioChannel->iovConn = iovConn;
 
-        (*mioChanel->ioChannelMethods.OnOpen)( (MsgIoChannelId_t) mioChanel);
+        DisableWriteNotification (iovConn);
+
+        MsgIoRecvNextInit ( (MsgIoChannelId_t) mioChannel );
+
+        (*mioChannel->mioMethods.OnOpen)( (MsgIoChannelId_t) mioChannel);
     }
 }
 
 static void OnReadNext (struct IoVentConn* iovConn) {
 
-    MsgIoChannel_t* mioChanel 
+    MsgIoChannel_t* mioChannel 
         = (MsgIoChannel_t*) iovConn->cInfo.sessionData;
 
     char* readBuff;
     int readLen;
 
-    if (onMsgState->onMsgState == MSG_IO_ON_MESSAGE_STATE_READ_LENGTH) {
+    if (mioChannel->onMsgState == MSG_IO_ON_MESSAGE_STATE_READ_LENGTH) {
 
         readBuff = mioChannel->recvBuff;
         readLen = MSG_IO_MESSAGEL_LENGTH_BYTES;
 
     } else {
 
-        readBuff = mioChanel->recvMsg.data;
-        readLen =  mioChanel->recvMsg.len;
+        readBuff = mioChannel->recvMsg.data;
+        readLen =  mioChannel->recvMsg.len;
     }
 
     ReadNextData (iovConn
@@ -65,37 +72,40 @@ static void OnReadNext (struct IoVentConn* iovConn) {
 static void OnReadStatus (struct IoVentConn* iovConn
                                     , int bytesRead) {
 
-    MsgIoChannel_t* mioChanel 
+    MsgIoChannel_t* mioChannel 
         = (MsgIoChannel_t*) iovConn->cInfo.sessionData;
     
     if (bytesRead > 0) {
 
-        if (onMsgState->onMsgState == MSG_IO_ON_MESSAGE_STATE_READ_LENGTH) {
+        if (mioChannel->onMsgState == MSG_IO_ON_MESSAGE_STATE_READ_LENGTH) {
 
             char *endptr;
-            mioChanel->recvBuff[MSG_IO_MESSAGEL_LENGTH_BYTES-1] = '\0'
-            mioChannel->recvMsg.len = (int) strtol (mioChanel->recvBuff
+            mioChannel->recvBuff[MSG_IO_MESSAGEL_LENGTH_BYTES-1] = '\0';
+            mioChannel->recvMsg.len = (int) strtol (mioChannel->recvBuff
                                                             ,  &endptr
                                                             , 10);
             
-            if ( (errno != 0 && mioChanel->rcvMsgLen == 0)
-                    || (endptr == mioChanel->msgLenBuff.dataBuff)
-                    || (errno == ERANGE && (val == LONG_MAX || val == LONG_MIN))
-                    || (mioChanel->recvMsg.len < 0)
-                    || (mioChanel->recvMsg.len > MSG_IO_READ_WRITE_DATA_MAXLEN) ) {
+            if ( (errno != 0 && mioChannel->recvMsg.len == 0)
+                    || (endptr == mioChannel->recvBuff)
+                    || (errno == ERANGE && (mioChannel->recvMsg.len == LONG_MIN))
+                    || (errno == ERANGE && (mioChannel->recvMsg.len == LONG_MAX))
+                    || (mioChannel->recvMsg.len < 0)
+                    || (mioChannel->recvMsg.len > MSG_IO_READ_WRITE_DATA_MAXLEN) ) {
 
                 AbortConnection (iovConn);
 
-                (*mioChanel->ioChannelMethods.OnError)((MsgIoChannelId_t) mioChanel);
+                (*mioChannel->mioMethods.OnError)((MsgIoChannelId_t) mioChannel);
 
             } else {
 
-                onMsgState->onMsgState = MSG_IO_ON_MESSAGE_STATE_READ_DATA; 
+                mioChannel->onMsgState = MSG_IO_ON_MESSAGE_STATE_READ_DATA; 
             }
 
         } else {
 
-            (*mioChanel->ioChannelMethods.OnMsgRecv)( (MsgIoChannelId_t) mioChanel);
+            (*mioChannel->mioMethods.OnMsgRecv)( (MsgIoChannelId_t) mioChannel);
+
+            MsgIoRecvNextInit ( (MsgIoChannelId_t) mioChannel );
         }
 
     } else {
@@ -104,18 +114,16 @@ static void OnReadStatus (struct IoVentConn* iovConn
 
         if (closeErr != ON_CLOSE_ERROR_NONE) {
             AbortConnection (iovConn);    
-            (*mioChanel->ioChannelMethods.OnError)((MsgIoChannelId_t) mioChanel);
-
+            (*mioChannel->mioMethods.OnError)((MsgIoChannelId_t) mioChannel);
         } else {
             WriteClose (iovConn);
-            (*mioChanel->ioChannelMethods.OnClose)((MsgIoChannelId_t) mioChanel);
         }
     }
 }
 
 static void OnWriteNext (struct IoVentConn* iovConn) {
 
-    MsgIoChannel_t* mioChanel 
+    MsgIoChannel_t* mioChannel 
         = (MsgIoChannel_t*) iovConn->cInfo.sessionData;
 
     WriteNextData (iovConn
@@ -123,26 +131,26 @@ static void OnWriteNext (struct IoVentConn* iovConn) {
                     , 0
                     , mioChannel->sendMsg.len
                     , 0);
-
 }
 
 static void OnWriteStatus (struct IoVentConn* iovConn
                                     , int bytesWritten) {
 
-    MsgIoChannel_t* mioChanel 
+    MsgIoChannel_t* mioChannel 
         = (MsgIoChannel_t*) iovConn->cInfo.sessionData;
 
+    DisableWriteNotification (iovConn);
+
+    (*mioChannel->mioMethods.OnMsgSent)( (MsgIoChannelId_t) mioChannel);
 }
 
 static void OnCleanup (struct IoVentConn* iovConn) {
-
 }
 
 static void OnStatus (struct IoVentConn* iovConn) {
 }
 
 static int OnContinue (void* appData) {
-
     return EmAppContinue;
 }
 
@@ -158,7 +166,7 @@ static void MsgIoCleanup (MsgIoChannel_t* mioChannel) {
 
 MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
                             , SockAddr_t* remoteAddress
-                            , MsgIoMethods_t* mIoMethods) {
+                            , MsgIoMethods_t* mioMethods) {
 
     int status = -1;
 
@@ -166,6 +174,8 @@ MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
         = CreateStruct0 (MsgIoChannel_t);
 
     if (mioChannel) {
+
+        mioChannel->mioMethods = *mioMethods;
 
         mioChannel->sendMsg.len = 0;
         mioChannel->recvMsg.len = 0;
@@ -193,12 +203,12 @@ MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
         iovOptions.maxEvents = 1;
 
         mioChannel->iovCtx 
-            = CreateIoVentCtx (iovMethods, iovOptions, NULL);
+            = CreateIoVentCtx (&iovMethods, &iovOptions, NULL);
 
         if (mioChannel->iovCtx) {
 
             int newConnInitErr = 
-                NewConnection (iovCtx
+                NewConnection (mioChannel->iovCtx
                                 , NULL
                                 , mioChannel
                                 , localAddress
@@ -226,24 +236,23 @@ MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
     return (MsgIoChannelId_t) mioChannel; 
 }
 
-void MsgIoProcess (MsgIoChannelId_t mioChanelId) {
+void MsgIoProcess (MsgIoChannelId_t mioChannelId) {
     
-    MsgIoChannel_t* mioChanel = (MsgIoChannel_t*) mioChanelId;
+    MsgIoChannel_t* mioChannel 
+        = (MsgIoChannel_t*) mioChannelId;
 
-    ProcessIoVent (mioChanel->iovCtx);
+    ProcessIoVent (mioChannel->iovCtx);
 }
 
-void MsgIoDelete (MsgIoChannelId_t mioChanelId) {
+void MsgIoDelete (MsgIoChannelId_t mioChannelId) {
 
-    MsgIoChannel_t* mioChanel = (MsgIoChannel_t*) mioChanelId;
+    MsgIoChannel_t* mioChannel 
+        = (MsgIoChannel_t*) mioChannelId;
 
-    MsgIoCleanup (mioChanel);
-}
+    if (mioChannel->iovConn) {
+        AbortConnection (mioChannel->iovConn);
+        mioChannel->iovConn = NULL;
+    }
 
-void MsgIoSend (MsgIoChannelId_t mioChanelId
-                            , char* msgBuff
-                            , int msgOffset
-                            , int msgLen) {
-
-    MsgIoChannel_t* mioChanel = (MsgIoChannel_t*) mioChanelId;
+    MsgIoCleanup (mioChannel);
 }

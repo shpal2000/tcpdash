@@ -3,8 +3,6 @@
 
 #include "apps/common.h"
 
-#define MSG_IO_DELEMETER "--MsgIoDelemeter--"
-
 #define MSG_IO_MESSAGEL_LENGTH_BYTES            7
 #define MSG_IO_READ_WRITE_DATA_MAXLEN           1048576
 #define MSG_IO_READ_WRITE_BUFF_MAXLEN           1048583
@@ -27,11 +25,9 @@ typedef struct MsgIoMethods {
 
     void (*OnOpen) (MsgIoChannelId_t mioChanelId); 
 
-    void (*OnClose) (MsgIoChannelId_t mioChanelId);
-
     void (*OnError) (MsgIoChannelId_t mioChanelId);
 
-    void (*OnMsgRecv) (MsgIoChannelId_t mioChanelId, MsgIoDataBuff_t* msg);
+    void (*OnMsgRecv) (MsgIoChannelId_t mioChanelId);
 
     void (*OnMsgSent) (MsgIoChannelId_t mioChanelId);
 
@@ -40,7 +36,7 @@ typedef struct MsgIoMethods {
 typedef struct MsgIoChannel {
     IoVentConn_t* iovConn;
     IoVentCtx_t* iovCtx;
-    MsgIoMethods_t ioChannelMethods;
+    MsgIoMethods_t mioMethods;
     MsgIoChannelStats_t cStats;
     MsgIoChannelStats_t gStats;
     
@@ -55,16 +51,16 @@ typedef struct MsgIoChannel {
 
 } MsgIoChannel_t;
 
-MsgIoChannelId_t MsgIoNew (SockAddr_t* remoteAddress
-                            , MsgIoMethods_t* mIoMethods);
+MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
+                            , SockAddr_t* remoteAddress
+                            , MsgIoMethods_t* mioMethods);
 
 void MsgIoDelete (MsgIoChannelId_t mioChanelId);
 
 MsgIoDataBuff_t* MsgIoGetRecvBuff (MsgIoChannelId_t mioChanelId);
-void MsgIoResetRecvBuff (MsgIoChannelId_t mioChanelId);
 
 MsgIoDataBuff_t* MsgIoGetSendBuff (MsgIoChannelId_t mioChanelId);
-void MsgIoEmitSendBuff (MsgIoChannelId_t mioChanelId);
+void MsgIoSendNextInit (MsgIoChannelId_t mioChanelId);
 
 #endif
 
