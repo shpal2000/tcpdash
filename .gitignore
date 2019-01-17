@@ -56,3 +56,5 @@ bin/
 docs/
 build/
 .DS_Store
+
+nadmin/node_modules

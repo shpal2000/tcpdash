@@ -47,7 +47,7 @@ void MsgIoOnMsgRecv (MsgIoChannelId_t mioChanelId) {
     MsgIoDataBuff_t* rcvBuff = MsgIoGetRecvBuff (mioChanelId);
     rcvBuff->data[rcvBuff->len] = '\0';
     puts (rcvBuff->data);
-    puts("\n\n");
+    puts("\n\n\n\n\n\n\n\n\n\n\n");
 }
 
 void MsgIoOnMsgSent (MsgIoChannelId_t mioChanelId) {
