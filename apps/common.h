@@ -41,14 +41,11 @@ typedef struct MsgIoMethods {
 MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
                             , SockAddr_t* remoteAddress
                             , MsgIoMethods_t* mioMethods);
-
 void MsgIoDelete (MsgIoChannelId_t mioChanelId);
-
 MsgIoDataBuff_t* MsgIoGetRecvBuff (MsgIoChannelId_t mioChanelId);
-
 MsgIoDataBuff_t* MsgIoGetSendBuff (MsgIoChannelId_t mioChanelId);
 void MsgIoSendNextInit (MsgIoChannelId_t mioChanelId);
-
+void MsgIoProcess (MsgIoChannelId_t mioChannelId);
 /////////////////////////////////TcpProxyApp////////////////////////////// 
 
 typedef struct TcpProxyAppStats {

@@ -103,7 +103,9 @@ void RunMain (pAppRunFunc_t pAppRun
                                                     , &mioMethods);
             while (appI->isRunning) {
 
-                sleep(2);
+                MsgIoProcess (channelId);
+
+                sleep(1);
 
                 (*pDumpStats) (appI);
             }
@@ -450,6 +452,47 @@ void TcpCSMain (int isServer) {
 
 int main(int argc, char** argv)
 {
+    SockAddr_t localAddress;
+    memset(&localAddress, 0, sizeof(SockAddr_t));
+
+    struct sockaddr_in* localAddrIn = &localAddress.inAddr;
+    localAddrIn->sin_family = AF_INET;
+    inet_pton(AF_INET
+                , "10.116.0.61"
+                , &(localAddrIn->sin_addr));
+
+    SockAddr_t remoteAddress;
+    memset(&remoteAddress, 0, sizeof(SockAddr_t));
+
+    struct sockaddr_in* remoteAddrIn = &remoteAddress.inAddr;
+    remoteAddrIn->sin_family = AF_INET;
+    inet_pton(AF_INET
+                , "10.116.0.62"
+                , &(remoteAddrIn->sin_addr));
+    remoteAddrIn->sin_port = htons(9999);
+
+    MsgIoMethods_t mioMethods;
+
+    mioMethods.OnOpen = &MsgIoOnOpen;
+    mioMethods.OnError = &MsgIoOnError;
+    mioMethods.OnMsgRecv = &MsgIoOnMsgRecv;
+    mioMethods.OnMsgSent = &MsgIoOnMsgSent;
+
+    MsgIoChannelId_t channelId =  MsgIoNew (&localAddress
+                                            , &remoteAddress
+                                            , &mioMethods);
+    while (1) {
+
+        MsgIoProcess (channelId);
+
+        sleep(1);
+
+    }
+
+    MsgIoDelete (channelId);
+
+    return 0;
+    
     if (strcmp (argv[1], "TlsSampleClient") == 0) {
         TlsSampleClientMain();
     } else if (strcmp (argv[1], "TlsSampleServer") == 0) {
