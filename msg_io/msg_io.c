@@ -33,6 +33,14 @@ MsgIoDataBuff_t* MsgIoGetSendBuff (MsgIoChannelId_t mioChannelId) {
     return &mioChannel->sendMsg;
 }
 
+void* MsgIoGetCtx (MsgIoChannelId_t mioChanelId) {
+
+    MsgIoChannel_t* mioChannel 
+        = (MsgIoChannel_t*) mioChannelId;
+
+    return mioChannel->mioCtx;
+}
+
 static void OnEstablish (struct IoVentConn* iovConn) {
 
     MsgIoChannel_t* mioChannel 
@@ -179,7 +187,8 @@ static void MsgIoCleanup (MsgIoChannel_t* mioChannel) {
 
 MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
                             , SockAddr_t* remoteAddress
-                            , MsgIoMethods_t* mioMethods) {
+                            , MsgIoMethods_t* mioMethods
+                            , void* mioCtx) {
 
     int status = -1;
 
@@ -187,6 +196,8 @@ MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
         = CreateStruct0 (MsgIoChannel_t);
 
     if (mioChannel) {
+
+        mioChannel->mioCtx = mioCtx;
 
         mioChannel->mioMethods = *mioMethods;
 

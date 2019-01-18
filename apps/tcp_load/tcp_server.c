@@ -205,9 +205,7 @@ static IoVentCtx_t* InitApp (TcpCsAppI_t* appI) {
     return iovCtx;
 }
 
-void TcpServerRun (AppI_t* appBase) {
-
-    TcpCsAppI_t* appI = (TcpCsAppI_t*) appBase;
+void TcpServerRun (TcpCsAppI_t* appI) {
 
     IoVentCtx_t* iovCtx = InitApp (appI);
 
@@ -240,21 +238,12 @@ void TcpServerRun (AppI_t* appBase) {
     appI->ctrlInfo.isRunning = 0;
 }
 
-void DumpTcpServerStats(AppI_t* appBase) {
+int main(int argc, char** argv) {
 
-    TcpCsAppI_t* appI = (TcpCsAppI_t*) appBase;
+    TcpCsAppI_t* appI = NULL;
 
-    TcpCsAppStats_t* appConnStats = &appI->gStats; 
+    TcpServerRun (appI);
 
-    char statsString[120];
-
-    sprintf (statsString, 
-                        "%" PRIu64 
-                        "\n"
-        , GetConnStats(appConnStats, tcpAcceptSuccess)
-        );
-
-    puts (statsString);
+    return 0;
 }
-
 

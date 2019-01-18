@@ -14,6 +14,7 @@
 typedef struct MsgIoChannel {
     IoVentConn_t* iovConn;
     IoVentCtx_t* iovCtx;
+    void* mioCtx;
     MsgIoMethods_t mioMethods;
     MsgIoChannelStats_t cStats;
     MsgIoChannelStats_t gStats;

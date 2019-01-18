@@ -178,6 +178,35 @@ static int OnContinue (void* appData) {
     return EmAppContinue;
 }
 
+static void MsgIoOnOpen (MsgIoChannelId_t mioChanelId) {
+
+    MsgIoDataBuff_t* sndBuff = MsgIoGetSendBuff (mioChanelId);
+
+    char* send = "";
+    sndBuff->data = send;
+    sndBuff->len = strlen(send);
+
+    MsgIoSendNextInit (mioChanelId); 
+}
+
+static void MsgIoOnError (MsgIoChannelId_t mioChanelId) {
+
+}
+
+static void MsgIoOnMsgRecv (MsgIoChannelId_t mioChanelId) {
+
+    MsgIoDataBuff_t* rcvBuff = MsgIoGetRecvBuff (mioChanelId);
+    rcvBuff->data[rcvBuff->len] = '\0';
+    puts (rcvBuff->data);
+    puts("\n\n\n\n\n\n\n\n\n\n\n");
+
+    MsgIoGetCtx (mioChanelId);
+}
+
+static void MsgIoOnMsgSent (MsgIoChannelId_t mioChanelId) {
+
+}
+
 static IoVentCtx_t* InitApp (TcpCsAppI_t* appI) {
 
     TcpCsAppCtx_t* appCtx = CreateStruct0 (TcpCsAppCtx_t);
@@ -210,17 +239,45 @@ static IoVentCtx_t* InitApp (TcpCsAppI_t* appI) {
     return iovCtx;
 }
 
-void TcpClientRun (AppI_t* appBase) {
+int main(int argc, char** argv) {
 
-    TcpCsAppI_t* appI = (TcpCsAppI_t*) appBase;
+    char* testId = argv[1];
+    char* msgIoAddress = argv[2];
+    int msgIoPort = atoi(argv[3]);
+    
+    SockAddr_t msgIoLocalAddr;    
+    memset(&msgIoLocalAddr, 0, sizeof(SockAddr_t));
 
-    IoVentCtx_t* iovCtx = InitApp (appI);
+    SockAddr_t msgIoRemoteAddr;
+    struct sockaddr_in* remoteAddrIn = &msgIoRemoteAddr.inAddr;
+    inet_pton(AF_INET
+                , msgIoAddress
+                , &(remoteAddrIn->sin_addr));
 
-    double lastConnInitTime 
-        = TimeElapsedIoVentCtx (iovCtx);
+    remoteAddrIn->sin_port = htons(msgIoPort);
+
+    MsgIoMethods_t mioMethods;
+    mioMethods.OnOpen = &MsgIoOnOpen;
+    mioMethods.OnError = &MsgIoOnError;
+    mioMethods.OnMsgRecv = &MsgIoOnMsgRecv;
+    mioMethods.OnMsgSent = &MsgIoOnMsgSent;
+
+    MsgIoChannelId_t channelId 
+            =  MsgIoNew (&msgIoLocalAddr
+                        , &msgIoRemoteAddr
+                        , &mioMethods);
+
+    // TcpCsAppI_t* appI = NULL;
+
+    // IoVentCtx_t* iovCtx = InitApp (appI);
+
+    // double lastConnInitTime 
+    //     = TimeElapsedIoVentCtx (iovCtx);
 
     while (1) {
 
+        MsgIoProcess (channelId);
+        
         if ( ProcessIoVent (iovCtx) == 0 ) {
             break;
         }
@@ -293,27 +350,9 @@ void TcpClientRun (AppI_t* appBase) {
 
     DumpErrConnections (iovCtx);
 
+    MsgIoDelete (channelId);
+
     DeleteIoVentCtx (iovCtx);
 
-    appI->ctrlInfo.isRunning = 0;
+    return 0;
 }
-
-void DumpTcpClientStats(AppI_t* appBase) {
-
-    TcpCsAppI_t* appI = (TcpCsAppI_t*) appBase;
-
-    TcpCsAppStats_t* appConnStats = &appI->gStats; 
- 
-    char statsString[120];
-
-    sprintf (statsString, 
-                        "%" PRIu64 " : " 
-                        "%" PRIu64
-                       "\n"
-        , GetConnStats(appConnStats, tcpConnInit)
-        , GetConnStats(appConnStats, tcpConnInitSuccess)
-        );
-
-    puts (statsString);
-}
-

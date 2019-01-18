@@ -40,12 +40,14 @@ typedef struct MsgIoMethods {
 
 MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
                             , SockAddr_t* remoteAddress
-                            , MsgIoMethods_t* mioMethods);
+                            , MsgIoMethods_t* mioMethods
+                            , void* mioCtx);
 void MsgIoDelete (MsgIoChannelId_t mioChanelId);
 MsgIoDataBuff_t* MsgIoGetRecvBuff (MsgIoChannelId_t mioChanelId);
 MsgIoDataBuff_t* MsgIoGetSendBuff (MsgIoChannelId_t mioChanelId);
 void MsgIoSendNextInit (MsgIoChannelId_t mioChanelId);
 void MsgIoProcess (MsgIoChannelId_t mioChannelId);
+void* MsgIoGetCtx (MsgIoChannelId_t mioChanelId);
 /////////////////////////////////TcpProxyApp////////////////////////////// 
 
 typedef struct TcpProxyAppStats {
@@ -73,93 +75,5 @@ typedef struct TcpProxyAppI {
 void TcpProxyRun(AppI_t* appBase);
 
 void DumpTcpProxyStats(AppI_t* appBase);
-
-////////////////////////////////////TcpCsApp///////////////////////////////
-
-typedef struct TcpCsAppStats {
-    SockStats_t connStats;
-} TcpCsAppStats_t;
-
-typedef struct TcpCsAppGroup {
-    uint32_t clientAddrCount;
-    SockAddr_t* clientAddrArr;
-    uint32_t nextClientAddrIndex;
-    LocalPortPool_t* LocalPortPoolArr;
-    SockAddr_t serverAddr;
-    uint64_t csDataLen;
-    uint64_t scDataLen;
-    enum ConnCloseMethod cCloseMethod;
-    enum ConnCloseMethod sCloseMethod;
-    enum ConnCloseType csCloseType;
-    uint32_t csWeight;
-    TcpCsAppStats_t cStats;
-} TcpCsAppGroup_t;
-
-typedef struct TcpCsAppI {
-    AppI_t ctrlInfo;
-
-    uint32_t maxEvents;
-    uint32_t connPerSec;
-    uint32_t maxActSessions;
-    uint32_t maxErrSessions;
-    uint64_t maxSessions;
-    uint32_t csGroupCount;
-    TcpCsAppGroup_t* csGroupArr;
-    uint32_t nextCsGroupIndex;
-    TcpCsAppStats_t gStats;
-} TcpCsAppI_t;
-
-/*
-{
-    "maxSessions" : 0, 
-
-    "maxActSessions" : 0,
-    
-    "maxErrSessions" : 0,
-
-    "csGroupList" : [
-        {
-            "clientAddrList" : [
-                {
-                    "addr" : ""
-                    "mask" : ""
-                },
-                {
-                    "addr" : ""
-                    "mask" : ""
-                }
-            ],
-
-            "serverAddr" : "",
-
-            "serverPort" : 0,
-        }, 
-        {
-            "clientAddrList" : [
-                {
-                    "addr" : ""
-                    "mask" : ""
-                },
-                {
-                    "addr" : ""
-                    "mask" : ""
-                }
-            ],
-
-            "serverAddr" : "",
-
-            "serverPort" : 0,
-        }        
-    ]
-}
-*/
-
-void TcpClientRun(AppI_t* appBase);
-void DumpTcpClientStats(AppI_t* appBase);
-
-void TcpServerRun(AppI_t* appBase);
-void DumpTcpServerStats(AppI_t* appBase);
-
-///////////////////////////////////////////////////////////////////////////
 
 #endif
