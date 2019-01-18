@@ -3,6 +3,13 @@
 
 #include "platform/common.h"
 
+#define N_ADMIN_TEST_ID_MAX_LEN                         64                                 
+#define N_ADMIN_CHANNEL_STATE_ERR                      -1
+#define N_ADMIN_CHANNEL_STATE_INIT                      1
+#define N_ADMIN_CHANNEL_STATE_OPEN                      2
+#define N_ADMIN_CHANNEL_STATE_GET_CONFIG                3
+#define N_ADMIN_CHANNEL_STATE_RECV_CONFIG               4
+
 enum ConnCloseMethod {EmTcpFIN
                     , EmTcpRST
                     , EmCloseNotify};
@@ -45,7 +52,7 @@ MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
 void MsgIoDelete (MsgIoChannelId_t mioChanelId);
 MsgIoDataBuff_t* MsgIoGetRecvBuff (MsgIoChannelId_t mioChanelId);
 MsgIoDataBuff_t* MsgIoGetSendBuff (MsgIoChannelId_t mioChanelId);
-void MsgIoSendNextInit (MsgIoChannelId_t mioChanelId);
+void MsgIoSendInit (MsgIoChannelId_t mioChanelId);
 void MsgIoProcess (MsgIoChannelId_t mioChannelId);
 void* MsgIoGetCtx (MsgIoChannelId_t mioChanelId);
 /////////////////////////////////TcpProxyApp////////////////////////////// 
@@ -75,5 +82,7 @@ typedef struct TcpProxyAppI {
 void TcpProxyRun(AppI_t* appBase);
 
 void DumpTcpProxyStats(AppI_t* appBase);
+
+char* N_ADMIN_CMD_GET_TEST_CONFIG;
 
 #endif

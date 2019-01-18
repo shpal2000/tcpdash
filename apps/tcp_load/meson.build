@@ -1,4 +1,4 @@
-tcp_client_src = ['tcp_client.c']
+tcp_client_src = ['tcp_client.c', '../common.c']
 tcp_server_src = ['tcp_server.c']
 
 glib_dep = dependency('glib-2.0')

@@ -178,105 +178,294 @@ static int OnContinue (void* appData) {
     return EmAppContinue;
 }
 
-static void MsgIoOnOpen (MsgIoChannelId_t mioChanelId) {
+static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
 
-    MsgIoDataBuff_t* sndBuff = MsgIoGetSendBuff (mioChanelId);
+    TcpCsAppCtx_t* appCtx = (TcpCsAppCtx_t*) MsgIoGetCtx (mioChannelId);
 
-    char* send = "";
-    sndBuff->data = send;
-    sndBuff->len = strlen(send);
+    appCtx->nAdminChannelState = N_ADMIN_CHANNEL_STATE_OPEN; 
 
-    MsgIoSendNextInit (mioChanelId); 
+    MsgIoDataBuff_t* sndBuff = MsgIoGetSendBuff (mioChannelId);
+
+    // char lenBuffer[9];
+    // sprintf (lenBuffer, "%08d", (int)strlen(N_ADMIN_CMD_GET_TEST_CONFIG));
+    // memcpy (N_ADMIN_CMD_GET_TEST_CONFIG, lenBuffer, 8);
+
+    sndBuff->data = N_ADMIN_CMD_GET_TEST_CONFIG;
+    sndBuff->len = strlen(N_ADMIN_CMD_GET_TEST_CONFIG);
+
+    appCtx->nAdminChannelState = N_ADMIN_CHANNEL_STATE_GET_CONFIG;
+
+    MsgIoSendInit (mioChannelId); 
 }
 
-static void MsgIoOnError (MsgIoChannelId_t mioChanelId) {
+static void MsgIoOnError (MsgIoChannelId_t mioChannelId) {
 
+    TcpCsAppCtx_t* appCtx = (TcpCsAppCtx_t*) MsgIoGetCtx (mioChannelId);
+
+    appCtx->nAdminChannelState = N_ADMIN_CHANNEL_STATE_ERR; 
 }
 
-static void MsgIoOnMsgRecv (MsgIoChannelId_t mioChanelId) {
+static void MsgIoOnMsgRecv (MsgIoChannelId_t mioChannelId) {
 
-    MsgIoDataBuff_t* rcvBuff = MsgIoGetRecvBuff (mioChanelId);
+    TcpCsAppCtx_t* appCtx = (TcpCsAppCtx_t*) MsgIoGetCtx (mioChannelId);
+
+    MsgIoDataBuff_t* rcvBuff = MsgIoGetRecvBuff (mioChannelId);
     rcvBuff->data[rcvBuff->len] = '\0';
+ 
+    puts("\n<<<<\n");
     puts (rcvBuff->data);
-    puts("\n\n\n\n\n\n\n\n\n\n\n");
+    puts("\n>>>>\n");
 
-    MsgIoGetCtx (mioChanelId);
-}
+    char* srcIpGroup1[] = { "12.20.50.2"
+                , "12.20.50.3"
+                , "12.20.50.4"
+                , "12.20.50.5"
+                , "12.20.50.6"
+                , "12.20.50.7"
+                , "12.20.50.8"
+                , "12.20.50.9"
+                , "12.20.50.10"
+                , "12.20.50.11"
+                , "12.20.50.12"
+                , "12.20.50.13"
+                , "12.20.50.14"
+                , "12.20.50.15"
+                , "12.20.50.16"
+                , "12.20.50.17"
+                , "12.20.50.18"
+                , "12.20.50.19"
+                , "12.20.50.20"
+                , "12.20.50.21"
+                , "12.20.50.22"
+                , "12.20.50.23"
+                , "12.20.50.24"
+                , "12.20.50.25"
+                , "12.20.50.26"
+                , "12.20.50.27"
+                , "12.20.50.28"
+                , "12.20.50.29"
+                , "12.20.50.30"
+                , "12.20.50.31"};
 
-static void MsgIoOnMsgSent (MsgIoChannelId_t mioChanelId) {
+    char** srcIpGroups[1];
+    srcIpGroups[0] = srcIpGroup1;
 
-}
+    char* dstIpGroups[1] = { "12.20.60.2"};
+    int dstPort = 443;
 
-static IoVentCtx_t* InitApp (TcpCsAppI_t* appI) {
+    int csGroupClientAddrCountArr[1] = {30};
 
-    TcpCsAppCtx_t* appCtx = CreateStruct0 (TcpCsAppCtx_t);
+    int csGroupCount = 1;
+
+    TcpCsAppI_t* appI 
+        = (TcpCsAppI_t*) mmap(NULL
+            , sizeof (TcpCsAppI_t)
+            , PROT_READ | PROT_WRITE
+            , MAP_SHARED | MAP_ANONYMOUS
+            , -1
+            , 0);
+
+    appI->csGroupCount = csGroupCount;
+    appI->csGroupArr 
+        = (TcpCsAppGroup_t*) mmap(NULL
+            , sizeof (TcpCsAppGroup_t) * appI->csGroupCount
+            , PROT_READ | PROT_WRITE
+            , MAP_SHARED | MAP_ANONYMOUS
+            , -1
+            , 0);
+    
+    appI->nextCsGroupIndex = 0;
+    for (int gIndex = 0; gIndex < appI->csGroupCount; gIndex++) {
+        TcpCsAppGroup_t* csGroup = &appI->csGroupArr[gIndex];
+        csGroup->clientAddrCount = csGroupClientAddrCountArr[gIndex];
+        csGroup->nextClientAddrIndex = 0;
+        csGroup->clientAddrArr
+            = (SockAddr_t*) mmap(NULL
+                , sizeof (SockAddr_t) * csGroup->clientAddrCount
+                , PROT_READ | PROT_WRITE
+                , MAP_SHARED | MAP_ANONYMOUS
+                , -1
+                , 0);
+        csGroup->LocalPortPoolArr 
+            = (LocalPortPool_t*) mmap(NULL
+                , sizeof (LocalPortPool_t) * csGroup->clientAddrCount
+                , PROT_READ | PROT_WRITE
+                , MAP_SHARED | MAP_ANONYMOUS
+                , -1
+                , 0);
+        for (int cIndex = 0
+                ; cIndex < csGroup->clientAddrCount
+                ; cIndex++) {
+        
+            struct sockaddr_in* localAddr 
+                = &(csGroup->clientAddrArr[cIndex].inAddr);
+            memset(localAddr, 0, sizeof(SockAddr_t));
+            localAddr->sin_family = AF_INET;
+            inet_pton(AF_INET
+                        , srcIpGroups[gIndex][cIndex]
+                        , &(localAddr->sin_addr));
+
+            LocalPortPool_t* portQ = &csGroup->LocalPortPoolArr[cIndex];
+            InitPortBindQ(portQ);
+            for (int srcPort = 5000; srcPort <= 65000; srcPort++) {
+                SetPortToPool(portQ, htons(srcPort));
+            }
+        }
+
+        struct sockaddr_in* remoteAddr 
+            = &(csGroup->serverAddr.inAddr);
+        memset(remoteAddr, 0, sizeof(SockAddr_t));
+        remoteAddr->sin_family = AF_INET;
+        inet_pton(AF_INET
+                    , dstIpGroups[gIndex]
+                    , &(remoteAddr->sin_addr));
+        remoteAddr->sin_port = htons(dstPort);
+
+        csGroup->csDataLen = 100000;
+        csGroup->scDataLen = 100000;
+        csGroup->cCloseMethod = EmTcpFIN; 
+        csGroup->sCloseMethod = EmTcpFIN;
+        csGroup->csCloseType = EmDataFinish;
+        csGroup->csWeight = 1;  
+    }
+
+    appI->maxEvents = 0;
+    appI->connPerSec = 2000;
+    appI->maxActSessions = 100000;
+    appI->maxErrSessions = 10000;
+    appI->maxSessions = 10;
 
     appCtx->appI = appI;
 
-    CreatePool (&appCtx->freeSessionPool
-                , appI->maxActSessions
-                , TcpCsSession_t);
+    appCtx->nAdminChannelState = N_ADMIN_CHANNEL_STATE_RECV_CONFIG;
+}
 
-    InitPool (&appCtx->activeSessionPool);
+static void MsgIoOnMsgSent (MsgIoChannelId_t mioChannelId) {
 
-    IoVentMethods_t* iovMethods = CreateStruct0 (IoVentMethods_t);
-    iovMethods->OnEstablish = &OnEstablish;
-    iovMethods->OnWriteNext = &OnWriteNext;
-    iovMethods->OnWriteStatus = &OnWriteStatus;
-    iovMethods->OnReadNext = &OnReadNext;
-    iovMethods->OnReadStatus = &OnReadStatus;
-    iovMethods->OnCleanup = &OnCleanup;
-    iovMethods->OnStatus = &OnStatus;
-    iovMethods->OnContinue = &OnContinue;
+}
 
-    IoVentOptions_t* iovOptions = CreateStruct0 (IoVentOptions_t);
-    iovOptions->maxActiveConnections = appCtx->appI->maxActSessions;
-    iovOptions->maxErrorConnections = appCtx->appI->maxErrSessions;
+static TcpCsAppCtx_t* InitApp (char* nAdminTestId, char* nAdminAddr, int nAdminPort) {
 
-    IoVentCtx_t* iovCtx 
-        = CreateIoVentCtx (iovMethods, iovOptions, appCtx);
+    int status = -1;
 
-    return iovCtx;
+    TcpCsAppCtx_t* appCtx = CreateStruct0 (TcpCsAppCtx_t);
+    
+    if (appCtx) {
+
+        strcpy (appCtx->nAdminTestId, nAdminTestId);
+
+        SetSockAddress (&appCtx->nAdminAddr, nAdminAddr, nAdminPort);
+
+        SetSockAddress0 (&appCtx->nLocalAddr, 0); 
+
+        MsgIoMethods_t mioMethods;
+        mioMethods.OnOpen = &MsgIoOnOpen;
+        mioMethods.OnError = &MsgIoOnError;
+        mioMethods.OnMsgRecv = &MsgIoOnMsgRecv;
+        mioMethods.OnMsgSent = &MsgIoOnMsgSent;
+
+        appCtx->nAdminChannelId =  MsgIoNew (&appCtx->nLocalAddr
+                                                , &appCtx->nAdminAddr
+                                                , &mioMethods
+                                                , appCtx);
+        
+        if (appCtx->nAdminChannelId) {
+
+            appCtx->nAdminChannelState = N_ADMIN_CHANNEL_STATE_INIT;
+
+            //???implement timeout
+            while (1) {
+
+                MsgIoProcess (appCtx->nAdminChannelId);
+
+                if (appCtx->nAdminChannelState == N_ADMIN_CHANNEL_STATE_RECV_CONFIG) {
+
+                    IoVentMethods_t iovMethods;
+                    iovMethods.OnEstablish = &OnEstablish;
+                    iovMethods.OnWriteNext = &OnWriteNext;
+                    iovMethods.OnWriteStatus = &OnWriteStatus;
+                    iovMethods.OnReadNext = &OnReadNext;
+                    iovMethods.OnReadStatus = &OnReadStatus;
+                    iovMethods.OnCleanup = &OnCleanup;
+                    iovMethods.OnStatus = &OnStatus;
+                    iovMethods.OnContinue = &OnContinue;
+
+                    IoVentOptions_t iovOptions;
+                    iovOptions.maxActiveConnections = appCtx->appI->maxActSessions;
+                    iovOptions.maxErrorConnections = appCtx->appI->maxErrSessions;
+                    iovOptions.maxEvents = 0;
+
+                    appCtx->iovCtx 
+                        = CreateIoVentCtx (&iovMethods, &iovOptions, appCtx);
+
+                    if (appCtx->iovCtx) {
+
+                        CreatePool (&appCtx->freeSessionPool
+                                    , appCtx->appI->maxActSessions
+                                    , TcpCsSession_t);
+
+                        InitPool (&appCtx->activeSessionPool);
+                    }
+
+                    break;
+                }
+
+                // if (timeout or error) {
+                //     break;
+                // }
+            }
+        }
+
+        if (appCtx->nAdminChannelId
+                && appCtx->iovCtx
+                && appCtx->freeSessionPool) {
+            status = 0;
+        }
+    }
+
+    if (status) {
+
+        if (appCtx) {
+
+            if (appCtx->nAdminChannelId) {
+                MsgIoDelete (appCtx->nAdminChannelId);
+            }
+
+            if (appCtx->iovCtx) {
+                DeleteIoVentCtx (appCtx->iovCtx);
+            }
+
+            if (appCtx->freeSessionPool) {
+                //??? clean up pool
+            }
+
+            DeleteStruct (TcpCsAppCtx_t, appCtx);
+
+            appCtx = NULL;
+        }
+    }
+
+    return appCtx;
 }
 
 int main(int argc, char** argv) {
 
-    char* testId = argv[1];
-    char* msgIoAddress = argv[2];
-    int msgIoPort = atoi(argv[3]);
-    
-    SockAddr_t msgIoLocalAddr;    
-    memset(&msgIoLocalAddr, 0, sizeof(SockAddr_t));
+    TcpCsAppCtx_t* appCtx = InitApp ( argv[1], argv[2], atoi(argv[3]) );
 
-    SockAddr_t msgIoRemoteAddr;
-    struct sockaddr_in* remoteAddrIn = &msgIoRemoteAddr.inAddr;
-    inet_pton(AF_INET
-                , msgIoAddress
-                , &(remoteAddrIn->sin_addr));
+    if (appCtx == NULL) {
+        exit (-1);
+    }
 
-    remoteAddrIn->sin_port = htons(msgIoPort);
+    TcpCsAppI_t* appI = appCtx->appI;
 
-    MsgIoMethods_t mioMethods;
-    mioMethods.OnOpen = &MsgIoOnOpen;
-    mioMethods.OnError = &MsgIoOnError;
-    mioMethods.OnMsgRecv = &MsgIoOnMsgRecv;
-    mioMethods.OnMsgSent = &MsgIoOnMsgSent;
+    IoVentCtx_t* iovCtx = appCtx->iovCtx;
 
-    MsgIoChannelId_t channelId 
-            =  MsgIoNew (&msgIoLocalAddr
-                        , &msgIoRemoteAddr
-                        , &mioMethods);
-
-    // TcpCsAppI_t* appI = NULL;
-
-    // IoVentCtx_t* iovCtx = InitApp (appI);
-
-    // double lastConnInitTime 
-    //     = TimeElapsedIoVentCtx (iovCtx);
+    double lastConnInitTime 
+        = TimeElapsedIoVentCtx (iovCtx);
 
     while (1) {
 
-        MsgIoProcess (channelId);
+        MsgIoProcess (appCtx->nAdminChannelId);
         
         if ( ProcessIoVent (iovCtx) == 0 ) {
             break;
@@ -350,7 +539,7 @@ int main(int argc, char** argv) {
 
     DumpErrConnections (iovCtx);
 
-    MsgIoDelete (channelId);
+    MsgIoDelete (appCtx->nAdminChannelId);
 
     DeleteIoVentCtx (iovCtx);
 

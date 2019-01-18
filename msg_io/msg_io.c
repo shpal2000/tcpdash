@@ -9,7 +9,7 @@ static void MsgIoRecvNextInit (MsgIoChannelId_t mioChannelId) {
     mioChannel->onMsgState = MSG_IO_ON_MESSAGE_STATE_READ_LENGTH;
 }
 
-void MsgIoSendNextInit (MsgIoChannelId_t mioChannelId) {
+void MsgIoSendInit (MsgIoChannelId_t mioChannelId) {
 
     MsgIoChannel_t* mioChannel 
         = (MsgIoChannel_t*) mioChannelId;
@@ -33,7 +33,7 @@ MsgIoDataBuff_t* MsgIoGetSendBuff (MsgIoChannelId_t mioChannelId) {
     return &mioChannel->sendMsg;
 }
 
-void* MsgIoGetCtx (MsgIoChannelId_t mioChanelId) {
+void* MsgIoGetCtx (MsgIoChannelId_t mioChannelId) {
 
     MsgIoChannel_t* mioChannel 
         = (MsgIoChannel_t*) mioChannelId;

@@ -17,8 +17,9 @@ msgIoServer.listen(msgIoPort, host, () => {
     console.log('msgIoServer running on port ' + msgIoPort + '.');
 });
 
-function msgIoHandler (msg) {
+function msgIoHandler (sock, sockCtx, msg) {
     console.log (msg);
+    sock.write ('00000001h');
 }
 
 msgIoServer.on('connection', (sock) => {
@@ -38,7 +39,7 @@ msgIoServer.on('connection', (sock) => {
         while (true) {
 
             if ( isNaN(sockCtx.msgLen) ) {
-
+                    
                 if (sockCtx.msgBuff.length > MSG_IO_MESSAGEL_LENGTH_BYTES) {
 
                     sockCtx.msgLen 
@@ -48,7 +49,6 @@ msgIoServer.on('connection', (sock) => {
                     if (isNaN(sockCtx.msgLen)
                             || sockCtx.msgLen < 0
                             || sockCtx.msgLen > MSG_IO_READ_WRITE_DATA_MAXLEN) {
-
                         sock.destroy ();
                     } else {
 
@@ -73,7 +73,7 @@ msgIoServer.on('connection', (sock) => {
                     = sockCtx.msgBuff.substring(sockCtx.msgLen);
                     
                     //handle message
-                    msgIoHandler (sockCtx.msgData);
+                    msgIoHandler (sock, sockCtx, sockCtx.msgData);
 
                     //prepare for next message
                     sockCtx.msgLen = NaN;

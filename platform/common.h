@@ -383,6 +383,18 @@ void DumpCStats(void* aStats);
     } \
 } \
 
+#define SetSockAddress0(__addr,__is_ipv6) \
+{ \
+    memset((__addr), 0, sizeof(SockAddr_t)); \
+    if (__is_ipv6) { \
+        (__addr)->in6Addr.sin6_family = AF_INET6; \
+    } else { \
+        (__addr)->inAddr.sin_family = AF_INET; \
+    } \
+}\
+
+void SetSockAddress(SockAddr_t* addr, char* str, int port);
+
 //#################TCP Start###############
 int TcpNewConnection(SockAddr_t* localAddress
                         , SockAddr_t* remoteAddress

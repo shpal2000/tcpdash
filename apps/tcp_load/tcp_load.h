@@ -44,6 +44,12 @@ typedef struct TcpCsAppCtx {
     Pool_t activeSessionPool;
     char commonReadBuff[COMMON_READBUFF_MAXLEN];
     char commonWriteBuff[COMMON_WRITEBUFF_MAXLEN];
+    MsgIoChannelId_t nAdminChannelId;
+    int nAdminChannelState;
+    char nAdminTestId[N_ADMIN_TEST_ID_MAX_LEN];
+    SockAddr_t nAdminAddr;
+    SockAddr_t nLocalAddr;
+    IoVentCtx_t* iovCtx;
     TcpCsAppI_t* appI; 
 } TcpCsAppCtx_t;
 

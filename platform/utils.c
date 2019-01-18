@@ -43,6 +43,26 @@ void AddressToString(SockAddr_t* addr, char* str) {
    }
 }
 
+void SetSockAddress(SockAddr_t* addr, char* str, int port) {
+
+    //check str for ipv6 ???
+    int is_ipv6 = 0;
+
+    SetSockAddress0 (addr, is_ipv6);
+
+    if (is_ipv6) {
+        inet_pton(AF_INET6
+                , str
+                , &addr->in6Addr.sin6_addr);
+        addr->in6Addr.sin6_port = htons(port);
+    }else{
+        inet_pton(AF_INET
+                , str
+                , &addr->inAddr.sin_addr);
+        addr->inAddr.sin_port = htons(port);
+    }
+}
+
 #if 0
 int IsIpv6 (void* addr) {
     int isIpv6 = 0;
