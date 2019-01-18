@@ -17,49 +17,75 @@ msgIoServer.listen(msgIoPort, host, () => {
     console.log('msgIoServer running on port ' + msgIoPort + '.');
 });
 
-msgIoServer.on('connection', (sock) => {
+function msgIoHandler (msg) {
+    console.log (msg);
+}
 
-    console.log('CONNECTED: ' + sock.remoteAddress + ':' + sock.remotePort);
+msgIoServer.on('connection', (sock) => {
     
     var sockCtx = { msgBuff : ''
-                    , msgs : []
-                    , state : 'MSG_LENGHT_READ' };
+                    , msgLen : NaN
+                    , msgData : '' };
 
     msgIoConns.set (sock, sockCtx);
 
     sock.on('data', (data) => {
 
-        console.log('DATA ' + sock.remoteAddress + ':' + sock.remotePort + ':' + data);
-
         var sockCtx = msgIoConns.get(sock);
 
         sockCtx.msgBuff = sockCtx.msgBuff.concat (data);
 
-        if (sockCtx.state === 'MSG_LENGHT_READ') {
-            console.log('MSG_LENGHT_READ');
-            if (sockCtx.msgBuff.length >= MSG_IO_MESSAGEL_LENGTH_BYTES) {
-                console.log('MSG_IO_MESSAGEL_LENGTH_BYTES');
-                var msgLenStr 
-                    = sockCtx.msgBuff.substring(0, MSG_IO_MESSAGEL_LENGTH_BYTES);
+        while (true) {
 
-                var msgLen = parseInt(msgLenStr);
-                console.log('msgLen: ' + msgLen);
-                if (isNaN(msgLen)
-                        || msgLen < 0
-                        || msgLen > MSG_IO_READ_WRITE_DATA_MAXLEN) {
-                    console.log('sock.end');
-                    sock.destroy ();
+            if ( isNaN(sockCtx.msgLen) ) {
+
+                if (sockCtx.msgBuff.length > MSG_IO_MESSAGEL_LENGTH_BYTES) {
+
+                    sockCtx.msgLen 
+                        = parseInt(sockCtx.msgBuff.substring(0
+                                    , MSG_IO_MESSAGEL_LENGTH_BYTES));
+
+                    if (isNaN(sockCtx.msgLen)
+                            || sockCtx.msgLen < 0
+                            || sockCtx.msgLen > MSG_IO_READ_WRITE_DATA_MAXLEN) {
+
+                        sock.destroy ();
+                    } else {
+
+                        sockCtx.msgBuff 
+                            = sockCtx.msgBuff.substring(MSG_IO_MESSAGEL_LENGTH_BYTES);
+                    }
                 } else {
-                    sockCtx.state = MSG_IO_ON_MESSAGE_STATE_READ_DATA; 
+                    break;
                 }
             }
-        } else {
 
+            if (isNaN(sockCtx.msgLen)) {
+                break;
+            } else {
+
+                if (sockCtx.msgBuff.length >= sockCtx.msgLen) {
+
+                    sockCtx.msgData 
+                        = sockCtx.msgBuff.substring(0, sockCtx.msgLen);
+
+                    sockCtx.msgBuff 
+                    = sockCtx.msgBuff.substring(sockCtx.msgLen);
+                    
+                    //handle message
+                    msgIoHandler (sockCtx.msgData);
+
+                    //prepare for next message
+                    sockCtx.msgLen = NaN;
+                    sockCtx.msgData = ''
+                } else {
+                    break;
+                }            
+            }
         }
     });
 
     sock.on('end', () => {
-        console.log('END: ' + sock.remoteAddress + ':' + sock.remotePort);
         sock.end ();
     });
 
@@ -68,7 +94,6 @@ msgIoServer.on('connection', (sock) => {
     });
 
     sock.on('close', () => {
-        console.log('CLOSED: ' + sock.remoteAddress + ':' + sock.remotePort);
         msgIoConns.delete(sock);
     });
 });
