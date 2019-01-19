@@ -202,15 +202,20 @@ static void MsgIoOnMsgRecv (MsgIoChannelId_t mioChannelId) {
 
     char* msgData;
     int msgLen;
-
     MsgIoRecv (mioChannelId, &msgData, &msgLen);
-
     msgData[msgLen] = '\0';
- 
-    puts("\n<<<<\n");
-    puts (msgData);
-    puts("\n>>>>\n");
 
+    JsonNode *root;
+    GError *error;
+
+    root = json_from_string (msgData, &error);
+
+    if (error) {
+
+    } else {
+        
+    }
+    
     char* srcIpGroup1[] = { "12.20.50.2"
                 , "12.20.50.3"
                 , "12.20.50.4"
@@ -456,7 +461,7 @@ int main(int argc, char** argv) {
     TcpCsAppCtx_t* appCtx = InitApp ( argv[1], argv[2], atoi(argv[3]) );
 
     if (appCtx == NULL) {
-        exit (-1);
+        exit (-1); //???
     }
 
     TcpCsAppI_t* appI = appCtx->appI;

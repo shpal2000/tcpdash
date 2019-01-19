@@ -2,6 +2,7 @@ tcp_client_src = ['tcp_client.c', '../common.c']
 tcp_server_src = ['tcp_server.c']
 
 glib_dep = dependency('glib-2.0')
+json_glib_dep = dependency('json-glib-1.0')
 
 incdir = include_directories(['../..', '../../iovents/v1/'])
 

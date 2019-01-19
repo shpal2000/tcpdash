@@ -17,9 +17,12 @@ msgIoServer.listen(msgIoPort, host, () => {
     console.log('msgIoServer running on port ' + msgIoPort + '.');
 });
 
-function msgIoHandler (sock, sockCtx, msg) {
-    console.log (msg);
-    sock.write ('0000001\nh');
+function msgIoHandler (sock, sockCtx, rcvMsg) {
+    console.log (rcvMsg);
+    var sendMsg = '{"connPerSec" : 2000}'
+    var s1 = "0000000" + num;
+    var s2 = s1.substr(s1.length-7);
+    sock.write ( s2 + '\n' + sendMsg);
 }
 
 msgIoServer.on('connection', (sock) => {
