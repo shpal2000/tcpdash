@@ -101,7 +101,7 @@ static void OnReadStatus (struct IoVentConn* iovConn
         if (mioChannel->onMsgState == MSG_IO_ON_MESSAGE_STATE_READ_LENGTH) {
 
             char *endptr;
-            mioChannel->recvBuff[MSG_IO_MESSAGEL_LENGTH_BYTES-1] = '\0';
+            mioChannel->recvBuff[MSG_IO_MESSAGEL_LENGTH_BYTES] = '\0';
             mioChannel->recvMsg.len = (int) strtol (mioChannel->recvBuff
                                                             ,  &endptr
                                                             , 10);
