@@ -9,10 +9,16 @@ static void MsgIoRecvNextInit (MsgIoChannelId_t mioChannelId) {
     mioChannel->onMsgState = MSG_IO_ON_MESSAGE_STATE_READ_LENGTH;
 }
 
-void MsgIoSendInit (MsgIoChannelId_t mioChannelId) {
+void MsgIoSend (MsgIoChannelId_t mioChannelId, char* msg, int msgLen) {
 
     MsgIoChannel_t* mioChannel 
         = (MsgIoChannel_t*) mioChannelId;
+
+    mioChannel->sendMsg.len = msgLen;
+
+    if (mioChannel->sendMsg.len > MSG_IO_READ_WRITE_DATA_MAXLEN) {
+        mioChannel->sendMsg.len = MSG_IO_READ_WRITE_DATA_MAXLEN;
+    }
 
     sprintf (mioChannel->sendBuff
                 , MSG_IO_MESSAGEL_LENGTH_FORMAT
@@ -20,23 +26,20 @@ void MsgIoSendInit (MsgIoChannelId_t mioChannelId) {
 
     mioChannel->sendBuff[MSG_IO_MESSAGEL_LENGTH_BYTES - 1] = '\n';
 
-    EnableWriteNotification ( mioChannel->iovConn );
+    memcpy (mioChannel->sendMsg.data, msg, mioChannel->sendMsg.len);
+
+    EnableWriteNotification ( mioChannel->iovConn);
 }
 
-MsgIoDataBuff_t* MsgIoGetRecvBuff (MsgIoChannelId_t mioChannelId) {
+void MsgIoRecv (MsgIoChannelId_t mioChannelId
+                        , char** pMsg
+                        , int* pLen) {
 
     MsgIoChannel_t* mioChannel 
         = (MsgIoChannel_t*) mioChannelId;
 
-    return &mioChannel->recvMsg;
-}
-
-MsgIoDataBuff_t* MsgIoGetSendBuff (MsgIoChannelId_t mioChannelId) {
-
-    MsgIoChannel_t* mioChannel 
-        = (MsgIoChannel_t*) mioChannelId;
-
-    return &mioChannel->sendMsg;
+    *pMsg = mioChannel->recvMsg.data;
+    *pLen = mioChannel->recvMsg.len;
 }
 
 void* MsgIoGetCtx (MsgIoChannelId_t mioChannelId) {
@@ -45,6 +48,14 @@ void* MsgIoGetCtx (MsgIoChannelId_t mioChannelId) {
         = (MsgIoChannel_t*) mioChannelId;
 
     return mioChannel->mioCtx;
+}
+
+double MsgIoTimeElapsed (MsgIoChannelId_t mioChannelId) {
+
+    MsgIoChannel_t* mioChannel 
+        = (MsgIoChannel_t*) mioChannelId;
+
+    return TimeElapsedIoVentCtx (mioChannel->iovCtx);
 }
 
 static void OnEstablish (struct IoVentConn* iovConn) {

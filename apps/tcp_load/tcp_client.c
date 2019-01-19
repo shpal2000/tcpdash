@@ -182,35 +182,33 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
 
     TcpCsAppCtx_t* appCtx = (TcpCsAppCtx_t*) MsgIoGetCtx (mioChannelId);
 
-    appCtx->nAdminChannelState = N_ADMIN_CHANNEL_STATE_OPEN; 
-
-    MsgIoDataBuff_t* sndBuff = MsgIoGetSendBuff (mioChannelId);
-
-    strcpy(sndBuff->data, N_ADMIN_CMD_GET_TEST_CONFIG);
-
-    sndBuff->len = strlen(N_ADMIN_CMD_GET_TEST_CONFIG);
-
     appCtx->nAdminChannelState = N_ADMIN_CHANNEL_STATE_GET_CONFIG;
 
-    MsgIoSendInit (mioChannelId); 
+    MsgIoSend (mioChannelId
+                , N_ADMIN_CMD_GET_TEST_CONFIG
+                , strlen(N_ADMIN_CMD_GET_TEST_CONFIG));
 }
 
 static void MsgIoOnError (MsgIoChannelId_t mioChannelId) {
 
     TcpCsAppCtx_t* appCtx = (TcpCsAppCtx_t*) MsgIoGetCtx (mioChannelId);
 
-    appCtx->nAdminChannelState = N_ADMIN_CHANNEL_STATE_ERR; 
+    appCtx->nAdminChannelErr = N_ADMIN_CHANNEL_ERROR_CONN;
 }
 
 static void MsgIoOnMsgRecv (MsgIoChannelId_t mioChannelId) {
 
     TcpCsAppCtx_t* appCtx = (TcpCsAppCtx_t*) MsgIoGetCtx (mioChannelId);
 
-    MsgIoDataBuff_t* rcvBuff = MsgIoGetRecvBuff (mioChannelId);
-    rcvBuff->data[rcvBuff->len] = '\0';
+    char* msgData;
+    int msgLen;
+
+    MsgIoRecv (mioChannelId, &msgData, &msgLen);
+
+    msgData[msgLen] = '\0';
  
     puts("\n<<<<\n");
-    puts (rcvBuff->data);
+    puts (msgData);
     puts("\n>>>>\n");
 
     char* srcIpGroup1[] = { "12.20.50.2"
@@ -349,6 +347,8 @@ static TcpCsAppCtx_t* InitApp (char* nAdminTestId, char* nAdminAddr, int nAdminP
     
     if (appCtx) {
 
+        appCtx->nAdminChannelErr = 0;
+
         strcpy (appCtx->nAdminTestId, nAdminTestId);
 
         SetSockAddress (&appCtx->nAdminAddr, nAdminAddr, nAdminPort);
@@ -370,10 +370,20 @@ static TcpCsAppCtx_t* InitApp (char* nAdminTestId, char* nAdminAddr, int nAdminP
 
             appCtx->nAdminChannelState = N_ADMIN_CHANNEL_STATE_INIT;
 
-            //???implement timeout
-            while (1) {
+            while ( 1 ) {
 
                 MsgIoProcess (appCtx->nAdminChannelId);
+
+                if (MsgIoTimeElapsed (appCtx->nAdminChannelId) 
+                                    > N_ADMIN_GET_CONFIG_MAX_TIME) {
+                    
+                    appCtx->nAdminChannelErr 
+                        = N_ADMIN_CHANNEL_ERROR_GET_CONFIG_TIMEOUT;
+                }
+
+                if (appCtx->nAdminChannelErr) {
+                    break;
+                }
 
                 if (appCtx->nAdminChannelState == N_ADMIN_CHANNEL_STATE_RECV_CONFIG) {
 
@@ -406,10 +416,6 @@ static TcpCsAppCtx_t* InitApp (char* nAdminTestId, char* nAdminAddr, int nAdminP
 
                     break;
                 }
-
-                // if (timeout or error) {
-                //     break;
-                // }
             }
         }
 

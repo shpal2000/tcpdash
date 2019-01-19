@@ -26,7 +26,7 @@ typedef struct TcpCsAppGroup {
 } TcpCsAppGroup_t;
 
 typedef struct TcpCsAppI {
-    AppI_t ctrlInfo;
+    AppI_t ctrlInfo; //??? todo
 
     uint32_t maxEvents;
     uint32_t connPerSec;
@@ -46,6 +46,7 @@ typedef struct TcpCsAppCtx {
     char commonWriteBuff[COMMON_WRITEBUFF_MAXLEN];
     MsgIoChannelId_t nAdminChannelId;
     int nAdminChannelState;
+    int nAdminChannelErr;
     char nAdminTestId[N_ADMIN_TEST_ID_MAX_LEN];
     SockAddr_t nAdminAddr;
     SockAddr_t nLocalAddr;

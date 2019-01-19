@@ -3,12 +3,17 @@
 
 #include "platform/common.h"
 
+#define N_ADMIN_GET_CONFIG_MAX_TIME                      5
 #define N_ADMIN_TEST_ID_MAX_LEN                         64                                 
-#define N_ADMIN_CHANNEL_STATE_ERR                      -1
 #define N_ADMIN_CHANNEL_STATE_INIT                      1
 #define N_ADMIN_CHANNEL_STATE_OPEN                      2
 #define N_ADMIN_CHANNEL_STATE_GET_CONFIG                3
 #define N_ADMIN_CHANNEL_STATE_RECV_CONFIG               4
+
+#define N_ADMIN_CHANNEL_ERROR_GET_CONFIG_TIMEOUT        -1
+#define N_ADMIN_CHANNEL_ERROR_CONN                      -2
+#define N_ADMIN_CHANNEL_ERROR_GET_CONFIG                -3
+
 
 enum ConnCloseMethod {EmTcpFIN
                     , EmTcpRST
@@ -18,16 +23,7 @@ enum ConnCloseType {EmClientClose
                     , EmServerClose
                     , EmDataFinish};
 
-typedef struct AppI {
-    uint32_t isRunning;
-} AppI_t;
-
 typedef void* MsgIoChannelId_t;
-
-typedef struct MsgIoDataBuff {
-    char* data;
-    int len;
-} MsgIoDataBuff_t;
 
 typedef struct MsgIoChannelStats {
     SockStats_t connStats;
@@ -50,12 +46,15 @@ MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
                             , MsgIoMethods_t* mioMethods
                             , void* mioCtx);
 void MsgIoDelete (MsgIoChannelId_t mioChanelId);
-MsgIoDataBuff_t* MsgIoGetRecvBuff (MsgIoChannelId_t mioChanelId);
-MsgIoDataBuff_t* MsgIoGetSendBuff (MsgIoChannelId_t mioChanelId);
-void MsgIoSendInit (MsgIoChannelId_t mioChanelId);
+void MsgIoRecv (MsgIoChannelId_t mioChanelId, char** pMsg, int* pLen);
+void MsgIoSend (MsgIoChannelId_t mioChanelId, char* msg, int msg_len);
 void MsgIoProcess (MsgIoChannelId_t mioChannelId);
-void* MsgIoGetCtx (MsgIoChannelId_t mioChanelId);
+void* MsgIoGetCtx (MsgIoChannelId_t mioChannelId);
+double MsgIoTimeElapsed (MsgIoChannelId_t mioChannelId);
 /////////////////////////////////TcpProxyApp////////////////////////////// 
+typedef struct AppI {
+    uint32_t isRunning;
+} AppI_t;
 
 typedef struct TcpProxyAppStats {
     SockStats_t connStats;

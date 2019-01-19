@@ -12,6 +12,11 @@
 #define MSG_IO_ON_MESSAGE_STATE_READ_LENGTH      1
 #define MSG_IO_ON_MESSAGE_STATE_READ_DATA        2
 
+typedef struct MsgIoDataBuff {
+    char* data;
+    int len;
+} MsgIoDataBuff_t;
+
 typedef struct MsgIoChannel {
     IoVentConn_t* iovConn;
     IoVentCtx_t* iovCtx;
