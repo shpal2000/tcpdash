@@ -14,14 +14,16 @@
 #define N_ADMIN_CHANNEL_ERROR_CONN                      -2
 #define N_ADMIN_CHANNEL_ERROR_GET_CONFIG                -3
 
+#define N_ADMIN_MESSAGE_ID_GET_TEST_CONFIG              1
+#define N_ADMIN_MESSAGE_ID_SET_TEST_CONFIG              2
 
-enum ConnCloseMethod {EmTcpFIN
-                    , EmTcpRST
-                    , EmCloseNotify};
+enum ConnCloseMethod {EmTcpFIN = 1
+                    , EmTcpRST = 2
+                    , EmCloseNotify = 3};
 
-enum ConnCloseType {EmClientClose
-                    , EmServerClose
-                    , EmDataFinish};
+enum ConnCloseType {EmClientClose = 1
+                    , EmServerClose = 2
+                    , EmDataFinish = 3};
 
 typedef void* MsgIoChannelId_t;
 

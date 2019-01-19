@@ -206,14 +206,14 @@ static void MsgIoOnMsgRecv (MsgIoChannelId_t mioChannelId) {
     msgData[msgLen] = '\0';
 
     JsonNode *root;
-    GError *error;
+    GError *error = NULL;
 
     root = json_from_string (msgData, &error);
 
     if (error) {
-
-    } else {
         
+    } else {
+       json_node_get_object (root); 
     }
     
     char* srcIpGroup1[] = { "12.20.50.2"
