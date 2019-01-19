@@ -186,11 +186,8 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
 
     MsgIoDataBuff_t* sndBuff = MsgIoGetSendBuff (mioChannelId);
 
-    // char lenBuffer[9];
-    // sprintf (lenBuffer, "%08d", (int)strlen(N_ADMIN_CMD_GET_TEST_CONFIG));
-    // memcpy (N_ADMIN_CMD_GET_TEST_CONFIG, lenBuffer, 8);
+    strcpy(sndBuff->data, N_ADMIN_CMD_GET_TEST_CONFIG);
 
-    sndBuff->data = N_ADMIN_CMD_GET_TEST_CONFIG;
     sndBuff->len = strlen(N_ADMIN_CMD_GET_TEST_CONFIG);
 
     appCtx->nAdminChannelState = N_ADMIN_CHANNEL_STATE_GET_CONFIG;

@@ -19,7 +19,7 @@ msgIoServer.listen(msgIoPort, host, () => {
 
 function msgIoHandler (sock, sockCtx, msg) {
     console.log (msg);
-    sock.write ('00000001h');
+    sock.write ('0000001\nh');
 }
 
 msgIoServer.on('connection', (sock) => {

@@ -4,7 +4,8 @@
 #include "iovents.h"
 #include "apps/common.h"
 
-#define MSG_IO_MESSAGEL_LENGTH_BYTES            8 
+#define MSG_IO_MESSAGEL_LENGTH_BYTES            8
+#define MSG_IO_MESSAGEL_LENGTH_FORMAT           "%07d" 
 #define MSG_IO_READ_WRITE_DATA_MAXLEN           1048576
 #define MSG_IO_READ_WRITE_BUFF_MAXLEN           1048585
 

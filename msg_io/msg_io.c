@@ -14,6 +14,12 @@ void MsgIoSendInit (MsgIoChannelId_t mioChannelId) {
     MsgIoChannel_t* mioChannel 
         = (MsgIoChannel_t*) mioChannelId;
 
+    sprintf (mioChannel->sendBuff
+                , MSG_IO_MESSAGEL_LENGTH_FORMAT
+                , mioChannel->sendMsg.len);
+
+    mioChannel->sendBuff[MSG_IO_MESSAGEL_LENGTH_BYTES - 1] = '\n';
+
     EnableWriteNotification ( mioChannel->iovConn );
 }
 
@@ -101,7 +107,7 @@ static void OnReadStatus (struct IoVentConn* iovConn
         if (mioChannel->onMsgState == MSG_IO_ON_MESSAGE_STATE_READ_LENGTH) {
 
             char *endptr;
-            mioChannel->recvBuff[MSG_IO_MESSAGEL_LENGTH_BYTES] = '\0';
+            mioChannel->recvBuff[MSG_IO_MESSAGEL_LENGTH_BYTES-1] = '\0';
             mioChannel->recvMsg.len = (int) strtol (mioChannel->recvBuff
                                                             ,  &endptr
                                                             , 10);
@@ -110,7 +116,7 @@ static void OnReadStatus (struct IoVentConn* iovConn
                     || (endptr == mioChannel->recvBuff)
                     || (errno == ERANGE && (mioChannel->recvMsg.len == LONG_MIN))
                     || (errno == ERANGE && (mioChannel->recvMsg.len == LONG_MAX))
-                    || (mioChannel->recvMsg.len < 0)
+                    || (mioChannel->recvMsg.len <= 0)
                     || (mioChannel->recvMsg.len > MSG_IO_READ_WRITE_DATA_MAXLEN) ) {
 
                 AbortConnection (iovConn);
@@ -148,9 +154,10 @@ static void OnWriteNext (struct IoVentConn* iovConn) {
         = (MsgIoChannel_t*) iovConn->cInfo.sessionData;
 
     WriteNextData (iovConn
-                    , mioChannel->sendMsg.data
+                    , mioChannel->sendBuff
                     , 0
-                    , mioChannel->sendMsg.len
+                    , mioChannel->sendMsg.len 
+                        + MSG_IO_MESSAGEL_LENGTH_BYTES
                     , 0);
 }
 
