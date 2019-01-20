@@ -5,7 +5,7 @@ json_glib_dep = dependency('json-glib-1.0')
 
 incdir = include_directories(['../..', '../../iovents/v1/'])
 
-tcp_proxy_lib =  static_library('tcp_proxy'
+executable('tcp_proxy.exe'
                     , sources : tcp_proxy_src
                     , include_directories : incdir
                     , dependencies : [glib_dep, json_glib_dep]

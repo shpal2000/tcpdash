@@ -59,3 +59,31 @@ iptables -t mangle -A PREROUTING -i eth1 -p tcp --dport 443 -j TPROXY --tproxy-m
 route add -net 12.20.50.0 netmask 255.255.255.0 gw 1.102.2.254 dev eth2
 route add -net 12.20.60.0 netmask 255.255.255.0 gw 1.102.1.254 dev eth1
 
+####################
+
+sudo sysctl net.ipv4.conf.all.rp_filter=0
+sudo sysctl net.ipv4.conf.default.rp_filter=0
+
+sudo ifconfig ens192 1.102.2.1 up
+sudo ifconfig ens192 hw ether 00:0c:29:58:9f:a4
+sudo arp -i ens192 -s 1.102.2.254 00:0c:29:2d:96:b5
+sudo sysctl net.ipv4.conf.ens192.rp_filter=0
+
+sudo ifconfig ens224 1.102.1.1 up
+sudo ifconfig ens224 hw ether 00:0c:29:2d:96:b5
+sudo arp -i ens224 -s 1.102.1.254 00:0c:29:58:9f:a4
+sudo sysctl net.ipv4.conf.ens224.rp_filter=0
+
+sudo iptables -t mangle -N DIVERT
+sudo iptables -t mangle -A PREROUTING -p tcp -m socket -j DIVERT
+sudo iptables -t mangle -A DIVERT -j MARK --set-mark 1
+sudo iptables -t mangle -A DIVERT -j ACCEPT
+
+sudo ip rule add fwmark 1 lookup 100
+sudo ip route add local 0.0.0.0/0 dev lo table 100
+
+sudo iptables -t mangle -A PREROUTING -i ens192 -p tcp --dport 443 -j TPROXY --tproxy-mark 0x1/0x1 --on-port 883
+sudo iptables -t mangle -A PREROUTING -i ens224 -p tcp --dport 443 -j TPROXY --tproxy-mark 0x1/0x1 --on-port 883
+
+sudo route add -net 12.20.50.0 netmask 255.255.255.0 gw 1.102.2.254 dev ens192
+sudo route add -net 12.20.60.0 netmask 255.255.255.0 gw 1.102.1.254 dev ens224

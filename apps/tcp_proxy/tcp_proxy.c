@@ -420,5 +420,45 @@ void DumpTcpProxyStats (AppI_t* appBase) {
     puts (statsString);
 }
 
+int main (int argc, char** argv) {
 
+    int csGroupCount = 1;
+
+    TcpProxyAppI_t* appI 
+        = (TcpProxyAppI_t*) mmap(NULL
+            , sizeof (TcpProxyAppI_t)
+            , PROT_READ | PROT_WRITE
+            , MAP_SHARED | MAP_ANONYMOUS
+            , -1
+            , 0);
+
+    appI->csGroupCount = csGroupCount;
+    appI->csGroupArr 
+        = (TcpProxyAppGroup_t*) mmap(NULL
+            , sizeof (TcpProxyAppGroup_t) * appI->csGroupCount
+            , PROT_READ | PROT_WRITE
+            , MAP_SHARED | MAP_ANONYMOUS
+            , -1
+            , 0);
+
+    appI->maxActiveSessions = 100;
+    appI->maxErrorSessions = 100;
+
+    TcpProxyAppGroup_t* server 
+        = &appI->csGroupArr[0];
+
+    server->keepSourcePort = 0;
+
+    // proxy address
+    struct sockaddr_in* serverAddrP 
+        = &(server->serverAddrP.inAddr);
+    memset(serverAddrP, 0, sizeof(SockAddr_t));
+    serverAddrP->sin_family = AF_INET;
+    inet_pton(AF_INET
+                , "0.0.0.0"
+                , &(serverAddrP->sin_addr));
+    serverAddrP->sin_port = htons(883);
+
+    TcpProxyRun ( (AppI_t*) appI);
+}
 
