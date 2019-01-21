@@ -357,6 +357,29 @@ static TcpProxyAppCtx_t* CreateAppCtx (TcpProxyAppI_t* appI) {
     return appCtx;
 }
 
+static void DumpTcpProxyStats (TcpProxyAppCtx_t* appCtx, TcpProxyAppI_t* appI) {
+
+    TcpProxyAppStats_t* appConnStats = &appI->gStats; 
+
+    char statsString[120];
+
+    sprintf (statsString, 
+                        "%" PRIu64 " : " 
+                        "%" PRIu64 " : "
+                        "%" PRIu64 " : "
+                        "%d" " : "
+                        "%d"
+                        "\n"
+        , GetConnStats(appConnStats, tcpAcceptSuccess)
+        , GetConnStats(appConnStats, tcpConnInit)
+        , GetConnStats(appConnStats, tcpConnInitSuccess)
+        , GetPoolCount(appCtx->freeSessionPool)
+        , GetPoolCount(appCtx->freeBuffPool)
+        );
+
+    puts (statsString);
+}
+
 void TcpProxyRun (AppI_t* appBase) {
 
     TcpProxyAppI_t* appI = (TcpProxyAppI_t*) appBase;
@@ -390,34 +413,18 @@ void TcpProxyRun (AppI_t* appBase) {
                 , &appCtx->appI->gStats
                 , &server->cStats);
 
+    DumpTcpProxyStats (appCtx, appI);
+
     while (1) {
+
         ProcessIoVent (iovCtx);
+
+        DumpTcpProxyStats (appCtx, appI);
     }
 
     DumpErrConnections (iovCtx);
 
     DeleteIoVentCtx (iovCtx);
-}
-
-void DumpTcpProxyStats (AppI_t* appBase) {
-
-    TcpProxyAppI_t* appI = (TcpProxyAppI_t*) appBase;
-
-    TcpProxyAppStats_t* appConnStats = &appI->gStats; 
-
-    char statsString[120];
-
-    sprintf (statsString, 
-                        "%" PRIu64 " : " 
-                        "%" PRIu64 " : "
-                        "%" PRIu64
-                        "\n"
-        , GetConnStats(appConnStats, tcpAcceptSuccess)
-        , GetConnStats(appConnStats, tcpConnInit)
-        , GetConnStats(appConnStats, tcpConnInitSuccess)
-        );
-
-    puts (statsString);
 }
 
 int main (int argc, char** argv) {
@@ -441,13 +448,13 @@ int main (int argc, char** argv) {
             , -1
             , 0);
 
-    appI->maxActiveSessions = 100;
-    appI->maxErrorSessions = 100;
+    appI->maxActiveSessions = 100000;
+    appI->maxErrorSessions = 100000;
 
     TcpProxyAppGroup_t* server 
         = &appI->csGroupArr[0];
 
-    server->keepSourcePort = 0;
+    server->keepSourcePort = 1;
 
     // proxy address
     struct sockaddr_in* serverAddrP 

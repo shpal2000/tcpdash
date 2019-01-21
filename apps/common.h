@@ -80,10 +80,6 @@ typedef struct TcpProxyAppI {
     TcpProxyAppStats_t gStats;
 } TcpProxyAppI_t;
 
-void TcpProxyRun(AppI_t* appBase);
-
-void DumpTcpProxyStats(AppI_t* appBase);
-
 char* N_ADMIN_CMD_GET_TEST_CONFIG;
 
 #endif
