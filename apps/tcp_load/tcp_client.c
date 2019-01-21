@@ -470,7 +470,9 @@ static void MsgIoOnMsgSent (MsgIoChannelId_t mioChannelId) {
 
 }
 
-static TcpCsAppCtx_t* InitApp (char* nAdminTestId, char* nAdminAddr, int nAdminPort) {
+static TcpCsAppCtx_t* InitApp (char* nAdminTestId
+                                , char* nAdminAddr
+                                , int nAdminPort) {
 
     int status = -1;
 
@@ -584,7 +586,8 @@ static TcpCsAppCtx_t* InitApp (char* nAdminTestId, char* nAdminAddr, int nAdminP
 
 int main(int argc, char** argv) {
 
-    TcpCsAppCtx_t* appCtx = InitApp ( argv[1], argv[2], atoi(argv[3]) );
+    TcpCsAppCtx_t* appCtx 
+        = InitApp ( argv[1], argv[2], atoi(argv[3]) );
 
     if (appCtx == NULL) {
         exit (-1); //???
@@ -611,7 +614,7 @@ int main(int argc, char** argv) {
             lastMsgIoTime = MsgIoTimeElapsed (appCtx->nAdminChannelId);
 
             sprintf (statsString, 
-                        "Tcp Client : Init = %" PRIu64 "; " 
+                        "TC : Init = %" PRIu64 "; " 
                         "Succ = %" PRIu64 "; "
                         "Fail = %" PRIu64
                         "\n"
