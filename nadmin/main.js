@@ -76,10 +76,11 @@ msgIoServer.listen(msgIoPort, host, () => {
 
 function msgIoHandler (sock, sockCtx, rcvMsg) {
     console.log (rcvMsg);
-    var sendMsg = TcpCsConfig;
-    var s1 = "0000000" + TcpCsConfig.length;
-    var s2 = s1.substr(s1.length-7);
-    sock.write ( s2 + '\n' + sendMsg);
+    // console.log (rcvMsg);
+    // var sendMsg = TcpCsConfig;
+    // var s1 = "0000000" + TcpCsConfig.length;
+    // var s2 = s1.substr(s1.length-7);
+    // sock.write ( s2 + '\n' + sendMsg);
 }
 
 msgIoServer.on('connection', (sock) => {
