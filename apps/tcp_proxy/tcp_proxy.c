@@ -338,96 +338,14 @@ static void OnCleanup (struct IoVentConn* iovConn) {
 static void OnStatus (struct IoVentConn* iovConn) {
 }
 
-static TcpProxyAppCtx_t* CreateAppCtx (TcpProxyAppI_t* appI) {
+static int OnContinue (void* appData) {
 
-    TcpProxyAppCtx_t* appCtx = CreateStruct0 (TcpProxyAppCtx_t);
-
-    appCtx->appI = appI;
-                
-    CreatePool (&appCtx->freeSessionPool
-                , appI->maxActiveSessions
-                , TcpProxyAppSession_t);
-
-    CreatePool (&appCtx->freeBuffPool
-                , appI->maxActiveSessions * 16
-                , RwBuff_t);
-
-    InitPool (&appCtx->activeSessionPool);
-
-    return appCtx;
+    return EmAppContinue;
 }
 
-static void DumpTcpProxyStats (TcpProxyAppCtx_t* appCtx, TcpProxyAppI_t* appI) {
+static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
 
-    TcpProxyAppStats_t* appConnStats = &appI->gStats; 
-
-    char statsString[120];
-
-    sprintf (statsString, 
-                        "%" PRIu64 " : " 
-                        "%" PRIu64 " : "
-                        "%" PRIu64 " : "
-                        "%d" " : "
-                        "%d"
-                        "\n"
-        , GetConnStats(appConnStats, tcpAcceptSuccess)
-        , GetConnStats(appConnStats, tcpConnInit)
-        , GetConnStats(appConnStats, tcpConnInitSuccess)
-        , GetPoolCount(appCtx->freeSessionPool)
-        , GetPoolCount(appCtx->freeBuffPool)
-        );
-
-    puts (statsString);
-}
-
-void TcpProxyRun (AppI_t* appBase) {
-
-    TcpProxyAppI_t* appI = (TcpProxyAppI_t*) appBase;
-
-    TcpProxyAppCtx_t* appCtx = CreateAppCtx (appI);
-
-    IoVentMethods_t* iovMethods = CreateStruct0 (IoVentMethods_t);
-
-    iovMethods->OnEstablish = &OnEstablish;
-    iovMethods->OnWriteNext = &OnWriteNext;
-    iovMethods->OnWriteStatus = &OnWriteStatus;
-    iovMethods->OnReadNext = &OnReadNext;
-    iovMethods->OnReadStatus = &OnReadStatus;
-    iovMethods->OnCleanup = &OnCleanup;
-    iovMethods->OnStatus = &OnStatus;
-
-    IoVentOptions_t* iovOptions = CreateStruct0 (IoVentOptions_t);
-
-    iovOptions->maxActiveConnections = appI->maxActiveSessions * 2;
-    iovOptions->maxErrorConnections = appI->maxErrorSessions * 2;
-    
-    IoVentCtx_t* iovCtx 
-        = CreateIoVentCtx (iovMethods, iovOptions, appCtx);
-
-    TcpProxyAppGroup_t* server 
-        = &appI->csGroupArr[0];
-
-    InitServer(iovCtx
-                , server
-                , &server->serverAddrP
-                , &appCtx->appI->gStats
-                , &server->cStats);
-
-    DumpTcpProxyStats (appCtx, appI);
-
-    while (1) {
-
-        ProcessIoVent (iovCtx);
-
-        DumpTcpProxyStats (appCtx, appI);
-    }
-
-    DumpErrConnections (iovCtx);
-
-    DeleteIoVentCtx (iovCtx);
-}
-
-int main (int argc, char** argv) {
+    TcpProxyAppCtx_t* appCtx = (TcpProxyAppCtx_t*) MsgIoGetCtx (mioChannelId);
 
     int csGroupCount = 1;
 
@@ -448,8 +366,8 @@ int main (int argc, char** argv) {
             , -1
             , 0);
 
-    appI->maxActiveSessions = 100000;
-    appI->maxErrorSessions = 100000;
+    appI->maxActSessions = 100000;
+    appI->maxErrSessions = 100000;
 
     TcpProxyAppGroup_t* server 
         = &appI->csGroupArr[0];
@@ -466,6 +384,205 @@ int main (int argc, char** argv) {
                 , &(serverAddrP->sin_addr));
     serverAddrP->sin_port = htons(883);
 
-    TcpProxyRun ( (AppI_t*) appI);
+    appCtx->appI = appI;
+
+    appCtx->nAdminChannelState = N_ADMIN_CHANNEL_STATE_RECV_CONFIG;  
+}
+
+static void MsgIoOnError (MsgIoChannelId_t mioChannelId) {
+
+    TcpProxyAppCtx_t* appCtx = (TcpProxyAppCtx_t*) MsgIoGetCtx (mioChannelId);
+
+    appCtx->nAdminChannelErr = N_ADMIN_CHANNEL_ERROR_CONN;
+}
+
+static void MsgIoOnMsgRecv (MsgIoChannelId_t mioChannelId) {
+
+}
+
+static void MsgIoOnMsgSent (MsgIoChannelId_t mioChannelId) {
+
+}
+
+static TcpProxyAppCtx_t* InitApp (char* nAdminTestId
+                                , char* nAdminAddr
+                                , int nAdminPort) {
+
+    int status = -1;
+
+    TcpProxyAppCtx_t* appCtx = CreateStruct0 (TcpProxyAppCtx_t);
+
+    if (appCtx) {
+        
+        appCtx->nAdminChannelErr = 0;
+
+        strcpy (appCtx->nAdminTestId, nAdminTestId);
+
+        SetSockAddress (&appCtx->nAdminAddr, nAdminAddr, nAdminPort);
+
+        SetSockAddress0 (&appCtx->nLocalAddr, 0); 
+
+        MsgIoMethods_t mioMethods;
+        mioMethods.OnOpen = &MsgIoOnOpen;
+        mioMethods.OnError = &MsgIoOnError;
+        mioMethods.OnMsgRecv = &MsgIoOnMsgRecv;
+        mioMethods.OnMsgSent = &MsgIoOnMsgSent;
+
+        appCtx->nAdminChannelId =  MsgIoNew (&appCtx->nLocalAddr
+                                                , &appCtx->nAdminAddr
+                                                , &mioMethods
+                                                , appCtx);
+        
+        if (appCtx->nAdminChannelId) {
+
+            appCtx->nAdminChannelState = N_ADMIN_CHANNEL_STATE_INIT;
+
+            while ( 1 ) {
+
+                MsgIoProcess (appCtx->nAdminChannelId);
+
+                if (MsgIoTimeElapsed (appCtx->nAdminChannelId) 
+                                    > N_ADMIN_GET_CONFIG_MAX_TIME) {
+                    
+                    appCtx->nAdminChannelErr 
+                        = N_ADMIN_CHANNEL_ERROR_GET_CONFIG_TIMEOUT;
+                }
+
+                if (appCtx->nAdminChannelErr) {
+                    break;
+                }
+
+                if (appCtx->nAdminChannelState == N_ADMIN_CHANNEL_STATE_RECV_CONFIG) {
+
+                    IoVentMethods_t iovMethods;
+                    iovMethods.OnEstablish = &OnEstablish;
+                    iovMethods.OnWriteNext = &OnWriteNext;
+                    iovMethods.OnWriteStatus = &OnWriteStatus;
+                    iovMethods.OnReadNext = &OnReadNext;
+                    iovMethods.OnReadStatus = &OnReadStatus;
+                    iovMethods.OnCleanup = &OnCleanup;
+                    iovMethods.OnStatus = &OnStatus;
+                    iovMethods.OnContinue = &OnContinue;
+
+                    IoVentOptions_t iovOptions;
+                    iovOptions.maxActiveConnections = appCtx->appI->maxActSessions * 2;
+                    iovOptions.maxErrorConnections = appCtx->appI->maxErrSessions * 2;
+                    iovOptions.maxEvents = 0;
+
+                    appCtx->iovCtx 
+                        = CreateIoVentCtx (&iovMethods, &iovOptions, appCtx);
+
+                    if (appCtx->iovCtx) {
+
+                        CreatePool (&appCtx->freeSessionPool
+                                    , appCtx->appI->maxActSessions
+                                    , TcpProxyAppSession_t);
+
+                        CreatePool (&appCtx->freeBuffPool
+                                    , appCtx->appI->maxActSessions * 16
+                                    , RwBuff_t);
+
+                        InitPool (&appCtx->activeSessionPool);
+                    }
+
+                    break;
+                }
+            }
+        }
+
+        if (appCtx->nAdminChannelId
+                && appCtx->iovCtx
+                && appCtx->freeSessionPool
+                && appCtx->freeBuffPool) {
+            status = 0;
+        }
+
+        if (status) {
+
+            if (appCtx) {
+
+                if (appCtx->nAdminChannelId) {
+                    MsgIoDelete (appCtx->nAdminChannelId);
+                }
+
+                if (appCtx->iovCtx) {
+                    DeleteIoVentCtx (appCtx->iovCtx);
+                }
+
+                if (appCtx->freeSessionPool) {
+                    //??? clean up pool
+                }
+
+                if (appCtx->freeBuffPool) {
+                    //??? clean up pool
+                }
+
+                DeleteStruct (TcpProxyAppCtx_t, appCtx);
+
+                appCtx = NULL;
+            }
+        }        
+    }
+                
+    return appCtx;
+}
+
+int main (int argc, char** argv) {
+
+    TcpProxyAppCtx_t* appCtx = InitApp ( argv[1], argv[2], atoi(argv[3]) );
+
+    if (appCtx == NULL) {
+        exit (-1); //???
+    }
+
+    TcpProxyAppI_t* appI = appCtx->appI;
+
+    IoVentCtx_t* iovCtx = appCtx->iovCtx;
+    
+    TcpProxyAppGroup_t* server 
+        = &appI->csGroupArr[0];
+
+    InitServer(iovCtx
+                , server
+                , &server->serverAddrP
+                , &appCtx->appI->gStats
+                , &server->cStats);
+
+    double lastMsgIoTime
+        = MsgIoTimeElapsed (appCtx->nAdminChannelId);
+
+    char statsString[256];
+
+    while (1) {
+
+        MsgIoProcess (appCtx->nAdminChannelId);
+
+        if ( (MsgIoTimeElapsed (appCtx->nAdminChannelId) - lastMsgIoTime) >= 2 ) {
+
+            lastMsgIoTime = MsgIoTimeElapsed (appCtx->nAdminChannelId);
+
+            sprintf (statsString, 
+                        "TP : Accept = %" PRIu64 "; " 
+                        "Establish = %" PRIu64
+                        "\n"
+                        , GetConnStats(&appI->gStats, tcpAcceptSuccess)
+                        , GetConnStats(&appI->gStats, tcpConnInitSuccess)
+                        );
+
+            MsgIoSend (appCtx->nAdminChannelId
+                        , statsString
+                        , strlen(statsString));
+        }
+
+        ProcessIoVent (iovCtx);
+    }
+
+    DumpErrConnections (iovCtx);
+
+    MsgIoDelete (appCtx->nAdminChannelId);
+
+    DeleteIoVentCtx (iovCtx);
+
+    return 0;
 }
 

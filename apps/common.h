@@ -71,8 +71,8 @@ typedef struct TcpProxyAppGroup {
 typedef struct TcpProxyAppI {
     AppI_t ctrlInfo;
      
-    uint32_t maxActiveSessions;
-    uint32_t maxErrorSessions;
+    uint32_t maxActSessions;
+    uint32_t maxErrSessions;
 
     uint32_t csGroupCount;
     TcpProxyAppGroup_t* csGroupArr;

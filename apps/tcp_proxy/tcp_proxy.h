@@ -11,6 +11,13 @@ typedef struct TcpProxyAppCtx {
     Pool_t* freeBuffPool;
     TcpProxyAppI_t* appI; 
     Pool_t activeSessionPool;
+    MsgIoChannelId_t nAdminChannelId;
+    int nAdminChannelState;
+    int nAdminChannelErr;
+    char nAdminTestId[N_ADMIN_TEST_ID_MAX_LEN];
+    SockAddr_t nAdminAddr;
+    SockAddr_t nLocalAddr;
+    IoVentCtx_t* iovCtx;
 } TcpProxyAppCtx_t;
 
 #define RW_MAX_BUFF_LEN 2048

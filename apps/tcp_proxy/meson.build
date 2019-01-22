@@ -10,5 +10,6 @@ executable('tcp_proxy.exe'
                     , include_directories : incdir
                     , dependencies : [glib_dep, json_glib_dep]
                     , link_with : [api_lib
-                                    , iovent_lib])
+                                    , iovent_lib
+                                    , msg_io_lib])
 
