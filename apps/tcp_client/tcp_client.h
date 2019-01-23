@@ -1,9 +1,6 @@
 #ifndef __TCP_CLIENT_SERVER_APP_H
 #define __TCP_CLIENT_SERVER_APP_H
 
-#include "msg_io/msg_io.h"
-#include "nadmin/nadmin.h"
-
 #define COMMON_READBUFF_MAXLEN      100000
 #define COMMON_WRITEBUFF_MAXLEN     1048576
 

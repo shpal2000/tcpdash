@@ -1,5 +1,8 @@
 #include <sys/mman.h>
+
 #include "iovents.h"
+#include "msg_io.h"
+#include "nadmin.h"
 
 #include "tcp_proxy.h"
 

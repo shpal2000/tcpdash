@@ -1,9 +1,6 @@
 #ifndef __TCP_PROXY_APP_H
 #define __TCP_PROXY_APP_H
 
-#include "msg_io/msg_io.h"
-#include "nadmin/nadmin.h"
-
 #define TP_CONN_TYPE_ACCEPTED       1
 #define TP_CONN_TYPE_INITIATED      2
 

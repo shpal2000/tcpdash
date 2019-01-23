@@ -3,7 +3,10 @@ tcp_server_src = ['tcp_server.c']
 glib_dep = dependency('glib-2.0')
 json_glib_dep = dependency('json-glib-1.0')
 
-incdir = include_directories(['../..', '../../iovents/v1/'])
+incdir = include_directories(['../..'
+                                , '../../iovents/v1/'
+                                , '../../msg_io/'
+                                , '../../nadmin/'])
 
 executable('tcp_server.exe'
             , sources : tcp_server_src
