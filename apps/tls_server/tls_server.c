@@ -2,10 +2,10 @@
 #include "msg_io.h"
 #include "nadmin.h"
 
-#include "tcp_server.h"
+#include "tls_server.h"
 
 
-static void InitConn (TcpServerConn_t * tcpConn) {
+static void InitConn (TlsServerConn_t * tcpConn) {
 
     tcpConn->iovConn = NULL;
     tcpConn->bytesRead = 0;
@@ -13,9 +13,9 @@ static void InitConn (TcpServerConn_t * tcpConn) {
     tcpConn->writeBuffOffset = 0;
 }
 
-static TcpServerSession_t* GetSession (TcpServerCtx_t* appCtx) {
+static TlsServerSession_t* GetSession (TlsServerCtx_t* appCtx) {
 
-    TcpServerSession_t* newSess =         
+    TlsServerSession_t* newSess =         
         GetFromPool (appCtx->freeSessionPool);
     
     if (newSess) {
@@ -30,7 +30,7 @@ static TcpServerSession_t* GetSession (TcpServerCtx_t* appCtx) {
     return newSess;
 }
 
-static void FreeSession (TcpServerSession_t* newSess) {
+static void FreeSession (TlsServerSession_t* newSess) {
 
     RemoveFromPool (&newSess->appCtx->activeSessionPool, newSess);
 
@@ -39,13 +39,13 @@ static void FreeSession (TcpServerSession_t* newSess) {
 
 static void OnEstablish (struct IoVentConn* iovConn) {
 
-    TcpServerCtx_t* appCtx 
-        = (TcpServerCtx_t*) iovConn->cInfo.appCtx;
+    TlsServerCtx_t* appCtx 
+        = (TlsServerCtx_t*) iovConn->cInfo.appCtx;
 
-    TcpServerGroup_t* groupCtx 
-        = (TcpServerGroup_t*) iovConn->cInfo.groupCtx;
+    TlsServerGroup_t* groupCtx 
+        = (TlsServerGroup_t*) iovConn->cInfo.groupCtx;
 
-    TcpServerSession_t* newSess = GetSession (appCtx);
+    TlsServerSession_t* newSess = GetSession (appCtx);
 
     if (newSess == NULL) {
 
@@ -69,8 +69,8 @@ static void OnEstablish (struct IoVentConn* iovConn) {
 
 static void OnReadNext (struct IoVentConn* iovConn) {
 
-    TcpServerCtx_t* appCtx 
-        = (TcpServerCtx_t*) iovConn->cInfo.appCtx;
+    TlsServerCtx_t* appCtx 
+        = (TlsServerCtx_t*) iovConn->cInfo.appCtx;
 
     ReadNextData (iovConn
                 , appCtx->commonReadBuff
@@ -82,8 +82,8 @@ static void OnReadNext (struct IoVentConn* iovConn) {
 static void OnReadStatus (struct IoVentConn* iovConn
                                     , int bytesRead) {
 
-    TcpServerSession_t* newSess 
-        = (TcpServerSession_t*) iovConn->cInfo.sessionData;
+    TlsServerSession_t* newSess 
+        = (TlsServerSession_t*) iovConn->cInfo.sessionData;
 
     
     if (bytesRead > 0) {
@@ -102,14 +102,14 @@ static void OnReadStatus (struct IoVentConn* iovConn
 
 static void OnWriteNext (struct IoVentConn* iovConn) {
 
-    TcpServerCtx_t* appCtx 
-        = (TcpServerCtx_t*) iovConn->cInfo.appCtx;
+    TlsServerCtx_t* appCtx 
+        = (TlsServerCtx_t*) iovConn->cInfo.appCtx;
 
-    TcpServerSession_t* newSess 
-        = (TcpServerSession_t*) iovConn->cInfo.sessionData;
+    TlsServerSession_t* newSess 
+        = (TlsServerSession_t*) iovConn->cInfo.sessionData;
 
-    TcpServerGroup_t* groupCtx 
-        = (TcpServerGroup_t*) iovConn->cInfo.groupCtx;
+    TlsServerGroup_t* groupCtx 
+        = (TlsServerGroup_t*) iovConn->cInfo.groupCtx;
   
 
     if (newSess->tcpConn.bytesWritten < groupCtx->scDataLen) {
@@ -138,11 +138,11 @@ static void OnWriteNext (struct IoVentConn* iovConn) {
 static void OnWriteStatus (struct IoVentConn* iovConn
                                     , int bytesWritten) {
 
-    TcpServerSession_t* newSess 
-        = (TcpServerSession_t*) iovConn->cInfo.sessionData;
+    TlsServerSession_t* newSess 
+        = (TlsServerSession_t*) iovConn->cInfo.sessionData;
 
-    TcpServerGroup_t* groupCtx 
-        = (TcpServerGroup_t*) iovConn->cInfo.groupCtx;
+    TlsServerGroup_t* groupCtx 
+        = (TlsServerGroup_t*) iovConn->cInfo.groupCtx;
 
 
     if (bytesWritten > 0) {
@@ -159,8 +159,8 @@ static void OnWriteStatus (struct IoVentConn* iovConn
 
 static void OnCleanup (struct IoVentConn* iovConn) {
 
-    TcpServerSession_t* newSess 
-        = (TcpServerSession_t*) iovConn->cInfo.sessionData;
+    TlsServerSession_t* newSess 
+        = (TlsServerSession_t*) iovConn->cInfo.sessionData;
 
     FreeSession (newSess);
 }
@@ -175,7 +175,7 @@ static int OnContinue (void* appData) {
 
 static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
 
-    // TcpServerCtx_t* appCtx = (TcpServerCtx_t*) MsgIoGetCtx (mioChannelId);
+    // TlsServerCtx_t* appCtx = (TlsServerCtx_t*) MsgIoGetCtx (mioChannelId);
 
     // appCtx->nAdminChannelState = N_ADMIN_CHANNEL_STATE_GET_CONFIG;
 
@@ -183,20 +183,20 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
     //             , N_ADMIN_CMD_GET_TEST_CONFIG
     //             , strlen(N_ADMIN_CMD_GET_TEST_CONFIG));
 
-    TcpServerCtx_t* appCtx = (TcpServerCtx_t*) MsgIoGetCtx (mioChannelId);
+    TlsServerCtx_t* appCtx = (TlsServerCtx_t*) MsgIoGetCtx (mioChannelId);
 
     char* dstIpGroups[1] = { "12.20.60.2"};
     int dstPort = 443;
     int csGroupCount = 1;
 
-    TcpServerI_t* appI = CreateStruct0 (TcpServerI_t);
+    TlsServerI_t* appI = CreateStruct0 (TlsServerI_t);
 
     appI->csGroupCount = csGroupCount;
 
-    appI->csGroupArr = CreateArray (TcpServerGroup_t, appI->csGroupCount); 
+    appI->csGroupArr = CreateArray (TlsServerGroup_t, appI->csGroupCount); 
 
     for (int gIndex = 0; gIndex < appI->csGroupCount; gIndex++) {
-        TcpServerGroup_t* csGroup = &appI->csGroupArr[gIndex];
+        TlsServerGroup_t* csGroup = &appI->csGroupArr[gIndex];
         struct sockaddr_in* remoteAddr 
             = &(csGroup->serverAddr.inAddr);
         memset(remoteAddr, 0, sizeof(SockAddr_t));
@@ -223,14 +223,14 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
 
 static void MsgIoOnError (MsgIoChannelId_t mioChannelId) {
 
-    TcpServerCtx_t* appCtx = (TcpServerCtx_t*) MsgIoGetCtx (mioChannelId);
+    TlsServerCtx_t* appCtx = (TlsServerCtx_t*) MsgIoGetCtx (mioChannelId);
 
     appCtx->nAdminChannelErr = N_ADMIN_CHANNEL_ERROR_CONN;
 }
 
 static void MsgIoOnMsgRecv (MsgIoChannelId_t mioChannelId) {
 
-    // TcpServerCtx_t* appCtx = (TcpServerCtx_t*) MsgIoGetCtx (mioChannelId);
+    // TlsServerCtx_t* appCtx = (TlsServerCtx_t*) MsgIoGetCtx (mioChannelId);
 
     // char* msgData;
     // int msgLen;
@@ -289,9 +289,9 @@ static void MsgIoOnMsgRecv (MsgIoChannelId_t mioChannelId) {
 
     // int csGroupCount = 1;
 
-    // TcpServerI_t* appI 
-    //     = (TcpServerI_t*) mmap(NULL
-    //         , sizeof (TcpServerI_t)
+    // TlsServerI_t* appI 
+    //     = (TlsServerI_t*) mmap(NULL
+    //         , sizeof (TlsServerI_t)
     //         , PROT_READ | PROT_WRITE
     //         , MAP_SHARED | MAP_ANONYMOUS
     //         , -1
@@ -299,8 +299,8 @@ static void MsgIoOnMsgRecv (MsgIoChannelId_t mioChannelId) {
 
     // appI->csGroupCount = csGroupCount;
     // appI->csGroupArr 
-    //     = (TcpServerGroup_t*) mmap(NULL
-    //         , sizeof (TcpServerGroup_t) * appI->csGroupCount
+    //     = (TlsServerGroup_t*) mmap(NULL
+    //         , sizeof (TlsServerGroup_t) * appI->csGroupCount
     //         , PROT_READ | PROT_WRITE
     //         , MAP_SHARED | MAP_ANONYMOUS
     //         , -1
@@ -308,7 +308,7 @@ static void MsgIoOnMsgRecv (MsgIoChannelId_t mioChannelId) {
     
     // appI->nextCsGroupIndex = 0;
     // for (int gIndex = 0; gIndex < appI->csGroupCount; gIndex++) {
-    //     TcpServerGroup_t* csGroup = &appI->csGroupArr[gIndex];
+    //     TlsServerGroup_t* csGroup = &appI->csGroupArr[gIndex];
     //     csGroup->clientAddrCount = csGroupClientAddrCountArr[gIndex];
     //     csGroup->nextClientAddrIndex = 0;
     //     csGroup->clientAddrArr
@@ -376,13 +376,13 @@ static void MsgIoOnMsgSent (MsgIoChannelId_t mioChannelId) {
 
 }
 
-static TcpServerCtx_t* InitApp (char* nAdminTestId
+static TlsServerCtx_t* InitApp (char* nAdminTestId
                                 , char* nAdminAddr
                                 , int nAdminPort) {
     
     int status = -1;
 
-    TcpServerCtx_t* appCtx = CreateStruct0 (TcpServerCtx_t);
+    TlsServerCtx_t* appCtx = CreateStruct0 (TlsServerCtx_t);
 
     if (appCtx) {
 
@@ -448,7 +448,7 @@ static TcpServerCtx_t* InitApp (char* nAdminTestId
 
                         CreatePool (&appCtx->freeSessionPool
                                     , appCtx->appI->maxActSessions
-                                    , TcpServerSession_t);
+                                    , TlsServerSession_t);
 
                         InitPool (&appCtx->activeSessionPool);
                     }
@@ -480,7 +480,7 @@ static TcpServerCtx_t* InitApp (char* nAdminTestId
                     //??? clean up pool
                 }
 
-                DeleteStruct (TcpServerCtx_t, appCtx);
+                DeleteStruct (TlsServerCtx_t, appCtx);
 
                 appCtx = NULL;
             }
@@ -492,20 +492,20 @@ static TcpServerCtx_t* InitApp (char* nAdminTestId
 
 int main (int argc, char** argv) {
 
-    TcpServerCtx_t* appCtx 
+    TlsServerCtx_t* appCtx 
         = InitApp ( argv[1], argv[2], atoi(argv[3]) );
 
     if (appCtx == NULL) {
         exit (-1); //???
     }
 
-    TcpServerI_t* appI = appCtx->appI;
+    TlsServerI_t* appI = appCtx->appI;
 
     IoVentCtx_t* iovCtx = appCtx->iovCtx;
 
     for (int i = 0; i < appI->csGroupCount; i++) {
 
-        TcpServerGroup_t* csGroup 
+        TlsServerGroup_t* csGroup 
             = &appI->csGroupArr[i];
 
         SockAddr_t* localAddress 

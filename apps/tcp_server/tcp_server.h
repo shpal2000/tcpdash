@@ -1,5 +1,5 @@
-#ifndef __TCP_CLIENT_SERVER_APP_H
-#define __TCP_CLIENT_SERVER_APP_H
+#ifndef __TCP_SERVER_APP_H
+#define __TCP_SERVER_APP_H
 
 #define COMMON_READBUFF_MAXLEN      100000
 #define COMMON_WRITEBUFF_MAXLEN     1048576
@@ -9,29 +9,20 @@ typedef struct TcpServerStats {
 } TcpServerStats_t;
 
 typedef struct TcpServerGroup {
-    uint32_t clientAddrCount;
-    SockAddr_t* clientAddrArr;
-    uint32_t nextClientAddrIndex;
-    LocalPortPool_t* LocalPortPoolArr;
     SockAddr_t serverAddr;
     uint64_t csDataLen;
     uint64_t scDataLen;
-    enum ConnCloseMethod cCloseMethod;
     enum ConnCloseMethod sCloseMethod;
     enum ConnCloseType csCloseType;
-    uint32_t csWeight;
     TcpServerStats_t cStats;
 } TcpServerGroup_t;
 
 typedef struct TcpServerI {
     uint32_t maxEvents;
-    uint32_t connPerSec;
     uint32_t maxActSessions;
     uint32_t maxErrSessions;
-    uint64_t maxSessions;
     uint32_t csGroupCount;
     TcpServerGroup_t* csGroupArr;
-    uint32_t nextCsGroupIndex;
     TcpServerStats_t gStats;
 } TcpServerI_t;
 
@@ -57,63 +48,9 @@ typedef struct TcpServerConn {
     uint32_t writeBuffOffset;
 } TcpServerConn_t;
 
-typedef struct TcpCsSession {
+typedef struct TcpServerSession {
     TcpServerCtx_t* appCtx;
     TcpServerConn_t tcpConn;
-} TcpCsSession_t;
-
-
-
-
-
-
-/*
-{
-    "maxSessions" : 0, 
-
-    "maxActSessions" : 0,
-    
-    "maxErrSessions" : 0,
-
-    "csGroupList" : [
-        {
-            "clientAddrList" : [
-                {
-                    "addr" : ""
-                    "mask" : ""
-                },
-                {
-                    "addr" : ""
-                    "mask" : ""
-                }
-            ],
-
-            "serverAddr" : "",
-
-            "serverPort" : 0,
-        }, 
-        {
-            "clientAddrList" : [
-                {
-                    "addr" : ""
-                    "mask" : ""
-                },
-                {
-                    "addr" : ""
-                    "mask" : ""
-                }
-            ],
-
-            "serverAddr" : "",
-
-            "serverPort" : 0,
-        }        
-    ]
-}
-*/
-
-void TcpClientRun(TcpServerI_t* appI);
-
-void TcpServerRun(TcpServerI_t* appI);
+} TcpServerSession_t;
 
 #endif

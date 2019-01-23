@@ -1,40 +1,32 @@
-#ifndef __TCP_CLIENT_APP_H
-#define __TCP_CLIENT_APP_H
+#ifndef __TLS_SERVER_APP_H
+#define __TLS_SERVER_APP_H
 
 #define COMMON_READBUFF_MAXLEN      100000
 #define COMMON_WRITEBUFF_MAXLEN     1048576
 
-typedef struct TcpClientStats {
+typedef struct TlsServerStats {
     SockStats_t connStats;
-} TcpClientStats_t;
+} TlsServerStats_t;
 
-typedef struct TcpClientGroup {
-    uint32_t clientAddrCount;
-    SockAddr_t* clientAddrArr;
-    uint32_t nextClientAddrIndex;
-    LocalPortPool_t* LocalPortPoolArr;
+typedef struct TlsServerGroup {
     SockAddr_t serverAddr;
     uint64_t csDataLen;
     uint64_t scDataLen;
-    enum ConnCloseMethod cCloseMethod;
+    enum ConnCloseMethod sCloseMethod;
     enum ConnCloseType csCloseType;
-    uint32_t csWeight;
-    TcpClientStats_t cStats;
-} TcpClientGroup_t;
+    TlsServerStats_t cStats;
+} TlsServerGroup_t;
 
-typedef struct TcpClientI {
+typedef struct TlsServerI {
     uint32_t maxEvents;
-    uint32_t connPerSec;
     uint32_t maxActSessions;
     uint32_t maxErrSessions;
-    uint64_t maxSessions;
     uint32_t csGroupCount;
-    TcpClientGroup_t* csGroupArr;
-    uint32_t nextCsGroupIndex;
-    TcpClientStats_t gStats;
-} TcpClientI_t;
+    TlsServerGroup_t* csGroupArr;
+    TlsServerStats_t gStats;
+} TlsServerI_t;
 
-typedef struct TcpClientCtx {
+typedef struct TlsServerCtx {
     Pool_t* freeSessionPool;
     Pool_t activeSessionPool;
     char commonReadBuff[COMMON_READBUFF_MAXLEN];
@@ -46,19 +38,19 @@ typedef struct TcpClientCtx {
     SockAddr_t nAdminAddr;
     SockAddr_t nLocalAddr;
     IoVentCtx_t* iovCtx;
-    TcpClientI_t* appI; 
-} TcpClientCtx_t;
+    TlsServerI_t* appI; 
+} TlsServerCtx_t;
 
-typedef struct TcpClientConn {
+typedef struct TlsServerConn {
     IoVentConn_t* iovConn;
     uint64_t bytesRead;
     uint64_t bytesWritten;
     uint32_t writeBuffOffset;
-} TcpClientConn_t;
+} TlsServerConn_t;
 
-typedef struct TcpClientSession {
-    TcpClientCtx_t* appCtx;
-    TcpClientConn_t tcpConn;
-} TcpClientSession_t;
+typedef struct TlsServerSession {
+    TlsServerCtx_t* appCtx;
+    TlsServerConn_t tcpConn;
+} TlsServerSession_t;
 
 #endif

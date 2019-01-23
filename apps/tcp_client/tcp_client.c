@@ -1,5 +1,3 @@
-#include <sys/mman.h>
-
 #include "iovents.h"
 #include "msg_io.h"
 #include "nadmin.h"
@@ -14,9 +12,9 @@ static void InitConn (TcpClientConn_t * tcpConn) {
     tcpConn->writeBuffOffset = 0;
 }
 
-static TcpCsSession_t* GetSession (TcpClientCtx_t* appCtx) {
+static TcpClientSession_t* GetSession (TcpClientCtx_t* appCtx) {
 
-    TcpCsSession_t* newSess =         
+    TcpClientSession_t* newSess =         
         GetFromPool (appCtx->freeSessionPool);
     
     if (newSess) {
@@ -31,7 +29,7 @@ static TcpCsSession_t* GetSession (TcpClientCtx_t* appCtx) {
     return newSess;
 }
 
-static void FreeSession (TcpCsSession_t* newSess) {
+static void FreeSession (TcpClientSession_t* newSess) {
 
     RemoveFromPool (&newSess->appCtx->activeSessionPool, newSess);
 
@@ -40,8 +38,8 @@ static void FreeSession (TcpCsSession_t* newSess) {
 
 static void OnEstablish (struct IoVentConn* iovConn) { 
 
-    TcpCsSession_t* newSess 
-        = (TcpCsSession_t*) iovConn->cInfo.sessionData;
+    TcpClientSession_t* newSess 
+        = (TcpClientSession_t*) iovConn->cInfo.sessionData;
  
     if ( IsConnErr (iovConn) ) {
         FreeSession (newSess);
@@ -69,8 +67,8 @@ static void OnReadNext (struct IoVentConn* iovConn) {
 static void OnReadStatus (struct IoVentConn* iovConn
                                     , int bytesRead) {
 
-    TcpCsSession_t* newSess 
-        = (TcpCsSession_t*) iovConn->cInfo.sessionData;
+    TcpClientSession_t* newSess 
+        = (TcpClientSession_t*) iovConn->cInfo.sessionData;
 
     
     if (bytesRead > 0) {
@@ -92,8 +90,8 @@ static void OnWriteNext (struct IoVentConn* iovConn) {
     TcpClientCtx_t* appCtx 
         = (TcpClientCtx_t*) iovConn->cInfo.appCtx;
 
-    TcpCsSession_t* newSess 
-        = (TcpCsSession_t*) iovConn->cInfo.sessionData;
+    TcpClientSession_t* newSess 
+        = (TcpClientSession_t*) iovConn->cInfo.sessionData;
 
     TcpClientGroup_t* groupCtx 
         = (TcpClientGroup_t*) iovConn->cInfo.groupCtx;
@@ -125,8 +123,8 @@ static void OnWriteNext (struct IoVentConn* iovConn) {
 static void OnWriteStatus (struct IoVentConn* iovConn
                                     , int bytesWritten) {
 
-    TcpCsSession_t* newSess 
-        = (TcpCsSession_t*) iovConn->cInfo.sessionData;
+    TcpClientSession_t* newSess 
+        = (TcpClientSession_t*) iovConn->cInfo.sessionData;
 
     TcpClientGroup_t* groupCtx 
         = (TcpClientGroup_t*) iovConn->cInfo.groupCtx;
@@ -146,8 +144,8 @@ static void OnWriteStatus (struct IoVentConn* iovConn
 
 static void OnCleanup (struct IoVentConn* iovConn) {
 
-    TcpCsSession_t* newSess 
-        = (TcpCsSession_t*) iovConn->cInfo.sessionData;
+    TcpClientSession_t* newSess 
+        = (TcpClientSession_t*) iovConn->cInfo.sessionData;
 
     FreeSession (newSess);
 }
@@ -235,48 +233,35 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
 
     int csGroupCount = 1;
 
-    TcpClientI_t* appI 
-        = (TcpClientI_t*) mmap(NULL
-            , sizeof (TcpClientI_t)
-            , PROT_READ | PROT_WRITE
-            , MAP_SHARED | MAP_ANONYMOUS
-            , -1
-            , 0);
+    TcpClientI_t* appI = CreateStruct0 (TcpClientI_t);
 
     appI->csGroupCount = csGroupCount;
-    appI->csGroupArr 
-        = (TcpClientGroup_t*) mmap(NULL
-            , sizeof (TcpClientGroup_t) * appI->csGroupCount
-            , PROT_READ | PROT_WRITE
-            , MAP_SHARED | MAP_ANONYMOUS
-            , -1
-            , 0);
-    
+
+    appI->csGroupArr = CreateArray (TcpClientGroup_t, appI->csGroupCount);
+
     appI->nextCsGroupIndex = 0;
+
     for (int gIndex = 0; gIndex < appI->csGroupCount; gIndex++) {
+        
         TcpClientGroup_t* csGroup = &appI->csGroupArr[gIndex];
+        
         csGroup->clientAddrCount = csGroupClientAddrCountArr[gIndex];
+        
         csGroup->nextClientAddrIndex = 0;
-        csGroup->clientAddrArr
-            = (SockAddr_t*) mmap(NULL
-                , sizeof (SockAddr_t) * csGroup->clientAddrCount
-                , PROT_READ | PROT_WRITE
-                , MAP_SHARED | MAP_ANONYMOUS
-                , -1
-                , 0);
+
+        csGroup->clientAddrArr 
+            = CreateArray (SockAddr_t, csGroup->clientAddrCount);
+        
         csGroup->LocalPortPoolArr 
-            = (LocalPortPool_t*) mmap(NULL
-                , sizeof (LocalPortPool_t) * csGroup->clientAddrCount
-                , PROT_READ | PROT_WRITE
-                , MAP_SHARED | MAP_ANONYMOUS
-                , -1
-                , 0);
+            = CreateArray (LocalPortPool_t, csGroup->clientAddrCount);
+        
         for (int cIndex = 0
                 ; cIndex < csGroup->clientAddrCount
                 ; cIndex++) {
         
             struct sockaddr_in* localAddr 
                 = &(csGroup->clientAddrArr[cIndex].inAddr);
+
             memset(localAddr, 0, sizeof(SockAddr_t));
             localAddr->sin_family = AF_INET;
             inet_pton(AF_INET
@@ -302,7 +287,6 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
         csGroup->csDataLen = 3000;
         csGroup->scDataLen = 3000;
         csGroup->cCloseMethod = EmTcpFIN; 
-        csGroup->sCloseMethod = EmTcpFIN;
         csGroup->csCloseType = EmDataFinish;
         csGroup->csWeight = 1;  
     }
@@ -545,7 +529,7 @@ static TcpClientCtx_t* InitApp (char* nAdminTestId
 
                         CreatePool (&appCtx->freeSessionPool
                                     , appCtx->appI->maxActSessions
-                                    , TcpCsSession_t);
+                                    , TcpClientSession_t);
 
                         InitPool (&appCtx->activeSessionPool);
                     }
@@ -659,7 +643,7 @@ int main(int argc, char** argv) {
             LocalPortPool_t* localPortPool 
                 = &csGroup->LocalPortPoolArr[csGroup->nextClientAddrIndex];
 
-            TcpCsSession_t* newSess = GetSession (iovCtx->appCtx);
+            TcpClientSession_t* newSess = GetSession (iovCtx->appCtx);
 
             if (newSess == NULL) {
 

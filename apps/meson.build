@@ -1,3 +1,5 @@
 subdir('tcp_client')
 subdir('tcp_server')
 subdir('tcp_proxy')
+subdir('tls_client')
+subdir('tls_server')

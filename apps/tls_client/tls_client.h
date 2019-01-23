@@ -1,14 +1,14 @@
-#ifndef __TCP_CLIENT_APP_H
-#define __TCP_CLIENT_APP_H
+#ifndef __TLS_CLIENT_APP_H
+#define __TLS_CLIENT_APP_H
 
 #define COMMON_READBUFF_MAXLEN      100000
 #define COMMON_WRITEBUFF_MAXLEN     1048576
 
-typedef struct TcpClientStats {
+typedef struct TlsClientStats {
     SockStats_t connStats;
-} TcpClientStats_t;
+} TlsClientStats_t;
 
-typedef struct TcpClientGroup {
+typedef struct TlsClientGroup {
     uint32_t clientAddrCount;
     SockAddr_t* clientAddrArr;
     uint32_t nextClientAddrIndex;
@@ -19,22 +19,22 @@ typedef struct TcpClientGroup {
     enum ConnCloseMethod cCloseMethod;
     enum ConnCloseType csCloseType;
     uint32_t csWeight;
-    TcpClientStats_t cStats;
-} TcpClientGroup_t;
+    TlsClientStats_t cStats;
+} TlsClientGroup_t;
 
-typedef struct TcpClientI {
+typedef struct TlsClientI {
     uint32_t maxEvents;
     uint32_t connPerSec;
     uint32_t maxActSessions;
     uint32_t maxErrSessions;
     uint64_t maxSessions;
     uint32_t csGroupCount;
-    TcpClientGroup_t* csGroupArr;
+    TlsClientGroup_t* csGroupArr;
     uint32_t nextCsGroupIndex;
-    TcpClientStats_t gStats;
-} TcpClientI_t;
+    TlsClientStats_t gStats;
+} TlsClientI_t;
 
-typedef struct TcpClientCtx {
+typedef struct TlsClientCtx {
     Pool_t* freeSessionPool;
     Pool_t activeSessionPool;
     char commonReadBuff[COMMON_READBUFF_MAXLEN];
@@ -46,19 +46,19 @@ typedef struct TcpClientCtx {
     SockAddr_t nAdminAddr;
     SockAddr_t nLocalAddr;
     IoVentCtx_t* iovCtx;
-    TcpClientI_t* appI; 
-} TcpClientCtx_t;
+    TlsClientI_t* appI; 
+} TlsClientCtx_t;
 
-typedef struct TcpClientConn {
+typedef struct TlsClientConn {
     IoVentConn_t* iovConn;
     uint64_t bytesRead;
     uint64_t bytesWritten;
     uint32_t writeBuffOffset;
-} TcpClientConn_t;
+} TlsClientConn_t;
 
-typedef struct TcpClientSession {
-    TcpClientCtx_t* appCtx;
-    TcpClientConn_t tcpConn;
-} TcpClientSession_t;
+typedef struct TlsClientSession {
+    TlsClientCtx_t* appCtx;
+    TlsClientConn_t tcpConn;
+} TlsClientSession_t;
 
 #endif

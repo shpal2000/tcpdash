@@ -1,5 +1,3 @@
-#include <sys/mman.h>
-
 #include "iovents.h"
 #include "msg_io.h"
 #include "nadmin.h"
@@ -352,24 +350,14 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
 
     int csGroupCount = 1;
 
-    TcpProxyI_t* appI 
-        = (TcpProxyI_t*) mmap(NULL
-            , sizeof (TcpProxyI_t)
-            , PROT_READ | PROT_WRITE
-            , MAP_SHARED | MAP_ANONYMOUS
-            , -1
-            , 0);
+    TcpProxyI_t* appI = CreateStruct0 (TcpProxyI_t); 
 
     appI->csGroupCount = csGroupCount;
-    appI->csGroupArr 
-        = (TcpProxyGroup_t*) mmap(NULL
-            , sizeof (TcpProxyGroup_t) * appI->csGroupCount
-            , PROT_READ | PROT_WRITE
-            , MAP_SHARED | MAP_ANONYMOUS
-            , -1
-            , 0);
+
+    appI->csGroupArr = CreateArray (TcpProxyGroup_t, appI->csGroupCount);
 
     appI->maxActSessions = 100000;
+
     appI->maxErrSessions = 100000;
 
     TcpProxyGroup_t* server 
