@@ -9,7 +9,7 @@ executable('tcp_proxy.exe'
                     , sources : tcp_proxy_src
                     , include_directories : incdir
                     , dependencies : [glib_dep, json_glib_dep]
-                    , link_with : [api_lib
+                    , link_with : [platform_lib
                                     , iovent_lib
                                     , msg_io_lib])
 

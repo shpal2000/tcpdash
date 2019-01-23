@@ -453,6 +453,15 @@ int TcpRead(int fd
 #define CreateStruct0(__type) g_slice_new0(__type) 
 #define CreateStruct(__type) g_slice_new(__type) 
 #define DeleteStruct(__type, __memptr) g_slice_free(__type,__memptr)
+
+enum ConnCloseMethod {EmTcpFIN = 1
+                    , EmTcpRST = 2
+                    , EmCloseNotify = 3};
+
+enum ConnCloseType {EmClientClose = 1
+                    , EmServerClose = 2
+                    , EmDataFinish = 3};
+                    
 //##################TLS######################
 void DoSSLConnect(SSL* newSSL
                     , int fd

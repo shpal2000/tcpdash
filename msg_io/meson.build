@@ -9,6 +9,6 @@ msg_io_lib =  static_library('msg_io'
                     , sources : msg_io_src
                     , include_directories : incdir
                     , dependencies : [glib_dep, json_glib_dep]
-                    , link_with : [api_lib, iovent_lib]
+                    , link_with : [platform_lib, iovent_lib]
             )
 

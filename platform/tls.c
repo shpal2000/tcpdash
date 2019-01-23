@@ -5,5 +5,5 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include "platform/common.h"
+#include "platform/sdk.h"
 

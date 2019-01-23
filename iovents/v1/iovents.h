@@ -1,7 +1,7 @@
 #ifndef __IOV1_H__
 #define __IOV1_H__
 
-#include "platform/common.h"
+#include "platform/sdk.h"
 
 #define DEFAULT_MAX_EVENTS                                  1000
 

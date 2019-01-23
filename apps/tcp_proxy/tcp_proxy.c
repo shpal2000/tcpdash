@@ -10,7 +10,7 @@ static void InitRwBuff (RwBuff_t* newBuff) {
     newBuff->dataLen = 0;
 }
 
-static void InitConn (TcpProxyAppConn_t * tpConn) {
+static void InitConn (TcpProxyConn_t * tpConn) {
 
     tpConn->iovConn = NULL;
     tpConn->readBuff = NULL;
@@ -20,8 +20,8 @@ static void InitConn (TcpProxyAppConn_t * tpConn) {
     InitPool (&tpConn->writeQ);
 }
 
-static void InitSession (TcpProxyAppSession_t* newSess
-                            , TcpProxyAppCtx_t* appCtx) {
+static void InitSession (TcpProxySession_t* newSess
+                            , TcpProxyCtx_t* appCtx) {
 
     newSess->appCtx = appCtx;
     InitConn (&newSess->aConn);
@@ -30,12 +30,12 @@ static void InitSession (TcpProxyAppSession_t* newSess
 
 static void OnEstablish (struct IoVentConn* iovConn) {
     
-    TcpProxyAppCtx_t* appCtx 
-        = (TcpProxyAppCtx_t*) iovConn->cInfo.appCtx;
+    TcpProxyCtx_t* appCtx 
+        = (TcpProxyCtx_t*) iovConn->cInfo.appCtx;
 
     if (iovConn->cInfo.sessionData == NULL) {
         // puts ("accepted");
-        TcpProxyAppSession_t* newSess 
+        TcpProxySession_t* newSess 
             = GetFromPool (appCtx->freeSessionPool);
         if (newSess == NULL) {
             //todo; stats; close connection
@@ -54,8 +54,8 @@ static void OnEstablish (struct IoVentConn* iovConn) {
             setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPINTVL, &(int){ 1 }, sizeof(int));
             setsockopt(iovConn->socketFd, SOL_TCP, TCP_USER_TIMEOUT, &(int){ 15000 }, sizeof(int));
 
-            TcpProxyAppGroup_t* server 
-                = (TcpProxyAppGroup_t*) iovConn->cInfo.groupCtx;
+            TcpProxyGroup_t* server 
+                = (TcpProxyGroup_t*) iovConn->cInfo.groupCtx;
 
             if (server->keepSourcePort == 0) {
                 SET_SOCK_PORT (&iovConn->remoteAddressAccept, 0);
@@ -82,8 +82,8 @@ static void OnEstablish (struct IoVentConn* iovConn) {
     } else {
         // store server side of proxied connection
         // puts ("established");
-        TcpProxyAppSession_t* newSess 
-            = (TcpProxyAppSession_t*) iovConn->cInfo.sessionData;
+        TcpProxySession_t* newSess 
+            = (TcpProxySession_t*) iovConn->cInfo.sessionData;
 
         newSess->iConn.iovConn = iovConn;
 
@@ -101,15 +101,15 @@ static void OnReadNext (struct IoVentConn* iovConn) {
 
     // puts ("OnReadNext");
 
-    TcpProxyAppCtx_t* appCtx 
-        = (TcpProxyAppCtx_t*) iovConn->cInfo.appCtx;
+    TcpProxyCtx_t* appCtx 
+        = (TcpProxyCtx_t*) iovConn->cInfo.appCtx;
 
-    TcpProxyAppSession_t* newSess 
-        = (TcpProxyAppSession_t*) iovConn->cInfo.sessionData;
+    TcpProxySession_t* newSess 
+        = (TcpProxySession_t*) iovConn->cInfo.sessionData;
 
 
-    TcpProxyAppConn_t* tpConn = NULL;
-    TcpProxyAppConn_t* tpConnOther = NULL;
+    TcpProxyConn_t* tpConn = NULL;
+    TcpProxyConn_t* tpConnOther = NULL;
 
     if (newSess->aConn.iovConn == iovConn) {
         tpConn = &newSess->aConn;
@@ -142,11 +142,11 @@ static void OnReadStatus (struct IoVentConn* iovConn
 
     // puts ("OnReadStatus");
 
-    TcpProxyAppSession_t* newSess 
-        = (TcpProxyAppSession_t*) iovConn->cInfo.sessionData;
+    TcpProxySession_t* newSess 
+        = (TcpProxySession_t*) iovConn->cInfo.sessionData;
 
-    TcpProxyAppConn_t* tpConn = NULL;
-    TcpProxyAppConn_t* tpConnOther = NULL;
+    TcpProxyConn_t* tpConn = NULL;
+    TcpProxyConn_t* tpConnOther = NULL;
     Pool_t* otherWriteQ = NULL;
 
     if (newSess->aConn.iovConn == iovConn) {
@@ -189,10 +189,10 @@ static void OnWriteNext (struct IoVentConn* iovConn) {
 
     // puts ("OnWriteNext");
 
-    TcpProxyAppSession_t* newSess 
-        = (TcpProxyAppSession_t*) iovConn->cInfo.sessionData;
+    TcpProxySession_t* newSess 
+        = (TcpProxySession_t*) iovConn->cInfo.sessionData;
     
-    TcpProxyAppConn_t* tpConn = NULL;
+    TcpProxyConn_t* tpConn = NULL;
 
     if (newSess->aConn.iovConn == iovConn) {
         tpConn = &newSess->aConn;
@@ -218,11 +218,11 @@ static void OnWriteStatus (struct IoVentConn* iovConn
                             ) {
     // puts ("OnWriteStatus");
 
-    TcpProxyAppSession_t* newSess 
-        = (TcpProxyAppSession_t*) iovConn->cInfo.sessionData;
+    TcpProxySession_t* newSess 
+        = (TcpProxySession_t*) iovConn->cInfo.sessionData;
 
-    TcpProxyAppConn_t* tpConn = NULL;
-    TcpProxyAppConn_t* tpConnOther = NULL;
+    TcpProxyConn_t* tpConn = NULL;
+    TcpProxyConn_t* tpConnOther = NULL;
 
     if (newSess->aConn.iovConn == iovConn) {
         tpConn = &newSess->aConn;
@@ -265,11 +265,11 @@ static void OnCleanup (struct IoVentConn* iovConn) {
 
     // puts ("OnCleanup\n");
 
-    TcpProxyAppSession_t* newSess 
-        = (TcpProxyAppSession_t*) iovConn->cInfo.sessionData;
+    TcpProxySession_t* newSess 
+        = (TcpProxySession_t*) iovConn->cInfo.sessionData;
 
-    TcpProxyAppConn_t* tpConn = NULL;
-    TcpProxyAppConn_t* tpConnOther = NULL;
+    TcpProxyConn_t* tpConn = NULL;
+    TcpProxyConn_t* tpConnOther = NULL;
 
     if (newSess->aConn.iovConn == iovConn) {
         tpConn = &newSess->aConn;
@@ -345,13 +345,13 @@ static int OnContinue (void* appData) {
 
 static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
 
-    TcpProxyAppCtx_t* appCtx = (TcpProxyAppCtx_t*) MsgIoGetCtx (mioChannelId);
+    TcpProxyCtx_t* appCtx = (TcpProxyCtx_t*) MsgIoGetCtx (mioChannelId);
 
     int csGroupCount = 1;
 
-    TcpProxyAppI_t* appI 
-        = (TcpProxyAppI_t*) mmap(NULL
-            , sizeof (TcpProxyAppI_t)
+    TcpProxyI_t* appI 
+        = (TcpProxyI_t*) mmap(NULL
+            , sizeof (TcpProxyI_t)
             , PROT_READ | PROT_WRITE
             , MAP_SHARED | MAP_ANONYMOUS
             , -1
@@ -359,8 +359,8 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
 
     appI->csGroupCount = csGroupCount;
     appI->csGroupArr 
-        = (TcpProxyAppGroup_t*) mmap(NULL
-            , sizeof (TcpProxyAppGroup_t) * appI->csGroupCount
+        = (TcpProxyGroup_t*) mmap(NULL
+            , sizeof (TcpProxyGroup_t) * appI->csGroupCount
             , PROT_READ | PROT_WRITE
             , MAP_SHARED | MAP_ANONYMOUS
             , -1
@@ -369,7 +369,7 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
     appI->maxActSessions = 100000;
     appI->maxErrSessions = 100000;
 
-    TcpProxyAppGroup_t* server 
+    TcpProxyGroup_t* server 
         = &appI->csGroupArr[0];
 
     server->keepSourcePort = 1;
@@ -391,7 +391,7 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
 
 static void MsgIoOnError (MsgIoChannelId_t mioChannelId) {
 
-    TcpProxyAppCtx_t* appCtx = (TcpProxyAppCtx_t*) MsgIoGetCtx (mioChannelId);
+    TcpProxyCtx_t* appCtx = (TcpProxyCtx_t*) MsgIoGetCtx (mioChannelId);
 
     appCtx->nAdminChannelErr = N_ADMIN_CHANNEL_ERROR_CONN;
 }
@@ -404,13 +404,13 @@ static void MsgIoOnMsgSent (MsgIoChannelId_t mioChannelId) {
 
 }
 
-static TcpProxyAppCtx_t* InitApp (char* nAdminTestId
+static TcpProxyCtx_t* InitApp (char* nAdminTestId
                                 , char* nAdminAddr
                                 , int nAdminPort) {
 
     int status = -1;
 
-    TcpProxyAppCtx_t* appCtx = CreateStruct0 (TcpProxyAppCtx_t);
+    TcpProxyCtx_t* appCtx = CreateStruct0 (TcpProxyCtx_t);
 
     if (appCtx) {
         
@@ -476,7 +476,7 @@ static TcpProxyAppCtx_t* InitApp (char* nAdminTestId
 
                         CreatePool (&appCtx->freeSessionPool
                                     , appCtx->appI->maxActSessions
-                                    , TcpProxyAppSession_t);
+                                    , TcpProxySession_t);
 
                         CreatePool (&appCtx->freeBuffPool
                                     , appCtx->appI->maxActSessions * 16
@@ -517,7 +517,7 @@ static TcpProxyAppCtx_t* InitApp (char* nAdminTestId
                     //??? clean up pool
                 }
 
-                DeleteStruct (TcpProxyAppCtx_t, appCtx);
+                DeleteStruct (TcpProxyCtx_t, appCtx);
 
                 appCtx = NULL;
             }
@@ -529,17 +529,17 @@ static TcpProxyAppCtx_t* InitApp (char* nAdminTestId
 
 int main (int argc, char** argv) {
 
-    TcpProxyAppCtx_t* appCtx = InitApp ( argv[1], argv[2], atoi(argv[3]) );
+    TcpProxyCtx_t* appCtx = InitApp ( argv[1], argv[2], atoi(argv[3]) );
 
     if (appCtx == NULL) {
         exit (-1); //???
     }
 
-    TcpProxyAppI_t* appI = appCtx->appI;
+    TcpProxyI_t* appI = appCtx->appI;
 
     IoVentCtx_t* iovCtx = appCtx->iovCtx;
     
-    TcpProxyAppGroup_t* server 
+    TcpProxyGroup_t* server 
         = &appI->csGroupArr[0];
 
     InitServer(iovCtx

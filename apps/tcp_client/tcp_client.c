@@ -1,10 +1,9 @@
 #include <sys/mman.h>
 #include "iovents.h"
 
-#include "tcp_load.h"
+#include "tcp_client.h"
 
-
-static void InitConn (TcpCsAppConn_t * tcpConn) {
+static void InitConn (TcpClientConn_t * tcpConn) {
 
     tcpConn->iovConn = NULL;
     tcpConn->bytesRead = 0;
@@ -12,7 +11,7 @@ static void InitConn (TcpCsAppConn_t * tcpConn) {
     tcpConn->writeBuffOffset = 0;
 }
 
-static TcpCsSession_t* GetSession (TcpCsAppCtx_t* appCtx) {
+static TcpCsSession_t* GetSession (TcpClientCtx_t* appCtx) {
 
     TcpCsSession_t* newSess =         
         GetFromPool (appCtx->freeSessionPool);
@@ -36,28 +35,14 @@ static void FreeSession (TcpCsSession_t* newSess) {
     AddToPool (newSess->appCtx->freeSessionPool, newSess);
 }
 
-static void OnEstablish (struct IoVentConn* iovConn) {
+static void OnEstablish (struct IoVentConn* iovConn) { 
 
-    TcpCsAppCtx_t* appCtx 
-        = (TcpCsAppCtx_t*) iovConn->cInfo.appCtx;
-
-    TcpCsAppGroup_t* groupCtx 
-        = (TcpCsAppGroup_t*) iovConn->cInfo.groupCtx;
-
-    TcpCsSession_t* newSess = GetSession (appCtx);
-
-    if (newSess == NULL) {
-
-        IncConnStats2 ( &appCtx->appI->gStats
-                        , &groupCtx->cStats
-                        , appSessStructNotAvail );
-
-        AbortConnection (iovConn);
-
+    TcpCsSession_t* newSess 
+        = (TcpCsSession_t*) iovConn->cInfo.sessionData;
+ 
+    if ( IsConnErr (iovConn) ) {
+        FreeSession (newSess);
     } else {
-
-        iovConn->cInfo.sessionData = newSess;
-
         setsockopt(iovConn->socketFd, SOL_SOCKET, SO_KEEPALIVE, &(int){ 1 }, sizeof(int));
         setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPCNT, &(int){ 3 }, sizeof(int));
         setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPIDLE, &(int){ 5 }, sizeof(int));
@@ -68,8 +53,8 @@ static void OnEstablish (struct IoVentConn* iovConn) {
 
 static void OnReadNext (struct IoVentConn* iovConn) {
 
-    TcpCsAppCtx_t* appCtx 
-        = (TcpCsAppCtx_t*) iovConn->cInfo.appCtx;
+    TcpClientCtx_t* appCtx 
+        = (TcpClientCtx_t*) iovConn->cInfo.appCtx;
 
     ReadNextData (iovConn
                 , appCtx->commonReadBuff
@@ -101,21 +86,21 @@ static void OnReadStatus (struct IoVentConn* iovConn
 
 static void OnWriteNext (struct IoVentConn* iovConn) {
 
-    TcpCsAppCtx_t* appCtx 
-        = (TcpCsAppCtx_t*) iovConn->cInfo.appCtx;
+    TcpClientCtx_t* appCtx 
+        = (TcpClientCtx_t*) iovConn->cInfo.appCtx;
 
     TcpCsSession_t* newSess 
         = (TcpCsSession_t*) iovConn->cInfo.sessionData;
 
-    TcpCsAppGroup_t* groupCtx 
-        = (TcpCsAppGroup_t*) iovConn->cInfo.groupCtx;
+    TcpClientGroup_t* groupCtx 
+        = (TcpClientGroup_t*) iovConn->cInfo.groupCtx;
   
 
-    if (newSess->tcpConn.bytesWritten < groupCtx->scDataLen) {
+    if (newSess->tcpConn.bytesWritten < groupCtx->csDataLen) {
 
         int nextChunkLen = 0;
 
-        if ( (groupCtx->scDataLen - newSess->tcpConn.bytesWritten) 
+        if ( (groupCtx->csDataLen - newSess->tcpConn.bytesWritten) 
                                 > COMMON_WRITEBUFF_MAXLEN ) {
 
             nextChunkLen = COMMON_WRITEBUFF_MAXLEN;
@@ -123,7 +108,7 @@ static void OnWriteNext (struct IoVentConn* iovConn) {
         } else {
 
             nextChunkLen 
-                = (int) (groupCtx->scDataLen - newSess->tcpConn.bytesWritten);
+                = (int) (groupCtx->csDataLen - newSess->tcpConn.bytesWritten);
         }
 
         WriteNextData (iovConn
@@ -140,15 +125,15 @@ static void OnWriteStatus (struct IoVentConn* iovConn
     TcpCsSession_t* newSess 
         = (TcpCsSession_t*) iovConn->cInfo.sessionData;
 
-    TcpCsAppGroup_t* groupCtx 
-        = (TcpCsAppGroup_t*) iovConn->cInfo.groupCtx;
+    TcpClientGroup_t* groupCtx 
+        = (TcpClientGroup_t*) iovConn->cInfo.groupCtx;
 
 
     if (bytesWritten > 0) {
 
         newSess->tcpConn.bytesWritten += bytesWritten;
 
-        if (newSess->tcpConn.bytesWritten == groupCtx->scDataLen) {
+        if (newSess->tcpConn.bytesWritten == groupCtx->csDataLen) {
             WriteClose (iovConn);
         }
     } else {
@@ -168,13 +153,34 @@ static void OnStatus (struct IoVentConn* iovConn) {
 }
 
 static int OnContinue (void* appData) {
+    
+    TcpClientCtx_t* appCtx = (TcpClientCtx_t*) appData;
 
+    TcpClientI_t* appI = appCtx->appI;
+
+    //exceeded error connections
+    uint64_t tcpConnInitFailCount 
+        = GetConnStats(&appI->gStats, tcpConnInitFail);
+
+    if (tcpConnInitFailCount >= appI->maxErrSessions) {
+        return EmAppExit; 
+    }
+
+    //achived desired total connections
+    uint64_t tcpConnInitCount 
+        = GetConnStats(&appI->gStats, tcpConnInit);
+
+    if (tcpConnInitCount == appI->maxSessions) {
+        return EmAppContinueZeroActive; 
+    }
+
+    //continue to run
     return EmAppContinue;
 }
 
 static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
 
-    // TcpCsAppCtx_t* appCtx = (TcpCsAppCtx_t*) MsgIoGetCtx (mioChannelId);
+    // TcpClientCtx_t* appCtx = (TcpClientCtx_t*) MsgIoGetCtx (mioChannelId);
 
     // appCtx->nAdminChannelState = N_ADMIN_CHANNEL_STATE_GET_CONFIG;
 
@@ -182,7 +188,7 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
     //             , N_ADMIN_CMD_GET_TEST_CONFIG
     //             , strlen(N_ADMIN_CMD_GET_TEST_CONFIG));
 
-    TcpCsAppCtx_t* appCtx = (TcpCsAppCtx_t*) MsgIoGetCtx (mioChannelId);
+    TcpClientCtx_t* appCtx = (TcpClientCtx_t*) MsgIoGetCtx (mioChannelId);
 
 
     char* srcIpGroup1[] = { "12.20.50.2"
@@ -226,9 +232,9 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
 
     int csGroupCount = 1;
 
-    TcpCsAppI_t* appI 
-        = (TcpCsAppI_t*) mmap(NULL
-            , sizeof (TcpCsAppI_t)
+    TcpClientI_t* appI 
+        = (TcpClientI_t*) mmap(NULL
+            , sizeof (TcpClientI_t)
             , PROT_READ | PROT_WRITE
             , MAP_SHARED | MAP_ANONYMOUS
             , -1
@@ -236,8 +242,8 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
 
     appI->csGroupCount = csGroupCount;
     appI->csGroupArr 
-        = (TcpCsAppGroup_t*) mmap(NULL
-            , sizeof (TcpCsAppGroup_t) * appI->csGroupCount
+        = (TcpClientGroup_t*) mmap(NULL
+            , sizeof (TcpClientGroup_t) * appI->csGroupCount
             , PROT_READ | PROT_WRITE
             , MAP_SHARED | MAP_ANONYMOUS
             , -1
@@ -245,7 +251,7 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
     
     appI->nextCsGroupIndex = 0;
     for (int gIndex = 0; gIndex < appI->csGroupCount; gIndex++) {
-        TcpCsAppGroup_t* csGroup = &appI->csGroupArr[gIndex];
+        TcpClientGroup_t* csGroup = &appI->csGroupArr[gIndex];
         csGroup->clientAddrCount = csGroupClientAddrCountArr[gIndex];
         csGroup->nextClientAddrIndex = 0;
         csGroup->clientAddrArr
@@ -311,14 +317,14 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
 
 static void MsgIoOnError (MsgIoChannelId_t mioChannelId) {
 
-    TcpCsAppCtx_t* appCtx = (TcpCsAppCtx_t*) MsgIoGetCtx (mioChannelId);
+    TcpClientCtx_t* appCtx = (TcpClientCtx_t*) MsgIoGetCtx (mioChannelId);
 
     appCtx->nAdminChannelErr = N_ADMIN_CHANNEL_ERROR_CONN;
 }
 
 static void MsgIoOnMsgRecv (MsgIoChannelId_t mioChannelId) {
 
-    // TcpCsAppCtx_t* appCtx = (TcpCsAppCtx_t*) MsgIoGetCtx (mioChannelId);
+    // TcpClientCtx_t* appCtx = (TcpClientCtx_t*) MsgIoGetCtx (mioChannelId);
 
     // char* msgData;
     // int msgLen;
@@ -377,9 +383,9 @@ static void MsgIoOnMsgRecv (MsgIoChannelId_t mioChannelId) {
 
     // int csGroupCount = 1;
 
-    // TcpCsAppI_t* appI 
-    //     = (TcpCsAppI_t*) mmap(NULL
-    //         , sizeof (TcpCsAppI_t)
+    // TcpClientI_t* appI 
+    //     = (TcpClientI_t*) mmap(NULL
+    //         , sizeof (TcpClientI_t)
     //         , PROT_READ | PROT_WRITE
     //         , MAP_SHARED | MAP_ANONYMOUS
     //         , -1
@@ -387,8 +393,8 @@ static void MsgIoOnMsgRecv (MsgIoChannelId_t mioChannelId) {
 
     // appI->csGroupCount = csGroupCount;
     // appI->csGroupArr 
-    //     = (TcpCsAppGroup_t*) mmap(NULL
-    //         , sizeof (TcpCsAppGroup_t) * appI->csGroupCount
+    //     = (TcpClientGroup_t*) mmap(NULL
+    //         , sizeof (TcpClientGroup_t) * appI->csGroupCount
     //         , PROT_READ | PROT_WRITE
     //         , MAP_SHARED | MAP_ANONYMOUS
     //         , -1
@@ -396,7 +402,7 @@ static void MsgIoOnMsgRecv (MsgIoChannelId_t mioChannelId) {
     
     // appI->nextCsGroupIndex = 0;
     // for (int gIndex = 0; gIndex < appI->csGroupCount; gIndex++) {
-    //     TcpCsAppGroup_t* csGroup = &appI->csGroupArr[gIndex];
+    //     TcpClientGroup_t* csGroup = &appI->csGroupArr[gIndex];
     //     csGroup->clientAddrCount = csGroupClientAddrCountArr[gIndex];
     //     csGroup->nextClientAddrIndex = 0;
     //     csGroup->clientAddrArr
@@ -464,14 +470,14 @@ static void MsgIoOnMsgSent (MsgIoChannelId_t mioChannelId) {
 
 }
 
-static TcpCsAppCtx_t* InitApp (char* nAdminTestId
+static TcpClientCtx_t* InitApp (char* nAdminTestId
                                 , char* nAdminAddr
                                 , int nAdminPort) {
-    
+
     int status = -1;
 
-    TcpCsAppCtx_t* appCtx = CreateStruct0 (TcpCsAppCtx_t);
-
+    TcpClientCtx_t* appCtx = CreateStruct0 (TcpClientCtx_t);
+    
     if (appCtx) {
 
         appCtx->nAdminChannelErr = 0;
@@ -551,60 +557,48 @@ static TcpCsAppCtx_t* InitApp (char* nAdminTestId
                 && appCtx->freeSessionPool) {
             status = 0;
         }
+    }
 
-        if (status) {
+    if (status) {
 
-            if (appCtx) {
+        if (appCtx) {
 
-                if (appCtx->nAdminChannelId) {
-                    MsgIoDelete (appCtx->nAdminChannelId);
-                }
-
-                if (appCtx->iovCtx) {
-                    DeleteIoVentCtx (appCtx->iovCtx);
-                }
-
-                if (appCtx->freeSessionPool) {
-                    //??? clean up pool
-                }
-
-                DeleteStruct (TcpCsAppCtx_t, appCtx);
-
-                appCtx = NULL;
+            if (appCtx->nAdminChannelId) {
+                MsgIoDelete (appCtx->nAdminChannelId);
             }
-        }        
+
+            if (appCtx->iovCtx) {
+                DeleteIoVentCtx (appCtx->iovCtx);
+            }
+
+            if (appCtx->freeSessionPool) {
+                //??? clean up pool
+            }
+
+            DeleteStruct (TcpClientCtx_t, appCtx);
+
+            appCtx = NULL;
+        }
     }
 
     return appCtx;
 }
 
-int main (int argc, char** argv) {
+int main(int argc, char** argv) {
 
-    TcpCsAppCtx_t* appCtx 
+    TcpClientCtx_t* appCtx 
         = InitApp ( argv[1], argv[2], atoi(argv[3]) );
 
     if (appCtx == NULL) {
         exit (-1); //???
     }
 
-    TcpCsAppI_t* appI = appCtx->appI;
+    TcpClientI_t* appI = appCtx->appI;
 
     IoVentCtx_t* iovCtx = appCtx->iovCtx;
 
-    for (int i = 0; i < appI->csGroupCount; i++) {
-
-        TcpCsAppGroup_t* csGroup 
-            = &appI->csGroupArr[i];
-
-        SockAddr_t* localAddress 
-             = &(csGroup->serverAddr);
-
-        InitServer(iovCtx
-                    , csGroup
-                    , localAddress
-                    , &appI->gStats
-                    , &csGroup->cStats);
-    }
+    double lastConnInitTime 
+        = TimeElapsedIoVentCtx (iovCtx);
 
     double lastMsgIoTime
         = MsgIoTimeElapsed (appCtx->nAdminChannelId);
@@ -620,11 +614,13 @@ int main (int argc, char** argv) {
             lastMsgIoTime = MsgIoTimeElapsed (appCtx->nAdminChannelId);
 
             sprintf (statsString, 
-                        "TS : Succ = %" PRIu64 "; " 
-                        "Fail = %" PRIu64 "; "
+                        "TC : Init = %" PRIu64 "; " 
+                        "Succ = %" PRIu64 "; "
+                        "Fail = %" PRIu64
                         "\n"
-                        , GetConnStats(&appI->gStats, tcpAcceptSuccess)
-                        , GetConnStats(&appI->gStats, tcpAcceptFail)
+                        , GetConnStats(&appI->gStats, tcpConnInit)
+                        , GetConnStats(&appI->gStats, tcpConnInitSuccess)
+                        , GetConnStats(&appI->gStats, tcpConnInitFail)
                         );
 
             MsgIoSend (appCtx->nAdminChannelId
@@ -632,9 +628,74 @@ int main (int argc, char** argv) {
                         , strlen(statsString));
 
         }
-    
+        
         if ( ProcessIoVent (iovCtx) == 0 ) {
             break;
+        }
+
+        uint64_t tcpConnInitCount 
+            = GetConnStats(&appI->gStats, tcpConnInit);
+
+        int newConnectionInits 
+            = (TimeElapsedIoVentCtx (iovCtx) - lastConnInitTime) 
+                * appI->connPerSec;
+
+        while (newConnectionInits > 0
+                    && tcpConnInitCount < appI->maxSessions) {
+
+            //new connection init
+            TcpClientGroup_t* csGroup
+                = &appI->csGroupArr[appI->nextCsGroupIndex];
+
+            SockAddr_t* localAddress 
+                = &(csGroup->clientAddrArr[csGroup->nextClientAddrIndex]);
+
+            SockAddr_t* remoteAddress 
+                = &(csGroup->serverAddr);
+
+            LocalPortPool_t* localPortPool 
+                = &csGroup->LocalPortPoolArr[csGroup->nextClientAddrIndex];
+
+            TcpCsSession_t* newSess = GetSession (iovCtx->appCtx);
+
+            if (newSess == NULL) {
+
+                IncConnStats2 ( &appI->gStats
+                                , &csGroup->cStats
+                                , appSessStructNotAvail );
+                break;
+            }
+
+            appI->nextCsGroupIndex += 1;
+            if (appI->nextCsGroupIndex == appI->csGroupCount){
+                appI->nextCsGroupIndex = 0;
+            }
+            
+            csGroup->nextClientAddrIndex += 1;
+            if (csGroup->nextClientAddrIndex == csGroup->clientAddrCount) {
+                csGroup->nextClientAddrIndex = 0;
+            }
+
+            int newConnInitErr = 
+                NewConnection (iovCtx
+                                , csGroup
+                                , newSess
+                                , localAddress
+                                , localPortPool
+                                , remoteAddress
+                                , &csGroup->cStats
+                                , &appI->gStats);
+
+            if (newConnInitErr) {
+                FreeSession (newSess);
+            }  
+
+            newConnectionInits -= 1;
+
+            lastConnInitTime = TimeElapsedIoVentCtx (iovCtx);
+
+            tcpConnInitCount 
+                = GetConnStats(&appI->gStats, tcpConnInit);
         }
     }
 
@@ -646,5 +707,4 @@ int main (int argc, char** argv) {
 
     return 0;
 }
-
 

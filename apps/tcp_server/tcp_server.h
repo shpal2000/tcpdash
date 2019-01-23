@@ -1,16 +1,17 @@
 #ifndef __TCP_CLIENT_SERVER_APP_H
 #define __TCP_CLIENT_SERVER_APP_H
 
-#include "apps/common.h"
+#include "msg_io/msg_io.h"
+#include "nadmin/nadmin.h"
 
 #define COMMON_READBUFF_MAXLEN      100000
 #define COMMON_WRITEBUFF_MAXLEN     1048576
 
-typedef struct TcpCsAppStats {
+typedef struct TcpServerStats {
     SockStats_t connStats;
-} TcpCsAppStats_t;
+} TcpServerStats_t;
 
-typedef struct TcpCsAppGroup {
+typedef struct TcpServerGroup {
     uint32_t clientAddrCount;
     SockAddr_t* clientAddrArr;
     uint32_t nextClientAddrIndex;
@@ -22,24 +23,22 @@ typedef struct TcpCsAppGroup {
     enum ConnCloseMethod sCloseMethod;
     enum ConnCloseType csCloseType;
     uint32_t csWeight;
-    TcpCsAppStats_t cStats;
-} TcpCsAppGroup_t;
+    TcpServerStats_t cStats;
+} TcpServerGroup_t;
 
-typedef struct TcpCsAppI {
-    AppI_t ctrlInfo; //??? todo
-
+typedef struct TcpServerI {
     uint32_t maxEvents;
     uint32_t connPerSec;
     uint32_t maxActSessions;
     uint32_t maxErrSessions;
     uint64_t maxSessions;
     uint32_t csGroupCount;
-    TcpCsAppGroup_t* csGroupArr;
+    TcpServerGroup_t* csGroupArr;
     uint32_t nextCsGroupIndex;
-    TcpCsAppStats_t gStats;
-} TcpCsAppI_t;
+    TcpServerStats_t gStats;
+} TcpServerI_t;
 
-typedef struct TcpCsAppCtx {
+typedef struct TcpServerCtx {
     Pool_t* freeSessionPool;
     Pool_t activeSessionPool;
     char commonReadBuff[COMMON_READBUFF_MAXLEN];
@@ -51,19 +50,19 @@ typedef struct TcpCsAppCtx {
     SockAddr_t nAdminAddr;
     SockAddr_t nLocalAddr;
     IoVentCtx_t* iovCtx;
-    TcpCsAppI_t* appI; 
-} TcpCsAppCtx_t;
+    TcpServerI_t* appI; 
+} TcpServerCtx_t;
 
-typedef struct TcpCsAppConn {
+typedef struct TcpServerConn {
     IoVentConn_t* iovConn;
     uint64_t bytesRead;
     uint64_t bytesWritten;
     uint32_t writeBuffOffset;
-} TcpCsAppConn_t;
+} TcpServerConn_t;
 
 typedef struct TcpCsSession {
-    TcpCsAppCtx_t* appCtx;
-    TcpCsAppConn_t tcpConn;
+    TcpServerCtx_t* appCtx;
+    TcpServerConn_t tcpConn;
 } TcpCsSession_t;
 
 
@@ -116,8 +115,8 @@ typedef struct TcpCsSession {
 }
 */
 
-void TcpClientRun(TcpCsAppI_t* appI);
+void TcpClientRun(TcpServerI_t* appI);
 
-void TcpServerRun(TcpCsAppI_t* appI);
+void TcpServerRun(TcpServerI_t* appI);
 
 #endif

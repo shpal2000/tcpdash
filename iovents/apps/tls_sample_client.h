@@ -1,7 +1,7 @@
 #ifndef __TLS_SAMPLE_CLIENT_APP_H
 #define __TLS_SAMPLE_CLIENT_APP_H
 
-#include "platform/common.h"
+#include "platform/sdk.h"
 
 typedef struct TlsSampleClientStats {
     SockStats_t connStats;
