@@ -4,7 +4,7 @@ glib = dependency('glib-2.0')
 openssl = dependency('openssl')
 json_glib_dep = dependency('json-glib-1.0')
 
-incdir = include_directories(['../linux/'])
+incdir = include_directories(['../platform/'])
                                 
 iovent_lib = static_library('iovent'
                 , sources :iovent_src
