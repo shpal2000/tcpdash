@@ -4,6 +4,7 @@
 
 #include "tls_server.h"
 
+static SSL_CTX* GSslContext = NULL;
 
 static void InitConn (TlsServerConn_t * tcpConn) {
 
@@ -59,11 +60,19 @@ static void OnEstablish (struct IoVentConn* iovConn) {
 
         iovConn->cInfo.sessionData = newSess;
 
-        setsockopt(iovConn->socketFd, SOL_SOCKET, SO_KEEPALIVE, &(int){ 1 }, sizeof(int));
-        setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPCNT, &(int){ 3 }, sizeof(int));
-        setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPIDLE, &(int){ 5 }, sizeof(int));
-        setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPINTVL, &(int){ 1 }, sizeof(int));
-        setsockopt(iovConn->socketFd, SOL_TCP, TCP_USER_TIMEOUT, &(int){ 15000 }, sizeof(int));
+        iovConn->cInfo.cSSL = SSL_new(GSslContext);
+        
+        if (iovConn->cInfo.cSSL) {
+            setsockopt(iovConn->socketFd, SOL_SOCKET, SO_KEEPALIVE, &(int){ 1 }, sizeof(int));
+            setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPCNT, &(int){ 3 }, sizeof(int));
+            setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPIDLE, &(int){ 5 }, sizeof(int));
+            setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPINTVL, &(int){ 1 }, sizeof(int));
+            setsockopt(iovConn->socketFd, SOL_TCP, TCP_USER_TIMEOUT, &(int){ 15000 }, sizeof(int));
+
+            SslServerInit (iovConn, (SSL*) iovConn->cInfo.cSSL);
+        }else  {
+            AbortConnection (iovConn); // stats; state update
+        }
     }
 }
 
@@ -161,6 +170,10 @@ static void OnCleanup (struct IoVentConn* iovConn) {
 
     TlsServerSession_t* newSess 
         = (TlsServerSession_t*) iovConn->cInfo.sessionData;
+
+    if (iovConn->cInfo.cSSL) {
+        SSL_free( (SSL*) iovConn->cInfo.cSSL);
+    }
 
     FreeSession (newSess);
 }
@@ -382,6 +395,33 @@ static TlsServerCtx_t* InitApp (char* nAdminTestId
     
     int status = -1;
 
+    SSL_load_error_strings();
+    ERR_load_crypto_strings();
+    OpenSSL_add_ssl_algorithms();
+    SSL_library_init();
+
+    GSslContext = SSL_CTX_new(SSLv23_server_method());
+
+    SSL_CTX_set_verify(GSslContext
+                            , SSL_VERIFY_NONE, 0);
+
+    SSL_CTX_set_options(GSslContext
+                            , SSL_OP_NO_SSLv2 
+                            | SSL_OP_NO_SSLv3 
+                            | SSL_OP_NO_COMPRESSION);
+                            
+    SSL_CTX_set_mode(GSslContext
+                            , SSL_MODE_ENABLE_PARTIAL_WRITE);
+
+
+    SSL_CTX_use_certificate_file(GSslContext
+            , "/home/user/autssl/certdepo/ca1/usrcerts/rsa2048_1_sha256.cert"
+            , SSL_FILETYPE_PEM);
+
+    SSL_CTX_use_PrivateKey_file(GSslContext
+            , "/home/user/autssl/certdepo/ca1/usrcerts/rsa2048_1.key"
+            , SSL_FILETYPE_PEM);
+
     TlsServerCtx_t* appCtx = CreateStruct0 (TlsServerCtx_t);
 
     if (appCtx) {
@@ -460,7 +500,8 @@ static TlsServerCtx_t* InitApp (char* nAdminTestId
 
         if (appCtx->nAdminChannelId
                 && appCtx->iovCtx
-                && appCtx->freeSessionPool) {
+                && appCtx->freeSessionPool
+                && GSslContext) {
             status = 0;
         }
 

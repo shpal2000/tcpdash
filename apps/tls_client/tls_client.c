@@ -4,6 +4,8 @@
 
 #include "tls_client.h"
 
+static SSL_CTX* GSslContext = NULL;
+
 static void InitConn (TlsClientConn_t * tcpConn) {
 
     tcpConn->iovConn = NULL;
@@ -44,11 +46,21 @@ static void OnEstablish (struct IoVentConn* iovConn) {
     if ( IsConnErr (iovConn) ) {
         FreeSession (newSess);
     } else {
-        setsockopt(iovConn->socketFd, SOL_SOCKET, SO_KEEPALIVE, &(int){ 1 }, sizeof(int));
-        setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPCNT, &(int){ 3 }, sizeof(int));
-        setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPIDLE, &(int){ 5 }, sizeof(int));
-        setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPINTVL, &(int){ 1 }, sizeof(int));
-        setsockopt(iovConn->socketFd, SOL_TCP, TCP_USER_TIMEOUT, &(int){ 15000 }, sizeof(int));
+
+        iovConn->cInfo.cSSL = SSL_new(GSslContext);
+
+        if (iovConn->cInfo.cSSL) {
+            setsockopt(iovConn->socketFd, SOL_SOCKET, SO_KEEPALIVE, &(int){ 1 }, sizeof(int));
+            setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPCNT, &(int){ 3 }, sizeof(int));
+            setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPIDLE, &(int){ 5 }, sizeof(int));
+            setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPINTVL, &(int){ 1 }, sizeof(int));
+            setsockopt(iovConn->socketFd, SOL_TCP, TCP_USER_TIMEOUT, &(int){ 15000 }, sizeof(int));
+
+            SslClientInit (iovConn, (SSL*) iovConn->cInfo.cSSL);            
+        } else {
+            //??? update stats; mark connection state why fail 
+            AbortConnection (iovConn);
+        }
     }
 }
 
@@ -135,7 +147,7 @@ static void OnWriteStatus (struct IoVentConn* iovConn
         newSess->tcpConn.bytesWritten += bytesWritten;
 
         if (newSess->tcpConn.bytesWritten == groupCtx->csDataLen) {
-            WriteClose (iovConn);
+            WriteClose (iovConn); // ??? close notify
         }
     } else {
         AbortConnection (iovConn);
@@ -146,6 +158,10 @@ static void OnCleanup (struct IoVentConn* iovConn) {
 
     TlsClientSession_t* newSess 
         = (TlsClientSession_t*) iovConn->cInfo.sessionData;
+
+    if (iovConn->cInfo.cSSL) {
+        SSL_free( (SSL*) iovConn->cInfo.cSSL);
+    }
 
     FreeSession (newSess);
 }
@@ -463,6 +479,24 @@ static TlsClientCtx_t* InitApp (char* nAdminTestId
 
     int status = -1;
 
+    SSL_load_error_strings();
+    ERR_load_crypto_strings();
+    OpenSSL_add_ssl_algorithms();
+    SSL_library_init();
+
+    GSslContext = SSL_CTX_new(SSLv23_client_method());
+
+    SSL_CTX_set_verify(GSslContext
+                            , SSL_VERIFY_NONE, 0);
+
+    SSL_CTX_set_options(GSslContext
+                            , SSL_OP_NO_SSLv2 
+                            | SSL_OP_NO_SSLv3 
+                            | SSL_OP_NO_COMPRESSION);
+                            
+    SSL_CTX_set_mode(GSslContext
+                            , SSL_MODE_ENABLE_PARTIAL_WRITE);
+
     TlsClientCtx_t* appCtx = CreateStruct0 (TlsClientCtx_t);
     
     if (appCtx) {
@@ -541,7 +575,8 @@ static TlsClientCtx_t* InitApp (char* nAdminTestId
 
         if (appCtx->nAdminChannelId
                 && appCtx->iovCtx
-                && appCtx->freeSessionPool) {
+                && appCtx->freeSessionPool
+                && GSslContext ) {
             status = 0;
         }
     }
