@@ -5,7 +5,7 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include "platform/sdk.h"
+#include "platform.h"
 
 void SetPollEvent(int pollId
                 , int fd

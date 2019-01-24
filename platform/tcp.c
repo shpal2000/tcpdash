@@ -5,7 +5,7 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include "platform/sdk.h"
+#include "platform.h"
 
 
 /** @brief Initiate the TCP connection etablishment process 

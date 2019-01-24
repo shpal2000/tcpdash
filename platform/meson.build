@@ -8,7 +8,7 @@ glib = dependency('glib-2.0')
 openssl = dependency('openssl')
 json_glib_dep = dependency('json-glib-1.0')
 
-incdir = include_directories('..')
+incdir = include_directories('./')
 
 platform_lib = static_library('platform'
                 , sources :platform_src
