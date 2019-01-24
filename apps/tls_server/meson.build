@@ -3,7 +3,7 @@ tls_server_src = ['tls_server.c']
 glib_dep = dependency('glib-2.0')
 json_glib_dep = dependency('json-glib-1.0')
 
-incdir = include_directories(['../../platform/'
+incdir = include_directories(['../../linux/'
                                 , '../../iovents/'
                                 , '../../msg_io/'
                                 , '../../nadmin/'])

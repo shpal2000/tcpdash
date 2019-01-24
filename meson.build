@@ -2,7 +2,7 @@ project('tcpdash', 'c')
 
 add_global_arguments('-std=gnu99', language : 'c')
 
-subdir('platform')
+subdir('linux')
 subdir('lab')
 subdir('iovents')
 subdir('msg_io')
