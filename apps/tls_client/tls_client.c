@@ -308,7 +308,7 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
     }
 
     appI->maxEvents = 0;
-    appI->connPerSec = 20;
+    appI->connPerSec = 600;
     appI->maxActSessions = 100000;
     appI->maxErrSessions = 10000;
     appI->maxSessions = 100000;
