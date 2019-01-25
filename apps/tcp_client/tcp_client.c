@@ -284,17 +284,17 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
                     , &(remoteAddr->sin_addr));
         remoteAddr->sin_port = htons(dstPort);
 
-        csGroup->csDataLen = 3000;
-        csGroup->scDataLen = 3000;
+        csGroup->csDataLen = 100;
+        csGroup->scDataLen = 100;
         csGroup->cCloseMethod = EmTcpFIN; 
         csGroup->csCloseType = EmDataFinish;
         csGroup->csWeight = 1;  
     }
 
     appI->maxEvents = 0;
-    appI->connPerSec = 20;
+    appI->connPerSec = 1200;
     appI->maxActSessions = 100000;
-    appI->maxErrSessions = 10000;
+    appI->maxErrSessions = 100000;
     appI->maxSessions = 100000;
 
     appCtx->appI = appI;
@@ -520,7 +520,8 @@ static TcpClientCtx_t* InitApp (char* nAdminTestId
                     IoVentOptions_t iovOptions;
                     iovOptions.maxActiveConnections = appCtx->appI->maxActSessions;
                     iovOptions.maxErrorConnections = appCtx->appI->maxErrSessions;
-                    iovOptions.maxEvents = 0;
+                    iovOptions.maxEvents = DEFAULT_MAX_POLL_EVENTS;
+                    iovOptions.eventPTO = DEFAULT_MAX_POLL_TIMEOUT;
 
                     appCtx->iovCtx 
                         = CreateIoVentCtx (&iovMethods, &iovOptions, appCtx);

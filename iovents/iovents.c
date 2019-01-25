@@ -715,7 +715,7 @@ void InitIoVentCtx (IoVentCtx_t* iovCtx
     iovCtx->appCtx = appCtx;
 
     if (iovCtx->options.maxEvents == 0) {
-        iovCtx->options.maxEvents = DEFAULT_MAX_EVENTS;
+        iovCtx->options.maxEvents = DEFAULT_MAX_POLL_EVENTS;
     }
     
     iovCtx->freeConnectionPool = AllocEmptyPool ();
@@ -744,8 +744,6 @@ void InitIoVentCtx (IoVentCtx_t* iovCtx
                                    , iovCtx->options.maxEvents);
 
     iovCtx->eventQ = CreateEventQ ();
-
-    iovCtx->eventPTO = 0;
 
     iovCtx->timerWheel = CreateTimerWheel ();
 } 
@@ -803,10 +801,8 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
     int eCount = GetIOEvents(iovCtx->eventQ
                                 , iovCtx->EventArr
                                 , iovCtx->options.maxEvents
-                                , iovCtx->eventPTO);
+                                , iovCtx->options.eventPTO);
     if (eCount > 0) {
-
-        iovCtx->eventPTO = 0;
 
         for(int eIndex = 0; eIndex < eCount; eIndex++) {
 
@@ -938,10 +934,6 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
             newConn = GetFromPool (iovCtx->cleanupConnectionPool);
         }    
 
-    }else{
-        if (iovCtx->eventPTO < MAX_POLL_TIMEOUT) {
-            iovCtx->eventPTO++;
-        }
     }
 
     int toContinue = 1;

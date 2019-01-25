@@ -3,7 +3,7 @@
 
 #include "platform.h"
 
-#define DEFAULT_MAX_EVENTS                                  1000
+#define DEFAULT_MAX_POLL_EVENTS                                  1000
 
 #define STATUS_GET_SSL_CTX                                  1
 #define STATUS_GET_SSL_CTX                                  1
@@ -110,7 +110,8 @@ typedef struct IoVentMethods {
 typedef struct IoVentOptions {
     uint32_t maxActiveConnections; 
     uint32_t maxErrorConnections;
-    uint32_t maxEvents; 
+    uint32_t maxEvents;
+    uint32_t eventPTO;
 } IoVentOptions_t;
 
 typedef struct IoVentCtx {
@@ -127,7 +128,6 @@ typedef struct IoVentCtx {
 
     PollEvent_t* EventArr;
     int eventQ;
-    int eventPTO;
 
     TimerWheel_t* timerWheel;
 
