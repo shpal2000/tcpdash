@@ -212,7 +212,6 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
         csGroup->csCloseType = EmDataFinish;
     }
 
-    appI->maxEvents = 0;
     appI->maxActSessions = 100000;
     appI->maxErrSessions = 100000;
 

@@ -3,7 +3,7 @@
 
 #include "platform.h"
 
-#define DEFAULT_MAX_POLL_EVENTS                                  1000
+#define DEFAULT_MAX_POLL_EVENTS                             20000
 
 #define STATUS_GET_SSL_CTX                                  1
 #define STATUS_GET_SSL_CTX                                  1

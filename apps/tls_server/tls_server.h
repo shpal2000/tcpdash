@@ -18,7 +18,6 @@ typedef struct TlsServerGroup {
 } TlsServerGroup_t;
 
 typedef struct TlsServerI {
-    uint32_t maxEvents;
     uint32_t maxActSessions;
     uint32_t maxErrSessions;
     uint32_t csGroupCount;

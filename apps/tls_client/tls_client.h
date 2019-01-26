@@ -23,7 +23,6 @@ typedef struct TlsClientGroup {
 } TlsClientGroup_t;
 
 typedef struct TlsClientI {
-    uint32_t maxEvents;
     uint32_t connPerSec;
     uint32_t maxActSessions;
     uint32_t maxErrSessions;

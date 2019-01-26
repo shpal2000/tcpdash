@@ -219,15 +219,14 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
                     , &(remoteAddr->sin_addr));
         remoteAddr->sin_port = htons(dstPort);
 
-        csGroup->csDataLen = 100;
-        csGroup->scDataLen = 100;
+        csGroup->csDataLen = 70000;
+        csGroup->scDataLen = 70000;
         csGroup->sCloseMethod = EmTcpFIN;
         csGroup->csCloseType = EmDataFinish;
     }
 
-    appI->maxEvents = 0;
-    appI->maxActSessions = 100000;
-    appI->maxErrSessions = 10000;
+    appI->maxActSessions = 20000;
+    appI->maxErrSessions = 20000;
 
     appCtx->appI = appI;
 

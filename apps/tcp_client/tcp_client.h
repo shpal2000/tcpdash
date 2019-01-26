@@ -23,7 +23,6 @@ typedef struct TcpClientGroup {
 } TcpClientGroup_t;
 
 typedef struct TcpClientI {
-    uint32_t maxEvents;
     uint32_t connPerSec;
     uint32_t maxActSessions;
     uint32_t maxErrSessions;
