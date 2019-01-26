@@ -458,7 +458,7 @@ static TcpProxyCtx_t* InitApp (char* nAdminTestId
                     IoVentOptions_t iovOptions;
                     iovOptions.maxActiveConnections = appCtx->appI->maxActSessions * 2;
                     iovOptions.maxErrorConnections = appCtx->appI->maxErrSessions * 2;
-                    iovOptions.maxEvents = DEFAULT_MAX_POLL_EVENTS;
+                    iovOptions.maxEvents = 0;
                     iovOptions.eventPTO = DEFAULT_MAX_POLL_TIMEOUT;
                      
                     appCtx->iovCtx 

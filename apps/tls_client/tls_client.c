@@ -307,7 +307,7 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
         csGroup->csWeight = 1;  
     }
 
-    appI->connPerSec = 750;
+    appI->connPerSec = 700;
     appI->maxActSessions = 20000;
     appI->maxErrSessions = 20000;
     appI->maxSessions = 1000000;
@@ -553,7 +553,7 @@ static TlsClientCtx_t* InitApp (char* nAdminTestId
                     IoVentOptions_t iovOptions;
                     iovOptions.maxActiveConnections = appCtx->appI->maxActSessions;
                     iovOptions.maxErrorConnections = appCtx->appI->maxErrSessions;
-                    iovOptions.maxEvents = DEFAULT_MAX_POLL_EVENTS;
+                    iovOptions.maxEvents = 0;
                     iovOptions.eventPTO = DEFAULT_MAX_POLL_TIMEOUT;
                     
                     appCtx->iovCtx 

@@ -242,7 +242,7 @@ MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
 
         iovOptions.maxActiveConnections = 1;
         iovOptions.maxErrorConnections = 1;
-        iovOptions.maxEvents = 1;
+        iovOptions.maxEvents = 0;
         iovOptions.eventPTO = 0;
 
         mioChannel->iovCtx 

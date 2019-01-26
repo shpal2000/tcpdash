@@ -438,7 +438,7 @@ static TcpServerCtx_t* InitApp (char* nAdminTestId
                     IoVentOptions_t iovOptions;
                     iovOptions.maxActiveConnections = appCtx->appI->maxActSessions;
                     iovOptions.maxErrorConnections = appCtx->appI->maxErrSessions;
-                    iovOptions.maxEvents = DEFAULT_MAX_POLL_EVENTS;
+                    iovOptions.maxEvents = 0;
                     iovOptions.eventPTO = DEFAULT_MAX_POLL_TIMEOUT;
                      
                     appCtx->iovCtx 

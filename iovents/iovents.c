@@ -715,7 +715,7 @@ void InitIoVentCtx (IoVentCtx_t* iovCtx
     iovCtx->appCtx = appCtx;
 
     if (iovCtx->options.maxEvents == 0) {
-        iovCtx->options.maxEvents = DEFAULT_MAX_POLL_EVENTS;
+        iovCtx->options.maxEvents = iovCtx->options.maxActiveConnections;
     }
     
     iovCtx->freeConnectionPool = AllocEmptyPool ();
