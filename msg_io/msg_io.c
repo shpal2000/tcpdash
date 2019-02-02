@@ -164,12 +164,15 @@ static void OnWriteNext (struct IoVentConn* iovConn) {
     MsgIoChannel_t* mioChannel 
         = (MsgIoChannel_t*) iovConn->cInfo.sessionData;
 
-    WriteNextData (iovConn
-                    , mioChannel->sendBuff
-                    , 0
-                    , mioChannel->sendMsg.len 
-                        + MSG_IO_MESSAGEL_LENGTH_BYTES
-                    , 0);
+    if (mioChannel->sendMsg.len) {
+        WriteNextData (iovConn
+                        , mioChannel->sendBuff
+                        , 0
+                        , mioChannel->sendMsg.len 
+                            + MSG_IO_MESSAGEL_LENGTH_BYTES
+                        , 0);
+        mioChannel->sendMsg.len = 0;
+    }
 }
 
 static void OnWriteStatus (struct IoVentConn* iovConn
@@ -257,6 +260,7 @@ MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
                                 , localAddress
                                 , NULL
                                 , remoteAddress
+                                , 0
                                 , &mioChannel->cStats
                                 , &mioChannel->gStats);
 
@@ -294,6 +298,11 @@ void MsgIoDelete (MsgIoChannelId_t mioChannelId) {
 
     if (mioChannel->iovConn) {
         AbortConnection (mioChannel->iovConn);
+        StopPollReadWriteEvent2 (mioChannel->iovCtx->eventQ
+                                    , mioChannel->iovConn->socketFd
+                                    , &mioChannel->cStats
+                                    , &mioChannel->gStats
+                                    , mioChannel->iovConn);
         mioChannel->iovConn = NULL;
     }
 

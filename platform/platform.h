@@ -288,6 +288,7 @@ void DumpCStats(void* aStats);
 #define STATE_TCP_TIMEOUT_CLOSED_ERROR                      0x0000000000400000
 #define STATE_TCP_SOCK_LINGER_FAIL                          0x0000000000800000
 #define STATE_TCP_GETSOCKNAME_FAIL                          0x0000000001000000
+#define STATE_TCP_CONNECTION_EXPIRE                         0x0000000002000000
 
 
 #define AllocSession(__type) g_slice_new(__type)
@@ -486,5 +487,18 @@ int SSLWrite (SSL* newSSL
 
 void SSLShutdown (SSL* newSSL
                 , void* cState);
+
+
+void PollReadWriteEvent2(int pollId
+                        , int fd
+                        , void* aStats
+                        , void* bStats
+                        , void* cState);
+
+void StopPollReadWriteEvent2(int pollId
+                        , int fd
+                        , void* aStats
+                        , void* bStats
+                        , void* cState);
 #endif
 

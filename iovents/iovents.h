@@ -60,6 +60,9 @@ typedef struct IoVentConnInfo {
 
     LocalPortPool_t* localPortPool;
 
+    double connInitTime;
+    double connLifetime;
+
 } IoVentConnInfo_t;
 
 typedef struct IoVentConn {
@@ -162,6 +165,7 @@ int NewConnection (IoVentCtx_t* iovCtx
                         , SockAddr_t* localAddress
                         , LocalPortPool_t* localPortPool 
                         , SockAddr_t* remoteAddress
+                        , int connLifetime
                         , void* aStats
                         , void* bStats);
 

@@ -40,6 +40,9 @@ static void FreeSession (TlsClientSession_t* newSess) {
 
 static void OnEstablish (struct IoVentConn* iovConn) { 
 
+    TlsClientCtx_t* appCtx 
+        = (TlsClientCtx_t*) iovConn->cInfo.appCtx;
+
     TlsClientSession_t* newSess 
         = (TlsClientSession_t*) iovConn->cInfo.sessionData;
  
@@ -54,13 +57,13 @@ static void OnEstablish (struct IoVentConn* iovConn) {
             setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPCNT, &(int){ 3 }, sizeof(int));
             setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPIDLE, &(int){ 5 }, sizeof(int));
             setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPINTVL, &(int){ 1 }, sizeof(int));
-            setsockopt(iovConn->socketFd, SOL_TCP, TCP_USER_TIMEOUT, &(int){ 15000 }, sizeof(int));
+            setsockopt(iovConn->socketFd, SOL_TCP, TCP_USER_TIMEOUT, &(int){ appCtx->appI->connLifetimeSec * 1000 }, sizeof(int));
 
             SslClientInit (iovConn, (SSL*) iovConn->cInfo.cSSL);            
         } else {
             //??? update stats; mark connection state why fail 
             AbortConnection (iovConn);
-        }
+        }   
     }
 }
 
@@ -114,9 +117,9 @@ static void OnWriteNext (struct IoVentConn* iovConn) {
         int nextChunkLen = 0;
 
         if ( (groupCtx->csDataLen - newSess->tcpConn.bytesWritten) 
-                                > COMMON_WRITEBUFF_MAXLEN ) {
+                                > 1200 ) {
 
-            nextChunkLen = COMMON_WRITEBUFF_MAXLEN;
+            nextChunkLen = 1200;
 
         } else {
 
@@ -300,17 +303,18 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
                     , &(remoteAddr->sin_addr));
         remoteAddr->sin_port = htons(dstPort);
 
-        csGroup->csDataLen = 70000;
-        csGroup->scDataLen = 70000;
+        csGroup->csDataLen = 100000;
+        csGroup->scDataLen = 100000;
         csGroup->cCloseMethod = EmTcpFIN; 
         csGroup->csCloseType = EmDataFinish;
         csGroup->csWeight = 1;  
     }
 
     appI->connPerSec = 700;
-    appI->maxActSessions = 20000;
-    appI->maxErrSessions = 20000;
-    appI->maxSessions = 1000000;
+    appI->maxActSessions = 100000;
+    appI->maxErrSessions = 100000;
+    appI->maxSessions = 7;
+    appI->connLifetimeSec = 15;
 
     appCtx->appI = appI;
 
@@ -477,6 +481,8 @@ static TlsClientCtx_t* InitApp (char* nAdminTestId
                                 , int nAdminPort) {
 
     int status = -1;
+
+    signal(SIGPIPE, SIG_IGN);
 
     SSL_load_error_strings();
     ERR_load_crypto_strings();
@@ -705,6 +711,7 @@ int main(int argc, char** argv) {
                                 , localAddress
                                 , localPortPool
                                 , remoteAddress
+                                , 10 //??? hardcoded
                                 , &csGroup->cStats
                                 , &appI->gStats);
 

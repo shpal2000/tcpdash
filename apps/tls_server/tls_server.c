@@ -67,7 +67,7 @@ static void OnEstablish (struct IoVentConn* iovConn) {
             setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPCNT, &(int){ 3 }, sizeof(int));
             setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPIDLE, &(int){ 5 }, sizeof(int));
             setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPINTVL, &(int){ 1 }, sizeof(int));
-            setsockopt(iovConn->socketFd, SOL_TCP, TCP_USER_TIMEOUT, &(int){ 15000 }, sizeof(int));
+            setsockopt(iovConn->socketFd, SOL_TCP, TCP_USER_TIMEOUT, &(int){ appCtx->appI->connLifetimeSec * 1000 }, sizeof(int));
 
             SslServerInit (iovConn, (SSL*) iovConn->cInfo.cSSL);
         }else  {
@@ -219,14 +219,15 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
                     , &(remoteAddr->sin_addr));
         remoteAddr->sin_port = htons(dstPort);
 
-        csGroup->csDataLen = 70000;
-        csGroup->scDataLen = 70000;
+        csGroup->csDataLen = 100000;
+        csGroup->scDataLen = 100000;
         csGroup->sCloseMethod = EmTcpFIN;
         csGroup->csCloseType = EmDataFinish;
     }
 
-    appI->maxActSessions = 20000;
-    appI->maxErrSessions = 20000;
+    appI->maxActSessions = 100000;
+    appI->maxErrSessions = 100000;
+    appI->connLifetimeSec = 120;
 
     appCtx->appI = appI;
 
@@ -393,6 +394,8 @@ static TlsServerCtx_t* InitApp (char* nAdminTestId
                                 , int nAdminPort) {
     
     int status = -1;
+
+    signal(SIGPIPE, SIG_IGN);
 
     SSL_load_error_strings();
     ERR_load_crypto_strings();

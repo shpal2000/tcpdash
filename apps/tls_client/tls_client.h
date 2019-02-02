@@ -31,6 +31,7 @@ typedef struct TlsClientI {
     TlsClientGroup_t* csGroupArr;
     uint32_t nextCsGroupIndex;
     TlsClientStats_t gStats;
+    int connLifetimeSec;
 } TlsClientI_t;
 
 typedef struct TlsClientCtx {

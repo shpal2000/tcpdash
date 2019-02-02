@@ -670,6 +670,7 @@ int main(int argc, char** argv) {
                                 , localAddress
                                 , localPortPool
                                 , remoteAddress
+                                , 0
                                 , &csGroup->cStats
                                 , &appI->gStats);
 

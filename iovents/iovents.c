@@ -146,7 +146,7 @@ static void RemoveConnection(IoVentConn_t* newConn) {
         }
 
         if ( IsSetCES(newConn, STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) {
-            StopPollReadWriteEvent(newConn->cInfo.iovCtx->eventQ
+            StopPollReadWriteEvent2(newConn->cInfo.iovCtx->eventQ
                                     , newConn->socketFd
                                     , newConn->cInfo.summaryStats
                                     , newConn->cInfo.groupStats
@@ -266,19 +266,35 @@ static void DoSslHandshake (IoVentConn_t* newConn) {
     }  
 }
 
-static void OnConnectionEstablshedHelper (IoVentConn_t* newConn) {
+static void OnConnectionEstablshedHelper (IoVentConn_t* newConn, int isAccept) {
 
     SetAppState (newConn, CONNAPP_STATE_CONNECTION_ESTABLISHED);
 
-    PollReadWriteEvent(newConn->cInfo.iovCtx->eventQ
-                        , newConn->socketFd
-                        , newConn->cInfo.summaryStats
-                        , newConn->cInfo.groupStats
-                        , newConn);
+    if (isAccept) {
+        PollReadWriteEvent2(newConn->cInfo.iovCtx->eventQ
+                            , newConn->socketFd
+                            , newConn->cInfo.summaryStats
+                            , newConn->cInfo.groupStats
+                            , newConn);
 
-    if ( GetCES(newConn) ) {
-        CloseConnection(newConn);
+        if ( GetCES(newConn) ) {
+            CloseConnection(newConn);
+        }
     }
+}
+
+int IsConnExpire (IoVentConn_t* newConn) {
+    
+    int status = 0;
+
+    // if (newConn->cInfo.connLifetime) {
+    //     if ( TimeElapsedIoVentCtx (newConn->cInfo.iovCtx)  
+    //                         >  newConn->cInfo.connLifetime) {
+    //         status = 1;
+    //     }
+    // }
+
+    return status;
 }
 
 int NewConnection (IoVentCtx_t* iovCtx
@@ -287,6 +303,7 @@ int NewConnection (IoVentCtx_t* iovCtx
                         , SockAddr_t* localAddress
                         , LocalPortPool_t* localPortPool 
                         , SockAddr_t* remoteAddress
+                        , int connLifetime
                         , void* aStats
                         , void* bStats) {
     
@@ -307,6 +324,14 @@ int NewConnection (IoVentCtx_t* iovCtx
         newConn->cInfo.remoteAddress = remoteAddress;
         newConn->cInfo.summaryStats = aStats;
         newConn->cInfo.groupStats = bStats;
+        newConn->cInfo.connInitTime = TimeElapsedIoVentCtx (iovCtx);
+        
+        newConn->cInfo.connLifetime = connLifetime; 
+        if (connLifetime) {
+            newConn->cInfo.connLifetime += newConn->cInfo.connInitTime;
+        }
+
+         
         
         int localPortAssignError = 0;
         if (newConn->cInfo.localPortPool) {
@@ -338,7 +363,7 @@ int NewConnection (IoVentCtx_t* iovCtx
                     ReleasePort (newConn);
                 }
             } else {
-                PollWriteEventOnly(iovCtx->eventQ
+                PollReadWriteEvent2(iovCtx->eventQ
                                     , newConn->socketFd
                                     , aStats
                                     , bStats
@@ -372,6 +397,10 @@ void InitServer (IoVentCtx_t* iovCtx
         newConn->cInfo.localAddress = localAddress;
         newConn->cInfo.summaryStats = aStats;
         newConn->cInfo.groupStats = bStats;
+        newConn->cInfo.connInitTime = TimeElapsedIoVentCtx (iovCtx);
+        newConn->cInfo.connLifetime = 0;
+        newConn->cInfo.connInitTime = TimeElapsedIoVentCtx (iovCtx);
+        newConn->cInfo.connLifetime = 0; //??? hardcoed 
         
         newConn->socketFd 
             = TcpListenStart(newConn->cInfo.localAddress
@@ -384,7 +413,7 @@ void InitServer (IoVentCtx_t* iovCtx
             StoreErrConnection (newConn);
             SetFreeConnection (newConn);
         } else {
-            PollReadEventOnly(newConn->cInfo.iovCtx->eventQ
+            PollReadWriteEvent2(newConn->cInfo.iovCtx->eventQ
                                 , newConn->socketFd
                                 , newConn->cInfo.summaryStats
                                 , newConn->cInfo.groupStats
@@ -419,6 +448,8 @@ static void OnTcpAcceptConnection(IoVentConn_t* lSockConn) {
         newConn->cInfo.remoteAddress = &newConn->remoteAddressAccept; 
         newConn->cInfo.summaryStats = lSockConn->cInfo.summaryStats;
         newConn->cInfo.groupStats = lSockConn->cInfo.groupStats;
+        newConn->cInfo.connInitTime = TimeElapsedIoVentCtx (newConn->cInfo.iovCtx);
+        newConn->cInfo.connLifetime = newConn->cInfo.connInitTime + 15;
 
         newConn->socketFd = TcpAcceptConnection(lSockConn->socketFd
                                             , newConn->cInfo.localAddress
@@ -431,7 +462,7 @@ static void OnTcpAcceptConnection(IoVentConn_t* lSockConn) {
             StoreErrConnection (newConn);
             SetFreeConnection (newConn);
         } else {
-            OnConnectionEstablshedHelper (newConn);
+            OnConnectionEstablshedHelper (newConn, 1);
 
             if ( GetCES(newConn) == 0 ) {
 
@@ -695,7 +726,7 @@ static void OnTcpConnectionCompletion (IoVentConn_t* newConn) {
         SetAppState (newConn, CONNAPP_STATE_CONNECTION_ESTABLISH_FAILED);
         CloseConnection(newConn);
     } else {
-        OnConnectionEstablshedHelper (newConn);
+        OnConnectionEstablshedHelper (newConn, 0);
     }
 
     (*newConn->cInfo.iovCtx->methods.OnEstablish)(newConn);
@@ -794,6 +825,16 @@ static void ShowConnIfo (   char* prefix
                 , events
                 , postfix);
 
+}
+
+void ConnExpirationCheck (gpointer ptr) {
+
+    IoVentConn_t* newConn = (IoVentConn_t*) ptr;
+
+    if (IsConnExpire (newConn) ) {
+        SetCES (newConn, STATE_TCP_CONNECTION_EXPIRE);
+        AbortConnection (newConn);
+    }
 }
 
 int ProcessIoVent (IoVentCtx_t* iovCtx) {
@@ -920,20 +961,26 @@ int ProcessIoVent (IoVentCtx_t* iovCtx) {
                 }
             }
         }
+    }
 
-        // Handle Application Cleanup
-        IoVentConn_t* newConn 
-            = GetFromPool (iovCtx->cleanupConnectionPool);
+    // Handle Expired Connections
+    g_queue_foreach (iovCtx->activeConnectionPool,
+                    (GFunc) ConnExpirationCheck,
+                    NULL);
 
-        while (newConn) {
+    ProcessAbortConnections (iovCtx);
 
-            (*newConn->cInfo.iovCtx->methods.OnCleanup)(newConn);
+    // Handle Application Cleanup
+    IoVentConn_t* newConn 
+        = GetFromPool (iovCtx->cleanupConnectionPool);
 
-            SetFreeConnection (newConn);
+    while (newConn) {
 
-            newConn = GetFromPool (iovCtx->cleanupConnectionPool);
-        }    
+        (*newConn->cInfo.iovCtx->methods.OnCleanup)(newConn);
 
+        SetFreeConnection (newConn);
+
+        newConn = GetFromPool (iovCtx->cleanupConnectionPool);
     }
 
     int toContinue = 1;

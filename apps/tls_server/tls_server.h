@@ -23,6 +23,7 @@ typedef struct TlsServerI {
     uint32_t csGroupCount;
     TlsServerGroup_t* csGroupArr;
     TlsServerStats_t gStats;
+    int connLifetimeSec;
 } TlsServerI_t;
 
 typedef struct TlsServerCtx {
