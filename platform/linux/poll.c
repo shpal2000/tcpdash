@@ -94,7 +94,8 @@ void UpdatePollWriteEvent(int pollId
 void StopPollReadWriteEvent(int pollId
                         , int fd
                         , void* aStats
-                        , void* bStats) {
+                        , void* bStats
+                        , void* cState) {
 
     epoll_ctl(pollId, EPOLL_CTL_DEL, fd, NULL);
 }

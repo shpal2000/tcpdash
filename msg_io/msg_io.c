@@ -298,11 +298,7 @@ void MsgIoDelete (MsgIoChannelId_t mioChannelId) {
 
     if (mioChannel->iovConn) {
         AbortConnection (mioChannel->iovConn);
-        StopPollReadWriteEvent2 (mioChannel->iovCtx->eventQ
-                                    , mioChannel->iovConn->socketFd
-                                    , &mioChannel->cStats
-                                    , &mioChannel->gStats
-                                    , mioChannel->iovConn);
+        DisableReadWriteNotification (mioChannel->iovConn);
         mioChannel->iovConn = NULL;
     }
 

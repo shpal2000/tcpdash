@@ -310,10 +310,10 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
         csGroup->csWeight = 1;  
     }
 
-    appI->connPerSec = 700;
+    appI->connPerSec = 500;
     appI->maxActSessions = 100000;
     appI->maxErrSessions = 100000;
-    appI->maxSessions = 7;
+    appI->maxSessions = 100000;
     appI->connLifetimeSec = 15;
 
     appCtx->appI = appI;

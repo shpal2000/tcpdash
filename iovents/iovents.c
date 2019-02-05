@@ -145,13 +145,7 @@ static void RemoveConnection(IoVentConn_t* newConn) {
             isLinger = 1;
         }
 
-        if ( IsSetCES(newConn, STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) {
-            StopPollReadWriteEvent2(newConn->cInfo.iovCtx->eventQ
-                                    , newConn->socketFd
-                                    , newConn->cInfo.summaryStats
-                                    , newConn->cInfo.groupStats
-                                    , newConn);
-        }       
+        DisableReadWriteNotification (newConn);     
 
         TcpClose(newConn->socketFd
                     , isLinger
@@ -166,8 +160,7 @@ static void RemoveConnection(IoVentConn_t* newConn) {
 
         //only for client connection
         if ( newConn->cInfo.localPortPool 
-                && ( IsSetCES(newConn, STATE_TCP_SOCK_FD_CLOSE_FAIL
-                            | STATE_TCP_SOCK_POLL_UPDATE_FAIL) == 0 ) ) {
+                && ( IsSetCES(newConn, STATE_TCP_SOCK_FD_CLOSE_FAIL) == 0 ) ) {
             ReleasePort(newConn);
         }
 
@@ -210,11 +203,7 @@ void CloseConnection(IoVentConn_t* newConn) {
 
             TcpWrShutdown (newConn->socketFd, newConn);
 
-            StopPollWriteEvent (newConn->cInfo.iovCtx->eventQ
-                                , newConn->socketFd
-                                , newConn->cInfo.summaryStats
-                                , newConn->cInfo.groupStats
-                                , newConn);
+            DisableWriteNotification (newConn);
         }
 
         if ( GetCES(newConn) 
@@ -271,11 +260,8 @@ static void OnConnectionEstablshedHelper (IoVentConn_t* newConn, int isAccept) {
     SetAppState (newConn, CONNAPP_STATE_CONNECTION_ESTABLISHED);
 
     if (isAccept) {
-        PollReadWriteEvent2(newConn->cInfo.iovCtx->eventQ
-                            , newConn->socketFd
-                            , newConn->cInfo.summaryStats
-                            , newConn->cInfo.groupStats
-                            , newConn);
+        
+        EnableReadWriteNotification(newConn);
 
         if ( GetCES(newConn) ) {
             CloseConnection(newConn);
@@ -363,11 +349,7 @@ int NewConnection (IoVentCtx_t* iovCtx
                     ReleasePort (newConn);
                 }
             } else {
-                PollReadWriteEvent2(iovCtx->eventQ
-                                    , newConn->socketFd
-                                    , aStats
-                                    , bStats
-                                    , newConn);
+                EnableReadWriteNotification(newConn);
 
                 if ( GetCES(newConn) ) {
                     CloseConnection(newConn);
@@ -413,11 +395,8 @@ void InitServer (IoVentCtx_t* iovCtx
             StoreErrConnection (newConn);
             SetFreeConnection (newConn);
         } else {
-            PollReadWriteEvent2(newConn->cInfo.iovCtx->eventQ
-                                , newConn->socketFd
-                                , newConn->cInfo.summaryStats
-                                , newConn->cInfo.groupStats
-                                , newConn);
+
+            EnableReadWriteNotification(newConn);
 
             if ( GetCES(newConn) ) {
                 CloseConnection(newConn);
@@ -643,11 +622,7 @@ static void HandleReadNextData (IoVentConn_t* newConn) {
         if (bytesReceived <= 0) {
             if ( IsSetCS1 (newConn, STATE_TCP_REMOTE_CLOSED) ) {
                 ClearCS1 (newConn, STATE_CONN_READ_PENDING);
-                StopPollReadEvent (newConn->cInfo.iovCtx->eventQ
-                                    , newConn->socketFd
-                                    , newConn->cInfo.summaryStats
-                                    , newConn->cInfo.groupStats
-                                    , newConn);
+                DisableReadNotification (newConn);
                 if ( GetCES(newConn) ) {
                     int iovConnErr = MapConnectionError (newConn);
                     CloseConnection(newConn);
@@ -1017,8 +992,6 @@ void EnableReadNotification (IoVentConn_t* newConn) {
 
     if ( IsSetCS1(newConn, STATE_TCP_POLL_READ_CURRENT) == 0 ) {
 
-        SetCS1(newConn, STATE_TCP_POLL_READ_CURRENT);
-
         if ( IsSetCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT) == 0 ) {
 
             NewPollReadEvent(newConn->cInfo.iovCtx->eventQ
@@ -1034,14 +1007,14 @@ void EnableReadNotification (IoVentConn_t* newConn) {
                                 , newConn->cInfo.groupStats
                                 , newConn);
         }
+
+        SetCS1(newConn, STATE_TCP_POLL_READ_CURRENT);
     }
 }
 
 void DisableReadNotification (IoVentConn_t* newConn) {
 
     if ( IsSetCS1(newConn, STATE_TCP_POLL_READ_CURRENT) ) {
-
-        ClearCS1(newConn, STATE_TCP_POLL_READ_CURRENT);
 
         if ( IsSetCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT) == 0 ) {
 
@@ -1058,14 +1031,14 @@ void DisableReadNotification (IoVentConn_t* newConn) {
                                 , newConn->cInfo.groupStats
                                 , newConn);
         }
+
+        ClearCS1(newConn, STATE_TCP_POLL_READ_CURRENT);
     }
 }
 
 void EnableWriteNotification (IoVentConn_t* newConn) {
 
     if ( IsSetCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT) == 0 ) {
-
-        SetCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT);
 
         if ( IsSetCS1(newConn, STATE_TCP_POLL_READ_CURRENT) == 0 ) {
 
@@ -1082,14 +1055,13 @@ void EnableWriteNotification (IoVentConn_t* newConn) {
                                 , newConn->cInfo.groupStats
                                 , newConn);
         }
+        SetCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT);
     }
 }
 
 void DisableWriteNotification (IoVentConn_t* newConn) {
 
     if ( IsSetCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT) ) {
-
-        ClearCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT);
 
         if ( IsSetCS1(newConn, STATE_TCP_POLL_READ_CURRENT) == 0 ) {
 
@@ -1106,6 +1078,7 @@ void DisableWriteNotification (IoVentConn_t* newConn) {
                                 , newConn->cInfo.groupStats
                                 , newConn);
         }
+        ClearCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT);
     }
 }
 
@@ -1113,9 +1086,6 @@ void EnableReadWriteNotification (IoVentConn_t* newConn) {
 
     if ( IsSetCS1(newConn, STATE_TCP_POLL_READ_CURRENT) == 0 
             || IsSetCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT) == 0 ) {
-
-        SetCS1(newConn, STATE_TCP_POLL_READ_CURRENT);
-        SetCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT);
 
         if ( IsSetCS1(newConn, STATE_TCP_POLL_READ_CURRENT) == 0
                 &&  IsSetCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT) == 0) {
@@ -1133,6 +1103,8 @@ void EnableReadWriteNotification (IoVentConn_t* newConn) {
                                 , newConn->cInfo.groupStats
                                 , newConn);
         }
+        SetCS1(newConn, STATE_TCP_POLL_READ_CURRENT);
+        SetCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT);
     }
 }
 
@@ -1141,14 +1113,14 @@ void DisableReadWriteNotification (IoVentConn_t* newConn) {
     if ( IsSetCS1(newConn, STATE_TCP_POLL_READ_CURRENT) 
             || IsSetCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT) ) {
 
-        ClearCS1(newConn, STATE_TCP_POLL_READ_CURRENT);
-        ClearCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT);
-
         StopPollReadWriteEvent(newConn->cInfo.iovCtx->eventQ
                             , newConn->socketFd
                             , newConn->cInfo.summaryStats
                             , newConn->cInfo.groupStats
                             , newConn);
+
+        ClearCS1(newConn, STATE_TCP_POLL_READ_CURRENT);
+        ClearCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT);
     }
 }
 
@@ -1156,9 +1128,6 @@ void EnableReadOnlyNotification (IoVentConn_t* newConn) {
 
     if ( IsSetCS1(newConn, STATE_TCP_POLL_READ_CURRENT) == 0 
             || IsSetCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT) ) {
-
-        SetCS1(newConn, STATE_TCP_POLL_READ_CURRENT);
-        ClearCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT);
 
         if ( IsSetCS1(newConn, STATE_TCP_POLL_READ_CURRENT) == 0 
                 && IsSetCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT) == 0 ) {
@@ -1176,6 +1145,8 @@ void EnableReadOnlyNotification (IoVentConn_t* newConn) {
                                 , newConn->cInfo.groupStats
                                 , newConn);
         }
+        SetCS1(newConn, STATE_TCP_POLL_READ_CURRENT);
+        ClearCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT);
     }
 }
 
@@ -1183,9 +1154,6 @@ void EnableWriteOnlyNotification (IoVentConn_t* newConn) {
 
     if ( IsSetCS1(newConn, STATE_TCP_POLL_READ_CURRENT) 
             || IsSetCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT) == 0 ) {
-
-        ClearCS1(newConn, STATE_TCP_POLL_READ_CURRENT);
-        SetCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT);
 
         if ( IsSetCS1(newConn, STATE_TCP_POLL_READ_CURRENT) == 0 
                 && IsSetCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT) == 0 ) {
@@ -1203,15 +1171,13 @@ void EnableWriteOnlyNotification (IoVentConn_t* newConn) {
                                 , newConn->cInfo.groupStats
                                 , newConn);
         }
+        ClearCS1(newConn, STATE_TCP_POLL_READ_CURRENT);
+        SetCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT);
     }
 }
 void WriteClose (IoVentConn_t* newConn) {
     
-    PollWriteEvent(newConn->cInfo.iovCtx->eventQ
-                        , newConn->socketFd
-                        , newConn->cInfo.summaryStats
-                        , newConn->cInfo.groupStats
-                        , newConn);
+    EnableWriteNotification(newConn);
 
     if ( GetCES(newConn) ) {
         CloseConnection(newConn);
