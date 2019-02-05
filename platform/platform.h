@@ -159,50 +159,44 @@ static inline void SetCESSL(void* aSession, uint64_t errState, int sslErrno) {
 
 #define GetSockErrno(__aConn) ((SockState_t*)__aConn)->sockErrno
 
-void PollReadWriteEvent(int pollId
+void NewPollReadWriteEvent(int pollId
                         , int fd
                         , void* aStats
                         , void* bStats
                         , void* cState);
 
-void PollReadEventOnly(int pollId
+void NewPollReadEvent(int pollId
                         , int fd
                         , void* aStats
                         , void* bStats
                         , void* cState);
 
-void PollReadEvent(int pollId
+void NewPollWriteEvent(int pollId
                         , int fd
                         , void* aStats
                         , void* bStats
                         , void* cState);
 
-void PollWriteEventOnly(int pollId
+void UpdatePollReadWriteEvent(int pollId
                         , int fd
                         , void* aStats
                         , void* bStats
                         , void* cState);
 
-void PollWriteEvent(int pollId
+void UpdatePollReadEvent(int pollId
                         , int fd
                         , void* aStats
                         , void* bStats
                         , void* cState);
 
+
+void UpdatePollWriteEvent(int pollId
+                        , int fd
+                        , void* aStats
+                        , void* bStats
+                        , void* cState);
 
 void StopPollReadWriteEvent(int pollId
-                        , int fd
-                        , void* aStats
-                        , void* bStats
-                        , void* cState);
-
-void StopPollReadEvent(int pollId
-                        , int fd
-                        , void* aStats
-                        , void* bStats
-                        , void* cState);
-
-void StopPollWriteEvent(int pollId
                         , int fd
                         , void* aStats
                         , void* bStats
@@ -489,16 +483,5 @@ void SSLShutdown (SSL* newSSL
                 , void* cState);
 
 
-void PollReadWriteEvent2(int pollId
-                        , int fd
-                        , void* aStats
-                        , void* bStats
-                        , void* cState);
-
-void StopPollReadWriteEvent2(int pollId
-                        , int fd
-                        , void* aStats
-                        , void* bStats
-                        , void* cState);
 #endif
 
