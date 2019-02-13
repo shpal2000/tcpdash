@@ -219,8 +219,8 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
                     , &(remoteAddr->sin_addr));
         remoteAddr->sin_port = htons(dstPort);
 
-        csGroup->csDataLen = 120000;
-        csGroup->scDataLen = 120000;
+        csGroup->csDataLen = 70000;
+        csGroup->scDataLen = 70000;
         csGroup->sCloseMethod = EmTcpFIN;
         csGroup->csCloseType = EmDataFinish;
     }
@@ -417,11 +417,11 @@ static TlsServerCtx_t* InitApp (char* nAdminTestId
 
 
     SSL_CTX_use_certificate_file(GSslContext
-            , "/home/user/autssl/certdepo/ca1/usrcerts/rsa2048_1_sha256.cert"
+            , "/root/autssl/certdepo/ca1/usrcerts/rsa2048_1_sha256.cert"
             , SSL_FILETYPE_PEM);
 
     SSL_CTX_use_PrivateKey_file(GSslContext
-            , "/home/user/autssl/certdepo/ca1/usrcerts/rsa2048_1.key"
+            , "/root/autssl/certdepo/ca1/usrcerts/rsa2048_1.key"
             , SSL_FILETYPE_PEM);
 
     TlsServerCtx_t* appCtx = CreateStruct0 (TlsServerCtx_t);

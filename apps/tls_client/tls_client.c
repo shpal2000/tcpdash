@@ -198,6 +198,58 @@ static int OnContinue (void* appData) {
     return EmAppContinue;
 }
 
+// static void ParseConfig (char* _configTxt, TlsClientI_t* appI) {
+
+//     gchar* configTxt;
+//     gsize configLen;
+//     GError* configErr;
+//     gboolean configSts;
+
+//     configSts = g_file_get_contents ( "/root/config.txt"
+//                             , &configTxt
+//                             , &configLen
+//                             , &configErr);
+    
+//     if (configSts) {
+
+//         JsonNode *cfgNode = json_from_string (configTxt, &configErr);
+
+//         if (cfgNode) {
+//             JsonObject* cfgObj = json_node_get_object (cfgNode);
+//             if (cfgObj) {
+
+//                 appI->connPerSec 
+//                     = json_node_get_int ( json_object_get_member (cfgObj, "connPerSec") );
+
+//                 appI->maxActSessions 
+//                     = json_node_get_int ( json_object_get_member (cfgObj, "maxActSessions") );
+
+//                 appI->maxErrSessions 
+//                     = json_node_get_int ( json_object_get_member (cfgObj, "maxErrSessions") );
+
+//                 appI->maxSessions 
+//                     = json_node_get_int ( json_object_get_member (cfgObj, "maxSessions") );
+
+//                 appI->connLifetimeSec 
+//                     = json_node_get_int ( json_object_get_member (cfgObj, "connLifetimeSec") );
+
+
+//                 json_object_unref (cfgObj);
+//                 json_node_unref (cfgNode);
+//                 g_free (configTxt);
+//             } else {
+
+//             }
+//         } else {
+
+//         }
+
+//     } else {
+
+//     }
+            
+// }
+
 static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
 
     // TlsClientCtx_t* appCtx = (TlsClientCtx_t*) MsgIoGetCtx (mioChannelId);
@@ -211,7 +263,13 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
     TlsClientCtx_t* appCtx = (TlsClientCtx_t*) MsgIoGetCtx (mioChannelId);
 
 
-    char* srcIpGroup1[] = { "12.20.50.2"
+    TlsClientI_t* appI = CreateStruct0 (TlsClientI_t);
+
+    appCtx->appI = appI;
+
+    // ParseConfig ("", appI);
+
+   char* srcIpGroup1[] = { "12.20.50.2"
                 , "12.20.50.3"
                 , "12.20.50.4"
                 , "12.20.50.5"
@@ -252,7 +310,7 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
 
     int csGroupCount = 1;
 
-    TlsClientI_t* appI = CreateStruct0 (TlsClientI_t);
+    // TlsClientI_t* appI = CreateStruct0 (TlsClientI_t);
     
     appI->csGroupCount = csGroupCount;
 
@@ -303,20 +361,20 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
                     , &(remoteAddr->sin_addr));
         remoteAddr->sin_port = htons(dstPort);
 
-        csGroup->csDataLen = 100000;
-        csGroup->scDataLen = 100000;
+        csGroup->csDataLen = 70000;
+        csGroup->scDataLen = 70000;
         csGroup->cCloseMethod = EmTcpFIN; 
         csGroup->csCloseType = EmDataFinish;
         csGroup->csWeight = 1;  
     }
 
     appI->connPerSec = 500;
-    appI->maxActSessions = 120000;
-    appI->maxErrSessions = 120000;
+    appI->maxActSessions = 100000;
+    appI->maxErrSessions = 100000;
     appI->maxSessions = 1000000;
     appI->connLifetimeSec = 15;
 
-    appCtx->appI = appI;
+    // appCtx->appI = appI;
 
     appCtx->nAdminChannelState = N_ADMIN_CHANNEL_STATE_RECV_CONFIG;  
 }

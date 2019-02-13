@@ -483,5 +483,57 @@ void SSLShutdown (SSL* newSSL
                 , void* cState);
 
 
+
+// json helpers
+
+typedef JsonNode* JsonNodeP;
+
+typedef JsonObject* JsonObjP;
+
+typedef JsonArray* JsonArrP;
+
+#define JFREE_NODE(__node) json_node_free(__node)
+
+#define JFREE_OBJ(__obj) json_object_unref(__obj)
+
+#define JGET_MEMBER_INT(__obj,__name,__intp) \
+{ \
+    JsonNode* __node = json_object_get_member(__obj,__name); \
+    *(__intp) = json_node_get_int(__node); \
+    json_node_unref(__node); \
+} \
+
+#define JGET_MEMBER_STR(__obj,__name,__strp) \
+{ \
+    JsonNode* __node = json_object_get_member(__obj,__name); \
+    *(__strp) = json_node_get_string(__node); \
+    json_node_unref(__node); \
+} \
+
+#define JFREE_STR(__str) g_free(__str)
+
+
+#define JGET_MEMBER_ARR(__obj,__name,__arrp) \
+{ \
+    JsonNode* __node = json_object_get_member(__obj,__name); \
+    *(__arrp) = json_node_get_array(__node); \
+    json_node_unref(__node); \
+} \
+
+#define JFREE_ARR(__arr) json_array_unref(__arr)
+
+#define JGET_NODE_INT(__node) json_node_get_int(__node)
+
+#define JGET_NODE_STR(__node) json_node_get_string(__node)
+
+#define JGET_NODE_ARR(__node) json_node_get_array(__node)
+
+#define JGET_ARR_LEN(__arr) json_array_get_length(__arr)
+
+#define JGET_ARR_INT(__arr,__index) json_array_get_int_element(__arr,__index);
+
+#define JGET_ARR_STR(__arr,__index) json_array_get_string_element(__arr,__index);
+
+
 #endif
 

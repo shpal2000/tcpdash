@@ -175,7 +175,8 @@ static void OnReadStatus (struct IoVentConn* iovConn
 
             switch (closeErr) {
                 case ON_CLOSE_ERROR_NONE:
-                    WriteClose (tpConnOther->iovConn);
+                    WriteClose (tpConn->iovConn);
+                    // WriteClose (tpConnOther->iovConn);
                     break;
                 default:
                     AbortConnection (tpConnOther->iovConn);
