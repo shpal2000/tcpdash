@@ -504,7 +504,6 @@ typedef JsonArray JArray;
 { \
     JsonNode* __node = json_object_get_member(__obj,__name); \
     *(__strp) = json_node_get_string(__node); \
-    json_node_unref(__node); \
 } \
 
 #define JFREE_STR(__str) g_free(__str)
@@ -514,7 +513,6 @@ typedef JsonArray JArray;
 { \
     JsonNode* __node = json_object_get_member(__obj,__name); \
     *(__arrp) = json_node_get_array(__node); \
-    json_node_unref(__node); \
 } \
 
 #define JFREE_ARR(__arr) json_array_unref(__arr)
@@ -543,7 +541,8 @@ typedef JsonArray JArray;
 
 #define JFREE_ROOT_NODE(__rootNode,__rootNodeObj) \
 { \
-    json_node_unref (__rootNode); \
+    json_object_unref (__rootNodeObj); \
+    json_node_free (__rootNode); \
 } \
 
 #endif
