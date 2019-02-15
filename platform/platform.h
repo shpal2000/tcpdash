@@ -486,11 +486,9 @@ void SSLShutdown (SSL* newSSL
 
 // json helpers
 
-typedef JsonNode* JsonNodeP;
-
-typedef JsonObject* JsonObjP;
-
-typedef JsonArray* JsonArrP;
+typedef JsonNode JNode;
+typedef JsonObject JObject;
+typedef JsonArray JArray;
 
 #define JFREE_NODE(__node) json_node_free(__node)
 
@@ -500,7 +498,6 @@ typedef JsonArray* JsonArrP;
 { \
     JsonNode* __node = json_object_get_member(__obj,__name); \
     *(__intp) = json_node_get_int(__node); \
-    json_node_unref(__node); \
 } \
 
 #define JGET_MEMBER_STR(__obj,__name,__strp) \
@@ -534,6 +531,20 @@ typedef JsonArray* JsonArrP;
 
 #define JGET_ARR_STR(__arr,__index) json_array_get_string_element(__arr,__index);
 
+#define JGET_ROOT_NODE(__jstr,__rootNodep,__rootNodeObjp) \
+{ \
+    GError* __rootNodeErr; \
+    *(__rootNodep) = json_from_string (__jstr, &__rootNodeErr); \
+    if (*(__rootNodep)) { \
+        *(__rootNodeObjp) = json_node_get_object (*(__rootNodep)); \
+    } \
+} \
+
+
+#define JFREE_ROOT_NODE(__rootNode,__rootNodeObj) \
+{ \
+    json_node_unref (__rootNode); \
+} \
 
 #endif
 
