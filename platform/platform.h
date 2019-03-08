@@ -490,10 +490,6 @@ typedef JsonNode JNode;
 typedef JsonObject JObject;
 typedef JsonArray JArray;
 
-#define JFREE_NODE(__node) json_node_free(__node)
-
-#define JFREE_OBJ(__obj) json_object_unref(__obj)
-
 #define JGET_MEMBER_INT(__obj,__name,__intp) \
 { \
     JsonNode* __node = json_object_get_member(__obj,__name); \
@@ -506,28 +502,19 @@ typedef JsonArray JArray;
     *(__strp) = json_node_get_string(__node); \
 } \
 
-#define JFREE_STR(__str) g_free(__str)
-
-
 #define JGET_MEMBER_ARR(__obj,__name,__arrp) \
 { \
     JsonNode* __node = json_object_get_member(__obj,__name); \
     *(__arrp) = json_node_get_array(__node); \
 } \
 
-#define JFREE_ARR(__arr) json_array_unref(__arr)
-
-#define JGET_NODE_INT(__node) json_node_get_int(__node)
-
-#define JGET_NODE_STR(__node) json_node_get_string(__node)
-
-#define JGET_NODE_ARR(__node) json_node_get_array(__node)
-
 #define JGET_ARR_LEN(__arr) json_array_get_length(__arr)
 
-#define JGET_ARR_INT(__arr,__index) json_array_get_int_element(__arr,__index);
+#define JGET_ARR_ELEMENT_INT(__arr,__index) json_array_get_int_element(__arr,__index);
 
-#define JGET_ARR_STR(__arr,__index) json_array_get_string_element(__arr,__index);
+#define JGET_ARR_ELEMENT_STR(__arr,__index) json_array_get_string_element(__arr,__index);
+
+#define JGET_ARR_ELEMENT_OBJ(__arr,__index) json_array_get_object_element(__arr,__index);
 
 #define JGET_ROOT_NODE(__jstr,__rootNodep,__rootNodeObjp) \
 { \
@@ -538,10 +525,8 @@ typedef JsonArray JArray;
     } \
 } \
 
-
 #define JFREE_ROOT_NODE(__rootNode,__rootNodeObj) \
 { \
-    json_object_unref (__rootNodeObj); \
     json_node_free (__rootNode); \
 } \
 

@@ -198,57 +198,46 @@ static int OnContinue (void* appData) {
     return EmAppContinue;
 }
 
-// static void ParseConfig (char* _configTxt, TlsClientI_t* appI) {
+static void ParseConfig (char* _configTxt, TlsClientI_t* appI) {
+    return;
 
-//     gchar* configTxt;
-//     gsize configLen;
-//     GError* configErr;
-//     gboolean configSts;
+    gchar* configTxt;
+    gsize configLen;
+    GError* configErr;
+    gboolean configSts;
 
-//     configSts = g_file_get_contents ( "/root/config.txt"
-//                             , &configTxt
-//                             , &configLen
-//                             , &configErr);
+    configSts = g_file_get_contents ( "/root/config.txt"
+                            , &configTxt
+                            , &configLen
+                            , &configErr);
     
-//     if (configSts) {
+    if (configSts) {
 
-//         JsonNode *cfgNode = json_from_string (configTxt, &configErr);
+        JNode* cfgNode;
+        JObject* cfgObj;
 
-//         if (cfgNode) {
-//             JsonObject* cfgObj = json_node_get_object (cfgNode);
-//             if (cfgObj) {
+        for (int i = 0; i < 1; i ++) {   
+            JGET_ROOT_NODE (configTxt, &cfgNode, &cfgObj);
+            JFREE_ROOT_NODE (cfgNode, cfgObj);
 
-//                 appI->connPerSec 
-//                     = json_node_get_int ( json_object_get_member (cfgObj, "connPerSec") );
+            // if (cfgNode) {
+            //         JGET_MEMBER_INT (cfgObj, "connPerSec", &appI->connPerSec);
+            //         JGET_MEMBER_INT (cfgObj, "maxActSessions", &appI->maxActSessions);
+            //         JGET_MEMBER_INT (cfgObj, "maxErrSessions", &appI->maxErrSessions);
+            //         JGET_MEMBER_INT (cfgObj, "maxSessions", &appI->maxSessions);
 
-//                 appI->maxActSessions 
-//                     = json_node_get_int ( json_object_get_member (cfgObj, "maxActSessions") );
+            //         JFREE_ROOT_NODE (cfgNode, cfgObj);
+            // } else {
 
-//                 appI->maxErrSessions 
-//                     = json_node_get_int ( json_object_get_member (cfgObj, "maxErrSessions") );
+            // }
+        }
 
-//                 appI->maxSessions 
-//                     = json_node_get_int ( json_object_get_member (cfgObj, "maxSessions") );
+        g_free (configTxt);
+    } else {
 
-//                 appI->connLifetimeSec 
-//                     = json_node_get_int ( json_object_get_member (cfgObj, "connLifetimeSec") );
-
-
-//                 json_object_unref (cfgObj);
-//                 json_node_unref (cfgNode);
-//                 g_free (configTxt);
-//             } else {
-
-//             }
-//         } else {
-
-//         }
-
-//     } else {
-
-//     }
+    }
             
-// }
+}
 
 static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
 
@@ -267,7 +256,11 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
 
     appCtx->appI = appI;
 
-    // ParseConfig ("", appI);
+    ParseConfig ("", appI);
+    ParseConfig ("", appI);
+    ParseConfig ("", appI);
+    ParseConfig ("", appI);
+    ParseConfig ("", appI);
 
    char* srcIpGroup1[] = { "12.20.50.2"
                 , "12.20.50.3"
@@ -361,17 +354,17 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
                     , &(remoteAddr->sin_addr));
         remoteAddr->sin_port = htons(dstPort);
 
-        csGroup->csDataLen = 70000;
-        csGroup->scDataLen = 70000;
+        csGroup->csDataLen = 2000;
+        csGroup->scDataLen = 100000;
         csGroup->cCloseMethod = EmTcpFIN; 
         csGroup->csCloseType = EmDataFinish;
         csGroup->csWeight = 1;  
     }
 
-    appI->connPerSec = 500;
+    appI->connPerSec = 400;
     appI->maxActSessions = 100000;
     appI->maxErrSessions = 100000;
-    appI->maxSessions = 1000000;
+    appI->maxSessions = 100000000;
     appI->connLifetimeSec = 15;
 
     // appCtx->appI = appI;
@@ -674,7 +667,7 @@ int main(int argc, char** argv) {
 
     TlsClientCtx_t* appCtx 
         = InitApp ( argv[1], argv[2], atoi(argv[3]) );
-
+    
     if (appCtx == NULL) {
         exit (-1); //???
     }

@@ -176,7 +176,7 @@ static void OnReadStatus (struct IoVentConn* iovConn
             switch (closeErr) {
                 case ON_CLOSE_ERROR_NONE:
                     WriteClose (tpConn->iovConn);
-                    // WriteClose (tpConnOther->iovConn);
+                    WriteClose (tpConnOther->iovConn);
                     break;
                 default:
                     AbortConnection (tpConnOther->iovConn);
@@ -271,68 +271,73 @@ static void OnCleanup (struct IoVentConn* iovConn) {
     TcpProxySession_t* newSess 
         = (TcpProxySession_t*) iovConn->cInfo.sessionData;
 
-    TcpProxyConn_t* tpConn = NULL;
-    TcpProxyConn_t* tpConnOther = NULL;
+    if (newSess){
 
-    if (newSess->aConn.iovConn == iovConn) {
-        tpConn = &newSess->aConn;
-        tpConnOther = &newSess->iConn;
-    } else if (newSess->iConn.iovConn == iovConn) {
-        tpConn = &newSess->iConn;
-        tpConnOther = &newSess->aConn;
-    }
+        TcpProxyConn_t* tpConn = NULL;
+        TcpProxyConn_t* tpConnOther = NULL;
 
-    if (tpConn) {
-        if (tpConn->readBuff) {
-            AddToPool (newSess->appCtx->freeBuffPool
-                                , tpConn->readBuff);
-            tpConn->readBuff = NULL;
+        if (newSess->aConn.iovConn == iovConn) {
+            tpConn = &newSess->aConn;
+            tpConnOther = &newSess->iConn;
+        } else if (newSess->iConn.iovConn == iovConn) {
+            tpConn = &newSess->iConn;
+            tpConnOther = &newSess->aConn;
         }
 
-        if (tpConn->writeBuff) {
-            AddToPool (newSess->appCtx->freeBuffPool
-                                , tpConn->writeBuff);
-            tpConn->writeBuff = NULL;
-        }
-
-        while (1) {
-            RwBuff_t* tmpBuff = GetFromPool (&tpConn->writeQ);
-            if (tmpBuff == NULL) {
-                break;
-            }
-            AddToPool (newSess->appCtx->freeBuffPool, tmpBuff);
-        }
-
-        tpConn->isActive = 0;
-
-        if (tpConnOther->isActive == 0) {
-
-            if (tpConnOther->readBuff) {
+        if (tpConn) {
+            if (tpConn->readBuff) {
                 AddToPool (newSess->appCtx->freeBuffPool
-                                    , tpConnOther->readBuff);
-                tpConnOther->readBuff = NULL;
+                                    , tpConn->readBuff);
+                tpConn->readBuff = NULL;
             }
 
-            if (tpConnOther->writeBuff) {
+            if (tpConn->writeBuff) {
                 AddToPool (newSess->appCtx->freeBuffPool
-                                    , tpConnOther->writeBuff);
-                tpConnOther->writeBuff = NULL;
+                                    , tpConn->writeBuff);
+                tpConn->writeBuff = NULL;
             }
 
             while (1) {
-                RwBuff_t* tmpBuff = GetFromPool (&tpConnOther->writeQ);
+                RwBuff_t* tmpBuff = GetFromPool (&tpConn->writeQ);
                 if (tmpBuff == NULL) {
                     break;
                 }
                 AddToPool (newSess->appCtx->freeBuffPool, tmpBuff);
             }
 
-            AddToPool (newSess->appCtx->freeSessionPool, newSess);
-            RemoveFromPool (&newSess->appCtx->activeSessionPool, newSess);
-            // printf ("Free Sessions = %d\n", GetPoolCount (newSess->appCtx->freeSessionPool) );
-            // printf ("Free Buffs = %d\n", GetPoolCount (newSess->appCtx->freeBuffPool) );
-        }
+            tpConn->isActive = 0;
 
+            if (tpConnOther->isActive == 0) {
+
+                if (tpConnOther->readBuff) {
+                    AddToPool (newSess->appCtx->freeBuffPool
+                                        , tpConnOther->readBuff);
+                    tpConnOther->readBuff = NULL;
+                }
+
+                if (tpConnOther->writeBuff) {
+                    AddToPool (newSess->appCtx->freeBuffPool
+                                        , tpConnOther->writeBuff);
+                    tpConnOther->writeBuff = NULL;
+                }
+
+                while (1) {
+                    RwBuff_t* tmpBuff = GetFromPool (&tpConnOther->writeQ);
+                    if (tmpBuff == NULL) {
+                        break;
+                    }
+                    AddToPool (newSess->appCtx->freeBuffPool, tmpBuff);
+                }
+
+                AddToPool (newSess->appCtx->freeSessionPool, newSess);
+                RemoveFromPool (&newSess->appCtx->activeSessionPool, newSess);
+                // printf ("Free Sessions = %d\n", GetPoolCount (newSess->appCtx->freeSessionPool) );
+                // printf ("Free Buffs = %d\n", GetPoolCount (newSess->appCtx->freeBuffPool) );
+            }
+
+        } else {
+            //update stats
+        }
     } else {
         //update stats
     }

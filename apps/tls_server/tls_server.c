@@ -219,8 +219,8 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
                     , &(remoteAddr->sin_addr));
         remoteAddr->sin_port = htons(dstPort);
 
-        csGroup->csDataLen = 70000;
-        csGroup->scDataLen = 70000;
+        csGroup->csDataLen = 2000;
+        csGroup->scDataLen = 100000;
         csGroup->sCloseMethod = EmTcpFIN;
         csGroup->csCloseType = EmDataFinish;
     }
