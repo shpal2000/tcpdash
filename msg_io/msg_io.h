@@ -60,7 +60,7 @@ MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
                             , void* mioCtx);
 void MsgIoDelete (MsgIoChannelId_t mioChanelId);
 void MsgIoRecv (MsgIoChannelId_t mioChanelId, char** pMsg, int* pLen);
-void MsgIoSend (MsgIoChannelId_t mioChanelId, char* msg, int msg_len);
+void MsgIoSend (MsgIoChannelId_t mioChanelId, const char* msg, int msg_len);
 void MsgIoProcess (MsgIoChannelId_t mioChannelId);
 void* MsgIoGetCtx (MsgIoChannelId_t mioChannelId);
 double MsgIoTimeElapsed (MsgIoChannelId_t mioChannelId);

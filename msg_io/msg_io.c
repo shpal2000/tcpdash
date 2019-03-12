@@ -9,7 +9,7 @@ static void MsgIoRecvNextInit (MsgIoChannelId_t mioChannelId) {
     mioChannel->onMsgState = MSG_IO_ON_MESSAGE_STATE_READ_LENGTH;
 }
 
-void MsgIoSend (MsgIoChannelId_t mioChannelId, char* msg, int msgLen) {
+void MsgIoSend (MsgIoChannelId_t mioChannelId, const char* msg, int msgLen) {
 
     MsgIoChannel_t* mioChannel 
         = (MsgIoChannel_t*) mioChannelId;

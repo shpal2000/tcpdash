@@ -35,6 +35,8 @@ typedef struct TlsClientI {
 } TlsClientI_t;
 
 typedef struct TlsClientCtx {
+    const char* testId;
+
     Pool_t* freeSessionPool;
     Pool_t activeSessionPool;
     char commonReadBuff[COMMON_READBUFF_MAXLEN];

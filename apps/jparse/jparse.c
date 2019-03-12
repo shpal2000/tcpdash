@@ -58,6 +58,20 @@ static void ParseConfig (int loop_count) {
     }
 }
 
+static void ToJson () {
+
+    JsonNode* jNode = json_node_alloc ();
+    JsonObject* jObject = json_object_new ();
+
+    json_node_init_object (jNode, jObject);
+
+    
+    json_node_free (jNode);
+    json_object_unref (jObject);
+
+}
+
 int main(int argc, char** argv) {
-    ParseConfig (1000000);
+    ToJson ();
+    ParseConfig (1);
 }

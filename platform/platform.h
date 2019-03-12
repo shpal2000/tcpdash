@@ -510,11 +510,11 @@ typedef JsonArray JArray;
 
 #define JGET_ARR_LEN(__arr) json_array_get_length(__arr)
 
-#define JGET_ARR_ELEMENT_INT(__arr,__index) json_array_get_int_element(__arr,__index);
+#define JGET_ARR_ELEMENT_INT(__arr,__index) json_array_get_int_element(__arr,__index)
 
-#define JGET_ARR_ELEMENT_STR(__arr,__index) json_array_get_string_element(__arr,__index);
+#define JGET_ARR_ELEMENT_STR(__arr,__index) json_array_get_string_element(__arr,__index)
 
-#define JGET_ARR_ELEMENT_OBJ(__arr,__index) json_array_get_object_element(__arr,__index);
+#define JGET_ARR_ELEMENT_OBJ(__arr,__index) json_array_get_object_element(__arr,__index)
 
 #define JGET_ROOT_NODE(__jstr,__rootNodep,__rootNodeObjp) \
 { \

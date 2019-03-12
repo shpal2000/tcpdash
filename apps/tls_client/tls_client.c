@@ -198,178 +198,15 @@ static int OnContinue (void* appData) {
     return EmAppContinue;
 }
 
-static void ParseConfig (char* _configTxt, TlsClientI_t* appI) {
-    return;
-
-    gchar* configTxt;
-    gsize configLen;
-    GError* configErr;
-    gboolean configSts;
-
-    configSts = g_file_get_contents ( "/root/config.txt"
-                            , &configTxt
-                            , &configLen
-                            , &configErr);
-    
-    if (configSts) {
-
-        JNode* cfgNode;
-        JObject* cfgObj;
-
-        for (int i = 0; i < 1; i ++) {   
-            JGET_ROOT_NODE (configTxt, &cfgNode, &cfgObj);
-            JFREE_ROOT_NODE (cfgNode, cfgObj);
-
-            // if (cfgNode) {
-            //         JGET_MEMBER_INT (cfgObj, "connPerSec", &appI->connPerSec);
-            //         JGET_MEMBER_INT (cfgObj, "maxActSessions", &appI->maxActSessions);
-            //         JGET_MEMBER_INT (cfgObj, "maxErrSessions", &appI->maxErrSessions);
-            //         JGET_MEMBER_INT (cfgObj, "maxSessions", &appI->maxSessions);
-
-            //         JFREE_ROOT_NODE (cfgNode, cfgObj);
-            // } else {
-
-            // }
-        }
-
-        g_free (configTxt);
-    } else {
-
-    }
-            
-}
-
 static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
-
-    // TlsClientCtx_t* appCtx = (TlsClientCtx_t*) MsgIoGetCtx (mioChannelId);
-
-    // appCtx->nAdminChannelState = N_ADMIN_CHANNEL_STATE_GET_CONFIG;
-
-    // MsgIoSend (mioChannelId
-    //             , N_ADMIN_CMD_GET_TEST_CONFIG
-    //             , strlen(N_ADMIN_CMD_GET_TEST_CONFIG));
 
     TlsClientCtx_t* appCtx = (TlsClientCtx_t*) MsgIoGetCtx (mioChannelId);
 
+    appCtx->nAdminChannelState = N_ADMIN_CHANNEL_STATE_GET_CONFIG;
 
-    TlsClientI_t* appI = CreateStruct0 (TlsClientI_t);
-
-    appCtx->appI = appI;
-
-    ParseConfig ("", appI);
-    ParseConfig ("", appI);
-    ParseConfig ("", appI);
-    ParseConfig ("", appI);
-    ParseConfig ("", appI);
-
-   char* srcIpGroup1[] = { "12.20.50.2"
-                , "12.20.50.3"
-                , "12.20.50.4"
-                , "12.20.50.5"
-                , "12.20.50.6"
-                , "12.20.50.7"
-                , "12.20.50.8"
-                , "12.20.50.9"
-                , "12.20.50.10"
-                , "12.20.50.11"
-                , "12.20.50.12"
-                , "12.20.50.13"
-                , "12.20.50.14"
-                , "12.20.50.15"
-                , "12.20.50.16"
-                , "12.20.50.17"
-                , "12.20.50.18"
-                , "12.20.50.19"
-                , "12.20.50.20"
-                , "12.20.50.21"
-                , "12.20.50.22"
-                , "12.20.50.23"
-                , "12.20.50.24"
-                , "12.20.50.25"
-                , "12.20.50.26"
-                , "12.20.50.27"
-                , "12.20.50.28"
-                , "12.20.50.29"
-                , "12.20.50.30"
-                , "12.20.50.31"};
-
-    char** srcIpGroups[1];
-    srcIpGroups[0] = srcIpGroup1;
-
-    char* dstIpGroups[1] = { "12.20.60.2"};
-    int dstPort = 443;
-
-    int csGroupClientAddrCountArr[1] = {30};
-
-    int csGroupCount = 1;
-
-    // TlsClientI_t* appI = CreateStruct0 (TlsClientI_t);
-    
-    appI->csGroupCount = csGroupCount;
-
-    appI->csGroupArr = CreateArray (TlsClientGroup_t, appI->csGroupCount);
-
-    appI->nextCsGroupIndex = 0;
-
-    for (int gIndex = 0; gIndex < appI->csGroupCount; gIndex++) {
-        
-        TlsClientGroup_t* csGroup = &appI->csGroupArr[gIndex];
-        
-        csGroup->clientAddrCount = csGroupClientAddrCountArr[gIndex];
-        
-        csGroup->nextClientAddrIndex = 0;
-
-        csGroup->clientAddrArr 
-            = CreateArray (SockAddr_t, csGroup->clientAddrCount);
-        
-        csGroup->LocalPortPoolArr 
-            = CreateArray (LocalPortPool_t, csGroup->clientAddrCount);
-        
-        for (int cIndex = 0
-                ; cIndex < csGroup->clientAddrCount
-                ; cIndex++) {
-        
-            struct sockaddr_in* localAddr 
-                = &(csGroup->clientAddrArr[cIndex].inAddr);
-
-            memset(localAddr, 0, sizeof(SockAddr_t));
-            localAddr->sin_family = AF_INET;
-            inet_pton(AF_INET
-                        , srcIpGroups[gIndex][cIndex]
-                        , &(localAddr->sin_addr));
-
-            LocalPortPool_t* portQ = &csGroup->LocalPortPoolArr[cIndex];
-            InitPortBindQ(portQ);
-            for (int srcPort = 5000; srcPort <= 65000; srcPort++) {
-                SetPortToPool(portQ, htons(srcPort));
-            }
-        }
-
-        struct sockaddr_in* remoteAddr 
-            = &(csGroup->serverAddr.inAddr);
-        memset(remoteAddr, 0, sizeof(SockAddr_t));
-        remoteAddr->sin_family = AF_INET;
-        inet_pton(AF_INET
-                    , dstIpGroups[gIndex]
-                    , &(remoteAddr->sin_addr));
-        remoteAddr->sin_port = htons(dstPort);
-
-        csGroup->csDataLen = 2000;
-        csGroup->scDataLen = 100000;
-        csGroup->cCloseMethod = EmTcpFIN; 
-        csGroup->csCloseType = EmDataFinish;
-        csGroup->csWeight = 1;  
-    }
-
-    appI->connPerSec = 400;
-    appI->maxActSessions = 100000;
-    appI->maxErrSessions = 100000;
-    appI->maxSessions = 100000000;
-    appI->connLifetimeSec = 15;
-
-    // appCtx->appI = appI;
-
-    appCtx->nAdminChannelState = N_ADMIN_CHANNEL_STATE_RECV_CONFIG;  
+    MsgIoSend ( mioChannelId
+                , appCtx->testId
+                , strlen(appCtx->testId) );
 }
 
 static void MsgIoOnError (MsgIoChannelId_t mioChannelId) {
@@ -381,146 +218,99 @@ static void MsgIoOnError (MsgIoChannelId_t mioChannelId) {
 
 static void MsgIoOnMsgRecv (MsgIoChannelId_t mioChannelId) {
 
-    // TlsClientCtx_t* appCtx = (TlsClientCtx_t*) MsgIoGetCtx (mioChannelId);
+    TlsClientCtx_t* appCtx = (TlsClientCtx_t*) MsgIoGetCtx (mioChannelId);
 
-    // char* msgData;
-    // int msgLen;
-    // MsgIoRecv (mioChannelId, &msgData, &msgLen);
-    // msgData[msgLen] = '\0';
+    char* msgData;
+    int msgLen;
+    MsgIoRecv (mioChannelId, &msgData, &msgLen);
+    msgData[msgLen] = '\0';
 
-    // JsonNode *root;
-    // GError *error = NULL;
+    JNode* cfgNode;
+    JObject* cfgObj;
 
-    // root = json_from_string (msgData, &error);
+    JGET_ROOT_NODE (msgData, &cfgNode, &cfgObj);
 
-    // if (error) {
+    if (cfgNode) {
+
+        TlsClientI_t* appI = CreateStruct0 (TlsClientI_t);
         
-    // } else {
-    //    json_node_get_object (root); 
-    // }
+        appCtx->appI = appI;
+
+        JGET_MEMBER_INT (cfgObj, "connPerSec", &appI->connPerSec);
+        JGET_MEMBER_INT (cfgObj, "maxActSessions", &appI->maxActSessions);
+        JGET_MEMBER_INT (cfgObj, "maxErrSessions", &appI->maxErrSessions);
+        JGET_MEMBER_INT (cfgObj, "maxSessions", &appI->maxSessions);
+
+        JArray* csGroupArrJ;
+        JGET_MEMBER_ARR (cfgObj, "csGroupArr", &csGroupArrJ);
+
+        appI->csGroupCount = JGET_ARR_LEN (csGroupArrJ);
+        appI->csGroupArr = CreateArray (TlsClientGroup_t, appI->csGroupCount);
+        appI->nextCsGroupIndex = 0;
+
+        for (int gIndex = 0; gIndex < appI->csGroupCount; gIndex++) {
+            
+            TlsClientGroup_t* csGroup = &appI->csGroupArr[gIndex];
+
+            JObject* csGroupJ = JGET_ARR_ELEMENT_OBJ (csGroupArrJ, gIndex);
+
+            JArray* clientAddrArrJ;
+            JGET_MEMBER_ARR (csGroupJ, "clientAddrArr", &clientAddrArrJ);
+
+            csGroup->clientAddrCount = JGET_ARR_LEN (clientAddrArrJ);
+
+            csGroup->nextClientAddrIndex = 0;
+
+            csGroup->clientAddrArr 
+                = CreateArray (SockAddr_t, csGroup->clientAddrCount);
+
+            csGroup->LocalPortPoolArr 
+                = CreateArray (LocalPortPool_t, csGroup->clientAddrCount);
+
+            for (int cIndex = 0
+                    ; cIndex < csGroup->clientAddrCount
+                    ; cIndex++) {
     
-    // char* srcIpGroup1[] = { "12.20.50.2"
-    //             , "12.20.50.3"
-    //             , "12.20.50.4"
-    //             , "12.20.50.5"
-    //             , "12.20.50.6"
-    //             , "12.20.50.7"
-    //             , "12.20.50.8"
-    //             , "12.20.50.9"
-    //             , "12.20.50.10"
-    //             , "12.20.50.11"
-    //             , "12.20.50.12"
-    //             , "12.20.50.13"
-    //             , "12.20.50.14"
-    //             , "12.20.50.15"
-    //             , "12.20.50.16"
-    //             , "12.20.50.17"
-    //             , "12.20.50.18"
-    //             , "12.20.50.19"
-    //             , "12.20.50.20"
-    //             , "12.20.50.21"
-    //             , "12.20.50.22"
-    //             , "12.20.50.23"
-    //             , "12.20.50.24"
-    //             , "12.20.50.25"
-    //             , "12.20.50.26"
-    //             , "12.20.50.27"
-    //             , "12.20.50.28"
-    //             , "12.20.50.29"
-    //             , "12.20.50.30"
-    //             , "12.20.50.31"};
+                struct sockaddr_in* localAddr 
+                    = &(csGroup->clientAddrArr[cIndex].inAddr);
 
-    // char** srcIpGroups[1];
-    // srcIpGroups[0] = srcIpGroup1;
+                memset(localAddr, 0, sizeof(SockAddr_t));
+                localAddr->sin_family = AF_INET;
+                inet_pton(AF_INET
+                            , JGET_ARR_ELEMENT_STR (clientAddrArrJ, cIndex)
+                            , &(localAddr->sin_addr));
 
-    // char* dstIpGroups[1] = { "12.20.60.2"};
-    // int dstPort = 443;
+                LocalPortPool_t* portQ = &csGroup->LocalPortPoolArr[cIndex];
+                InitPortBindQ(portQ);
+                for (int srcPort = 5000; srcPort <= 65000; srcPort++) {
+                    SetPortToPool(portQ, htons(srcPort));
+                }
+            }
 
-    // int csGroupClientAddrCountArr[1] = {30};
+            const char* serverAddrJ;
+            JGET_MEMBER_STR (csGroupJ, "serverAddr", &serverAddrJ);
 
-    // int csGroupCount = 1;
+            struct sockaddr_in* remoteAddr = &(csGroup->serverAddr.inAddr);
+            memset(remoteAddr, 0, sizeof(SockAddr_t));
+            remoteAddr->sin_family = AF_INET;
+            inet_pton(AF_INET
+                        , serverAddrJ
+                        , &(remoteAddr->sin_addr));
+            remoteAddr->sin_port = htons(443);
 
-    // TlsClientI_t* appI 
-    //     = (TlsClientI_t*) mmap(NULL
-    //         , sizeof (TlsClientI_t)
-    //         , PROT_READ | PROT_WRITE
-    //         , MAP_SHARED | MAP_ANONYMOUS
-    //         , -1
-    //         , 0);
+            JGET_MEMBER_INT (csGroupJ, "csDataLen", &csGroup->csDataLen);
+            JGET_MEMBER_INT (csGroupJ, "scDataLen", &csGroup->scDataLen);
+            JGET_MEMBER_INT (csGroupJ, "cCloseMethod", &csGroup->cCloseMethod);
+            JGET_MEMBER_INT (csGroupJ, "csCloseType", &csGroup->csCloseType);
+            JGET_MEMBER_INT (csGroupJ, "csWeight", &csGroup->csWeight);
+        }
 
-    // appI->csGroupCount = csGroupCount;
-    // appI->csGroupArr 
-    //     = (TlsClientGroup_t*) mmap(NULL
-    //         , sizeof (TlsClientGroup_t) * appI->csGroupCount
-    //         , PROT_READ | PROT_WRITE
-    //         , MAP_SHARED | MAP_ANONYMOUS
-    //         , -1
-    //         , 0);
-    
-    // appI->nextCsGroupIndex = 0;
-    // for (int gIndex = 0; gIndex < appI->csGroupCount; gIndex++) {
-    //     TlsClientGroup_t* csGroup = &appI->csGroupArr[gIndex];
-    //     csGroup->clientAddrCount = csGroupClientAddrCountArr[gIndex];
-    //     csGroup->nextClientAddrIndex = 0;
-    //     csGroup->clientAddrArr
-    //         = (SockAddr_t*) mmap(NULL
-    //             , sizeof (SockAddr_t) * csGroup->clientAddrCount
-    //             , PROT_READ | PROT_WRITE
-    //             , MAP_SHARED | MAP_ANONYMOUS
-    //             , -1
-    //             , 0);
-    //     csGroup->LocalPortPoolArr 
-    //         = (LocalPortPool_t*) mmap(NULL
-    //             , sizeof (LocalPortPool_t) * csGroup->clientAddrCount
-    //             , PROT_READ | PROT_WRITE
-    //             , MAP_SHARED | MAP_ANONYMOUS
-    //             , -1
-    //             , 0);
-    //     for (int cIndex = 0
-    //             ; cIndex < csGroup->clientAddrCount
-    //             ; cIndex++) {
-        
-    //         struct sockaddr_in* localAddr 
-    //             = &(csGroup->clientAddrArr[cIndex].inAddr);
-    //         memset(localAddr, 0, sizeof(SockAddr_t));
-    //         localAddr->sin_family = AF_INET;
-    //         inet_pton(AF_INET
-    //                     , srcIpGroups[gIndex][cIndex]
-    //                     , &(localAddr->sin_addr));
+        JFREE_ROOT_NODE (cfgNode, cfgObj);
 
-    //         LocalPortPool_t* portQ = &csGroup->LocalPortPoolArr[cIndex];
-    //         InitPortBindQ(portQ);
-    //         for (int srcPort = 5000; srcPort <= 65000; srcPort++) {
-    //             SetPortToPool(portQ, htons(srcPort));
-    //         }
-    //     }
-
-    //     struct sockaddr_in* remoteAddr 
-    //         = &(csGroup->serverAddr.inAddr);
-    //     memset(remoteAddr, 0, sizeof(SockAddr_t));
-    //     remoteAddr->sin_family = AF_INET;
-    //     inet_pton(AF_INET
-    //                 , dstIpGroups[gIndex]
-    //                 , &(remoteAddr->sin_addr));
-    //     remoteAddr->sin_port = htons(dstPort);
-
-    //     csGroup->csDataLen = 3000;
-    //     csGroup->scDataLen = 3000;
-    //     csGroup->cCloseMethod = EmTcpFIN; 
-    //     csGroup->sCloseMethod = EmTcpFIN;
-    //     csGroup->csCloseType = EmDataFinish;
-    //     csGroup->csWeight = 1;  
-    // }
-
-    // appI->maxEvents = 0;
-    // appI->connPerSec = 2000;
-    // appI->maxActSessions = 100000;
-    // appI->maxErrSessions = 10000;
-    // appI->maxSessions = 100000;
-
-    // appCtx->appI = appI;
-
-    // appCtx->nAdminChannelState = N_ADMIN_CHANNEL_STATE_RECV_CONFIG;
+        appCtx->nAdminChannelState = N_ADMIN_CHANNEL_STATE_RECV_CONFIG;
+    } else {
+        appCtx->nAdminChannelErr = N_ADMIN_CHANNEL_ERROR_GET_CONFIG;
+    }
 }
 
 static void MsgIoOnMsgSent (MsgIoChannelId_t mioChannelId) {
@@ -529,7 +319,8 @@ static void MsgIoOnMsgSent (MsgIoChannelId_t mioChannelId) {
 
 static TlsClientCtx_t* InitApp (char* nAdminTestId
                                 , char* nAdminAddr
-                                , int nAdminPort) {
+                                , int nAdminPort
+                                , const char* testId) {
 
     int status = -1;
 
@@ -554,6 +345,8 @@ static TlsClientCtx_t* InitApp (char* nAdminTestId
                             , SSL_MODE_ENABLE_PARTIAL_WRITE);
 
     TlsClientCtx_t* appCtx = CreateStruct0 (TlsClientCtx_t);
+
+    appCtx->testId = testId;
     
     if (appCtx) {
 
@@ -666,7 +459,7 @@ static TlsClientCtx_t* InitApp (char* nAdminTestId
 int main(int argc, char** argv) {
 
     TlsClientCtx_t* appCtx 
-        = InitApp ( argv[1], argv[2], atoi(argv[3]) );
+        = InitApp ( argv[1], argv[2], atoi(argv[3]), argv[4] );
     
     if (appCtx == NULL) {
         exit (-1); //???
@@ -704,7 +497,7 @@ int main(int argc, char** argv) {
 
             MsgIoSend (appCtx->nAdminChannelId
                         , statsString
-                        , strlen(statsString));
+                        , strlen(statsString) );
 
         }
         
