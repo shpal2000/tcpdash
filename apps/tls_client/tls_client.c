@@ -206,7 +206,7 @@ static void MsgIoOnOpen (MsgIoChannelId_t mioChannelId) {
 
     MsgIoSend ( mioChannelId
                 , appCtx->testId
-                , strlen(appCtx->testId) );
+                , strlen( appCtx->testId) );
 }
 
 static void MsgIoOnError (MsgIoChannelId_t mioChannelId) {
@@ -300,9 +300,6 @@ static void MsgIoOnMsgRecv (MsgIoChannelId_t mioChannelId) {
 
             JGET_MEMBER_INT (csGroupJ, "csDataLen", &csGroup->csDataLen);
             JGET_MEMBER_INT (csGroupJ, "scDataLen", &csGroup->scDataLen);
-            JGET_MEMBER_INT (csGroupJ, "cCloseMethod", &csGroup->cCloseMethod);
-            JGET_MEMBER_INT (csGroupJ, "csCloseType", &csGroup->csCloseType);
-            JGET_MEMBER_INT (csGroupJ, "csWeight", &csGroup->csWeight);
         }
 
         JFREE_ROOT_NODE (cfgNode, cfgObj);

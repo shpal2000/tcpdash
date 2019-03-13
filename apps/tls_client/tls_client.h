@@ -16,9 +16,6 @@ typedef struct TlsClientGroup {
     SockAddr_t serverAddr;
     uint64_t csDataLen;
     uint64_t scDataLen;
-    enum ConnCloseMethod cCloseMethod;
-    enum ConnCloseType csCloseType;
-    uint32_t csWeight;
     TlsClientStats_t cStats;
 } TlsClientGroup_t;
 

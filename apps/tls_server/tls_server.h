@@ -12,8 +12,6 @@ typedef struct TlsServerGroup {
     SockAddr_t serverAddr;
     uint64_t csDataLen;
     uint64_t scDataLen;
-    enum ConnCloseMethod sCloseMethod;
-    enum ConnCloseType csCloseType;
     TlsServerStats_t cStats;
 } TlsServerGroup_t;
 
@@ -27,6 +25,8 @@ typedef struct TlsServerI {
 } TlsServerI_t;
 
 typedef struct TlsServerCtx {
+    const char* testId;
+    
     Pool_t* freeSessionPool;
     Pool_t activeSessionPool;
     char commonReadBuff[COMMON_READBUFF_MAXLEN];
