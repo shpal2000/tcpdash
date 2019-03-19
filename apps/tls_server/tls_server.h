@@ -12,6 +12,8 @@ typedef struct TlsServerGroup {
     SockAddr_t serverAddr;
     uint64_t csDataLen;
     uint64_t scDataLen;
+    uint64_t csStartTlsLen;
+    uint64_t scStartTlsLen;
     TlsServerStats_t cStats;
 } TlsServerGroup_t;
 

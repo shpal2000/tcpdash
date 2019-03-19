@@ -38,32 +38,35 @@ static void FreeSession (TlsClientSession_t* newSess) {
     AddToPool (newSess->appCtx->freeSessionPool, newSess);
 }
 
-static void OnEstablish (struct IoVentConn* iovConn) { 
+static void StartTlsClient (struct IoVentConn* iovConn) {
 
     TlsClientCtx_t* appCtx 
         = (TlsClientCtx_t*) iovConn->cInfo.appCtx;
+
+    iovConn->cInfo.cSSL = SSL_new(GSslContext);
+
+    if (iovConn->cInfo.cSSL) {
+        setsockopt(iovConn->socketFd, SOL_SOCKET, SO_KEEPALIVE, &(int){ 1 }, sizeof(int));
+        setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPCNT, &(int){ 3 }, sizeof(int));
+        setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPIDLE, &(int){ 5 }, sizeof(int));
+        setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPINTVL, &(int){ 1 }, sizeof(int));
+        setsockopt(iovConn->socketFd, SOL_TCP, TCP_USER_TIMEOUT, &(int){ appCtx->appI->connLifetimeSec * 1000 }, sizeof(int));
+
+        SslClientInit (iovConn, (SSL*) iovConn->cInfo.cSSL);            
+    } else {
+        //??? update stats; mark connection state why fail 
+        AbortConnection (iovConn);
+    }
+}
+
+static void OnEstablish (struct IoVentConn* iovConn) { 
 
     TlsClientSession_t* newSess 
         = (TlsClientSession_t*) iovConn->cInfo.sessionData;
  
     if ( IsConnErr (iovConn) ) {
+        // update stats ???
         FreeSession (newSess);
-    } else {
-
-        iovConn->cInfo.cSSL = SSL_new(GSslContext);
-
-        if (iovConn->cInfo.cSSL) {
-            setsockopt(iovConn->socketFd, SOL_SOCKET, SO_KEEPALIVE, &(int){ 1 }, sizeof(int));
-            setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPCNT, &(int){ 3 }, sizeof(int));
-            setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPIDLE, &(int){ 5 }, sizeof(int));
-            setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPINTVL, &(int){ 1 }, sizeof(int));
-            setsockopt(iovConn->socketFd, SOL_TCP, TCP_USER_TIMEOUT, &(int){ appCtx->appI->connLifetimeSec * 1000 }, sizeof(int));
-
-            SslClientInit (iovConn, (SSL*) iovConn->cInfo.cSSL);            
-        } else {
-            //??? update stats; mark connection state why fail 
-            AbortConnection (iovConn);
-        }   
     }
 }
 
@@ -72,11 +75,32 @@ static void OnReadNext (struct IoVentConn* iovConn) {
     TlsClientCtx_t* appCtx 
         = (TlsClientCtx_t*) iovConn->cInfo.appCtx;
 
-    ReadNextData (iovConn
-                , appCtx->commonReadBuff
-                , 0
-                , COMMON_READBUFF_MAXLEN
-                , 1);
+    TlsClientSession_t* newSess 
+        = (TlsClientSession_t*) iovConn->cInfo.sessionData;
+
+    TlsClientGroup_t* groupCtx
+        = (TlsClientGroup_t*) iovConn->cInfo.groupCtx;
+
+    if ( newSess->tcpConn.bytesRead < groupCtx->scStartTlsLen ) {
+        ReadNextData (iovConn
+                    , appCtx->commonReadBuff
+                    , 0
+                    , groupCtx->scStartTlsLen - newSess->tcpConn.bytesRead
+                    , 1);
+    } else {
+        if ( iovConn->cInfo.cSSL == NULL ) {
+            if ( newSess->tcpConn.bytesWritten == groupCtx->csStartTlsLen
+                    && newSess->tcpConn.bytesRead == groupCtx->scStartTlsLen ) {
+                StartTlsClient (iovConn);
+            }
+        } else {
+            ReadNextData (iovConn
+                        , appCtx->commonReadBuff
+                        , 0
+                        , COMMON_READBUFF_MAXLEN
+                        , 1);
+        }
+    }
 }
 
 static void OnReadStatus (struct IoVentConn* iovConn
@@ -111,27 +135,47 @@ static void OnWriteNext (struct IoVentConn* iovConn) {
     TlsClientGroup_t* groupCtx 
         = (TlsClientGroup_t*) iovConn->cInfo.groupCtx;
   
-
-    if (newSess->tcpConn.bytesWritten < groupCtx->csDataLen) {
+    if (newSess->tcpConn.bytesWritten < groupCtx->csStartTlsLen) {
 
         int nextChunkLen = 0;
 
-        if ( (groupCtx->csDataLen - newSess->tcpConn.bytesWritten) 
-                                > 1200 ) {
-
+        if ( (groupCtx->csStartTlsLen - newSess->tcpConn.bytesWritten) > 1200 ) {
             nextChunkLen = 1200;
-
         } else {
-
             nextChunkLen 
-                = (int) (groupCtx->csDataLen - newSess->tcpConn.bytesWritten);
+                = (int) (groupCtx->csStartTlsLen - newSess->tcpConn.bytesWritten);
         }
 
         WriteNextData (iovConn
                         , appCtx->commonWriteBuff
                         , 0
                         , nextChunkLen
-                        , 0);
+                        , 1);
+    } else {
+        if ( iovConn->cInfo.cSSL == NULL ) {
+            if ( newSess->tcpConn.bytesWritten == groupCtx->csStartTlsLen
+                    && newSess->tcpConn.bytesRead == groupCtx->scStartTlsLen ) {
+                StartTlsClient (iovConn);
+            }
+        } else {
+            if ( newSess->tcpConn.bytesWritten < groupCtx->csDataLen ) {
+
+                int nextChunkLen = 0;
+                if ( (groupCtx->csDataLen - newSess->tcpConn.bytesWritten) 
+                                                                    > 1200 ) {
+                    nextChunkLen = 1200;
+                } else {
+                    nextChunkLen 
+                        = (int) (groupCtx->csDataLen - newSess->tcpConn.bytesWritten);
+                }
+
+                WriteNextData (iovConn
+                                , appCtx->commonWriteBuff
+                                , 0
+                                , nextChunkLen
+                                , 1);
+            }
+        }
     }
 }
 
@@ -300,6 +344,8 @@ static void MsgIoOnMsgRecv (MsgIoChannelId_t mioChannelId) {
 
             JGET_MEMBER_INT (csGroupJ, "csDataLen", &csGroup->csDataLen);
             JGET_MEMBER_INT (csGroupJ, "scDataLen", &csGroup->scDataLen);
+            JGET_MEMBER_INT (csGroupJ, "csStartTlsLen", &csGroup->csStartTlsLen);
+            JGET_MEMBER_INT (csGroupJ, "scStartTlsLen", &csGroup->scStartTlsLen);
         }
 
         JFREE_ROOT_NODE (cfgNode, cfgObj);
@@ -340,6 +386,9 @@ static TlsClientCtx_t* InitApp (char* nAdminTestId
                             
     SSL_CTX_set_mode(GSslContext
                             , SSL_MODE_ENABLE_PARTIAL_WRITE);
+
+    SSL_CTX_set_session_cache_mode(GSslContext
+                            , SSL_SESS_CACHE_OFF);
 
     TlsClientCtx_t* appCtx = CreateStruct0 (TlsClientCtx_t);
 

@@ -38,6 +38,26 @@ static void FreeSession (TlsServerSession_t* newSess) {
     AddToPool (newSess->appCtx->freeSessionPool, newSess);
 }
 
+static void StartTlsServer (struct IoVentConn* iovConn) {
+
+    TlsServerCtx_t* appCtx 
+        = (TlsServerCtx_t*) iovConn->cInfo.appCtx;
+
+    iovConn->cInfo.cSSL = SSL_new(GSslContext);
+    
+    if (iovConn->cInfo.cSSL) {
+        setsockopt(iovConn->socketFd, SOL_SOCKET, SO_KEEPALIVE, &(int){ 1 }, sizeof(int));
+        setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPCNT, &(int){ 3 }, sizeof(int));
+        setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPIDLE, &(int){ 5 }, sizeof(int));
+        setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPINTVL, &(int){ 1 }, sizeof(int));
+        setsockopt(iovConn->socketFd, SOL_TCP, TCP_USER_TIMEOUT, &(int){ appCtx->appI->connLifetimeSec * 1000 }, sizeof(int));
+
+        SslServerInit (iovConn, (SSL*) iovConn->cInfo.cSSL);
+    }else  {
+        AbortConnection (iovConn); // stats; state update
+    }
+}
+
 static void OnEstablish (struct IoVentConn* iovConn) {
 
     TlsServerCtx_t* appCtx 
@@ -57,22 +77,7 @@ static void OnEstablish (struct IoVentConn* iovConn) {
         AbortConnection (iovConn);
 
     } else {
-
         iovConn->cInfo.sessionData = newSess;
-
-        iovConn->cInfo.cSSL = SSL_new(GSslContext);
-        
-        if (iovConn->cInfo.cSSL) {
-            setsockopt(iovConn->socketFd, SOL_SOCKET, SO_KEEPALIVE, &(int){ 1 }, sizeof(int));
-            setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPCNT, &(int){ 3 }, sizeof(int));
-            setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPIDLE, &(int){ 5 }, sizeof(int));
-            setsockopt(iovConn->socketFd, SOL_TCP, TCP_KEEPINTVL, &(int){ 1 }, sizeof(int));
-            setsockopt(iovConn->socketFd, SOL_TCP, TCP_USER_TIMEOUT, &(int){ appCtx->appI->connLifetimeSec * 1000 }, sizeof(int));
-
-            SslServerInit (iovConn, (SSL*) iovConn->cInfo.cSSL);
-        }else  {
-            AbortConnection (iovConn); // stats; state update
-        }
     }
 }
 
@@ -81,11 +86,32 @@ static void OnReadNext (struct IoVentConn* iovConn) {
     TlsServerCtx_t* appCtx 
         = (TlsServerCtx_t*) iovConn->cInfo.appCtx;
 
-    ReadNextData (iovConn
-                , appCtx->commonReadBuff
-                , 0
-                , COMMON_READBUFF_MAXLEN
-                , 1);
+    TlsServerSession_t* newSess 
+        = (TlsServerSession_t*) iovConn->cInfo.sessionData;
+
+    TlsServerGroup_t* groupCtx
+        = (TlsServerGroup_t*) iovConn->cInfo.groupCtx;
+
+    if ( newSess->tcpConn.bytesRead < groupCtx->csStartTlsLen ) {
+        ReadNextData (iovConn
+                    , appCtx->commonReadBuff
+                    , 0
+                    , groupCtx->csStartTlsLen - newSess->tcpConn.bytesRead
+                    , 1);
+    } else {
+        if ( iovConn->cInfo.cSSL == NULL ) {
+            if ( newSess->tcpConn.bytesWritten == groupCtx->scStartTlsLen
+                    && newSess->tcpConn.bytesRead == groupCtx->csStartTlsLen ) {
+                StartTlsServer (iovConn);
+            }
+        } else {
+            ReadNextData (iovConn
+                        , appCtx->commonReadBuff
+                        , 0
+                        , COMMON_READBUFF_MAXLEN
+                        , 1);
+        }
+    }
 }
 
 static void OnReadStatus (struct IoVentConn* iovConn
@@ -120,27 +146,47 @@ static void OnWriteNext (struct IoVentConn* iovConn) {
     TlsServerGroup_t* groupCtx 
         = (TlsServerGroup_t*) iovConn->cInfo.groupCtx;
   
-
-    if (newSess->tcpConn.bytesWritten < groupCtx->scDataLen) {
+    if (newSess->tcpConn.bytesWritten < groupCtx->scStartTlsLen) {
 
         int nextChunkLen = 0;
 
-        if ( (groupCtx->scDataLen - newSess->tcpConn.bytesWritten) 
-                                > COMMON_WRITEBUFF_MAXLEN ) {
-
-            nextChunkLen = COMMON_WRITEBUFF_MAXLEN;
-
+        if ( (groupCtx->scStartTlsLen - newSess->tcpConn.bytesWritten) > 1200 ) {
+            nextChunkLen = 1200;
         } else {
-
             nextChunkLen 
-                = (int) (groupCtx->scDataLen - newSess->tcpConn.bytesWritten);
+                = (int) (groupCtx->scStartTlsLen - newSess->tcpConn.bytesWritten);
         }
 
         WriteNextData (iovConn
                         , appCtx->commonWriteBuff
                         , 0
                         , nextChunkLen
-                        , 0);
+                        , 1);
+    } else {
+        if ( iovConn->cInfo.cSSL == NULL ) {
+            if ( newSess->tcpConn.bytesWritten == groupCtx->scStartTlsLen
+                    && newSess->tcpConn.bytesRead == groupCtx->csStartTlsLen ) {
+                StartTlsServer (iovConn);
+            }
+        } else {
+            if ( newSess->tcpConn.bytesWritten < groupCtx->scDataLen ) {
+
+                int nextChunkLen = 0;
+                if ( (groupCtx->scDataLen - newSess->tcpConn.bytesWritten) 
+                                                                    > 1200 ) {
+                    nextChunkLen = 1200;
+                } else {
+                    nextChunkLen 
+                        = (int) (groupCtx->scDataLen - newSess->tcpConn.bytesWritten);
+                }
+
+                WriteNextData (iovConn
+                                , appCtx->commonWriteBuff
+                                , 0
+                                , nextChunkLen
+                                , 1);
+            }
+        }
     }
 }
 
@@ -252,6 +298,8 @@ static void MsgIoOnMsgRecv (MsgIoChannelId_t mioChannelId) {
 
             JGET_MEMBER_INT (csGroupJ, "csDataLen", &csGroup->csDataLen);
             JGET_MEMBER_INT (csGroupJ, "scDataLen", &csGroup->scDataLen);
+            JGET_MEMBER_INT (csGroupJ, "csStartTlsLen", &csGroup->csStartTlsLen);
+            JGET_MEMBER_INT (csGroupJ, "scStartTlsLen", &csGroup->scStartTlsLen);
         }
 
         JFREE_ROOT_NODE (cfgNode, cfgObj);
@@ -294,12 +342,20 @@ static TlsServerCtx_t* InitApp (char* nAdminTestId
                             , SSL_MODE_ENABLE_PARTIAL_WRITE);
 
 
+    // SSL_CTX_use_certificate_file(GSslContext
+    //         , "/root/autssl/certdepo/ca1/ica2/ica3/usrcerts3/server1.example.com.cert"
+    //         , SSL_FILETYPE_PEM);
+
+    // SSL_CTX_use_PrivateKey_file(GSslContext
+    //         , "/root/autssl/certdepo/ca1/ica2/ica3/usrcerts3/server1.example.com.key"
+    //         , SSL_FILETYPE_PEM);
+
     SSL_CTX_use_certificate_file(GSslContext
-            , "/root/autssl/certdepo/ca1/usrcerts/rsa2048_1_sha256.cert"
+            , "/root/autssl/certdepo/ca1/ica2/ica3/ica4/usrcerts/server_chain_001.autssl.qa.gigamon.com.cert"
             , SSL_FILETYPE_PEM);
 
     SSL_CTX_use_PrivateKey_file(GSslContext
-            , "/root/autssl/certdepo/ca1/usrcerts/rsa2048_1.key"
+            , "/root/autssl/certdepo/ca1/ica2/ica3/ica4/usrcerts/server_chain_001.autssl.qa.gigamon.com.key"
             , SSL_FILETYPE_PEM);
 
     TlsServerCtx_t* appCtx = CreateStruct0 (TlsServerCtx_t);
