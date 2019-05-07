@@ -21,7 +21,7 @@ const TcpCsConfig1 = `{
     "connPerSec" : 500,
     "maxActSessions" : 20000,
     "maxErrSessions" : 20000,
-    "maxSessions" : 1,
+    "maxSessions" : 100,
     "csGroupArr" : [
         {
             "clientAddrArr" : [ "12.20.50.2"
@@ -57,10 +57,10 @@ const TcpCsConfig1 = `{
             ],
         
             "serverAddr" : "12.20.60.2",
-            "csDataLen" : 70000,
-            "scDataLen" : 70000,
-            "csStartTlsLen" : 20000,
-            "scStartTlsLen" : 0
+            "csDataLen" : 7000,
+            "scDataLen" : 7000,
+            "csStartTlsLen" : 2000,
+            "scStartTlsLen" : 2000
         }
     ]
 }`;
@@ -70,7 +70,7 @@ const TcpCsConfig2 = `{
     "connPerSec" : 500,
     "maxActSessions" : 20000,
     "maxErrSessions" : 20000,
-    "maxSessions" : 1,
+    "maxSessions" : 100,
     "csGroupArr" : [
         {
             "clientAddrArr" : [ "12.20.50.32"
@@ -106,10 +106,10 @@ const TcpCsConfig2 = `{
             ],
         
             "serverAddr" : "12.20.60.3",
-            "csDataLen" : 70000,
-            "scDataLen" : 70000,
-            "csStartTlsLen" : 20000,
-            "scStartTlsLen" : 0
+            "csDataLen" : 7000,
+            "scDataLen" : 7000,
+            "csStartTlsLen" : 2000,
+            "scStartTlsLen" : 2000
         }
     ]
 }`;
@@ -119,7 +119,7 @@ const TcpCsConfig3 = `{
     "connPerSec" : 500,
     "maxActSessions" : 20000,
     "maxErrSessions" : 20000,
-    "maxSessions" : 1,
+    "maxSessions" : 100,
     "csGroupArr" : [
         {
             "clientAddrArr" : [ "12.20.50.62"
@@ -155,10 +155,10 @@ const TcpCsConfig3 = `{
             ],
         
             "serverAddr" : "12.20.60.4",
-            "csDataLen" : 70000,
-            "scDataLen" : 70000,
-            "csStartTlsLen" : 20000,
-            "scStartTlsLen" : 0
+            "csDataLen" : 7000,
+            "scDataLen" : 7000,
+            "csStartTlsLen" : 2000,
+            "scStartTlsLen" : 2000
         }
     ]
 }`;
@@ -168,7 +168,7 @@ const TcpCsConfig4 = `{
     "connPerSec" : 500,
     "maxActSessions" : 20000,
     "maxErrSessions" : 20000,
-    "maxSessions" : 1,
+    "maxSessions" : 100,
     "csGroupArr" : [
         {
             "clientAddrArr" : [ "12.20.50.92"
@@ -204,10 +204,10 @@ const TcpCsConfig4 = `{
             ],
         
             "serverAddr" : "12.20.60.5",
-            "csDataLen" : 70000,
-            "scDataLen" : 70000,
-            "csStartTlsLen" : 20000,
-            "scStartTlsLen" : 0
+            "csDataLen" : 7000,
+            "scDataLen" : 7000,
+            "csStartTlsLen" : 2000,
+            "scStartTlsLen" : 2000
         }
     ]
 }`;

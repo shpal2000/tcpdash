@@ -81,8 +81,6 @@ typedef struct IoVentConn {
     uint32_t statusResponseId;
     void* statusResponseData;
 
-    int bytesSent; //remove this to connData
-
     IoVentConnInfo_t cInfo;
 
 } IoVentConn_t;

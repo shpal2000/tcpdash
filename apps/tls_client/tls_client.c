@@ -340,7 +340,7 @@ static void MsgIoOnMsgRecv (MsgIoChannelId_t mioChannelId) {
             inet_pton(AF_INET
                         , serverAddrJ
                         , &(remoteAddr->sin_addr));
-            remoteAddr->sin_port = htons(443);
+            remoteAddr->sin_port = htons(943);
 
             JGET_MEMBER_INT (csGroupJ, "csDataLen", &csGroup->csDataLen);
             JGET_MEMBER_INT (csGroupJ, "scDataLen", &csGroup->scDataLen);

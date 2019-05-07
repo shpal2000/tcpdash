@@ -38,8 +38,6 @@ static void InitConnection (IoVentConn_t* newConn) {
     newConn->cInfo.readBuffer = NULL;
     newConn->cInfo.readBuffOffsetCur = 0;
     newConn->cInfo.readDataLenCur = 0;
-
-    newConn->bytesSent = 0;
 }
 
 IoVentConn_t* GetFreeConnection (IoVentCtx_t* iovCtx) {
