@@ -443,7 +443,7 @@ static TcpProxyCtx_t* InitApp (char* nAdminTestId
                                     > N_ADMIN_GET_CONFIG_MAX_TIME) {
                     
                     appCtx->nAdminChannelErr 
-                        = N_ADMIN_CHANNEL_ERROR_GET_CONFIG_TIMEOUT;
+                        = N_ADMIN_CHANNEL_ERROR_GET_CONFIG;
                 }
 
                 if (appCtx->nAdminChannelErr) {

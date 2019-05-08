@@ -39,7 +39,7 @@ static void App_channel_recv (MsgIoChannelId_t chanId) {
         if (appCfg) {
             appCtx->chanState = N_ADMIN_CHANNEL_STATE_RECV_CONFIG;
         } else {
-            appCtx->chanErr = N_ADMIN_CHANNEL_ERROR_GET_CONFIG;
+            appCtx->chanErr = N_ADMIN_CHANNEL_ERROR_PARSE_CONFIG;
         }
     } else {
         //??? other runtime data
@@ -69,7 +69,7 @@ static int App_channel_setup(AppCtx_t* appCtx) {
         while ( 1 ) {
             MsgIoProcess (appCtx->chanId);
             if ( MsgIoTimeElapsed (appCtx->chanId) > N_ADMIN_GET_CONFIG_MAX_TIME ) {
-                appCtx->chanlErr = N_ADMIN_CHANNEL_ERROR_GET_CONFIG_TIMEOUT;
+                appCtx->chanlErr = N_ADMIN_CHANNEL_ERROR_GET_CONFIG;
             }
             if (appCtx->chanlErr) {
                 break;

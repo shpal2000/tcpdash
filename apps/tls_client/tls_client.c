@@ -352,7 +352,7 @@ static void MsgIoOnMsgRecv (MsgIoChannelId_t mioChannelId) {
 
         appCtx->nAdminChannelState = N_ADMIN_CHANNEL_STATE_RECV_CONFIG;
     } else {
-        appCtx->nAdminChannelErr = N_ADMIN_CHANNEL_ERROR_GET_CONFIG;
+        appCtx->nAdminChannelErr = N_ADMIN_CHANNEL_ERROR_PARSE_CONFIG;
     }
 }
 
@@ -427,7 +427,7 @@ static TlsClientCtx_t* InitApp (char* nAdminTestId
                                     > N_ADMIN_GET_CONFIG_MAX_TIME) {
                     
                     appCtx->nAdminChannelErr 
-                        = N_ADMIN_CHANNEL_ERROR_GET_CONFIG_TIMEOUT;
+                        = N_ADMIN_CHANNEL_ERROR_GET_CONFIG;
                 }
 
                 if (appCtx->nAdminChannelErr) {
