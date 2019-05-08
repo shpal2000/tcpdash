@@ -4,49 +4,60 @@
 
 #include "engine.h"
 
-static void MsgIoOnOpen (MsgIoChannelId_t chanId) {
+static void App_channel_open (MsgIoChannelId_t chanId) {
 
     AppCtx_t* appCtx = (AppCtx_t*) MsgIoGetCtx (chanId);
 
-    appCtx->chanState = N_ADMIN_CHANNEL_STATE_GET_CONFIG;
-    MsgIoSend ( chanId
-        , appCtx->testCfgId
-        , strlen( appCtx->testCfgId) );
-}
-
-static void MsgIoOnError (MsgIoChannelId_t chanId) {
-
-    AppCtx_t* appCtx = (AppCtx_t*) MsgIoGetCtx (chanId);
-
-    appCtx->chnErr = N_ADMIN_CHANNEL_ERROR_CONN;
-}
-
-static void MsgIoOnMsgRecv (MsgIoChannelId_t chanId) {
-
-    AppCtx_t* appCtx = (AppCtx_t*) MsgIoGetCtx (chanId);
-
-    char* cfgData;
-    int cfgLen;
-    MsgIoRecv (chanId, &cfgData, &cfgLen);
-    cfgData [cfgLen] = '\0'
-
-    void* appCfg  = appCtx->appMethods.OnParseCfg (cfgData);
-    if (appCfg) {
-        appCtx->chanState = N_ADMIN_CHANNEL_STATE_RECV_CONFIG;
-    } else {
-        appCtx->chanErr = N_ADMIN_CHANNEL_ERROR_GET_CONFIG;
+    if ( appCtx->chanState == N_ADMIN_CHANNEL_STATE_INIT ) {
+        appCtx->chanState = N_ADMIN_CHANNEL_STATE_GET_CONFIG;
+        MsgIoSend ( chanId
+            , appCtx->testCfgId
+            , strlen( appCtx->testCfgId) );
+    } else if ( appCtx->chanState == N_ADMIN_CHANNEL_STATE_REINIT ) {
+        appCtx->chanState = N_ADMIN_CHANNEL_STATE_ESTABLISHED;
     }
 }
 
-static int App_channel_init(AppCtx_t* appCtx) {
+static void App_channel_error (MsgIoChannelId_t chanId) {
+
+    AppCtx_t* appCtx = (AppCtx_t*) MsgIoGetCtx (chanId);
+
+    appCtx->chanErr = N_ADMIN_CHANNEL_ERROR_CONN;
+}
+
+static void App_channel_recv (MsgIoChannelId_t chanId) {
+
+    AppCtx_t* appCtx = (AppCtx_t*) MsgIoGetCtx (chanId);
+
+    if ( appCtx->chanState == N_ADMIN_CHANNEL_STATE_GET_CONFIG ) {
+        char* cfgData;
+        int cfgLen;
+        MsgIoRecv (chanId, &cfgData, &cfgLen);
+        cfgData [cfgLen] = '\0'
+
+        void* appCfg  = appCtx->appMethods.OnParseCfg (cfgData);
+        if (appCfg) {
+            appCtx->chanState = N_ADMIN_CHANNEL_STATE_RECV_CONFIG;
+        } else {
+            appCtx->chanErr = N_ADMIN_CHANNEL_ERROR_GET_CONFIG;
+        }
+    } else {
+        //??? other runtime data
+    }
+}
+
+static void App_channel_sent (MsgIoChannelId_t chanId) {
+}
+
+static int App_channel_setup(AppCtx_t* appCtx) {
 
     int status = -1;
     MsgIoMethods_t mioMethods;
 
-    mioMethods.OnOpen = &MsgIoOnOpen;
-    mioMethods.OnError = &MsgIoOnError;
-    mioMethods.OnMsgRecv = &MsgIoOnMsgRecv;
-    mioMethods.OnMsgSent = &MsgIoOnMsgSent;
+    mioMethods.OnOpen = &App_channel_open;
+    mioMethods.OnError = &App_channel_error;
+    mioMethods.OnMsgRecv = &App_channel_recv;
+    mioMethods.OnMsgSent = &App_channel_sent;
 
     appCtx->chanId =  MsgIoNew (&appCtx->nLocalAddr
                         , &appCtx->nAdminAddr
@@ -64,14 +75,11 @@ static int App_channel_init(AppCtx_t* appCtx) {
                 break;
             }
             if (appCtx->chanState == N_ADMIN_CHANNEL_STATE_RECV_CONFIG) {
+                appCtx->chanState = N_ADMIN_CHANNEL_STATE_ESTABLISHED;
                 status = 0;
                 break;
             }
         }
-    }
-    
-    if ( status == 0) {
-
     }
     
     return status;
@@ -101,15 +109,15 @@ static int App_main(char* nAdminIp
     appCtx->testCfgId = testCfgId;
     appCtx->testRunId = testRunId;
     
-    if ( App_channel_init(appCtx) ) {
+    if ( App_channel_setup (appCtx) ) {
         exit (-1); //???
     }
 
-    if (App_library_init()) {
+    if ( App_library_init () ) {
         exit (-1); //???
     }
 
-    while (1) { 
+    while (1) {
     }
 }
 
