@@ -9,6 +9,10 @@
 #define N_ADMIN_CHANNEL_ERROR_CONN                      -1
 #define N_ADMIN_CHANNEL_ERROR_GET_CONFIG                -2
 #define N_ADMIN_CHANNEL_ERROR_PARSE_CONFIG              -3
+#define N_ADMIN_CHANNEL_ERROR_MEM_CONFIG                -4
 
 #define N_ADMIN_MESSAGE_ID_GET_TEST_CONFIG              1
 #define N_ADMIN_MESSAGE_ID_SET_TEST_CONFIG              2
+
+#define N_ADMIN_APPID_TLS_CLIENT                        0
+#define N_ADMIN_APPID_TLS_SERVER                        1

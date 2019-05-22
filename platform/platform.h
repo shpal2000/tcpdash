@@ -336,6 +336,9 @@ void DumpCStats(void* aStats);
 
 #define TdMalloc(__size) malloc(__size)
 
+#define AllocMem(__size) g_malloc(__size)
+#define FreeMem(__mem) g_free(__mem)
+
 // #define IsIpv6(__saddr) (((struct sockaddr*)__saddr)->sa_family == AF_INET6)
 
 // #define GetSockPort(__laddr)(IsIpv6(__laddr)) ? ((struct sockaddr_in6*)__laddr)->sin6_port : ((struct sockaddr_in*)__laddr)->sin_port
@@ -444,6 +447,7 @@ int TcpRead(int fd
 
 
 //##################resources######################
+#define CreateArray0(__type,__count) g_new0(__type, __count)
 #define CreateArray(__type,__count) g_new(__type, __count)
 #define CreateStruct0(__type) g_slice_new0(__type) 
 #define CreateStruct(__type) g_slice_new(__type) 

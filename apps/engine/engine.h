@@ -26,6 +26,8 @@ typedef struct AppMethods {
     
     int (*OnRunLoop) (void* appCtx);
 
+    
+
 } AppMethods_t;
 
 
@@ -52,13 +54,15 @@ typedef struct EngCtx {
     int nAdminPort;
     char* testCfgId;
     char* testRunId;
+    char* cfgData;
 
     MsgIoChannelId_t chanId;
     int chanState;
     int chanErr;
 
-    AppCtx_t* iovCtx;
+    IoVentCtx_t* iovCtx;
 
+    int appCount;
     AppCtx_t* appCtxArr;
 
 } EngCtx_t;

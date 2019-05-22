@@ -4,78 +4,79 @@
 
 #include "engine.h"
 
-static void App_channel_open (MsgIoChannelId_t chanId) {
+static void nAdmin_channel_open (MsgIoChannelId_t chanId) {
 
-    AppCtx_t* appCtx = (AppCtx_t*) MsgIoGetCtx (chanId);
+    EngCtx_t* engCtx = (EngCtx_t*) MsgIoGetCtx (chanId);
 
-    if ( appCtx->chanState == N_ADMIN_CHANNEL_STATE_INIT ) {
-        appCtx->chanState = N_ADMIN_CHANNEL_STATE_GET_CONFIG;
+    if ( engCtx->chanState == N_ADMIN_CHANNEL_STATE_INIT ) {
+        engCtx->chanState = N_ADMIN_CHANNEL_STATE_GET_CONFIG;
         MsgIoSend ( chanId
-            , appCtx->testCfgId
-            , strlen( appCtx->testCfgId) );
-    } else if ( appCtx->chanState == N_ADMIN_CHANNEL_STATE_REINIT ) {
-        appCtx->chanState = N_ADMIN_CHANNEL_STATE_ESTABLISHED;
+            , engCtx->testCfgId
+            , strlen( engCtx->testCfgId) );
+    } else if ( engCtx->chanState == N_ADMIN_CHANNEL_STATE_REINIT ) {
+        engCtx->chanState = N_ADMIN_CHANNEL_STATE_ESTABLISHED;
     }
 }
 
-static void App_channel_error (MsgIoChannelId_t chanId) {
+static void nAdmin_channel_error (MsgIoChannelId_t chanId) {
 
-    AppCtx_t* appCtx = (AppCtx_t*) MsgIoGetCtx (chanId);
+    EngCtx_t* engCtx = (EngCtx_t*) MsgIoGetCtx (chanId);
 
-    appCtx->chanErr = N_ADMIN_CHANNEL_ERROR_CONN;
+    engCtx->chanErr = N_ADMIN_CHANNEL_ERROR_CONN;
 }
 
-static void App_channel_recv (MsgIoChannelId_t chanId) {
+static void nAdmin_channel_recv (MsgIoChannelId_t chanId) {
 
-    AppCtx_t* appCtx = (AppCtx_t*) MsgIoGetCtx (chanId);
+    EngCtx_t* engCtx = (EngCtx_t*) MsgIoGetCtx (chanId);
 
-    if ( appCtx->chanState == N_ADMIN_CHANNEL_STATE_GET_CONFIG ) {
+    if ( engCtx->chanState == N_ADMIN_CHANNEL_STATE_GET_CONFIG ) {
         char* cfgData;
         int cfgLen;
         MsgIoRecv (chanId, &cfgData, &cfgLen);
-        cfgData [cfgLen] = '\0'
 
-        void* appCfg  = appCtx->appMethods.OnParseCfg (cfgData);
-        if (appCfg) {
-            appCtx->chanState = N_ADMIN_CHANNEL_STATE_RECV_CONFIG;
+        engCtx->cfgData = AllocMem ( cfgLen + 1 );
+        if (engCtx->cfgData == NULL) {
+            engCtx->chanErr = N_ADMIN_CHANNEL_ERROR_MEM_CONFIG;
         } else {
-            appCtx->chanErr = N_ADMIN_CHANNEL_ERROR_PARSE_CONFIG;
+            memcpy (engCtx->cfgData, cfgData, cfgLen);
+            engCtx->cfgData[cfgLen] = '\0';
+            engCtx->chanState = N_ADMIN_CHANNEL_STATE_RECV_CONFIG;
         }
     } else {
         //??? other runtime data
     }
 }
 
-static void App_channel_sent (MsgIoChannelId_t chanId) {
+static void nAdmin_channel_sent (MsgIoChannelId_t chanId) {
 }
 
-static int App_channel_setup(AppCtx_t* appCtx) {
+static int nAdmin_channel_setup(EngCtx_t* engCtx) {
 
     int status = -1;
     MsgIoMethods_t mioMethods;
 
-    mioMethods.OnOpen = &App_channel_open;
-    mioMethods.OnError = &App_channel_error;
-    mioMethods.OnMsgRecv = &App_channel_recv;
-    mioMethods.OnMsgSent = &App_channel_sent;
+    mioMethods.OnOpen = &nAdmin_channel_open;
+    mioMethods.OnError = &nAdmin_channel_error;
+    mioMethods.OnMsgRecv = &nAdmin_channel_recv;
+    mioMethods.OnMsgSent = &nAdmin_channel_sent;
 
-    appCtx->chanId =  MsgIoNew (&appCtx->nLocalAddr
-                        , &appCtx->nAdminAddr
+    engCtx->chanId =  MsgIoNew (&engCtx->nLocalAddr
+                        , &engCtx->nAdminAddr
                         , &mioMethods
-                        , appCtx);
+                        , engCtx);
 
-    if ( appCtx->chanId ) {
-        appCtx->chanState = N_ADMIN_CHANNEL_STATE_INIT;
+    if ( engCtx->chanId ) {
+        engCtx->chanState = N_ADMIN_CHANNEL_STATE_INIT;
         while ( 1 ) {
-            MsgIoProcess (appCtx->chanId);
-            if ( MsgIoTimeElapsed (appCtx->chanId) > N_ADMIN_GET_CONFIG_MAX_TIME ) {
-                appCtx->chanlErr = N_ADMIN_CHANNEL_ERROR_GET_CONFIG;
+            MsgIoProcess (engCtx->chanId);
+            if ( MsgIoTimeElapsed (engCtx->chanId) > N_ADMIN_GET_CONFIG_MAX_TIME ) {
+                engCtx->chanlErr = N_ADMIN_CHANNEL_ERROR_GET_CONFIG;
             }
-            if (appCtx->chanlErr) {
+            if (engCtx->chanlErr) {
                 break;
             }
-            if (appCtx->chanState == N_ADMIN_CHANNEL_STATE_RECV_CONFIG) {
-                appCtx->chanState = N_ADMIN_CHANNEL_STATE_ESTABLISHED;
+            if (engCtx->chanState == N_ADMIN_CHANNEL_STATE_RECV_CONFIG) {
+                engCtx->chanState = N_ADMIN_CHANNEL_STATE_ESTABLISHED;
                 status = 0;
                 break;
             }
@@ -85,7 +86,69 @@ static int App_channel_setup(AppCtx_t* appCtx) {
     return status;
 }
 
-static int App_library_init () {
+// static int App_get_methods (EngCtx_t* engCtx) {
+
+//     int status = 0;
+
+//     char* appName = engCtx->testAppName;
+//     AppMethods_t* appMethods = &engCtx->appMethods; 
+
+//     if ( strcmp (appName, "TlsClient") == 0 ) {
+//         TlsClient_get_methods (appMethods);
+//     } else if ( strcmp (appName, "TlsServer") == 0 ) {
+//         TlsServer_get_methods (appMethods);
+//     } else {
+//         status = -1;    
+//     }
+
+//     return status; 
+// }
+
+static int App_ctx_setup (EngCtx_t* engCtx) {
+    
+    int status = 0;
+
+    engCtx->appCount = 0;
+    //todo parse config and find app count
+
+    engCtx->appCtxArr = CreateArray0 (AppCtx_t, engCtx->appCount);
+    if (engCtx->appCtxArr == NULL) {
+        status = -1;    
+    }
+
+    return status;
+}
+
+static int IoVent_ctx_setup (EngCtx_t* engCtx) {
+
+    int status = 0;
+
+    IoVentMethods_t iovMethods;
+    iovMethods.OnEstablish = &OnEstablish;
+    iovMethods.OnWriteNext = &OnWriteNext;
+    iovMethods.OnWriteStatus = &OnWriteStatus;
+    iovMethods.OnReadNext = &OnReadNext;
+    iovMethods.OnReadStatus = &OnReadStatus;
+    iovMethods.OnCleanup = &OnCleanup;
+    iovMethods.OnStatus = &OnStatus;
+    iovMethods.OnContinue = &OnContinue;
+
+    IoVentOptions_t iovOptions;
+    iovOptions.maxActiveConnections = 1;
+    ovOptions.maxErrorConnections = 1;
+    iovOptions.maxEvents = 0;
+    iovOptions.eventPTO = DEFAULT_MAX_POLL_TIMEOUT;
+
+    engCtx->iovCtx = CreateIoVentCtx (&iovMethods, &iovOptions, engCtx);
+    
+    if (engCtx->iovCtx == NULL) {
+        status = -1;
+    }
+
+    return status;
+}
+
+static int App_library_init (EngCtx_t* engCtx) {
 
     SSL_load_error_strings();
     ERR_load_crypto_strings();
@@ -95,35 +158,59 @@ static int App_library_init () {
     return 0
 }
 
-static int App_main(char* nAdminIp
-        , int nAdminPort
-        , char* testCfgId
-        , char* testRunId) {
+static int Engine_loop (EngCtx_t* engCtx) {
 
-    signal(SIGPIPE, SIG_IGN);
-
-    AppCtx_t* appCtx = CreateStruct0 (AppCtx_t);
-
-    appCtx->nAdminIp = nAdminIp;
-    appCtx->nAdminPort = nAdminPort;
-    appCtx->testCfgId = testCfgId;
-    appCtx->testRunId = testRunId;
-    
-    if ( App_channel_setup (appCtx) ) {
-        exit (-1); //???
-    }
-
-    if ( App_library_init () ) {
-        exit (-1); //???
-    }
+    int status = 0;    
+    double lastMsgIoTime = MsgIoTimeElapsed (engCtx->chanId);
+    char statsString[256];
 
     while (1) {
+        MsgIoProcess (engCtx->chanId);
+        if ( (MsgIoTimeElapsed (engCtx->chanId) - lastMsgIoTime) >= 2 ) {
+            astMsgIoTime = MsgIoTimeElapsed (engCtx->chanId);
+            statsString = 
+            MsgIoSend (engCtx->chanId
+                        , statsString
+                        , strlen(statsString) )
+        }
+
+        for (int appIndex = 0; appIndex < engCtx->appCount; appIndex++) {
+            AppCtx_t* appCtx = engCtx->appCtxArr[appIndex];
+            (*appCtx->appMethods.OnRunLoop)(appCtx);
+        }
     }
+
+    return status;
 }
 
 int main(int argc, char** argv) {
-    return App_main (argv[1]
-                    , atoi(argv[2])
-                    , argv[3]
-                    , argv[4]); 
+
+    signal(SIGPIPE, SIG_IGN);
+
+    EngCtx_t* engCtx = CreateStruct0 (EngCtx_t);
+
+    engCtx->nAdminIp = argv[1];
+    engCtx->nAdminPort = atoi(argv[2]);
+    engCtx->testCfgId = argv[3];
+    engCtx->testRunId = argv[4];
+    
+    if ( nAdmin_channel_setup (engCtx) ) {
+        exit (-1); //???
+    }
+
+    if ( App_ctx_setup (engCtx) ) {
+        exit (-1); //???
+    }
+
+    if ( IoVent_ctx_setup (engCtx) ) {
+        exit (-1); //??? 
+    }
+
+    if ( App_library_init (engCtx) ) {
+        exit (-1); //???
+    }
+
+    Engine_loop (engCtx);
 }
+
+
