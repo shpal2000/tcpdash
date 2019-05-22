@@ -158,24 +158,33 @@ static int App_library_init (EngCtx_t* engCtx) {
     return 0
 }
 
+static void Engine_post_stats (EngCtx_t* engCtx) {
+
+    char statsString[256];
+
+    engCtx->lastStatsPost = MsgIoTimeElapsed (engCtx->chanId);
+
+    // statsString = 
+    MsgIoSend (engCtx->chanId
+                , statsString
+                , strlen(statsString) )
+}
+
 static int Engine_loop (EngCtx_t* engCtx) {
 
     int status = 0;    
-    double lastMsgIoTime = MsgIoTimeElapsed (engCtx->chanId);
-    char statsString[256];
-
+    
     while (1) {
         MsgIoProcess (engCtx->chanId);
-        if ( (MsgIoTimeElapsed (engCtx->chanId) - lastMsgIoTime) >= 2 ) {
-            astMsgIoTime = MsgIoTimeElapsed (engCtx->chanId);
-            statsString = 
-            MsgIoSend (engCtx->chanId
-                        , statsString
-                        , strlen(statsString) )
+
+        ProcessIoVent (engCtx->iovCtx);
+
+        if ( (MsgIoTimeElapsed (engCtx->chanId) - engCtx->lastStatsPost) >= 2 ) { 
+            Engine_post_stats (engCtx);
         }
 
-        for (int appIndex = 0; appIndex < engCtx->appCount; appIndex++) {
-            AppCtx_t* appCtx = engCtx->appCtxArr[appIndex];
+        for (int i = 0; i < engCtx->appCount; i++) {
+            AppCtx_t* appCtx = engCtx->appCtxArr[i];
             (*appCtx->appMethods.OnRunLoop)(appCtx);
         }
     }
@@ -213,4 +222,12 @@ int main(int argc, char** argv) {
     Engine_loop (engCtx);
 }
 
+int NewConnectionX (AppCtx_t* appCtx
+                        , AppSess_t* appSess
+                        , SockAddr_t* localAddr
+                        , SockAddr_t* remoteAddr
+                        , int connLifetime
+                        ) {
 
+    return NewConnection (); 
+}

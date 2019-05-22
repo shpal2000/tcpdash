@@ -1,23 +1,32 @@
 #ifndef __APP_ENGINE_H
 #define __APP_ENGINE_H
 
+typedef struct AppConn {
+    IoVentConn_t* iovConn;
+} AppConn_t;
+
+typedef void AppSess_t;
 
 typedef struct AppMethods {
 
-    void (*OnEstablish) (AppConn_t* iovConn);
+    void (*OnEstablish) (AppConn_t* appConn, AppSess_t* appSess);
 
-    void (*OnWriteNext) (AppConn_t* iovConn);
+    void (*OnEstablishErr) (AppConn_t* appConn, AppSess_t* appSess);
 
-    void (*OnReadNext) (AppConn_t* iovConn);
+    void (*OnWriteNext) (AppConn_t* appConn, AppSess_t* appSess);
 
-    void (*OnCleanup) (AppConn_t* iovConn);
+    void (*OnReadNext) (AppConn_t* appConn, AppSess_t* appSess);
 
-    void (*OnStatus) (AppConn_t* iovConn);
+    void (*OnCleanup) (AppConn_t* appConn, AppSess_t* appSess);
 
-    void (*OnWriteStatus) (AppConn_t* iovConn
+    void (*OnStatus) (AppConn_t* appConn, AppSess_t* appSess);
+
+    void (*OnWriteStatus) (AppConn_t* appConn
+                        , AppSess_t* appSess
                         , int bytesSent);
 
-    void (*OnReadStatus) (AppConn_t* iovConn
+    void (*OnReadStatus) (AppConn_t* appConn
+                        , AppSess_t* appSess
                         , int bytesReceived);
 
     void (*InitConn) (void* connData);
@@ -65,19 +74,12 @@ typedef struct EngCtx {
     int appCount;
     AppCtx_t* appCtxArr;
 
+    double lastStatsPost;
+
 } EngCtx_t;
 
 typedef struct AppStats {
     SockStats_t connStats;
 } AppStats_t;
-
-typedef struct AppConn {
-    IoVentConn_t* ioVConn;
-    void* appConnCtx;
-} AppConn_t
-
-typedef struct AppSess {
-    IoVentConn_t ioVConn;
-} AppSess_t
 
 #endif
