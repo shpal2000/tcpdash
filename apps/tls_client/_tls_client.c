@@ -513,3 +513,7 @@ int main(int argc, char** argv) {
     return 0;
 }
 
+
+AppMethods_t* TlsClient_get_methods () {
+
+}

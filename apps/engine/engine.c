@@ -86,23 +86,23 @@ static int nAdmin_channel_setup(EngCtx_t* engCtx) {
     return status;
 }
 
-// static int App_get_methods (EngCtx_t* engCtx) {
+static int App_get_methods (AppCtx_t* appCtx) {
 
-//     int status = 0;
+    int status = 0;
 
-//     char* appName = engCtx->testAppName;
-//     AppMethods_t* appMethods = &engCtx->appMethods; 
+    char* appName = appCtx->appName;
+    AppMethods_t* appMethods = &appCtx->appMethods; 
 
-//     if ( strcmp (appName, "TlsClient") == 0 ) {
-//         TlsClient_get_methods (appMethods);
-//     } else if ( strcmp (appName, "TlsServer") == 0 ) {
-//         TlsServer_get_methods (appMethods);
-//     } else {
-//         status = -1;    
-//     }
+    if ( strcmp (appName, "TlsClient") == 0 ) {
+        TlsClient_get_methods (appMethods);
+    } else if ( strcmp (appName, "TlsServer") == 0 ) {
+        TlsServer_get_methods (appMethods);
+    } else {
+        status = -1;
+    }
 
-//     return status; 
-// }
+    return status; 
+}
 
 static int App_ctx_setup (EngCtx_t* engCtx) {
     
@@ -113,7 +113,16 @@ static int App_ctx_setup (EngCtx_t* engCtx) {
 
     engCtx->appCtxArr = CreateArray0 (AppCtx_t, engCtx->appCount);
     if (engCtx->appCtxArr == NULL) {
-        status = -1;    
+        status = -1; //??? log
+    } else {
+        for (int i = 0; i < engCtx->appCount; i++) {
+            AppCtx_t* appCtx = engCtx->appCtxArr[i]; 
+            if ( App_get_methods (appCtx) 
+                    || (*appCtx->appMethods.AppInit)(appCtx)) {
+                status = -1; //??? log
+                break;
+            }
+        }
     }
 
     return status;
@@ -173,7 +182,7 @@ static void Engine_post_stats (EngCtx_t* engCtx) {
 static int Engine_loop (EngCtx_t* engCtx) {
 
     int status = 0;    
-    
+
     while (1) {
         MsgIoProcess (engCtx->chanId);
 
@@ -222,12 +231,12 @@ int main(int argc, char** argv) {
     Engine_loop (engCtx);
 }
 
-int NewConnectionX (AppCtx_t* appCtx
+int Conn_new (AppCtx_t* appCtx
                         , AppSess_t* appSess
                         , SockAddr_t* localAddr
                         , SockAddr_t* remoteAddr
                         , int connLifetime
                         ) {
 
-    return NewConnection (); 
+    return NewConnection ();
 }

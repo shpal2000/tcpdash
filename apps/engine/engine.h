@@ -35,6 +35,8 @@ typedef struct AppMethods {
     
     int (*OnRunLoop) (void* appCtx);
 
+    int (*AppInit) (AppCtx_t* appCtx);
+
     
 
 } AppMethods_t;
@@ -54,6 +56,8 @@ typedef struct AppCtx {
     Pool_t actSPool;
 
     AppMethods_t appMethods;
+    int appId;
+    char* appName;
 
 } AppCtx_t;
 
