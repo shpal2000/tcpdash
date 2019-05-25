@@ -2,31 +2,29 @@
 #define __APP_ENGINE_H
 
 typedef struct AppConn {
-    IoVentConn_t* iovConn;
+    IoVentConn_t iovConn;
 } AppConn_t;
-
-typedef void AppSess_t;
 
 typedef struct AppMethods {
 
-    void (*OnEstablish) (AppConn_t* appConn, AppSess_t* appSess);
+    void (*OnEstablish) (AppConn_t* appConn, void* appSess);
 
-    void (*OnEstablishErr) (AppConn_t* appConn, AppSess_t* appSess);
+    void (*OnEstablishErr) (AppConn_t* appConn, void* appSess);
 
-    void (*OnWriteNext) (AppConn_t* appConn, AppSess_t* appSess);
+    void (*OnWriteNext) (AppConn_t* appConn, void* appSess);
 
-    void (*OnReadNext) (AppConn_t* appConn, AppSess_t* appSess);
+    void (*OnReadNext) (AppConn_t* appConn, void* appSess);
 
-    void (*OnCleanup) (AppConn_t* appConn, AppSess_t* appSess);
+    void (*OnCleanup) (AppConn_t* appConn, void* appSess);
 
-    void (*OnStatus) (AppConn_t* appConn, AppSess_t* appSess);
+    void (*OnStatus) (AppConn_t* appConn, void* appSess);
 
     void (*OnWriteStatus) (AppConn_t* appConn
-                        , AppSess_t* appSess
+                        , void* appSess
                         , int bytesSent);
 
     void (*OnReadStatus) (AppConn_t* appConn
-                        , AppSess_t* appSess
+                        , void* appSess
                         , int bytesReceived);
 
     void (*InitConn) (void* connData);

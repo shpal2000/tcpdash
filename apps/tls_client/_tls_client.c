@@ -513,7 +513,24 @@ int main(int argc, char** argv) {
     return 0;
 }
 
+////////////////
 
-AppMethods_t* TlsClient_get_methods () {
+static void OnEstablish (AppConn_t* appConn, void* appSess) { 
+
+}
+
+static void OnEstablishErr (AppConn_t* appConn, void* appSess) {
+    TlsClientSession_t* tcSess = (TlsClientSession_t*) appSess;
+    FreeSession (tcSess);
+}
+
+static void OnWriteNext (AppConn_t* appConn, void* appSess) { 
+}
+
+void TlsClient_get_methods (AppMethods_t* appMethods) {
+
+    appMethods->OnEstablish = &OnEstablish;
+    appMethods->OnEstablishErr = &OnEstablish;
+    appMethods->OnWriteNext = &OnEstablish;
 
 }
