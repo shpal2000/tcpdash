@@ -1,7 +1,3 @@
-#include "iovents.h"
-#include "msg_io.h"
-#include "nadmin.h"
-
 #include "engine.h"
 
 static void nAdmin_channel_open (MsgIoChannelId_t chanId) {
@@ -55,6 +51,9 @@ static int nAdmin_channel_setup(EngCtx_t* engCtx) {
     int status = -1;
     MsgIoMethods_t mioMethods;
 
+    SetSockAddress0 (&engCtx->nLocalAddr, 0); 
+    SetSockAddress (&engCtx->nAdminAddr, engCtx->nAdminIp, engCtx->nAdminPort);
+
     mioMethods.OnOpen = &nAdmin_channel_open;
     mioMethods.OnError = &nAdmin_channel_error;
     mioMethods.OnMsgRecv = &nAdmin_channel_recv;
@@ -70,9 +69,9 @@ static int nAdmin_channel_setup(EngCtx_t* engCtx) {
         while ( 1 ) {
             MsgIoProcess (engCtx->chanId);
             if ( MsgIoTimeElapsed (engCtx->chanId) > N_ADMIN_GET_CONFIG_MAX_TIME ) {
-                engCtx->chanlErr = N_ADMIN_CHANNEL_ERROR_GET_CONFIG;
+                engCtx->chanErr = N_ADMIN_CHANNEL_ERROR_GET_CONFIG;
             }
-            if (engCtx->chanlErr) {
+            if (engCtx->chanErr) {
                 break;
             }
             if (engCtx->chanState == N_ADMIN_CHANNEL_STATE_RECV_CONFIG) {
@@ -91,12 +90,12 @@ static int App_get_methods (AppCtx_t* appCtx) {
     int status = 0;
 
     char* appName = appCtx->appName;
-    AppMethods_t* appMethods = &appCtx->appMethods; 
+    // AppMethods_t* appMethods = &appCtx->appMethods; 
 
     if ( strcmp (appName, "TlsClient") == 0 ) {
-        TlsClient_get_methods (appMethods);
+        // TlsClient_get_methods (appMethods);
     } else if ( strcmp (appName, "TlsServer") == 0 ) {
-        TlsServer_get_methods (appMethods);
+        // TlsServer_get_methods (appMethods);
     } else {
         status = -1;
     }
@@ -116,7 +115,7 @@ static int App_ctx_setup (EngCtx_t* engCtx) {
         status = -1; //??? log
     } else {
         for (int i = 0; i < engCtx->appCount; i++) {
-            AppCtx_t* appCtx = engCtx->appCtxArr[i]; 
+            AppCtx_t* appCtx = &engCtx->appCtxArr[i]; 
             if ( App_get_methods (appCtx) 
                     || (*appCtx->appMethods.AppInit)(appCtx)) {
                 status = -1; //??? log

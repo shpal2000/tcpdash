@@ -1,48 +1,39 @@
 #ifndef __APP_ENGINE_H
 #define __APP_ENGINE_H
 
-typedef struct AppConn {
-    IoVentConn_t iovConn;
-} AppConn_t;
+#include "iovents.h"
+#include "msg_io.h"
+#include "nadmin.h"
+
+typedef IoVentConn_t AppConn_t;
+
+typedef void AppSess_t; 
 
 typedef struct AppMethods {
 
-    void (*OnEstablish) (AppConn_t* appConn, void* appSess);
+    void (*OnEstablish) (AppConn_t* appConn, AppSess_t* appSess);
 
-    void (*OnEstablishErr) (AppConn_t* appConn, void* appSess);
+    void (*OnEstablishErr) (AppConn_t* appConn, AppSess_t* appSess);
 
-    void (*OnWriteNext) (AppConn_t* appConn, void* appSess);
+    void (*OnWriteNext) (AppConn_t* appConn, AppSess_t* appSess);
 
-    void (*OnReadNext) (AppConn_t* appConn, void* appSess);
+    void (*OnReadNext) (AppConn_t* appConn, AppSess_t* appSess);
 
-    void (*OnCleanup) (AppConn_t* appConn, void* appSess);
+    void (*OnCleanup) (AppConn_t* appConn, AppSess_t* appSess);
 
-    void (*OnStatus) (AppConn_t* appConn, void* appSess);
+    void (*OnStatus) (AppConn_t* appConn, AppSess_t* appSess);
 
     void (*OnWriteStatus) (AppConn_t* appConn
-                        , void* appSess
+                        , AppSess_t* appSess
                         , int bytesSent);
 
     void (*OnReadStatus) (AppConn_t* appConn
-                        , void* appSess
+                        , AppSess_t* appSess
                         , int bytesReceived);
 
-    void (*InitConn) (void* connData);
-
-    void (*OnParseCfg) (char* cfgData);
-    
     int (*OnRunLoop) (void* appCtx);
 
-    int (*AppInit) (AppCtx_t* appCtx);
-
-    
-
 } AppMethods_t;
-
-
-typedef struct AppStats {
-    SockStats_t connStats;
-} AppStats_t;
 
 typedef struct AppCtx {
 
@@ -67,6 +58,8 @@ typedef struct EngCtx {
     char* testRunId;
     char* cfgData;
 
+    SockAddr_t nAdminAddr;
+    SockAddr_t nLocalAddr;
     MsgIoChannelId_t chanId;
     int chanState;
     int chanErr;
@@ -79,9 +72,5 @@ typedef struct EngCtx {
     double lastStatsPost;
 
 } EngCtx_t;
-
-typedef struct AppStats {
-    SockStats_t connStats;
-} AppStats_t;
 
 #endif

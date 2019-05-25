@@ -25,7 +25,6 @@ static void InitConnection (IoVentConn_t* newConn) {
     newConn->cInfo.localAddress = NULL;
     newConn->cInfo.remoteAddress = NULL;
     newConn->cInfo.localPortPool = NULL;  
-    newConn->cInfo.connData = NULL;   
     newConn->cInfo.sessionData = NULL;   
     newConn->cInfo.appCtx = NULL;
     newConn->cInfo.groupCtx = NULL;

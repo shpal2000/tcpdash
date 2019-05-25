@@ -30,7 +30,6 @@ typedef struct IoVentConnInfo {
 
     SSL* cSSL;
 
-    void* connData;
     void* sessionData;
     void* groupCtx;
     void* appCtx;
