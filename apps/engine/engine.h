@@ -7,48 +7,65 @@
 
 typedef IoVentConn_t AppConn_t;
 
-typedef void AppSess_t; 
+typedef void AppSess_t;
+
+typedef void AppCtx_t;
 
 typedef struct AppMethods {
 
-    void (*OnEstablish) (AppConn_t* appConn, AppSess_t* appSess);
+    void (*OnEstablish) (AppConn_t* appConn
+                            , AppSess_t* appSess
+                            , AppCtx_t* appCtx);
 
-    void (*OnEstablishErr) (AppConn_t* appConn, AppSess_t* appSess);
+    void (*OnEstablishErr) (AppConn_t* appConn
+                            , AppSess_t* appSess
+                            , AppCtx_t* appCtx);
 
-    void (*OnWriteNext) (AppConn_t* appConn, AppSess_t* appSess);
+    void (*OnWriteNext) (AppConn_t* appConn
+                            , AppSess_t* appSess
+                            , AppCtx_t* appCtx);
 
-    void (*OnReadNext) (AppConn_t* appConn, AppSess_t* appSess);
+    void (*OnReadNext) (AppConn_t* appConn
+                            , AppSess_t* appSess
+                            , AppCtx_t* appCtx);
 
-    void (*OnCleanup) (AppConn_t* appConn, AppSess_t* appSess);
+    void (*OnCleanup) (AppConn_t* appConn
+                            , AppSess_t* appSess
+                            , AppCtx_t* appCtx);
 
-    void (*OnStatus) (AppConn_t* appConn, AppSess_t* appSess);
+    void (*OnStatus) (AppConn_t* appConn
+                            , AppSess_t* appSess
+                            , AppCtx_t* appCtx);
 
     void (*OnWriteStatus) (AppConn_t* appConn
-                        , AppSess_t* appSess
-                        , int bytesSent);
+                            , AppSess_t* appSess
+                            , AppCtx_t* appCtx
+                            , int bytesSent);
 
     void (*OnReadStatus) (AppConn_t* appConn
-                        , AppSess_t* appSess
-                        , int bytesReceived);
+                            , AppSess_t* appSess
+                            , AppCtx_t* appCtx
+                            , int bytesReceived);
 
-    int (*OnRunLoop) (void* appCtx);
+    AppCtx_t* (*AppInit) ();
+
+    int (*OnRunLoop) (AppCtx_t* appCtx);
 
 } AppMethods_t;
 
-typedef struct AppCtx {
+typedef struct AppCtxW {
+
+    AppCtx_t* appCtx;
 
     int appTypeId;
     void* appCfgData;
     void* appUserData;
 
-    Pool_t* freeSPool;
-    Pool_t actSPool;
-
     AppMethods_t appMethods;
     int appId;
     char* appName;
 
-} AppCtx_t;
+} AppCtxW_t;
 
 typedef struct EngCtx {
 
@@ -67,7 +84,7 @@ typedef struct EngCtx {
     IoVentCtx_t* iovCtx;
 
     int appCount;
-    AppCtx_t* appCtxArr;
+    AppCtxW_t* appCtxWArr;
 
     double lastStatsPost;
 

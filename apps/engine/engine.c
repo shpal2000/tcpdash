@@ -1,5 +1,40 @@
 #include "engine.h"
 
+
+static void OnEstablish (struct IoVentConn* iovConn) {
+
+    AppCtxW_t* appCtxW = (AppCtxW_t*) iovConn->cInfo.appCtx;
+    AppCtx_t* appCtx = appCtxW->appCtx; 
+    AppSess_t* appSess = (AppSess_t*) iovConn->cInfo.sessionData;
+
+    if ( IsConnErr (iovConn) ) {
+        (*appCtxW->appMethods.OnEstablishErr) (iovConn, appSess, appCtx);
+    } else {
+        (*appCtxW->appMethods.OnEstablish) (iovConn, appSess, appCtx);
+    }
+}
+
+static void OnReadNext (struct IoVentConn* iovConn) {
+}
+
+static void OnReadStatus (struct IoVentConn* iovConn
+                                    , int bytesRead) {
+
+}
+
+static void OnWriteNext (struct IoVentConn* iovConn) {
+
+}
+
+static void OnWriteStatus (struct IoVentConn* iovConn
+                                    , int bytesWritten) {
+
+}
+
+static void OnCleanup (struct IoVentConn* iovConn) {
+
+}
+
 static void nAdmin_channel_open (MsgIoChannelId_t chanId) {
 
     EngCtx_t* engCtx = (EngCtx_t*) MsgIoGetCtx (chanId);
@@ -85,11 +120,11 @@ static int nAdmin_channel_setup(EngCtx_t* engCtx) {
     return status;
 }
 
-static int App_get_methods (AppCtx_t* appCtx) {
+static int App_get_methods (AppCtxW_t* appCtxW) {
 
     int status = 0;
 
-    char* appName = appCtx->appName;
+    char* appName = appCtxW->appName;
     // AppMethods_t* appMethods = &appCtx->appMethods; 
 
     if ( strcmp (appName, "TlsClient") == 0 ) {
@@ -110,17 +145,17 @@ static int App_ctx_setup (EngCtx_t* engCtx) {
     engCtx->appCount = 0;
     //todo parse config and find app count
 
-    engCtx->appCtxArr = CreateArray0 (AppCtx_t, engCtx->appCount);
-    if (engCtx->appCtxArr == NULL) {
+    engCtx->appCtxWArr = CreateArray0 (AppCtxW_t, engCtx->appCount);
+    if (engCtx->appCtxWArr == NULL) {
         status = -1; //??? log
     } else {
         for (int i = 0; i < engCtx->appCount; i++) {
-            AppCtx_t* appCtx = &engCtx->appCtxArr[i]; 
-            if ( App_get_methods (appCtx) 
-                    || (*appCtx->appMethods.AppInit)(appCtx)) {
+            AppCtxW_t* appCtxW = &engCtx->appCtxWArr[i];
+            if ( App_get_methods (appCtxW) ) {
                 status = -1; //??? log
                 break;
             }
+            appCtxW->appCtx = (*appCtxW->appMethods.AppInit)();
         }
     }
 
@@ -138,12 +173,12 @@ static int IoVent_ctx_setup (EngCtx_t* engCtx) {
     iovMethods.OnReadNext = &OnReadNext;
     iovMethods.OnReadStatus = &OnReadStatus;
     iovMethods.OnCleanup = &OnCleanup;
-    iovMethods.OnStatus = &OnStatus;
-    iovMethods.OnContinue = &OnContinue;
+    iovMethods.OnStatus = NULL;
+    iovMethods.OnContinue = NULL;
 
     IoVentOptions_t iovOptions;
     iovOptions.maxActiveConnections = 1;
-    ovOptions.maxErrorConnections = 1;
+    iovOptions.maxErrorConnections = 1;
     iovOptions.maxEvents = 0;
     iovOptions.eventPTO = DEFAULT_MAX_POLL_TIMEOUT;
 
@@ -163,7 +198,7 @@ static int App_library_init (EngCtx_t* engCtx) {
     OpenSSL_add_ssl_algorithms();
     SSL_library_init();
 
-    return 0
+    return 0;
 }
 
 static void Engine_post_stats (EngCtx_t* engCtx) {
@@ -175,7 +210,7 @@ static void Engine_post_stats (EngCtx_t* engCtx) {
     // statsString = 
     MsgIoSend (engCtx->chanId
                 , statsString
-                , strlen(statsString) )
+                , strlen(statsString) );
 }
 
 static int Engine_loop (EngCtx_t* engCtx) {
@@ -192,8 +227,8 @@ static int Engine_loop (EngCtx_t* engCtx) {
         }
 
         for (int i = 0; i < engCtx->appCount; i++) {
-            AppCtx_t* appCtx = engCtx->appCtxArr[i];
-            (*appCtx->appMethods.OnRunLoop)(appCtx);
+            AppCtxW_t* appCtxW = &engCtx->appCtxWArr[i];
+            (*appCtxW->appMethods.OnRunLoop)(appCtxW->appCtx);
         }
     }
 
@@ -230,12 +265,12 @@ int main(int argc, char** argv) {
     Engine_loop (engCtx);
 }
 
-int App_conn_new (AppCtx_t* appCtx
-                        , AppSess_t* appSess
-                        , SockAddr_t* localAddr
-                        , SockAddr_t* remoteAddr
-                        , int connLifetime
-                        ) {
+// int App_conn_new (AppCtx_t* appCtx
+//                         , AppSess_t* appSess
+//                         , SockAddr_t* localAddr
+//                         , SockAddr_t* remoteAddr
+//                         , int connLifetime
+//                         ) {
 
-    return NewConnection ();
-}
+//     return NewConnection ();
+// }
