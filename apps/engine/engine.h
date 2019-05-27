@@ -5,7 +5,7 @@
 #include "msg_io.h"
 #include "nadmin.h"
 
-typedef IoVentConn_t AppConn_t;
+typedef void AppConn_t;
 
 typedef void AppSess_t;
 
@@ -47,7 +47,7 @@ typedef struct AppMethods {
                             , AppCtx_t* appCtx
                             , int bytesReceived);
 
-    AppCtx_t* (*AppInit) ();
+    AppCtx_t* (*AppInit) (int appId);
 
     int (*OnRunLoop) (AppCtx_t* appCtx);
 
@@ -90,4 +90,9 @@ typedef struct EngCtx {
 
 } EngCtx_t;
 
+int App_conn_new (int appId
+                        , AppSess_t* appSess
+                        , SockAddr_t* localAddr
+                        , SockAddr_t* remoteAddr
+                        );
 #endif

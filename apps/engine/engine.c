@@ -265,12 +265,11 @@ int main(int argc, char** argv) {
     Engine_loop (engCtx);
 }
 
-// int App_conn_new (AppCtx_t* appCtx
-//                         , AppSess_t* appSess
-//                         , SockAddr_t* localAddr
-//                         , SockAddr_t* remoteAddr
-//                         , int connLifetime
-//                         ) {
+int App_conn_new (AppCtx_t* appCtx
+                        , AppSess_t* appSess
+                        , SockAddr_t* localAddr
+                        , SockAddr_t* remoteAddr
+                        ) {
 
-//     return NewConnection ();
-// }
+    return NewConnection ();
+}

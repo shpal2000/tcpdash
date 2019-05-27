@@ -2,7 +2,7 @@
 
 #include "engine.h"
 
-static AppCtx_t* AppInit () {
+static AppCtx_t* AppInit (int appId) {
 
     return NULL;
 }
