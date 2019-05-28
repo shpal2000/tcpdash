@@ -155,7 +155,7 @@ static int App_ctx_setup (EngCtx_t* engCtx) {
                 status = -1; //??? log
                 break;
             }
-            appCtxW->appCtx = (*appCtxW->appMethods.AppInit)();
+            // appCtxW->appCtx = (*appCtxW->appMethods.AppInit)();
         }
     }
 
@@ -271,5 +271,6 @@ int App_conn_new (AppCtx_t* appCtx
                         , SockAddr_t* remoteAddr
                         ) {
 
-    return NewConnection ();
+    // return NewConnection ();
+    return 0;
 }

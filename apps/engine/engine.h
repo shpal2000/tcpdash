@@ -90,9 +90,9 @@ typedef struct EngCtx {
 
 } EngCtx_t;
 
-int App_conn_new (int appId
-                        , AppSess_t* appSess
-                        , SockAddr_t* localAddr
-                        , SockAddr_t* remoteAddr
-                        );
+// int App_conn_new (int appId
+//                         , AppSess_t* appSess
+//                         , SockAddr_t* localAddr
+//                         , SockAddr_t* remoteAddr
+//                         );
 #endif
