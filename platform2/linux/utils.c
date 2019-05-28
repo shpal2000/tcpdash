@@ -10,7 +10,6 @@
 void AssignSocketLocalPort(SockAddr_t* localAddres
                             , LocalPortPool_t* portPool
                             , void* aStats
-                            , void* bStats
                             , void* cState) {
    int nextSrcPort = GetPortFromPool(portPool);
 
@@ -20,7 +19,7 @@ void AssignSocketLocalPort(SockAddr_t* localAddres
        
     }else{
         SetCES(cState, STATE_TCP_SOCK_PORT_ASSIGN_FAIL);
-        IncConnStats2(aStats, bStats, tcpLocalPortAssignFail);    
+        IncConnStats(aStats, tcpLocalPortAssignFail);    
     }
 }
 

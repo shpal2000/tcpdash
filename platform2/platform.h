@@ -137,8 +137,6 @@ static inline void CSInit(void* cState) {
 
 #define IncConnStats(__aStats, __stat) ((SockStats_t*)__aStats)->__stat++
 
-#define IncConnStats2(__aStats, __bStats, __stat) ((SockStats_t*)__aStats)->__stat++;((SockStats_t*)__bStats)->__stat++
-
 #define GetConnStats(__aStats, __stat) ((SockStats_t*)__aStats)->__stat
 
 static inline void SetCES(void* aSession, uint64_t errState) {
@@ -162,50 +160,42 @@ static inline void SetCESSL(void* aSession, uint64_t errState, int sslErrno) {
 void NewPollReadWriteEvent(int pollId
                         , int fd
                         , void* aStats
-                        , void* bStats
                         , void* cState);
 
 void NewPollReadEvent(int pollId
                         , int fd
                         , void* aStats
-                        , void* bStats
                         , void* cState);
 
 void NewPollWriteEvent(int pollId
                         , int fd
                         , void* aStats
-                        , void* bStats
                         , void* cState);
 
 void UpdatePollReadWriteEvent(int pollId
                         , int fd
                         , void* aStats
-                        , void* bStats
                         , void* cState);
 
 void UpdatePollReadEvent(int pollId
                         , int fd
                         , void* aStats
-                        , void* bStats
                         , void* cState);
 
 
 void UpdatePollWriteEvent(int pollId
                         , int fd
                         , void* aStats
-                        , void* bStats
                         , void* cState);
 
 void StopPollReadWriteEvent(int pollId
                         , int fd
                         , void* aStats
-                        , void* bStats
                         , void* cState);
 
 void AssignSocketLocalPort(SockAddr_t* localAddres
                         , LocalPortPool_t* portPool
                         , void* aStats
-                        , void* bStats
                         , void* cState);
 
 void AddressToString(SockAddr_t* addr, char* str);
@@ -401,32 +391,27 @@ void SetSockAddress(SockAddr_t* addr, char* str, int port);
 int TcpNewConnection(SockAddr_t* localAddress
                         , SockAddr_t* remoteAddress
                         , void* aStats
-                        , void* bStats
                         , void* cState);
 
 void VerifyTcpConnectionEstablished(int fd
                         , void* aStats
-                        , void* bStats
                         , void* cState);
 
 int TcpListenStart(SockAddr_t* localAddress
                     , int listenQLen
                     , void* aStats
-                    , void* bStats
                     , void* cState);
 
 int TcpAcceptConnection(int listenerFd
                         , SockAddr_t* lAddr
                         , SockAddr_t* rAddr
                         , void* aStats
-                        , void* bStats
                         , void* cState);
                         
 void TcpClose(int fd
                 , int isLinger
                 , int lingerTime
                 , void* aStats
-                , void* bStats
                 , void* cState);
                 
 void TcpWrShutdown(int fd, void* cState);
@@ -435,14 +420,12 @@ int TcpWrite(int fd
                 , const char* dataBuff
                 , int dataLen
                 , void* aStats
-                , void* bStats
                 , void* cState);
 
 int TcpRead(int fd
                 , char* dataBuffer
                 , int dataLen
                 , void* aStats
-                , void* bStats
                 , void* cState);
 
 
@@ -466,21 +449,18 @@ void DoSSLConnect(SSL* newSSL
                     , int fd
                     , int isClient
                     , void* aStats
-                    , void* bStats
                     , void* cState);
 
 int SSLRead (SSL* newSSL
                     , char* dataBuffer
                     , int dataLen
                     , void* aStats
-                    , void* bStats
                     , void* cState);
 
 int SSLWrite (SSL* newSSL
                     , const char* dataBuffer
                     , int dataLen
                     , void* aStats
-                    , void* bStats
                     , void* cState);
 
 void SSLShutdown (SSL* newSSL

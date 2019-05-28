@@ -21,11 +21,10 @@
 int TcpNewConnection(SockAddr_t* lAddr
                         , SockAddr_t* rAddr
                         , void* aStats
-                        , void* bStats
                         , void* cState){
 
     //stats
-    IncConnStats2(aStats, bStats, tcpConnInit);
+    IncConnStats(aStats, tcpConnInit);
 
     //check ipv6
     int is_ipv6;
@@ -40,10 +39,10 @@ int TcpNewConnection(SockAddr_t* lAddr
     }
 
     if (socket_fd == -1) {
-        IncConnStats2(aStats, bStats, socketCreateFail);
+        IncConnStats(aStats, socketCreateFail);
         SetCES(cState, STATE_TCP_SOCK_CREATE_FAIL);
     }else{
-        IncConnStats2(aStats, bStats, socketCreate);
+        IncConnStats(aStats, socketCreate);
         SetCS1(cState, STATE_TCP_SOCK_CREATE);
 
         int setsockopt_status = -1;
@@ -55,10 +54,10 @@ int TcpNewConnection(SockAddr_t* lAddr
         // printf ("IP_TRANSPARENT = %d\n", ret_val);
 
         if (setsockopt_status == -1){
-            IncConnStats2(aStats, bStats, socketReuseSetFail);
+            IncConnStats(aStats, socketReuseSetFail);
             SetCES(cState, STATE_TCP_SOCK_REUSE_FAIL);
         } else {
-            IncConnStats2(aStats, bStats, socketReuseSet);
+            IncConnStats(aStats, socketReuseSet);
             SetCS1(cState, STATE_TCP_SOCK_REUSE);
             //bind local socket
             int bind_status = -1;
@@ -74,16 +73,16 @@ int TcpNewConnection(SockAddr_t* lAddr
 
             if (bind_status == -1){
                 if (is_ipv6){
-                    IncConnStats2(aStats, bStats, socketBindIpv6Fail);
+                    IncConnStats(aStats, socketBindIpv6Fail);
                 }else{
-                    IncConnStats2(aStats, bStats, socketBindIpv4Fail);
+                    IncConnStats(aStats, socketBindIpv4Fail);
                 }
                 SetCES(cState, STATE_TCP_SOCK_BIND_FAIL);
             }else{
                 if (is_ipv6){
-                    IncConnStats2(aStats, bStats, socketBindIpv6);
+                    IncConnStats(aStats, socketBindIpv6);
                 }else{
-                    IncConnStats2(aStats, bStats, socketBindIpv4);
+                    IncConnStats(aStats, socketBindIpv4);
                 }
                 SetCS1(cState, STATE_TCP_SOCK_BIND);
 
@@ -107,13 +106,9 @@ int TcpNewConnection(SockAddr_t* lAddr
                     }else{
                         SetCES(cState, STATE_TCP_SOCK_CONNECT_FAIL_IMMEDIATE);
                         if ( (GetSysErrno(cState) == EADDRNOTAVAIL) ) {
-                            IncConnStats2(aStats
-                                        , bStats
-                                        , tcpConnInitFailImmediateEaddrNotAvail);
+                            IncConnStats(aStats, tcpConnInitFailImmediateEaddrNotAvail);
                         }else{
-                            IncConnStats2(aStats
-                                        , bStats
-                                        , tcpConnInitFailImmediateOther);
+                            IncConnStats(aStats, tcpConnInitFailImmediateOther);
                         }
                     }
                 }else{
@@ -126,10 +121,10 @@ int TcpNewConnection(SockAddr_t* lAddr
 
     if ( GetCES(cState) ){
 
-        IncConnStats2(aStats, bStats, tcpConnInitFail);
+        IncConnStats(aStats, tcpConnInitFail);
 
         if (socket_fd != -1){
-            TcpClose(socket_fd, 0, 0, aStats, bStats, cState);
+            TcpClose(socket_fd, 0, 0, aStats, cState);
         }
         return -1;
     }
@@ -139,7 +134,6 @@ int TcpNewConnection(SockAddr_t* lAddr
 
 void VerifyTcpConnectionEstablished(int fd
                                     , void* aStats
-                                    , void* bStats
                                     , void* cState){
     int socketErr;
     socklen_t socketErrBufLen = sizeof(int);
@@ -152,23 +146,17 @@ void VerifyTcpConnectionEstablished(int fd
     
     if ((retGetsockopt|socketErr) == 0){
         SetCS1 (cState, STATE_TCP_CONN_ESTABLISHED);
-        
-        IncConnStats2(aStats
-                    , bStats 
-                    , tcpConnInitSuccess);
+        IncConnStats(aStats, tcpConnInitSuccess);
     }else {
         SetCES(cState, STATE_TCP_SOCK_CONNECT_FAIL);
         SaveSockErrno(cState, socketErr);
-        IncConnStats2(aStats
-                    , bStats 
-                    , tcpConnInitFail);
+        IncConnStats(aStats, tcpConnInitFail);
     }
 }
 
 int TcpListenStart(SockAddr_t* lAddr
                     , int listenQLen
                     , void* aStats
-                    , void* bStats
                     , void* cState) {
 
     //check ipv6
@@ -184,10 +172,10 @@ int TcpListenStart(SockAddr_t* lAddr
     }
 
     if (socket_fd == -1) {
-        IncConnStats2(aStats, bStats, socketCreateFail);
+        IncConnStats(aStats, socketCreateFail);
         SetCES(cState, STATE_TCP_SOCK_CREATE_FAIL);
     }else{
-        IncConnStats2(aStats, bStats, socketCreate);
+        IncConnStats(aStats, socketCreate);
         SetCS1(cState, STATE_TCP_SOCK_CREATE);
 
         //???
@@ -221,16 +209,16 @@ int TcpListenStart(SockAddr_t* lAddr
 
         if (bind_status == -1){
             if (is_ipv6){
-                IncConnStats2(aStats, bStats, socketBindIpv6Fail);
+                IncConnStats(aStats, socketBindIpv6Fail);
             }else{
-                IncConnStats2(aStats, bStats, socketBindIpv4Fail);
+                IncConnStats(aStats, socketBindIpv4Fail);
             }
             SetCES(cState, STATE_TCP_SOCK_BIND_FAIL);
         }else{
             if (is_ipv6){
-                IncConnStats2(aStats, bStats, socketBindIpv6);
+                IncConnStats(aStats, socketBindIpv6);
             }else{
-                IncConnStats2(aStats, bStats, socketBindIpv4);
+                IncConnStats(aStats, socketBindIpv4);
             }
             SetCS1(cState, STATE_TCP_SOCK_BIND);
 
@@ -249,10 +237,10 @@ int TcpListenStart(SockAddr_t* lAddr
 
     if ( GetCES(cState) ){
 
-        IncConnStats2(aStats, bStats, tcpListenStartFail);
+        IncConnStats(aStats, tcpListenStartFail);
 
         if (socket_fd != -1){
-            TcpClose(socket_fd, 0, 0, aStats, bStats, cState);
+            TcpClose(socket_fd, 0, 0, aStats, cState);
         }
         return -1;
     }
@@ -264,7 +252,6 @@ void TcpClose(int fd
                 , int isLinger
                 , int lingerTime
                 , void* aStats
-                , void* bStats
                 , void* cState) {
 
     if (isLinger) {
@@ -276,10 +263,10 @@ void TcpClose(int fd
             = setsockopt(fd, SOL_SOCKET, SO_LINGER, &sl, sizeof(sl));
         
         if (lingerStatus < 0) {
-            IncConnStats2(aStats, bStats, socketLingerSetFail);
+            IncConnStats(aStats, socketLingerSetFail);
             SetCES(cState, STATE_TCP_SOCK_LINGER_FAIL);
         } else {
-            IncConnStats2(aStats, bStats, socketLingerSet);
+            IncConnStats(aStats, socketLingerSet);
             SetCS1(cState, STATE_TCP_SOCK_LINGER);
         }
     }
@@ -303,17 +290,16 @@ int TcpWrite(int fd
                 , const char* dataBuffer
                 , int dataLen
                 , void* aStats
-                , void* bStats
                 , void* cState) {
     // int bytesSent = send(fd, dataBuffer, dataLen, MSG_NOSIGNAL);
     int bytesSent = write(fd, dataBuffer, dataLen);
 
     if (bytesSent <= 0){
         SetCES(cState, STATE_TCP_SOCK_WRITE_FAIL);
-        IncConnStats2(aStats, bStats, tcpWriteFail);
+        IncConnStats(aStats, tcpWriteFail);
 
         if (bytesSent == 0) {
-            IncConnStats2(aStats, bStats, tcpWriteReturnsZero);
+            IncConnStats(aStats, tcpWriteReturnsZero);
         }
     }
 
@@ -324,7 +310,6 @@ int TcpRead(int fd
                 , char* dataBuffer
                 , int dataLen
                 , void* aStats
-                , void* bStats
                 , void* cState) {
     int bytesRead = read(fd, dataBuffer, dataLen);
 
@@ -346,7 +331,7 @@ int TcpRead(int fd
             //nothing to read; retry
         } else {
             SetCES(cState, STATE_TCP_SOCK_READ_FAIL);
-            IncConnStats2(aStats, bStats, tcpReadFail);
+            IncConnStats(aStats, tcpReadFail);
         }
     }
 
@@ -357,7 +342,6 @@ int TcpAcceptConnection(int listenerFd
                         , SockAddr_t* lAddr
                         , SockAddr_t* rAddr
                         , void* aStats
-                        , void* bStats
                         , void* cState) {
     
     SetCS1(cState, STATE_TCP_CONN_ACCEPT);
@@ -370,14 +354,12 @@ int TcpAcceptConnection(int listenerFd
                         , &addrLen);
     
     if (socket_fd < 0) {
-        IncConnStats2(aStats, bStats, tcpAcceptFail);
+        IncConnStats(aStats, tcpAcceptFail);
         SetCES(cState, STATE_TCP_CONN_ACCEPT_FAIL);        
     } else {
         SetCS1 (cState, STATE_TCP_CONN_ESTABLISHED);
 
-        IncConnStats2(aStats
-                    , bStats 
-                    , tcpAcceptSuccess);
+        IncConnStats(aStats, tcpAcceptSuccess);
 
         int flags = fcntl(socket_fd, F_GETFL, 0);
         if (flags < 0) {
@@ -394,16 +376,16 @@ int TcpAcceptConnection(int listenerFd
                 ret = setsockopt(socket_fd, SOL_SOCKET
                                 , SO_REUSEADDR, &(int){ 1 }, sizeof(int));
                 if (ret < 0) {
-                    IncConnStats2(aStats, bStats, socketReuseSetFail);
+                    IncConnStats(aStats, socketReuseSetFail);
                     SetCES(cState, STATE_TCP_SOCK_REUSE_FAIL);
                 } else {
-                    IncConnStats2(aStats, bStats, socketReuseSet);
+                    IncConnStats(aStats, socketReuseSet);
                     SetCS1(cState, STATE_TCP_SOCK_REUSE);
 
                     addrLen = sizeof (SockAddr_t);
                     ret = getsockname(socket_fd, (struct sockaddr*) lAddr, &addrLen);
                     if (ret < 0) {
-                        IncConnStats2(aStats, bStats, tcpGetSockNameFail);
+                        IncConnStats(aStats, tcpGetSockNameFail);
                         SetCES(cState, STATE_TCP_GETSOCKNAME_FAIL);
                     }
                 }
@@ -413,7 +395,7 @@ int TcpAcceptConnection(int listenerFd
 
     if ( GetCES(cState) ){
         if (socket_fd != -1){
-            TcpClose(socket_fd, 0, 0, aStats, bStats, cState);
+            TcpClose(socket_fd, 0, 0, aStats, cState);
         }
         return -1;
     }
@@ -425,12 +407,11 @@ void DoSSLConnect(SSL* newSSL
                     , int fd
                     , int isClient
                     , void* aStats
-                    , void* bStats
                     , void* cState) {
 
     if (IsSetCS1(cState, STATE_SSL_CONN_INIT) == 0) {
         SetCS1(cState, STATE_SSL_CONN_INIT);
-        IncConnStats2(aStats, bStats, sslConnInit);
+        IncConnStats(aStats, sslConnInit);
         int status = SSL_set_fd(newSSL, fd);
 
         if (status != 1) {
@@ -451,11 +432,11 @@ void DoSSLConnect(SSL* newSSL
         int sslErrno = SSL_get_error (newSSL, status);
         if (status == 1) {
             SetCS1(cState, STATE_SSL_CONN_ESTABLISHED);
-            IncConnStats2(aStats, bStats, sslConnInitSuccess);
+            IncConnStats(aStats, sslConnInitSuccess);
         } else if (status == -1) {
             if (IsSetCS1(cState, STATE_SSL_CONN_IN_PROGRESS) == 0) {
                 SetCS1(cState, STATE_SSL_CONN_IN_PROGRESS);
-                IncConnStats2(aStats, bStats, sslConnInitProgress);
+                IncConnStats(aStats, sslConnInitProgress);
             }
             switch (sslErrno) {
                 case SSL_ERROR_WANT_READ:
@@ -468,14 +449,14 @@ void DoSSLConnect(SSL* newSSL
                     SetCESSL(cState
                                 , STATE_SSL_SOCK_CONNECT_FAIL
                                 , sslErrno);
-                    IncConnStats2(aStats, bStats, sslConnInitFail);
+                    IncConnStats(aStats, sslConnInitFail);
                     break;  
             }  
         } else {
             SetCESSL(cState
                         , STATE_SSL_SOCK_CONNECT_FAIL
                         , sslErrno);
-            IncConnStats2(aStats, bStats, sslConnInitFail);
+            IncConnStats(aStats, sslConnInitFail);
         }               
     }
 }
@@ -484,7 +465,6 @@ int SSLRead (SSL* newSSL
                 , char* dataBuffer
                 , int dataLen
                 , void* aStats
-                , void* bStats
                 , void* cState) {
 
     int bytesSent = SSL_read(newSSL, dataBuffer, dataLen);
@@ -514,7 +494,6 @@ int SSLWrite (SSL* newSSL
                 , const char* dataBuffer
                 , int dataLen
                 , void* aStats
-                , void* bStats
                 , void* cState) {
 
     int bytesSent = SSL_write(newSSL, dataBuffer, dataLen);
