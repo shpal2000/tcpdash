@@ -70,7 +70,7 @@ const TcpCsConfig2 = `{
     "connPerSec" : 500,
     "maxActSessions" : 20000,
     "maxErrSessions" : 20000,
-    "maxSessions" : 100,
+    "maxSessions" : 8000000,
     "csGroupArr" : [
         {
             "clientAddrArr" : [ "12.20.50.32"

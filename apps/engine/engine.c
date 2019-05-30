@@ -150,12 +150,18 @@ static int App_ctx_setup (EngCtx_t* engCtx) {
         status = -1; //??? log
     } else {
         for (int i = 0; i < engCtx->appCount; i++) {
+            JObject* appCfg = NULL; //??? todo
             AppCtxW_t* appCtxW = &engCtx->appCtxWArr[i];
             if ( App_get_methods (appCtxW) ) {
                 status = -1; //??? log
                 break;
             }
-            // appCtxW->appCtx = (*appCtxW->appMethods.AppInit)();
+            appCtxW->appCtx = (*appCtxW->appMethods.OnAppInit)(appCfg, i);
+            if (appCtxW->appCtx) {
+                appCtxW->appStatus = APP_STATUS_RUNNING;
+            } else {
+                appCtxW->appStatus = APP_STATUS_INIT_FAIL;
+            }
         }
     }
 
@@ -177,10 +183,10 @@ static int IoVent_ctx_setup (EngCtx_t* engCtx) {
     iovMethods.OnContinue = NULL;
 
     IoVentOptions_t iovOptions;
-    iovOptions.maxActiveConnections = 1;
-    iovOptions.maxErrorConnections = 1;
+    iovOptions.maxActiveConnections = APP_ENGINE_MAX_ACTIVE_CONNECTION;
+    iovOptions.maxErrorConnections = APP_ENGINE_MAX_ERROR_CONNECTION;
+    iovOptions.eventPTO = APP_ENGINE_MAX_POLL_TIMEOUT;
     iovOptions.maxEvents = 0;
-    iovOptions.eventPTO = DEFAULT_MAX_POLL_TIMEOUT;
 
     engCtx->iovCtx = CreateIoVentCtx (&iovMethods, &iovOptions, engCtx);
     
@@ -226,9 +232,32 @@ static int Engine_loop (EngCtx_t* engCtx) {
             Engine_post_stats (engCtx);
         }
 
+        int appRunning = 0;
         for (int i = 0; i < engCtx->appCount; i++) {
             AppCtxW_t* appCtxW = &engCtx->appCtxWArr[i];
-            (*appCtxW->appMethods.OnRunLoop)(appCtxW->appCtx);
+            if ( appCtxW->appStatus == APP_STATUS_RUNNING ) {
+                int loopStatus = (*appCtxW->appMethods.OnAppLoop)(appCtxW->appCtx);
+                if (loopStatus){
+                    if (loopStatus > 0) {
+                        appCtxW->appStatus = APP_STATUS_EXIT;
+                    } else {
+                        appCtxW->appStatus = APP_STATUS_EXIT_WITH_ERROR;
+                    }
+                } else {
+                    appRunning = 1;
+                }
+            }
+        }
+
+        if (appRunning == 0) {
+            break;
+        }
+    }
+
+    for (int i = 0; i < engCtx->appCount; i++) {
+        AppCtxW_t* appCtxW = &engCtx->appCtxWArr[i];
+        if ( appCtxW->appStatus >= APP_STATUS_EXIT ) {
+            (*appCtxW->appMethods.OnAppExit)(appCtxW->appCtx);
         }
     }
 
@@ -265,11 +294,11 @@ int main(int argc, char** argv) {
     Engine_loop (engCtx);
 }
 
-int App_conn_new (AppCtx_t* appCtx
-                        , AppSess_t* appSess
-                        , SockAddr_t* localAddr
-                        , SockAddr_t* remoteAddr
-                        ) {
+int App_conn_new (int appId
+                    , AppSess_t* appSess
+                    , SockAddr_t* localAddr
+                    , SockAddr_t* remoteAddr
+                    ) {
 
     // return NewConnection ();
     return 0;
