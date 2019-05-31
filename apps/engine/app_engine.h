@@ -97,6 +97,9 @@ typedef struct EngCtx {
 
 } EngCtx_t;
 
+int nAdmin_channel_setup(EngCtx_t* engCtx);
+int App_get_methods (AppCtxW_t* appCtxW);
+
 int App_conn_new (int appId
                         , AppSess_t* appSess
                         , SockAddr_t* localAddr
