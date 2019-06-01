@@ -39,29 +39,46 @@ static void OnCleanup (struct IoVentConn* iovConn) {
 static int App_ctx_setup (EngCtx_t* engCtx) {
     
     int status = 0;
-
     engCtx->appCount = 0;
-    //todo parse config and find app count
 
-    engCtx->appCtxWArr = CreateArray0 (AppCtxW_t, engCtx->appCount);
-    if (engCtx->appCtxWArr == NULL) {
-        status = -1; //??? log
-    } else {
-        for (int i = 0; i < engCtx->appCount; i++) {
-            JObject* appCfg = NULL; //??? todo
-            AppCtxW_t* appCtxW = &engCtx->appCtxWArr[i];
-            if ( App_get_methods (appCtxW) ) {
+    JNode* cfgNode;
+    JObject* cfgObj;
+
+    JGET_ROOT_NODE (engCtx->cfgData, &cfgNode, &cfgObj);
+    if (cfgNode) {
+        JArray* appArrJ;
+        JGET_MEMBER_ARR (cfgObj, "appList", &appArrJ);
+        engCtx->appCount = JGET_ARR_LEN (appArrJ);
+        if (engCtx->appCount) {
+            engCtx->appCtxWArr = CreateArray0 (AppCtxW_t, engCtx->appCount);
+            if (engCtx->appCtxWArr == NULL) {
                 status = -1; //??? log
-                break;
-            }
-            appCtxW->appCtx = (*appCtxW->appMethods.OnAppInit)(appCfg, i);
-            if (appCtxW->appCtx) {
-                appCtxW->appStatus = APP_STATUS_RUNNING;
             } else {
-                appCtxW->appStatus = APP_STATUS_INIT_FAIL;
+                for (int appIndex = 0; appIndex < engCtx->appCount; appIndex++) {
+                    AppCtxW_t* appCtxW = &engCtx->appCtxWArr[appIndex];
+                    JObject* appJ = JGET_ARR_ELEMENT_OBJ (appArrJ, appIndex);
+                    appCtxW->appIndex = appIndex;
+                    appCtxW->appStatus = APP_STATUS_INIT;
+                    JGET_MEMBER_STR (appJ, "appName", &appCtxW->appName);
+                    if ( App_get_methods (appCtxW) ) {
+                        status = -1; //??? log
+                        break;
+                    }
+                    if ( App_parse_config (appCtxW, appJ) ){
+                        status = -1; //??? log
+                        break;
+                    }
+                    appCtxW->appStatus = APP_STATUS_RUNNING;
+                }
             }
+        } else {
+            status = -1; //??? log
         }
+    } else {
+            status = -1; //??? log
     }
+
+
 
     return status;
 }
@@ -107,14 +124,14 @@ static int App_library_init (EngCtx_t* engCtx) {
 
 static void Engine_post_stats (EngCtx_t* engCtx) {
 
-    char statsString[256];
+    // char statsString[256];
 
     engCtx->lastStatsPost = MsgIoTimeElapsed (engCtx->chanId);
 
     // statsString = 
     MsgIoSend (engCtx->chanId
-                , statsString
-                , strlen(statsString) );
+                , "1234"
+                , strlen("1234") );
 }
 
 static int Engine_loop (EngCtx_t* engCtx) {

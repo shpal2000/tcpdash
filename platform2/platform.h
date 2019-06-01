@@ -483,7 +483,7 @@ typedef JsonArray JArray;
 #define JGET_MEMBER_STR(__obj,__name,__strp) \
 { \
     JsonNode* __node = json_object_get_member(__obj,__name); \
-    *(__strp) = json_node_get_string(__node); \
+    *(__strp) = (char*) json_node_get_string(__node); \
 } \
 
 #define JGET_MEMBER_ARR(__obj,__name,__arrp) \

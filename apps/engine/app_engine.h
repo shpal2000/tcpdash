@@ -9,8 +9,8 @@
 #define APP_ENGINE_MAX_ERROR_CONNECTION     100000
 #define APP_ENGINE_MAX_POLL_TIMEOUT         100
 
-#define APP_STATUS_INIT_FAIL                1
-#define APP_STATUS_RUNNING                  2
+#define APP_STATUS_INIT                     0
+#define APP_STATUS_RUNNING                  1
 #define APP_STATUS_EXIT                     100
 #define APP_STATUS_EXIT_WITH_ERROR          101
 
@@ -20,7 +20,7 @@ typedef void AppCtx_t;
 
 typedef struct AppMethods {
 
-    AppCtx_t* (*OnAppInit) (JObject* appCfg, int appId);
+    AppCtx_t* (*OnAppInit) (JObject* appCfg, int appIndex);
     int (*OnAppLoop) (AppCtx_t* appCtx);
     int (*OnAppExit) (AppCtx_t* appCtx);
 
@@ -61,16 +61,18 @@ typedef struct AppMethods {
 
 typedef struct AppCtxW {
 
-    AppCtx_t* appCtx;
+    char* appName;
+    int appIndex;
     int appStatus;
 
-    int appTypeId;
-    void* appCfgData;
-    void* appUserData;
+    uint32_t connPerSec;
+    uint32_t maxActSess;
+    uint32_t maxErrSess;
+    uint64_t maxSess;
+
+    AppCtx_t* appCtx;
 
     AppMethods_t appMethods;
-    int appId;
-    char* appName;
 
 } AppCtxW_t;
 
@@ -99,6 +101,7 @@ typedef struct EngCtx {
 
 int nAdmin_channel_setup(EngCtx_t* engCtx);
 int App_get_methods (AppCtxW_t* appCtxW);
+int App_parse_config (AppCtxW_t* appCtxW, JObject* appJ);
 
 int App_conn_new (int appId
                         , AppSess_t* appSess

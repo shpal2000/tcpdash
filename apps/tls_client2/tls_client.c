@@ -5,13 +5,12 @@
 static void FreeSession (TlsClientSession_t* newSess) {
 }
 
-static AppCtx_t* OnAppInit (JObject* appCfg, int appId) {
+static AppCtx_t* OnAppInit (JObject* appCfg, int appIndex) {
 
-    return NULL;
+    return CreateStruct0 (TlsClientI_t);
 }
 
 static int OnAppLoop (AppCtx_t* appCtx) {
-
     return 0;
 }
 

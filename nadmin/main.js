@@ -211,6 +211,37 @@ const TcpCsConfig4 = `{
         }
     ]
 }`;
+
+const TcpCsConfig5 = `{
+    "appList" : [
+        {
+            "appName" : "TlsClient",
+            "connPerSec" : 500,
+            "maxActSess" : 10000,
+            "maxErrSess" : 10000,
+            "maxSess" : 1000000
+
+        },
+        
+        {
+            "appName" : "TlsClient",
+            "connPerSec" : 500,
+            "maxActSess" : 10000,
+            "maxErrSess" : 10000,
+            "maxSess" : 1000000
+
+        },
+        {
+            "appName" : "TlsClient",
+            "connPerSec" : 500,
+            "maxActSess" : 10000,
+            "maxErrSess" : 10000,
+            "maxSess" : 1000000
+
+        }
+    ]
+}`;
+
 msgIoServer.listen(msgIoPort, host, () => {
     console.log('msgIoServer running on port ' + msgIoPort + '.');
 });
@@ -231,6 +262,9 @@ function msgIoHandler (sock, sockCtx, rcvMsg) {
             break;
         case 'test4':
             sendMsg = TcpCsConfig4;
+            break;
+        case 'test5':
+            sendMsg = TcpCsConfig5;
             break;
     }
 
