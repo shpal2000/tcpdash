@@ -23,7 +23,7 @@ typedef struct AppMethods {
     AppCtx_t* (*OnAppInit) (JObject* appCfg, int appIndex);
     int (*OnAppLoop) (AppCtx_t* appCtx);
     void (*OnAppExit) (AppCtx_t* appCtx);
-    void (*OnTick) (AppCtx_t* appCtx);
+    void (*OnMinTick) (AppCtx_t* appCtx);
 
     void (*OnEstablish) (AppConn_t* appConn
                             , AppSess_t* appSess
@@ -97,10 +97,10 @@ typedef struct EngCtx {
     AppCtxW_t* appCtxWArr;
 
     double lastTickTime;
-    int twoSecTick;
-    int fiveSecTick;
-    int tenSecTick;
-    int fifteenSecTick;
+    uint64_t tickCount;
+    int tick5Count;
+    int tick60Count;
+    int isMinTick;
 
 } EngCtx_t;
 

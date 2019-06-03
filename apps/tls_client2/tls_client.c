@@ -18,8 +18,8 @@ static void OnAppExit (AppCtx_t* appCtx) {
 
 }
 
-static void OnTick (AppCtx_t* appCtx) {
-
+static void OnMinTick (AppCtx_t* appCtx) {
+    puts ("OnMinTick\n");
 }
 
 static void OnEstablish (AppConn_t* appConn
@@ -73,7 +73,7 @@ void TlsClient_get_methods (AppMethods_t* appMethods) {
     appMethods->OnAppInit = &OnAppInit;
     appMethods->OnAppLoop = &OnAppLoop;
     appMethods->OnAppExit = &OnAppExit;
-    appMethods->OnTick = &OnTick;
+    appMethods->OnMinTick = &OnMinTick;
 
     appMethods->OnEstablish = &OnEstablish;
     appMethods->OnEstablishErr = &OnEstablishErr;

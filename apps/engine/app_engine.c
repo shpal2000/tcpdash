@@ -122,7 +122,7 @@ static int App_library_init (EngCtx_t* engCtx) {
     return 0;
 }
 
-static void Engine_post_1sec_stats (EngCtx_t* engCtx) {
+static void Engine_post_1sec_tick (EngCtx_t* engCtx) {
 
     // statsString = 
     MsgIoSend (engCtx->chanId
@@ -130,89 +130,56 @@ static void Engine_post_1sec_stats (EngCtx_t* engCtx) {
                 , strlen("1") );
 }
 
-static void Engine_post_2sec_stats (EngCtx_t* engCtx) {
+static void Engine_post_5sec_tick (EngCtx_t* engCtx) {
 
     // statsString = 
     MsgIoSend (engCtx->chanId
-                , "2"
-                , strlen("2") );
+                , "5"
+                , strlen("5") );
 }
 
-// static void Engine_post_5sec_stats (EngCtx_t* engCtx) {
-
-//     // statsString = 
-//     MsgIoSend (engCtx->chanId
-//                 , "5"
-//                 , strlen("5") );
-// }
-
-// static void Engine_post_10sec_stats (EngCtx_t* engCtx) {
-
-//     // statsString = 
-//     MsgIoSend (engCtx->chanId
-//                 , "10"
-//                 , strlen("10") );
-// }
-
-static void Engine_post_15sec_stats (EngCtx_t* engCtx) {
-
-    // statsString = 
-    MsgIoSend (engCtx->chanId
-                , "15"
-                , strlen("15") );
+static void Engine_post_60sec_tick (EngCtx_t* engCtx) {
+    engCtx->isMinTick = 1;
 }
 
 static void Engine_tick (EngCtx_t* engCtx) {
     engCtx->lastTickTime = MsgIoTimeElapsed (engCtx->chanId);
+    engCtx->tickCount += 1;
 
-    Engine_post_1sec_stats (engCtx);
+    Engine_post_1sec_tick (engCtx);
 
-    engCtx->twoSecTick++;
-    if (engCtx->twoSecTick == 2) {
-        engCtx->twoSecTick = 0;
-        Engine_post_2sec_stats (engCtx);
+    engCtx->tick5Count++;
+    if (engCtx->tick5Count == 5) {
+        engCtx->tick5Count = 0;
+        Engine_post_5sec_tick (engCtx);
     }
 
-    engCtx->fiveSecTick++;
-    if (engCtx->fiveSecTick == 5) {
-        engCtx->fiveSecTick = 0;
-        // Engine_post_5sec_stats (engCtx);
-    }
-
-    engCtx->tenSecTick++;
-    if (engCtx->tenSecTick == 10) {
-        engCtx->tenSecTick = 0;
-        // Engine_post_10sec_stats (engCtx);
-    }
-
-    engCtx->fifteenSecTick++;
-    if (engCtx->fifteenSecTick == 15) {
-        engCtx->fifteenSecTick = 0;
-        // Engine_post_15sec_stats (engCtx);
+    engCtx->tick60Count++;
+    if (engCtx->tick60Count == 60) {
+        engCtx->tick60Count = 0;
+        Engine_post_60sec_tick (engCtx);
     }
 }
 
 static int Engine_loop (EngCtx_t* engCtx) {
 
     int status = 0;
-    int isTick = 0;    
 
     while (1) {
         MsgIoProcess (engCtx->chanId);
 
         ProcessIoVent (engCtx->iovCtx);
 
-        if ( (MsgIoTimeElapsed (engCtx->chanId) - engCtx->lastTickTime) >= 1 ) { 
+        if ( (MsgIoTimeElapsed (engCtx->chanId) - engCtx->lastTickTime) >= 1 ) {
             Engine_tick (engCtx);
-            isTick = 1;
         }
 
         int appRunning = 0;
         for (int i = 0; i < engCtx->appCount; i++) {
             AppCtxW_t* appCtxW = &engCtx->appCtxWArr[i];
             if ( appCtxW->appStatus == APP_STATUS_RUNNING ) {
-                if (isTick) {
-                    (*appCtxW->appMethods.OnTick)(appCtxW->appCtx);
+                if (engCtx->isMinTick) {
+                    (*appCtxW->appMethods.OnMinTick)(appCtxW->appCtx);
                 } 
                 int loopStatus 
                             = (*appCtxW->appMethods.OnAppLoop)(appCtxW->appCtx);
@@ -227,7 +194,7 @@ static int Engine_loop (EngCtx_t* engCtx) {
                 }
             }
         }
-        isTick = 0;
+        engCtx->isMinTick = 0;
 
         if (appRunning == 0) {
             break;
