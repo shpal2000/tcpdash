@@ -21,7 +21,7 @@ const TcpCsConfig1 = `{
     "connPerSec" : 500,
     "maxActSessions" : 20000,
     "maxErrSessions" : 20000,
-    "maxSessions" : 100,
+    "maxSessions" : 1,
     "csGroupArr" : [
         {
             "clientAddrArr" : [ "12.20.50.2"
@@ -221,8 +221,23 @@ const TcpCsConfig5 = `{
             "maxErrSess" : 10000,
             "maxSess" : 1000000
 
+            "csList" : [
+                {
+                    "cIps"  : ["12.20.50.92", "12.20.50.93"]
+                    "sIp"   : "12.20.60.5",
+                    "sPort" : 443,
+                    "ciphList" : [],
+                },
+
+                {
+                    "cIps"  : ["12.20.50.94", "12.20.50.95"]
+                    "sIp"   : "12.20.60.6",
+                    "sPort" : 443,
+                    "ciphList" : [],
+                },
+            ]
         },
-        
+
         {
             "appName" : "TlsClient",
             "connPerSec" : 500,
@@ -230,14 +245,60 @@ const TcpCsConfig5 = `{
             "maxErrSess" : 10000,
             "maxSess" : 1000000
 
-        },
-        {
-            "appName" : "TlsClient",
-            "connPerSec" : 500,
-            "maxActSess" : 10000,
-            "maxErrSess" : 10000,
-            "maxSess" : 1000000
+            "csList" : [
+                {
+                    "cIps"  : ["12.20.50.96", "12.20.50.97"]
+                    "sIp"   : "12.20.60.7",
+                    "sPort" : 443,
+                    "ciphList" : [],
+                },
 
+                {
+                    "cIps"  : ["12.20.50.98", "12.20.50.99"]
+                    "sIp"   : "12.20.60.8",
+                    "sPort" : 443,
+                    "ciphList" : [],
+                },
+            ]
+        }
+    ]
+}`;
+
+
+const TcpCsConfig6 = `{
+    "appList" : [
+        {
+            "appName" : "TlsServer",
+            "sList" : [
+                {
+                    "sIp"   : "12.20.60.5",
+                    "sPort" : 443,
+                    "ciphList" : [],
+                },
+
+                {
+                    "sIp"   : "12.20.60.6",
+                    "sPort" : 443,
+                    "ciphList" : [],
+                },
+            ]
+        },
+
+        {
+            "appName" : "TlsServer",
+            "sList" : [
+                {
+                    "sIp"   : "12.20.60.7",
+                    "sPort" : 443,
+                    "ciphList" : [],
+                },
+
+                {
+                    "sIp"   : "12.20.60.8",
+                    "sPort" : 443,
+                    "ciphList" : [],
+                },
+            ]
         }
     ]
 }`;
@@ -265,6 +326,12 @@ function msgIoHandler (sock, sockCtx, rcvMsg) {
             break;
         case 'test5':
             sendMsg = TcpCsConfig5;
+            break;
+        case 'test5':
+            sendMsg = TcpCsConfig5;
+            break;
+        case 'test6':
+            sendMsg = TcpCsConfig6;
             break;
     }
 
