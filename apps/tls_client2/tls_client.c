@@ -5,9 +5,18 @@
 static void FreeSession (TlsClientSession_t* newSess) {
 }
 
-static AppCtx_t* OnAppInit (JObject* appCfg, int appIndex) {
+static AppCtx_t* OnAppInit (JObject* appJ, int appIndex) {
 
-    return CreateStruct0 (TlsClientI_t);
+    TlsClientI_t* appCtx = CreateStruct0 (TlsClientI_t);
+
+    if (appCtx) {
+        JGET_MEMBER_INT (appJ, "connPerSec", &appCtx->connPerSec);
+        JGET_MEMBER_INT (appJ, "maxActSess", &appCtx->maxActSess);
+        JGET_MEMBER_INT (appJ, "maxErrSess", &appCtx->maxErrSess);
+        JGET_MEMBER_INT (appJ, "maxSess", &appCtx->maxSess);
+    }
+
+    return appCtx;
 }
 
 static int OnAppLoop (AppCtx_t* appCtx) {

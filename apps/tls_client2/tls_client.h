@@ -23,9 +23,9 @@ typedef struct TlsClientGroup {
 
 typedef struct TlsClientI {
     uint32_t connPerSec;
-    uint32_t maxActSessions;
-    uint32_t maxErrSessions;
-    uint64_t maxSessions;
+    uint32_t maxActSess;
+    uint32_t maxErrSess;
+    uint64_t maxSess;
     uint32_t csGroupCount;
     TlsClientGroup_t* csGroupArr;
     uint32_t nextCsGroupIndex;

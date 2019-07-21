@@ -1,0 +1,54 @@
+
+{
+    "cApps" : {
+        "appList" : [
+            {
+                "appName" : "TlsClient",
+                "connPerSec" : 500,
+                "maxActSess" : 10000,
+                "maxErrSess" : 10000,
+                "maxSess" : 1000000,
+                "csGrps" : [
+                    {
+                        "cIpList"  : ["12.20.50.92", "12.20.50.93"],
+                        "cPortBegList"  : [10000, 20000],
+                        "cPortEndList"  : [19999, 29999],
+                        "sIp"   : "12.20.60.5",
+                        "sPort" : 443,
+                        "ciphList" : []
+                    },
+
+                    {
+                        "cIpList"  : ["12.20.50.92", "12.20.50.93"],
+                        "cPortBegList"  : [10000, 20000],
+                        "cPortEndList"  : [19999, 29999],
+                        "sIp"   : "12.20.60.6",
+                        "sPort" : 443,
+                        "ciphList" : []
+                    }
+                ]
+            }
+       ]
+    },
+
+    "sApps" : {
+       "appList" : [
+            {
+                "appName" : "TlsServer",
+                "srvList" : [
+                    {
+                        "sIp"   : "12.20.60.5",
+                        "sPort" : 443,
+                        "ciphList" : []
+                    },
+
+                    {
+                        "sIp"   : "12.20.60.6",
+                        "sPort" : 443,
+                        "ciphList" : []
+                    }
+                ]
+            }
+        ]
+    }
+}

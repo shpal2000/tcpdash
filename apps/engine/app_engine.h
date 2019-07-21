@@ -66,11 +66,6 @@ typedef struct AppCtxW {
     int appIndex;
     int appStatus;
 
-    uint32_t connPerSec;
-    uint32_t maxActSess;
-    uint32_t maxErrSess;
-    uint64_t maxSess;
-
     AppCtx_t* appCtx;
 
     AppMethods_t appMethods;

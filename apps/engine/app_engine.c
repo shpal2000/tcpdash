@@ -42,43 +42,47 @@ static int App_ctx_setup (EngCtx_t* engCtx) {
     engCtx->appCount = 0;
 
     JNode* cfgNode;
+    JObject* cfgObjAll;
     JObject* cfgObj;
 
-    JGET_ROOT_NODE (engCtx->cfgData, &cfgNode, &cfgObj);
-    if (cfgNode) {
-        JArray* appArrJ;
-        JGET_MEMBER_ARR (cfgObj, "appList", &appArrJ);
-        engCtx->appCount = JGET_ARR_LEN (appArrJ);
-        if (engCtx->appCount) {
-            engCtx->appCtxWArr = CreateArray0 (AppCtxW_t, engCtx->appCount);
-            if (engCtx->appCtxWArr == NULL) {
-                status = -1; //??? log
-            } else {
-                for (int appIndex = 0; appIndex < engCtx->appCount; appIndex++) {
-                    AppCtxW_t* appCtxW = &engCtx->appCtxWArr[appIndex];
-                    JObject* appJ = JGET_ARR_ELEMENT_OBJ (appArrJ, appIndex);
-                    appCtxW->appIndex = appIndex;
-                    appCtxW->appStatus = APP_STATUS_INIT;
-                    JGET_MEMBER_STR (appJ, "appName", &appCtxW->appName);
-                    if ( App_get_methods (appCtxW) ) {
-                        status = -1; //??? log
-                        break;
+    JGET_ROOT_NODE (engCtx->cfgData, &cfgNode, &cfgObjAll);
+    if (cfgObjAll) {
+        JGET_MEMBER_OBJ (cfgObjA, engCtx->testCfgSelect, &cfgObj);
+        if (cfgObj) {
+            JArray* appArrJ;
+            JGET_MEMBER_ARR (cfgObj, "appList", &appArrJ);
+            engCtx->appCount = JGET_ARR_LEN (appArrJ);
+            if (engCtx->appCount) {
+                engCtx->appCtxWArr = CreateArray0 (AppCtxW_t, engCtx->appCount);
+                if (engCtx->appCtxWArr == NULL) {
+                    status = -1; //??? log
+                } else {
+                    for (int appIndex = 0; appIndex < engCtx->appCount; appIndex++) {
+                        AppCtxW_t* appCtxW = &engCtx->appCtxWArr[appIndex];
+                        JObject* appJ = JGET_ARR_ELEMENT_OBJ (appArrJ, appIndex);
+                        appCtxW->appIndex = appIndex;
+                        appCtxW->appStatus = APP_STATUS_INIT;
+                        JGET_MEMBER_STR (appJ, "appName", &appCtxW->appName);
+                        if ( App_get_methods (appCtxW) ) {
+                            status = -1; //??? log
+                            break;
+                        }
+                        if ( App_parse_config (appCtxW, appJ) ){
+                            status = -1; //??? log
+                            break;
+                        }
+                        appCtxW->appStatus = APP_STATUS_RUNNING;
                     }
-                    if ( App_parse_config (appCtxW, appJ) ){
-                        status = -1; //??? log
-                        break;
-                    }
-                    appCtxW->appStatus = APP_STATUS_RUNNING;
                 }
+            } else {
+                status = -1; //??? log
             }
         } else {
-            status = -1; //??? log
+            status = -1; //??? log    
         }
     } else {
             status = -1; //??? log
     }
-
-
 
     return status;
 }
@@ -220,7 +224,8 @@ int main(int argc, char** argv) {
     engCtx->nAdminIp = argv[1];
     engCtx->nAdminPort = atoi(argv[2]);
     engCtx->testCfgId = argv[3];
-    engCtx->testRunId = argv[4];
+    engCtx->testCfgSelect = argv[4];
+    engCtx->testRunId = argv[5];
     
     if ( nAdmin_channel_setup (engCtx) ) {
         exit (-1); //???

@@ -212,95 +212,58 @@ const TcpCsConfig4 = `{
     ]
 }`;
 
-const TcpCsConfig5 = `{
-    "appList" : [
-        {
-            "appName" : "TlsClient",
-            "connPerSec" : 500,
-            "maxActSess" : 10000,
-            "maxErrSess" : 10000,
-            "maxSess" : 1000000
+const config6 = `{
+    "cApps" : {
+        "appList" : [
+            {
+                "appName" : "TlsClient",
+                "connPerSec" : 500,
+                "maxActSess" : 10000,
+                "maxErrSess" : 10000,
+                "maxSess" : 1000000,
+                "csGrps" : [
+                    {
+                        "cIpList"  : ["12.20.50.92", "12.20.50.93"],
+                        "cPortBegList"  : [10000, 20000],
+                        "cPortEndList"  : [19999, 29999],
+                        "sIp"   : "12.20.60.5",
+                        "sPort" : 443,
+                        "ciphList" : []
+                    },
 
-            "csList" : [
-                {
-                    "cIps"  : ["12.20.50.92", "12.20.50.93"]
-                    "sIp"   : "12.20.60.5",
-                    "sPort" : 443,
-                    "ciphList" : [],
-                },
+                    {
+                        "cIpList"  : ["12.20.50.92", "12.20.50.93"],
+                        "cPortBegList"  : [10000, 20000],
+                        "cPortEndList"  : [19999, 29999],
+                        "sIp"   : "12.20.60.6",
+                        "sPort" : 443,
+                        "ciphList" : []
+                    }
+                ]
+            }
+       ]
+    },
 
-                {
-                    "cIps"  : ["12.20.50.94", "12.20.50.95"]
-                    "sIp"   : "12.20.60.6",
-                    "sPort" : 443,
-                    "ciphList" : [],
-                },
-            ]
-        },
+    "sApps" : {
+       "appList" : [
+            {
+                "appName" : "TlsServer",
+                "srvList" : [
+                    {
+                        "sIp"   : "12.20.60.5",
+                        "sPort" : 443,
+                        "ciphList" : []
+                    },
 
-        {
-            "appName" : "TlsClient",
-            "connPerSec" : 500,
-            "maxActSess" : 10000,
-            "maxErrSess" : 10000,
-            "maxSess" : 1000000
-
-            "csList" : [
-                {
-                    "cIps"  : ["12.20.50.96", "12.20.50.97"]
-                    "sIp"   : "12.20.60.7",
-                    "sPort" : 443,
-                    "ciphList" : [],
-                },
-
-                {
-                    "cIps"  : ["12.20.50.98", "12.20.50.99"]
-                    "sIp"   : "12.20.60.8",
-                    "sPort" : 443,
-                    "ciphList" : [],
-                },
-            ]
-        }
-    ]
-}`;
-
-
-const TcpCsConfig6 = `{
-    "appList" : [
-        {
-            "appName" : "TlsServer",
-            "sList" : [
-                {
-                    "sIp"   : "12.20.60.5",
-                    "sPort" : 443,
-                    "ciphList" : [],
-                },
-
-                {
-                    "sIp"   : "12.20.60.6",
-                    "sPort" : 443,
-                    "ciphList" : [],
-                },
-            ]
-        },
-
-        {
-            "appName" : "TlsServer",
-            "sList" : [
-                {
-                    "sIp"   : "12.20.60.7",
-                    "sPort" : 443,
-                    "ciphList" : [],
-                },
-
-                {
-                    "sIp"   : "12.20.60.8",
-                    "sPort" : 443,
-                    "ciphList" : [],
-                },
-            ]
-        }
-    ]
+                    {
+                        "sIp"   : "12.20.60.6",
+                        "sPort" : 443,
+                        "ciphList" : []
+                    }
+                ]
+            }
+        ]
+    }
 }`;
 
 msgIoServer.listen(msgIoPort, host, () => {
@@ -327,11 +290,8 @@ function msgIoHandler (sock, sockCtx, rcvMsg) {
         case 'test5':
             sendMsg = TcpCsConfig5;
             break;
-        case 'test5':
-            sendMsg = TcpCsConfig5;
-            break;
         case 'test6':
-            sendMsg = TcpCsConfig6;
+            sendMsg = config6;
             break;
     }
 
