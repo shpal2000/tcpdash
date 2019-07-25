@@ -294,13 +294,19 @@ void DumpCStats(void* aStats);
 
 #define CreateEmptyPool(__pool) *((__pool)) = g_queue_new ()
 
-#define CreatePool(__pool, __count,__type) \
+#define CreatePool(__pool,__count,__type,__init) \
 { \
     *(__pool) = g_queue_new (); \
-    for (int i = 0; i < __count; i++) \
-    { \
-        __type *__new_item = g_slice_new0 (__type); \
-        g_queue_push_tail (*(__pool), __new_item); \
+    if (*(__pool)) { \
+        for (int i = 0; i < __count; i++) \
+        { \
+            __type *__new_item = g_slice_new0 (__type); \
+            if (__new_item == NULL) { \
+                *(__pool) = NULL; \
+                break; \
+            } \
+            g_queue_push_tail (*(__pool), __new_item); \
+        } \
     } \
 } \
 
@@ -432,6 +438,7 @@ int TcpRead(int fd
 //##################resources######################
 #define CreateArray0(__type,__count) g_new0(__type, __count)
 #define CreateArray(__type,__count) g_new(__type, __count)
+#define DeleteArray(__memptr) g_free(__memptr)
 #define CreateStruct0(__type) g_slice_new0(__type) 
 #define CreateStruct(__type) g_slice_new(__type) 
 #define DeleteStruct(__type, __memptr) g_slice_free(__type,__memptr)

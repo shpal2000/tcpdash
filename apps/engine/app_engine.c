@@ -5,13 +5,13 @@
 static void OnEstablish (struct IoVentConn* iovConn) {
 
     AppCtxW_t* appCtxW = (AppCtxW_t*) iovConn->cInfo.appCtx;
-    AppCtx_t* appCtx = appCtxW->appCtx; 
-    AppSess_t* appSess = (AppSess_t*) iovConn->cInfo.sessionData;
+    // AppCtx_t* appCtx = appCtxW->appCtx; 
+    AppConnCtx_t* appConnCtx = (AppConnCtx_t*) iovConn->cInfo.sessionData;
 
     if ( IsConnErr (iovConn) ) {
-        (*appCtxW->appMethods.OnEstablishErr) (iovConn, appSess, appCtx);
+        (*appCtxW->appMethods.OnEstablishErr) (iovConn, appConnCtx);
     } else {
-        (*appCtxW->appMethods.OnEstablish) (iovConn, appSess, appCtx);
+        (*appCtxW->appMethods.OnEstablish) (iovConn, appConnCtx);
     }
 }
 
@@ -47,7 +47,7 @@ static int App_ctx_setup (EngCtx_t* engCtx) {
 
     JGET_ROOT_NODE (engCtx->cfgData, &cfgNode, &cfgObjAll);
     if (cfgObjAll) {
-        JGET_MEMBER_OBJ (cfgObjA, engCtx->testCfgSelect, &cfgObj);
+        JGET_MEMBER_OBJ (cfgObjAll, engCtx->testCfgSelect, &cfgObj);
         if (cfgObj) {
             JArray* appArrJ;
             JGET_MEMBER_ARR (cfgObj, "appList", &appArrJ);
@@ -67,7 +67,10 @@ static int App_ctx_setup (EngCtx_t* engCtx) {
                             status = -1; //??? log
                             break;
                         }
-                        if ( App_parse_config (appCtxW, appJ) ){
+                        
+                        appCtxW->appCtx 
+                            = (*appCtxW->appMethods.OnAppInit) (appJ, appCtxW->appIndex);
+                        if ( appCtxW->appCtx == NULL ){
                             status = -1; //??? log
                             break;
                         }

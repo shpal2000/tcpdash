@@ -221,24 +221,23 @@ const config6 = `{
                 "maxActSess" : 10000,
                 "maxErrSess" : 10000,
                 "maxSess" : 1000000,
-                "csGrps" : [
+                "csGrpArr" : [
                     {
-                        "cIpList"  : ["12.20.50.92", "12.20.50.93"],
-                        "cPortBegList"  : [10000, 20000],
-                        "cPortEndList"  : [19999, 29999],
-                        "sIp"   : "12.20.60.5",
-                        "sPort" : 443,
-                        "ciphList" : []
+                        "srvIp"   : "12.20.60.5",
+                        "srvPort" : 443,
+                        "cAddrArr"  : [
+                            {
+                                "cIp" : "12.20.50.92",
+                                "cPortB" : 10000,
+                                "cPortE" : 19999 
+                            },
+                            {
+                                "cIp" : "12.20.50.93",
+                                "cPortB" : 20000,
+                                "cPortE" : 29999 
+                            }
+                        ],
                     },
-
-                    {
-                        "cIpList"  : ["12.20.50.92", "12.20.50.93"],
-                        "cPortBegList"  : [10000, 20000],
-                        "cPortEndList"  : [19999, 29999],
-                        "sIp"   : "12.20.60.6",
-                        "sPort" : 443,
-                        "ciphList" : []
-                    }
                 ]
             }
        ]
@@ -248,17 +247,15 @@ const config6 = `{
        "appList" : [
             {
                 "appName" : "TlsServer",
-                "srvList" : [
+                "srvArr" : [
                     {
-                        "sIp"   : "12.20.60.5",
-                        "sPort" : 443,
-                        "ciphList" : []
+                        "srvIp"   : "12.20.60.5",
+                        "srvPort" : 443,
                     },
 
                     {
-                        "sIp"   : "12.20.60.6",
-                        "sPort" : 443,
-                        "ciphList" : []
+                        "srvIp"   : "12.20.60.6",
+                        "srvPort" : 443,
                     }
                 ]
             }
