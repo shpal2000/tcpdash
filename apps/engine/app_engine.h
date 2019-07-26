@@ -15,29 +15,62 @@
 #define APP_STATUS_EXIT                     100
 #define APP_STATUS_EXIT_WITH_ERROR          101
 
-
-typedef void AppCtx_t;
 typedef void AppConn_t;
-typedef void AppConnCtx_t;
+typedef void AppSess_t;
+typedef void AppCtx_t;
+
+typedef struct AppConnBase {
+    IoVentConn_t* ioVentConn;
+    AppCtx_t* appCtx;
+    AppSess_t* appSess; 
+}AppConnBase_t;
+
+typedef struct AppSessBase {
+    AppCtx_t* appCtx;
+}AppSessBase_t;
 
 typedef struct AppMethods {
 
-    AppCtx_t* (*OnAppInit) (JObject* appCfg, int appIndex);
+    AppCtx_t* (*OnAppInit) (JObject* appCfg);
     int (*OnAppLoop) (AppCtx_t* appCtx);
     void (*OnAppExit) (AppCtx_t* appCtx);
     void (*OnMinTick) (AppCtx_t* appCtx);
 
-    void (*OnEstablish) (AppConn_t* appConn, AppConnCtx_t* appConnCtx);
-    void (*OnEstablishErr) (AppConn_t* appConn, AppConnCtx_t* appConnCtx);
+    void (*OnEstablish) (AppCtx_t* appCtx
+                        , AppConn_t* appConn);
 
-    void (*OnWriteNext) (AppConn_t* appConn, AppConnCtx_t* appConnCtx);
-    void (*OnWriteStatus) (AppConn_t* appConn, AppConnCtx_t* appConnCtx, int bytesSent);
+    void (*OnEstablishErr) (AppCtx_t* appCtx
+                        , AppConn_t* appConn);
 
-    void (*OnReadNext) (AppConn_t* appConn, AppConnCtx_t* appConnCtx);
-    void (*OnReadStatus) (AppConn_t* appConn, AppConnCtx_t* appConnCtx, int bytesRcvd);
+    void (*OnWriteNext) (AppCtx_t* appCtx
+                        , AppConn_t* appConn);
 
-    void (*OnStatus) (AppConn_t* appConn, AppConnCtx_t* appConnCtx);
-    void (*OnCleanup) (AppConn_t* appConn, AppConnCtx_t* appConnCtx);
+    void (*OnWriteStatus) (AppCtx_t* appCtx
+                        , AppConn_t* appConn
+                        , int bytesSent);
+
+    void (*OnReadNext) (AppCtx_t* appCtx
+                        , AppConn_t* appConn);
+
+    void (*OnReadStatus) (AppCtx_t* appCtx
+                        , AppConn_t* appConn
+                        , int bytesRcvd);
+
+    void (*OnStatus) (AppCtx_t* appCtx
+                        , AppConn_t* appConn);
+
+    void (*OnCleanup) (AppCtx_t* appCtx
+                        , AppConn_t* appConn);
+
+    AppSess_t* (*OnCreateSess) ();
+
+    void (*OnInitSess) (AppSess_t* appSess);
+
+    void (*OnDeleteSess) (AppSess_t* appSess);
+
+    uint32_t (*GetMaxActSess) (AppCtx_t* appCtx);
+
+    uint32_t (*GetMaxErrSess) (AppCtx_t* appCtx);
 
 } AppMethods_t;
 
@@ -51,7 +84,14 @@ typedef struct AppCtxW {
 
     AppMethods_t appMethods;
 
+    Pool_t freeSessPool;
+    Pool_t actSessPool;
+
 } AppCtxW_t;
+
+typedef struct AppCtxBase {
+    AppCtxW_t* appCtxW; 
+}AppCtxBase_t;
 
 typedef struct EngCtx {
 
@@ -90,34 +130,34 @@ typedef struct SockAddrCtx {
 } SockAddrCtx_t;
 
 int nAdmin_channel_setup(EngCtx_t* engCtx);
+
 int App_get_methods (AppCtxW_t* appCtxW);
 
-int App_conn_new (AppConnCtx_t* appConnCtx
+int App_conn_new (AppCtx_t* appCtx
+                    , AppConn_t* appConn
                     , SockAddr_t* localAddr
-                    , SockAddr_t* remoteAddr
-                    );
+                    , SockAddr_t* remoteAddr);
 
-
-#define GetFreeSess(__app_ctx, __new_sess) \
+#define GetSession(__appctx,__appsess) \
 { \
-    __new_sess = GetFromPool (__app_ctx->freeSessPool); \
-    if (__new_sess) { \
-        AddToPool (&__app_ctx->activeSessPool, __new_sess); \
-        CleanupSess (__new_sess); \
+    AppCtxW_t* __appctx_w = ((AppCtxBase_t*)__appctx)->appCtxW; \
+    *(__appsess) = GetFromPool (&__appctx_w->freeSessPool); \
+    if (*(__appsess)) { \
+        (*__appctx_w->appMethods.OnInitSess) (*(__appsess)); \
     } \
 } \
 
-#define SetFreeSess(__new_sess) \
+#define FreeSession(__appsess) \
 { \
-    RemoveFromPool (&__new_sess->appCtx->activeSessPool, __new_sess); \
-    AddToPool (__new_sess->appCtx->freeSessPool, __new_sess); \
+    AppCtx_t* __appctx = ((AppSessBase_t*)__appsess)->appCtx; \
+    AppCtxW_t* __appctx_w = ((AppCtxBase_t*)__appctx)->appCtxW; \
+    RemoveFromPool (&__appctx_w->actSessPool, __appsess); \
+    AddToPool (&__appctx_w->freeSessPool, __appsess); \
 } \
 
+#define SetParentSession(__conn,__sess) ((AppConnBase_t*)(__conn))->appSess = __sess 
 
-#define CreateSessPools(__app_ctx,__sess_type) \
-{ \
-    InitPool(&__app_ctx->actSessPool); \
-    CreatePool(&__app_ctx->freeSessPool, __app_ctx->maxActSess, __sess_type,InitSess); \
-} \
+#define GetParentSession(__conn) ((AppConnBase_t*)(__conn))->appSess 
+
 
 #endif

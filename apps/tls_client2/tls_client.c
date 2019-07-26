@@ -2,18 +2,25 @@
 
 #include "tls_client.h"
 
-static void CleanupSess (TlsClientSess_t* sess) {
-    sess->cConn.appConn = NULL;
-    sess->cConn.bytesRead = 0;
-    sess->cConn.bytesWritten = 0;
-    sess->cConn.writeBuffOffset = 0;
+static AppSess_t* OnCreateSess () {
+    TlsClientSess_t* tlscSess = CreateStruct0 (TlsClientSess_t);
+    SetParentSession (&tlscSess->cConn, tlscSess);
+    return tlscSess;
 }
 
-static void InitSess (TlsClientSess_t* sess) {
-    sess->cConn.pSess = sess;
+static void OnInitSess (AppSess_t* appSess) {
+    TlsClientSess_t* tlscSess = appSess;
+    tlscSess->cConn.bytesRead = 0;
+    tlscSess->cConn.bytesWritten = 0;
+    tlscSess->cConn.writeBuffOffset = 0;
 }
 
-static AppCtx_t* OnAppInit (JObject* appJ, int appIndex) {
+
+static void OnDeleteSess (AppSess_t* appSess) {
+    DeleteStruct (TlsClientSess_t, appSess);
+}
+
+static AppCtx_t* OnAppInit (JObject* appJ) {
 
     TlsClientCtx_t* appCtx = CreateStruct0 (TlsClientCtx_t);
 
@@ -22,13 +29,6 @@ static AppCtx_t* OnAppInit (JObject* appJ, int appIndex) {
         JGET_MEMBER_INT (appJ, "maxActSess", &appCtx->maxActSess);
         JGET_MEMBER_INT (appJ, "maxErrSess", &appCtx->maxErrSess);
         JGET_MEMBER_INT (appJ, "maxSess", &appCtx->maxSess);
-
-        CreateSessPools (appCtx, TlsClientSess_t);
-
-        if (appCtx->freeSessPool == NULL) {
-            // log
-            return NULL;
-        }
 
         JArray* csGrpArrJ;
         JGET_MEMBER_ARR (appJ, "csGrpArr", &csGrpArrJ);
@@ -85,6 +85,14 @@ static AppCtx_t* OnAppInit (JObject* appJ, int appIndex) {
     return appCtx;
 }
 
+static uint32_t GetMaxActSess (AppCtx_t* appCtx) {
+    return ((TlsClientCtx_t*)appCtx)->maxActSess;
+}
+
+static uint32_t GetMaxErrSess (AppCtx_t* appCtx) {
+    return ((TlsClientCtx_t*)appCtx)->maxErrSess;
+}
+
 static int OnAppLoop (AppCtx_t* appCtx) {
     return 0;
 }
@@ -97,40 +105,40 @@ static void OnMinTick (AppCtx_t* appCtx) {
     puts ("OnMinTick\n");
 }
 
-static void OnEstablish (AppConn_t* appConn
-                        , AppConnCtx_t* appConnCtx) { 
+static void OnEstablish (AppCtx_t* appCtx
+                        , AppConn_t* appConn) { 
 
 }
 
-static void OnEstablishErr (AppConn_t* appConn
-                        , AppConnCtx_t* appConnCtx) {
+static void OnEstablishErr (AppCtx_t* appCtx
+                            , AppConn_t* appConn) {
 
 }
 
-static void OnWriteNext (AppConn_t* appConn
-                        , AppConnCtx_t* appConnCtx) { 
+static void OnWriteNext (AppCtx_t* appCtx
+                        , AppConn_t* appConn) { 
 }
 
-static void OnWriteStatus (AppConn_t* appConn
-                        , AppConnCtx_t* appConnCtx
-                        , int bytesSent) { 
+static void OnWriteStatus (AppCtx_t* appCtx
+                            , AppConn_t* appConn
+                            , int bytesSent) { 
 }
 
-static void OnReadNext (AppConn_t* appConn
-                        , AppConnCtx_t* appConnCtx) { 
+static void OnReadNext (AppCtx_t* appCtx
+                        , AppConn_t* appConn) { 
 }
 
-static void OnReadStatus (AppConn_t* appConn
-                        , AppConnCtx_t* appConnCtx
-                        , int bytesRcvd) { 
+static void OnReadStatus (AppCtx_t* appCtx
+                            , AppConn_t* appConn
+                            , int bytesRcvd) { 
 }
 
-static void OnStatus (AppConn_t* appConn
-                        , AppConnCtx_t* appConnCtx) { 
+static void OnStatus (AppCtx_t* appCtx
+                        , AppConn_t* appConn) { 
 }
 
-static void OnCleanup (AppConn_t* appConn
-                        , AppConnCtx_t* appConnCtx) { 
+static void OnCleanup (AppCtx_t* appCtx
+                        , AppConn_t* appConn) { 
 }
 
 void TlsClient_get_methods (AppMethods_t* appMethods) {
@@ -150,6 +158,13 @@ void TlsClient_get_methods (AppMethods_t* appMethods) {
     appMethods->OnReadStatus = &OnReadStatus;
 
     appMethods->OnStatus = &OnStatus;
-
     appMethods->OnCleanup = &OnCleanup;
+
+    appMethods->OnCreateSess = &OnCreateSess;
+    appMethods->OnInitSess = &OnInitSess;
+    appMethods->OnDeleteSess = &OnDeleteSess;
+
+    appMethods->GetMaxActSess = &GetMaxActSess;
+    appMethods->GetMaxErrSess = &GetMaxErrSess;
+
 }

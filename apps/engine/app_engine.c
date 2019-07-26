@@ -4,14 +4,13 @@
 
 static void OnEstablish (struct IoVentConn* iovConn) {
 
-    AppCtxW_t* appCtxW = (AppCtxW_t*) iovConn->cInfo.appCtx;
-    // AppCtx_t* appCtx = appCtxW->appCtx; 
-    AppConnCtx_t* appConnCtx = (AppConnCtx_t*) iovConn->cInfo.sessionData;
+    AppConnBase_t* appConn = (AppConnBase_t*) iovConn->cInfo.appCtx;
+    AppCtxBase_t* appCtx = (AppCtxBase_t*) appConn->appCtx;
 
     if ( IsConnErr (iovConn) ) {
-        (*appCtxW->appMethods.OnEstablishErr) (iovConn, appConnCtx);
+        (*appCtx->appCtxW->appMethods.OnEstablishErr) (appCtx, appConn);
     } else {
-        (*appCtxW->appMethods.OnEstablish) (iovConn, appConnCtx);
+        (*appCtx->appCtxW->appMethods.OnEstablish) (appCtx, appConn);
     }
 }
 
@@ -34,6 +33,39 @@ static void OnWriteStatus (struct IoVentConn* iovConn
 
 static void OnCleanup (struct IoVentConn* iovConn) {
 
+}
+
+int App_alloc_resources (AppCtx_t* appCtx) {
+
+    int status = 0;
+    AppCtxW_t* appCtxW = ((AppCtxBase_t*)appCtx)->appCtxW;
+
+    InitPool (&appCtxW->actSessPool);
+    InitPool (&appCtxW->freeSessPool);
+
+    uint32_t maxActSess = (*appCtxW->appMethods.GetMaxActSess)(appCtx);
+    // uint32_t maxErrSess = (*appCtxW->appMethods.GetMaxErrSess)(appCtx); 
+
+    for (uint32_t i = 0; i < maxActSess; i++) {
+        AppSess_t* newSess = (*appCtxW->appMethods.OnCreateSess)();
+        if (newSess) {
+            AppSessBase_t* newSessBase = (AppSessBase_t*) newSess; 
+            newSessBase->appCtx = appCtx; 
+            AddToPool (&appCtxW->freeSessPool, newSess);
+        } else {
+            while (1) {
+                AppSess_t* oldSess = GetFromPool (&appCtxW->freeSessPool);
+                if (oldSess == NULL) {
+                    break;
+                }
+                (*appCtxW->appMethods.OnDeleteSess)(oldSess);
+            }
+            status = -1;
+            break; 
+        }
+    }
+
+    return status;
 }
 
 static int App_ctx_setup (EngCtx_t* engCtx) {
@@ -68,13 +100,20 @@ static int App_ctx_setup (EngCtx_t* engCtx) {
                             break;
                         }
                         
-                        appCtxW->appCtx 
-                            = (*appCtxW->appMethods.OnAppInit) (appJ, appCtxW->appIndex);
-                        if ( appCtxW->appCtx == NULL ){
+                        AppCtx_t* appCtx = (*appCtxW->appMethods.OnAppInit) (appJ);
+                        if (appCtx) {
+                            appCtxW->appCtx = appCtx; 
+                            ((AppCtxBase_t*)appCtx)->appCtxW = appCtxW;
+                            if (App_alloc_resources (appCtx)) {
+                                status = -1; //??? log
+                                break;
+                            } else {
+                                appCtxW->appStatus = APP_STATUS_RUNNING;
+                            }
+                        } else {
                             status = -1; //??? log
                             break;
                         }
-                        appCtxW->appStatus = APP_STATUS_RUNNING;
                     }
                 }
             } else {

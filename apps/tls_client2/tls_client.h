@@ -22,6 +22,7 @@ typedef struct TlsClientGrp {
 } TlsClientGrp_t;
 
 typedef struct TlsClientCtx {
+    AppCtxBase_t appCtxBase; //mandatory first field
 
     uint32_t connPerSec;
     uint32_t maxActSess;
@@ -32,25 +33,22 @@ typedef struct TlsClientCtx {
 
     uint32_t nextCsGrpIndex;
 
-    Pool_t* freeSessPool;
-    Pool_t actSessPool;
-
     char commonReadBuff[COMMON_READBUFF_MAXLEN];
     char commonWriteBuff[COMMON_WRITEBUFF_MAXLEN];
 } TlsClientCtx_t;
 
 typedef struct TlsClientConn {
-    AppConn_t* appConn;
+    AppConnBase_t appConnBase; //mandatory first field
 
     uint64_t bytesRead;
     uint64_t bytesWritten;
     uint32_t writeBuffOffset;
 
-    struct TlsClientSess* pSess; 
 } TlsClientConn_t;
 
 typedef struct TlsClientSess {
-    TlsClientCtx_t* appCtx;
+    AppSessBase_t appSessBase; //mandatory first field
+
     TlsClientConn_t cConn;
 } TlsClientSess_t;
 
