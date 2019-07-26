@@ -154,6 +154,4 @@ static TlsClientCtx_t* OnAppInit (JObject* appJ) {
     return appCtx;
 }
 
-void TlsClient_main (AppMethods_t* appMethods) {
-    APP_REGISTER_METHODS (appMethods);
-}
+APP_REGISTER (TlsClient);

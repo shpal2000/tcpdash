@@ -197,7 +197,12 @@ int App_conn_new (AppCtx_t* appCtx
 #define __APPCONN_BASE__ AppConnBase_t appConnBase;
 #define __APPSESS_BASE__ AppSessBase_t appSessBase;
 
-#define APP_REGISTER_METHODS(__app_methods) \
+
+#define APP_DECLARE(__app_name) \
+void __app_name (AppMethods_t* __app_methods);
+
+#define APP_REGISTER(__app_name) \
+void __app_name (AppMethods_t* __app_methods) \
 { \
     __app_methods->OnAppInit = (OnAppInit_t) &OnAppInit; \
     __app_methods->OnAppLoop = (OnAppLoop_t) &OnAppLoop; \
@@ -224,6 +229,14 @@ int App_conn_new (AppCtx_t* appCtx
     __app_methods->GetMaxActSess = (GetAppAttribUint32_t) &GetMaxActSess; \
     __app_methods->GetMaxErrSess = (GetAppAttribUint32_t) &GetMaxErrSess; \
     __app_methods->GetMaxActConn = (GetAppAttribUint32_t) &GetMaxActConn; \
-} \
+}
+
+#define APP_RUN(__appctx_w, __app_name) \
+{ \
+    if ( strcmp (__appctx_w->appName, "__app_name") == 0 ) { \
+        __app_name (&__appctx_w->appMethods); \
+        return 0; \
+    } \
+}
 
 #endif

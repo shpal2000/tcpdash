@@ -1,21 +1,12 @@
 #include "app_engine.h"
-#include "app_methods.h"
+
+
+APP_DECLARE (TlsClient);
 
 int App_get_methods (AppCtxW_t* appCtxW) {
 
-    int status = 0;
+    APP_RUN (appCtxW, TlsClient);
 
-    char* appName = appCtxW->appName;
-    AppMethods_t* appMethods = &appCtxW->appMethods; 
-
-    if ( strcmp (appName, "TlsClient") == 0 ) {
-        TlsClient_main (appMethods);
-    } else if ( strcmp (appName, "TlsServer") == 0 ) {
-        // TlsServer_get_methods (appMethods);
-    } else {
-        status = -1;
-    }
-
-    return status; 
+    return -1; 
 }
 
