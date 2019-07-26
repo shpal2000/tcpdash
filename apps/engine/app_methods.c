@@ -9,7 +9,7 @@ int App_get_methods (AppCtxW_t* appCtxW) {
     AppMethods_t* appMethods = &appCtxW->appMethods; 
 
     if ( strcmp (appName, "TlsClient") == 0 ) {
-        TlsClient_get_methods (appMethods);
+        TlsClient_main (appMethods);
     } else if ( strcmp (appName, "TlsServer") == 0 ) {
         // TlsServer_get_methods (appMethods);
     } else {

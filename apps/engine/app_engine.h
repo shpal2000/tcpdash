@@ -29,48 +29,62 @@ typedef struct AppSessBase {
     AppCtx_t* appCtx;
 }AppSessBase_t;
 
+//App Function Ptrs
+typedef AppCtx_t* (*OnAppInit_t) (JObject*);
+typedef int (*OnAppLoop_t) (AppCtx_t*);
+typedef void (*OnAppExit_t) (AppCtx_t*);
+typedef void (*OnMinTick_t) (AppCtx_t*);
+
+// Socket event Function Ptrs
+typedef void (*OnEstablish_t) (AppCtx_t*, AppConn_t*);
+typedef void (*OnEstablishErr_t) (AppCtx_t*, AppConn_t*);
+typedef void (*OnWriteNext_t) (AppCtx_t*, AppConn_t*);
+typedef void (*OnWriteStatus_t) (AppCtx_t*, AppConn_t*, int);
+typedef void (*OnReadNext_t) (AppCtx_t*, AppConn_t*);
+typedef void (*OnReadStatus_t) (AppCtx_t*, AppConn_t*, int);
+typedef void (*OnStatus_t) (AppCtx_t*, AppConn_t*);
+typedef void (*OnCleanup_t) (AppCtx_t*, AppConn_t*);
+
+// Session Function Ptrs
+typedef AppSess_t* (*OnCreateSess_t) ();
+typedef void (*OnInitSess_t) (AppSess_t*);
+typedef void (*OnDeleteSess_t) (AppSess_t*);
+
+// Connection Function Ptrs
+typedef AppConn_t* (*OnCreateConn_t) ();
+typedef void (*OnInitConn_t) (AppConn_t*);
+typedef void (*OnDeleteConn_t) (AppConn_t*);
+
+// Get uint32_t application attribute Ptrs
+typedef uint32_t (*GetAppAttribUint32_t) (AppCtx_t*);
+
 typedef struct AppMethods {
 
-    AppCtx_t* (*OnAppInit) (JObject* appCfg);
-    int (*OnAppLoop) (AppCtx_t* appCtx);
-    void (*OnAppExit) (AppCtx_t* appCtx);
-    void (*OnMinTick) (AppCtx_t* appCtx);
+    OnAppInit_t OnAppInit;
+    OnAppLoop_t OnAppLoop;
+    OnAppExit_t OnAppExit;
+    OnMinTick_t OnMinTick;
 
-    void (*OnEstablish) (AppCtx_t* appCtx
-                        , AppConn_t* appConn);
+    OnEstablish_t OnEstablish;
+    OnEstablishErr_t OnEstablishErr;
+    OnWriteNext_t OnWriteNext; 
+    OnWriteStatus_t OnWriteStatus;
+    OnReadNext_t OnReadNext;
+    OnReadStatus_t OnReadStatus;
+    OnStatus_t OnStatus;
+    OnCleanup_t OnCleanup;
 
-    void (*OnEstablishErr) (AppCtx_t* appCtx
-                        , AppConn_t* appConn);
+    OnCreateSess_t OnCreateSess;
+    OnInitSess_t OnInitSess;
+    OnDeleteSess_t OnDeleteSess;
 
-    void (*OnWriteNext) (AppCtx_t* appCtx
-                        , AppConn_t* appConn);
+    OnCreateConn_t OnCreateConn;
+    OnInitConn_t OnInitConn;
+    OnDeleteConn_t OnDeleteConn;
 
-    void (*OnWriteStatus) (AppCtx_t* appCtx
-                        , AppConn_t* appConn
-                        , int bytesSent);
-
-    void (*OnReadNext) (AppCtx_t* appCtx
-                        , AppConn_t* appConn);
-
-    void (*OnReadStatus) (AppCtx_t* appCtx
-                        , AppConn_t* appConn
-                        , int bytesRcvd);
-
-    void (*OnStatus) (AppCtx_t* appCtx
-                        , AppConn_t* appConn);
-
-    void (*OnCleanup) (AppCtx_t* appCtx
-                        , AppConn_t* appConn);
-
-    AppSess_t* (*OnCreateSess) ();
-
-    void (*OnInitSess) (AppSess_t* appSess);
-
-    void (*OnDeleteSess) (AppSess_t* appSess);
-
-    uint32_t (*GetMaxActSess) (AppCtx_t* appCtx);
-
-    uint32_t (*GetMaxErrSess) (AppCtx_t* appCtx);
+    GetAppAttribUint32_t GetMaxActSess;
+    GetAppAttribUint32_t GetMaxErrSess;
+    GetAppAttribUint32_t GetMaxActConn;
 
 } AppMethods_t;
 
@@ -85,6 +99,7 @@ typedef struct AppCtxW {
     AppMethods_t appMethods;
 
     Pool_t freeSessPool;
+    Pool_t freeConnPool;
     Pool_t actSessPool;
 
 } AppCtxW_t;
@@ -159,5 +174,56 @@ int App_conn_new (AppCtx_t* appCtx
 
 #define GetParentSession(__conn) ((AppConnBase_t*)(__conn))->appSess 
 
+#define GetConnection(__appsess,__appconn) \
+{ \
+    AppCtx_t* __appctx = ((AppSessBase_t*)__appsess)->appCtx; \
+    AppCtxW_t* __appctx_w = ((AppCtxBase_t*)__appctx)->appCtxW; \
+    *(__appconn) = GetFromPool (&__appctx_w->freeConnPool); \
+    if (*(__appconn)) { \
+        (*__appctx_w->appMethods.OnInitConn) (*(__appconn)); \
+        SetParentSession(__appconn,__appsess); \
+    } \
+} \
+
+#define FreeConnetion(__appconn) \
+{ \
+    AppCtx_t* __appctx = ((AppConnBase_t*)__appconn)->appCtx; \
+    AppCtxW_t* __appctx_w = ((AppCtxBase_t*)__appctx)->appCtxW; \
+    RemoveFromPool (&__appctx_w->actConnPool, __appconn); \
+    AddToPool (&__appctx_w->freeConnPool, __appconn); \
+} \
+
+#define __APPCTX_BASE__ AppCtxBase_t appCtxBase;
+#define __APPCONN_BASE__ AppConnBase_t appConnBase;
+#define __APPSESS_BASE__ AppSessBase_t appSessBase;
+
+#define APP_REGISTER_METHODS(__app_methods) \
+{ \
+    __app_methods->OnAppInit = (OnAppInit_t) &OnAppInit; \
+    __app_methods->OnAppLoop = (OnAppLoop_t) &OnAppLoop; \
+    __app_methods->OnAppExit = (OnAppExit_t) &OnAppExit; \
+    __app_methods->OnMinTick = (OnMinTick_t) &OnMinTick; \
+\
+    __app_methods->OnEstablish = (OnEstablish_t) &OnEstablish; \
+    __app_methods->OnEstablishErr = (OnEstablishErr_t) &OnEstablishErr; \
+    __app_methods->OnWriteNext = (OnWriteNext_t) &OnWriteNext; \
+    __app_methods->OnWriteStatus = (OnWriteStatus_t) &OnWriteStatus; \
+    __app_methods->OnReadNext = (OnReadNext_t) &OnReadNext; \
+    __app_methods->OnReadStatus = (OnReadStatus_t) &OnReadStatus; \
+    __app_methods->OnStatus = (OnStatus_t) &OnStatus; \
+    __app_methods->OnCleanup = (OnCleanup_t) &OnCleanup; \
+\
+    __app_methods->OnCreateSess = (OnCreateSess_t) &OnCreateSess; \
+    __app_methods->OnInitSess = (OnInitSess_t) &OnInitSess; \
+    __app_methods->OnDeleteSess = (OnDeleteSess_t) &OnDeleteSess; \
+\
+    __app_methods->OnCreateConn = (OnCreateConn_t) &OnCreateConn; \
+    __app_methods->OnInitConn = (OnInitConn_t) &OnInitConn; \
+    __app_methods->OnDeleteConn = (OnDeleteConn_t) &OnDeleteConn; \
+\
+    __app_methods->GetMaxActSess = (GetAppAttribUint32_t) &GetMaxActSess; \
+    __app_methods->GetMaxErrSess = (GetAppAttribUint32_t) &GetMaxErrSess; \
+    __app_methods->GetMaxActConn = (GetAppAttribUint32_t) &GetMaxActConn; \
+} \
 
 #endif

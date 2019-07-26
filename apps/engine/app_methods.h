@@ -1,6 +1,6 @@
 #ifndef __APP_METHODS_H
 #define __APP_METHODS_H
 
-void TlsClient_get_methods (AppMethods_t* appMethods);
+void TlsClient_main (AppMethods_t* appMethods);
 
 #endif

@@ -22,7 +22,7 @@ typedef struct TlsClientGrp {
 } TlsClientGrp_t;
 
 typedef struct TlsClientCtx {
-    AppCtxBase_t appCtxBase; //mandatory first field
+    __APPCTX_BASE__;
 
     uint32_t connPerSec;
     uint32_t maxActSess;
@@ -38,7 +38,7 @@ typedef struct TlsClientCtx {
 } TlsClientCtx_t;
 
 typedef struct TlsClientConn {
-    AppConnBase_t appConnBase; //mandatory first field
+    __APPCONN_BASE__;
 
     uint64_t bytesRead;
     uint64_t bytesWritten;
@@ -47,9 +47,9 @@ typedef struct TlsClientConn {
 } TlsClientConn_t;
 
 typedef struct TlsClientSess {
-    AppSessBase_t appSessBase; //mandatory first field
+    __APPSESS_BASE__;
 
-    TlsClientConn_t cConn;
+    TlsClientConn_t* cConn;
 } TlsClientSess_t;
 
 #endif
