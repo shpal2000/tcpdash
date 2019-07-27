@@ -72,10 +72,11 @@ static int App_ctx_setup (EngCtx_t* engCtx) {
     int status = 0;
     engCtx->appCount = 0;
 
-    JNode* cfgNode;
-    JObject* cfgObjAll;
-    JObject* cfgObj;
+    JNode* cfgNode = NULL;
+    JObject* cfgObjAll = NULL;
+    JObject* cfgObj = NULL;
 
+    puts(engCtx->cfgData);
     JGET_ROOT_NODE (engCtx->cfgData, &cfgNode, &cfgObjAll);
     if (cfgObjAll) {
         JGET_MEMBER_OBJ (cfgObjAll, engCtx->testCfgSelect, &cfgObj);

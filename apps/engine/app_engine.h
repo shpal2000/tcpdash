@@ -176,14 +176,23 @@ int App_conn_new (AppCtx_t* appCtx
 
 #define GetConnection(__appsess,__appconn) \
 { \
-    AppCtx_t* __appctx = ((AppSessBase_t*)__appsess)->appCtx; \
-    AppCtxW_t* __appctx_w = ((AppCtxBase_t*)__appctx)->appCtxW; \
-    *(__appconn) = GetFromPool (&__appctx_w->freeConnPool); \
-    if (*(__appconn)) { \
-        (*__appctx_w->appMethods.OnInitConn) (*(__appconn)); \
-        SetParentSession(__appconn,__appsess); \
+    if (__appsess) { \
+        AppCtx_t* __appctx = ((AppSessBase_t*)__appsess)->appCtx; \
+        AppCtxW_t* __appctx_w = ((AppCtxBase_t*)__appctx)->appCtxW; \
+        *(__appconn) = GetFromPool (&__appctx_w->freeConnPool); \
+        if (*(__appconn)) { \
+            (*__appctx_w->appMethods.OnInitConn) (*(__appconn)); \
+            SetParentSession(__appconn,__appsess); \
+        } \
+    } else { \
+        *(__appconn) = NULL; \
     } \
 } \
+
+#define GetConnectionX(__appctx,__appsess,__appconn) { \
+    GetSession (__appctx, __appsess); \
+    GetConnection (*(__appsess), __appconn); \
+}
 
 #define FreeConnetion(__appconn) \
 { \
@@ -198,10 +207,10 @@ int App_conn_new (AppCtx_t* appCtx
 #define __APPSESS_BASE__ AppSessBase_t appSessBase;
 
 
-#define APP_DECLARE(__app_name) \
+#define APP_DECLARE_METHODS(__app_name) \
 void __app_name (AppMethods_t* __app_methods);
 
-#define APP_REGISTER(__app_name) \
+#define APP_REGISTER_METHODS(__app_name) \
 void __app_name (AppMethods_t* __app_methods) \
 { \
     __app_methods->OnAppInit = (OnAppInit_t) &OnAppInit; \
@@ -231,9 +240,9 @@ void __app_name (AppMethods_t* __app_methods) \
     __app_methods->GetMaxActConn = (GetAppAttribUint32_t) &GetMaxActConn; \
 }
 
-#define APP_RUN(__appctx_w, __app_name) \
+#define APP_GET_METHODS(__appctx_w, __app_name) \
 { \
-    if ( strcmp (__appctx_w->appName, "__app_name") == 0 ) { \
+    if ( strcmp (__appctx_w->appName, #__app_name) == 0 ) { \
         __app_name (&__appctx_w->appMethods); \
         return 0; \
     } \

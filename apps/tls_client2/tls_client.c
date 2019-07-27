@@ -42,6 +42,20 @@ static uint32_t GetMaxErrSess (TlsClientCtx_t* appCtx) {
 }
 
 static int OnAppLoop (TlsClientCtx_t* appCtx) {
+    TlsClientSess_t* appSess;
+    TlsClientConn_t* appConn;
+
+    GetConnectionX (appCtx, &appSess, &appConn);
+    if (appConn) {
+        appSess->cConn = appConn; 
+        // int connInitErr = App_conn_new (appCtx
+        //                                 , appConn
+        //                                 , lAddr
+        //                                 , rAddr);
+    } else {
+        //log
+    }
+    
     return 0;
 }
 
@@ -154,4 +168,4 @@ static TlsClientCtx_t* OnAppInit (JObject* appJ) {
     return appCtx;
 }
 
-APP_REGISTER (TlsClient);
+APP_REGISTER_METHODS (TlsClient);

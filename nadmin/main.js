@@ -223,21 +223,21 @@ const config6 = `{
                 "maxSess" : 1000000,
                 "csGrpArr" : [
                     {
-                        "srvIp"   : "12.20.60.5",
+                        "srvIp"   : "172.217.0.36",
                         "srvPort" : 443,
                         "cAddrArr"  : [
                             {
-                                "cIp" : "12.20.50.92",
+                                "cIp" : "10.116.6.3",
                                 "cPortB" : 10000,
                                 "cPortE" : 19999 
                             },
                             {
-                                "cIp" : "12.20.50.93",
+                                "cIp" : "10.116.6.3",
                                 "cPortB" : 20000,
                                 "cPortE" : 29999 
                             }
-                        ],
-                    },
+                        ]
+                    }
                 ]
             }
        ]
@@ -250,12 +250,12 @@ const config6 = `{
                 "srvArr" : [
                     {
                         "srvIp"   : "12.20.60.5",
-                        "srvPort" : 443,
+                        "srvPort" : 443
                     },
 
                     {
                         "srvIp"   : "12.20.60.6",
-                        "srvPort" : 443,
+                        "srvPort" : 443
                     }
                 ]
             }
