@@ -134,6 +134,9 @@ typedef struct EngCtx {
     int tick60Count;
     int isMinTick;
 
+    uint32_t maxActConn;
+    uint32_t maxErrConn;
+
 } EngCtx_t;
 
 typedef struct SockAddrCtx {
@@ -148,8 +151,15 @@ int nAdmin_channel_setup(EngCtx_t* engCtx);
 
 int App_get_methods (AppCtxW_t* appCtxW);
 
-int App_conn_new (AppCtx_t* appCtx
-                    , AppConn_t* appConn
+int App_conn_session_new (AppCtx_t* appCtx
+                    , AppSess_t** appSess 
+                    , AppConn_t** appConn
+                    , SockAddr_t* localAddr
+                    , SockAddr_t* remoteAddr);
+
+int App_conn_session_child (AppCtx_t* appCtx
+                    , AppSess_t* appSess
+                    , AppConn_t** appConn
                     , SockAddr_t* localAddr
                     , SockAddr_t* remoteAddr);
 

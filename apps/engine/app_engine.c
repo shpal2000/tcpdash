@@ -64,6 +64,8 @@ int App_alloc_resources (AppCtx_t* appCtx) {
         }
     }
 
+    // todo for connection pool ???
+
     return status;
 }
 
@@ -108,6 +110,10 @@ static int App_ctx_setup (EngCtx_t* engCtx) {
                                 status = -1; //??? log
                                 break;
                             } else {
+                                engCtx->maxActConn 
+                                        += (*appCtxW->appMethods.GetMaxActConn)(appCtx);
+                                engCtx->maxErrConn 
+                                        += (*appCtxW->appMethods.GetMaxErrConn)(appCtx);
                                 appCtxW->appStatus = APP_STATUS_RUNNING;
                             }
                         } else {
@@ -144,8 +150,8 @@ static int IoVent_ctx_setup (EngCtx_t* engCtx) {
     iovMethods.OnContinue = NULL;
 
     IoVentOptions_t iovOptions;
-    iovOptions.maxActiveConnections = APP_ENGINE_MAX_ACTIVE_CONNECTION;
-    iovOptions.maxErrorConnections = APP_ENGINE_MAX_ERROR_CONNECTION;
+    iovOptions.maxActiveConnections = engCtx->maxActConn;
+    iovOptions.maxErrorConnections = engCtx->maxErrConn;
     iovOptions.eventPTO = APP_ENGINE_MAX_POLL_TIMEOUT;
     iovOptions.maxEvents = 0;
 
