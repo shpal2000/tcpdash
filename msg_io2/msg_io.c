@@ -261,7 +261,8 @@ MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
                                 , NULL
                                 , remoteAddress
                                 , 0
-                                , &mioChannel->cStats);
+                                , (SockStats_t*) &mioChannel->cStats
+                                , 1);
 
             if (newConnInitErr == 0) {
                 status = 0;

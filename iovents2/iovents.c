@@ -8,35 +8,7 @@
 #include "iovents.h"
 
 static void InitConnection (IoVentConn_t* newConn) {
-
     CSInit(newConn);
-
-    newConn->socketFd = 0;
-    newConn->savedLocalPort = 0;
-    newConn->savedRemotePort = 0;
-
-    newConn->statusId = 0;
-    newConn->statusData = NULL;
-
-    newConn->statusResponseId = 0;
-    newConn->statusResponseData = NULL;
-
-    newConn->cInfo.cSSL = NULL;
-    newConn->cInfo.localAddress = NULL;
-    newConn->cInfo.remoteAddress = NULL;
-    newConn->cInfo.localPortPool = NULL;  
-    newConn->cInfo.sessionData = NULL;   
-    newConn->cInfo.appCtx = NULL;
-    newConn->cInfo.groupCtx = NULL;
-    newConn->cInfo.iovCtx = NULL;
-
-    newConn->cInfo.writeBuffer = NULL;
-    newConn->cInfo.writeBuffOffsetCur = 0;
-    newConn->cInfo.writeDataLenCur = 0;
-
-    newConn->cInfo.readBuffer = NULL;
-    newConn->cInfo.readBuffOffsetCur = 0;
-    newConn->cInfo.readDataLenCur = 0;
 }
 
 IoVentConn_t* GetFreeConnection (IoVentCtx_t* iovCtx) {
@@ -147,7 +119,8 @@ static void RemoveConnection(IoVentConn_t* newConn) {
         TcpClose(newConn->socketFd
                     , isLinger
                     , lingerTime
-                    , newConn->cInfo.summaryStats
+                    , newConn->cInfo.statsArr
+                    , newConn->cInfo.statsCount
                     , newConn);
 
         if ( GetCES(newConn) ) {
@@ -237,7 +210,8 @@ static void DoSslHandshake (IoVentConn_t* newConn) {
     DoSSLConnect (newConn->cInfo.cSSL
                         , newConn->socketFd
                         , IsSetCS1 (newConn, STATE_SSL_CONN_CLIENT) ? 1 : 0
-                        , newConn->cInfo.summaryStats
+                        , newConn->cInfo.statsArr
+                        , newConn->cInfo.statsCount
                         , newConn);
 
     if (IsSetCS1(newConn, STATE_SSL_CONN_ESTABLISHED)) {
@@ -285,14 +259,15 @@ int NewConnection (IoVentCtx_t* iovCtx
                         , LocalPortPool_t* localPortPool 
                         , SockAddr_t* remoteAddress
                         , int connLifetime
-                        , void* aStats) {
+                        , SockStats_t* statsArr
+                        , int statsCount) {
     
     int isErr = -1;
 
     IoVentConn_t* newConn = GetFreeConnection (iovCtx); 
 
     if (newConn == NULL) {
-        IncConnStats(aStats, tcpConnStructNotAvail);
+        IncConnStats(statsArr, statsCount, tcpConnStructNotAvail);
     } else {
         SetAppState(newConn, CONNAPP_STATE_CONNECTION_IN_PROGRESS);
         newConn->cInfo.iovCtx = iovCtx;
@@ -302,7 +277,9 @@ int NewConnection (IoVentCtx_t* iovCtx
         newConn->cInfo.localAddress = localAddress;
         newConn->cInfo.localPortPool = localPortPool;
         newConn->cInfo.remoteAddress = remoteAddress;
-        newConn->cInfo.summaryStats = aStats;
+        newConn->cInfo.statsArr = statsArr;
+        newConn->cInfo.statsCount = statsCount;
+
         newConn->cInfo.connInitTime = TimeElapsedIoVentCtx (iovCtx);
         
         newConn->cInfo.connLifetime = connLifetime; 
@@ -316,7 +293,8 @@ int NewConnection (IoVentCtx_t* iovCtx
         if (newConn->cInfo.localPortPool) {
             AssignSocketLocalPort(newConn->cInfo.localAddress
                                 , newConn->cInfo.localPortPool
-                                , aStats
+                                , newConn->cInfo.statsArr 
+                                , newConn->cInfo.statsCount
                                 , newConn);
             
             if ( GetCES(newConn) ) {
@@ -330,7 +308,8 @@ int NewConnection (IoVentCtx_t* iovCtx
             newConn->socketFd 
                 = TcpNewConnection(newConn->cInfo.localAddress
                         , newConn->cInfo.remoteAddress
-                        , aStats
+                        , newConn->cInfo.statsArr 
+                        , newConn->cInfo.statsCount
                         , newConn);
 
             if ( GetCES(newConn) ) {
@@ -357,17 +336,19 @@ int NewConnection (IoVentCtx_t* iovCtx
 void InitServer (IoVentCtx_t* iovCtx
                     , void* groupCtx
                     , SockAddr_t* localAddress
-                    , void* aStats) {
+                    , SockStats_t* statsArr
+                    , int statsCount) {
     int status = -1;
     IoVentConn_t* newConn = GetFreeConnection (iovCtx);
     if (newConn == NULL) {
-        IncConnStats(aStats, tcpListenStructNotAvail);
+        IncConnStats(statsArr, statsCount, tcpListenStructNotAvail);
     } else {
         newConn->cInfo.iovCtx = iovCtx;
         newConn->cInfo.groupCtx = groupCtx;
         newConn->cInfo.appCtx = iovCtx->appCtx;
         newConn->cInfo.localAddress = localAddress;
-        newConn->cInfo.summaryStats = aStats;
+        newConn->cInfo.statsArr = statsArr;
+        newConn->cInfo.statsCount = statsCount;
         newConn->cInfo.connInitTime = TimeElapsedIoVentCtx (iovCtx);
         newConn->cInfo.connLifetime = 0;
         newConn->cInfo.connInitTime = TimeElapsedIoVentCtx (iovCtx);
@@ -395,7 +376,7 @@ void InitServer (IoVentCtx_t* iovCtx
     }
 
     if (status != 0 ) {
-        IncConnStats(aStats, tcpInitServerFail);
+        IncConnStats(statsArr, statsCount, tcpInitServerFail);
     }
 }
 
@@ -404,7 +385,8 @@ static void OnTcpAcceptConnection(IoVentConn_t* lSockConn) {
     IoVentConn_t* newConn = GetFreeConnection (lSockConn->cInfo.iovCtx);
     
     if (newConn == NULL) {
-        IncConnStats(lSockConn->cInfo.summaryStats
+        IncConnStats(lSockConn->cInfo.statsArr
+                    , lSockConn->cInfo.statsCount 
                     , tcpConnStructNotAvail);
     } else {
         newConn->cInfo.iovCtx = lSockConn->cInfo.iovCtx;
@@ -717,7 +699,7 @@ void InitIoVentCtx (IoVentCtx_t* iovCtx
 
     for (int i = 0; i < iovCtx->options.maxActiveConnections; i++) {
 
-        IoVentConn_t* newConn = CreateStruct (IoVentConn_t);
+        IoVentConn_t* newConn = CreateStruct0 (IoVentConn_t);
 
         InitConnection (newConn);
 

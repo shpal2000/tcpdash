@@ -50,9 +50,6 @@ typedef struct IoVentConnInfo {
     int readDataLenCur;
     int readBytesLenCur;
 
-    SockStats_t* groupStats;
-    SockStats_t* summaryStats;
-
     SockAddr_t* localAddress;
     SockAddr_t* remoteAddress;
 
@@ -60,6 +57,9 @@ typedef struct IoVentConnInfo {
 
     double connInitTime;
     double connLifetime;
+
+    SockStats_t* statsArr;
+    int statsCount;
 
 } IoVentConnInfo_t;
 
@@ -163,7 +163,8 @@ int NewConnection (IoVentCtx_t* iovCtx
                         , LocalPortPool_t* localPortPool 
                         , SockAddr_t* remoteAddress
                         , int connLifetime
-                        , void* aStats);
+                        , SockStats_t* statsArr
+                        , int statsCount);
 
 void InitServer (IoVentCtx_t* iovCtx
                         , void* groupCtx
