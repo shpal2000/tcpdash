@@ -167,38 +167,45 @@ static inline void SetCESSL(void* aSession, uint64_t errState, int sslErrno) {
 
 void NewPollReadWriteEvent(int pollId
                         , int fd
-                        , void* aStats
+                        , SockStats_t* statsArr
+                        , int statsCount
                         , void* cState);
 
 void NewPollReadEvent(int pollId
                         , int fd
-                        , void* aStats
+                        , SockStats_t* statsArr
+                        , int statsCount
                         , void* cState);
 
 void NewPollWriteEvent(int pollId
                         , int fd
-                        , void* aStats
+                        , SockStats_t* statsArr
+                        , int statsCount
                         , void* cState);
 
 void UpdatePollReadWriteEvent(int pollId
                         , int fd
-                        , void* aStats
+                        , SockStats_t* statsArr
+                        , int statsCount
                         , void* cState);
 
 void UpdatePollReadEvent(int pollId
                         , int fd
-                        , void* aStats
+                        , SockStats_t* statsArr
+                        , int statsCount
                         , void* cState);
 
 
 void UpdatePollWriteEvent(int pollId
                         , int fd
-                        , void* aStats
+                        , SockStats_t* statsArr
+                        , int statsCount
                         , void* cState);
 
 void StopPollReadWriteEvent(int pollId
                         , int fd
-                        , void* aStats
+                        , SockStats_t* statsArr
+                        , int statsCount
                         , void* cState);
 
 void AssignSocketLocalPort(SockAddr_t* localAddres

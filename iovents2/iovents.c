@@ -356,8 +356,9 @@ void InitServer (IoVentCtx_t* iovCtx
         
         newConn->socketFd 
             = TcpListenStart(newConn->cInfo.localAddress
-                                , 20000 //remoee hardcoded 
-                                , newConn->cInfo.summaryStats
+                                , 20000 //remove hardcoded 
+                                , statsArr
+                                , statsCount
                                 , newConn);
 
         if ( GetCES(newConn) ) {
@@ -394,15 +395,16 @@ static void OnTcpAcceptConnection(IoVentConn_t* lSockConn) {
         newConn->cInfo.appCtx = lSockConn->cInfo.appCtx;
         newConn->cInfo.localAddress = &newConn->localAddressAccept;
         newConn->cInfo.remoteAddress = &newConn->remoteAddressAccept; 
-        newConn->cInfo.summaryStats = lSockConn->cInfo.summaryStats;
-        newConn->cInfo.groupStats = lSockConn->cInfo.groupStats;
+        newConn->cInfo.statsArr = lSockConn->cInfo.statsArr;
+        newConn->cInfo.statsCount = lSockConn->cInfo.statsCount;
         newConn->cInfo.connInitTime = TimeElapsedIoVentCtx (newConn->cInfo.iovCtx);
         newConn->cInfo.connLifetime = newConn->cInfo.connInitTime + 15;
 
         newConn->socketFd = TcpAcceptConnection(lSockConn->socketFd
                                             , newConn->cInfo.localAddress
                                             , newConn->cInfo.remoteAddress
-                                            , newConn->cInfo.summaryStats
+                                            , newConn->cInfo.statsArr
+                                            , newConn->cInfo.statsCount 
                                             , newConn);
 
         if ( GetCES(newConn) ) {
@@ -483,13 +485,15 @@ static void HandleWriteNextData (IoVentConn_t* newConn) {
         bytesSent = SSLWrite (newConn->cInfo.cSSL
             , newConn->cInfo.writeBuffer + newConn->cInfo.writeBuffOffsetCur
             , newConn->cInfo.writeDataLenCur
-            , newConn->cInfo.summaryStats
+            , newConn->cInfo.statsArr
+            , newConn->cInfo.statsCount 
             , newConn);
     } else {
         bytesSent = TcpWrite (newConn->socketFd
             , newConn->cInfo.writeBuffer + newConn->cInfo.writeBuffOffsetCur
             , newConn->cInfo.writeDataLenCur
-            , newConn->cInfo.summaryStats
+            , newConn->cInfo.statsArr
+            , newConn->cInfo.statsCount
             , newConn);
     }
 
@@ -565,14 +569,16 @@ static void HandleReadNextData (IoVentConn_t* newConn) {
             = SSLRead ( newConn->cInfo.cSSL
             , newConn->cInfo.readBuffer + newConn->cInfo.readBuffOffsetCur
             , newConn->cInfo.readDataLenCur
-            , newConn->cInfo.summaryStats
+            , newConn->cInfo.statsArr
+            , newConn->cInfo.statsCount
             , newConn);
     } else {
         bytesReceived  
             = TcpRead ( newConn->socketFd
             , newConn->cInfo.readBuffer + newConn->cInfo.readBuffOffsetCur
             , newConn->cInfo.readDataLenCur
-            , newConn->cInfo.summaryStats
+            , newConn->cInfo.statsArr
+            , newConn->cInfo.statsCount
             , newConn);
     }
 
@@ -657,7 +663,8 @@ void ReadNextData (IoVentConn_t* newConn
 static void OnTcpConnectionCompletion (IoVentConn_t* newConn) {
 
     VerifyTcpConnectionEstablished (newConn->socketFd
-                                    , newConn->cInfo.summaryStats
+                                    , newConn->cInfo.statsArr
+                                    , newConn->cInfo.statsCount
                                     , newConn);
     
     if ( GetCES(newConn) ) {
@@ -959,13 +966,15 @@ void EnableReadNotification (IoVentConn_t* newConn) {
 
             NewPollReadEvent(newConn->cInfo.iovCtx->eventQ
                                 , newConn->socketFd
-                                , newConn->cInfo.summaryStats
+                                , newConn->cInfo.statsArr
+                                , newConn->cInfo.statsCount
                                 , newConn);
         } else {
 
             UpdatePollReadWriteEvent(newConn->cInfo.iovCtx->eventQ
                                 , newConn->socketFd
-                                , newConn->cInfo.summaryStats
+                                , newConn->cInfo.statsArr
+                                , newConn->cInfo.statsCount
                                 , newConn);
         }
 
@@ -981,7 +990,8 @@ void DisableReadNotification (IoVentConn_t* newConn) {
 
             StopPollReadWriteEvent(newConn->cInfo.iovCtx->eventQ
                                 , newConn->socketFd
-                                , newConn->cInfo.summaryStats
+                                , newConn->cInfo.statsArr
+                                , newConn->cInfo.statsCount
                                 , newConn);
         } else {
 

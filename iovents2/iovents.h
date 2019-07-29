@@ -169,7 +169,8 @@ int NewConnection (IoVentCtx_t* iovCtx
 void InitServer (IoVentCtx_t* iovCtx
                         , void* groupCtx
                         , SockAddr_t* localAddress
-                        , void* aStats);
+                        , SockStats_t* statsArr
+                        , int statsCount);
                     
 void SslClientInit (IoVentConn_t* newConn
                         , SSL* newSSL);

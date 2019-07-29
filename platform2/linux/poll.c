@@ -9,7 +9,8 @@
 
 void NewPollReadWriteEvent(int pollId
                         , int fd
-                        , void* aStats
+                        , SockStats_t* statsArr
+                        , int statsCount
                         , void* cState) {
 
     struct epoll_event setEvent = {0};
@@ -22,7 +23,8 @@ void NewPollReadWriteEvent(int pollId
 
 void NewPollReadEvent(int pollId
                         , int fd
-                        , void* aStats
+                        , SockStats_t* statsArr
+                        , int statsCount
                         , void* cState) {
 
     struct epoll_event setEvent = {0};
@@ -35,7 +37,8 @@ void NewPollReadEvent(int pollId
 
 void NewPollWriteEvent(int pollId
                         , int fd
-                        , void* aStats
+                        , SockStats_t* statsArr
+                        , int statsCount
                         , void* cState) {
 
     struct epoll_event setEvent = {0};
@@ -48,7 +51,8 @@ void NewPollWriteEvent(int pollId
 
 void UpdatePollReadWriteEvent(int pollId
                         , int fd
-                        , void* aStats
+                        , SockStats_t* statsArr
+                        , int statsCount
                         , void* cState) {
 
     struct epoll_event setEvent = {0};
@@ -61,7 +65,8 @@ void UpdatePollReadWriteEvent(int pollId
 
 void UpdatePollReadEvent(int pollId
                         , int fd
-                        , void* aStats
+                        , SockStats_t* statsArr
+                        , int statsCount
                         , void* cState) {
 
     struct epoll_event setEvent = {0};
@@ -74,7 +79,8 @@ void UpdatePollReadEvent(int pollId
 
 void UpdatePollWriteEvent(int pollId
                         , int fd
-                        , void* aStats
+                        , SockStats_t* statsArr
+                        , int statsCount
                         , void* cState) {
 
     struct epoll_event setEvent = {0};
@@ -87,7 +93,8 @@ void UpdatePollWriteEvent(int pollId
 
 void StopPollReadWriteEvent(int pollId
                         , int fd
-                        , void* aStats
+                        , SockStats_t* statsArr
+                        , int statsCount
                         , void* cState) {
 
     epoll_ctl(pollId, EPOLL_CTL_DEL, fd, NULL);
