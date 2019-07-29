@@ -83,8 +83,10 @@ typedef struct AppMethods {
     OnDeleteConn_t OnDeleteConn;
 
     GetAppAttribUint32_t GetMaxActSess;
-    GetAppAttribUint32_t GetMaxErrSess;
     GetAppAttribUint32_t GetMaxActConn;
+
+    GetAppAttribUint32_t GetMaxErrSess;
+    GetAppAttribUint32_t GetMaxErrConn;
 
 } AppMethods_t;
 
@@ -246,8 +248,10 @@ void __app_name (AppMethods_t* __app_methods) \
     __app_methods->OnDeleteConn = (OnDeleteConn_t) &OnDeleteConn; \
 \
     __app_methods->GetMaxActSess = (GetAppAttribUint32_t) &GetMaxActSess; \
-    __app_methods->GetMaxErrSess = (GetAppAttribUint32_t) &GetMaxErrSess; \
     __app_methods->GetMaxActConn = (GetAppAttribUint32_t) &GetMaxActConn; \
+\
+    __app_methods->GetMaxErrSess = (GetAppAttribUint32_t) &GetMaxErrSess; \
+    __app_methods->GetMaxErrConn = (GetAppAttribUint32_t) &GetMaxErrConn; \
 }
 
 #define APP_GET_METHODS(__appctx_w, __app_name) \

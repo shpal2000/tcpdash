@@ -4,7 +4,6 @@
 #include "platform.h"
 
 #define STATUS_GET_SSL_CTX                                  1
-#define STATUS_GET_SSL_CTX                                  1
 
 #define CONNAPP_STATE_INIT                               0
 #define CONNAPP_STATE_CONNECTION_IN_PROGRESS             1

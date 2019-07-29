@@ -41,6 +41,11 @@ static uint32_t GetMaxErrSess (TlsClientCtx_t* appCtx) {
     return appCtx->maxErrSess;
 }
 
+static uint32_t GetMaxErrConn (TlsClientCtx_t* appCtx) {
+    // 1 connection per session
+    return appCtx->maxErrSess * 1;
+}
+
 static int OnAppLoop (TlsClientCtx_t* appCtx) {
     TlsClientSess_t* appSess;
     TlsClientConn_t* appConn;

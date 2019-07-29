@@ -17,18 +17,18 @@ int App_conn_session_child (AppCtx_t* appCtx
                     , SockAddr_t* localAddr
                     , SockAddr_t* remoteAddr) {
     int isErr = -1;
-    GetConnection(appSess, appConn);
-    if (*appConn) {
-        if ( NewConnection (...) ) {
-            // stats
-            // handle error ??? free resources
-            FreeConnetion(*appConn);
-        } else {
-            isErr = 0;    
-        }
-    } else {
-        //stats no free connection resource
-    }
+    // GetConnection(appSess, appConn);
+    // if (*appConn) {
+    //     if ( NewConnection (...) ) {
+    //         // stats
+    //         // handle error ??? free resources
+    //         FreeConnetion(*appConn);
+    //     } else {
+    //         isErr = 0;    
+    //     }
+    // } else {
+    //     //stats no free connection resource
+    // }
     return isErr;
 }
 
@@ -38,18 +38,18 @@ int App_conn_session_new (AppCtx_t* appCtx
                     , SockAddr_t* localAddr
                     , SockAddr_t* remoteAddr) {
     int isErr = -1;
-    GetSession(appCtx, appSess);
-    if (*appSess) {
-        if ( App_conn_session_child (appCtx, *appSess, appConn, ...) ) {
-            // stats
-            // handle error ??? free resources
-            FreeSession (*appSess);
-        } else {
-            isErr = 0;    
-        }
-    } else {
-        // stats no free session resurce
-    }
+    // GetSession(appCtx, appSess);
+    // if (*appSess) {
+    //     if ( App_conn_session_child (appCtx, *appSess, appConn, ...) ) {
+    //         // stats
+    //         // handle error ??? free resources
+    //         FreeSession (*appSess);
+    //     } else {
+    //         isErr = 0;    
+    //     }
+    // } else {
+    //     // stats no free session resurce
+    // }
 
     return isErr;
 }

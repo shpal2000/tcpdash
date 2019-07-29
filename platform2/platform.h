@@ -91,6 +91,7 @@ typedef GQueue LocalPortPool_t;
 typedef GQueue SessionPool_t;
 typedef GQueue ConnectionPool_t;
 typedef GQueue Pool_t;
+typedef GQueue List_t;
 
 typedef GTimer TimerWheel_t;
 
@@ -135,9 +136,16 @@ static inline void CSInit(void* cState) {
 
 #define InitConLastErr(__aConn, __err) ((SockState_t*)__aConn)->lastErr = __err
 
-#define IncConnStats(__aStats, __stat) ((SockStats_t*)__aStats)->__stat++
+// #define IncConnStats(__aStats, __stat) ((SockStats_t*)__aStats)->__stat++
 
 #define GetConnStats(__aStats, __stat) ((SockStats_t*)__aStats)->__stat
+
+#define IncConnStats(__statsArr,__statsCount,__stat) \
+{ \
+    for (int __stats_index = 0; __stats_index < __statsCount; __stats_index++) { \
+        ((SockStats_t*) (&__statsArr[__stats_index]))->__stat++; \
+    } \
+}
 
 static inline void SetCES(void* aSession, uint64_t errState) {
     ((SockState_t*)aSession)->sysErrno = errno;
@@ -195,7 +203,8 @@ void StopPollReadWriteEvent(int pollId
 
 void AssignSocketLocalPort(SockAddr_t* localAddres
                         , LocalPortPool_t* portPool
-                        , void* aStats
+                        , SockStats_t* statsArr
+                        , int statsCount
                         , void* cState);
 
 void AddressToString(SockAddr_t* addr, char* str);
@@ -397,28 +406,33 @@ void SetSockAddress(SockAddr_t* addr, char* str, int port);
 //#################TCP Start###############
 int TcpNewConnection(SockAddr_t* localAddress
                         , SockAddr_t* remoteAddress
-                        , void* aStats
+                        , SockStats_t* statsArr
+                        , int statsCount
                         , void* cState);
 
 void VerifyTcpConnectionEstablished(int fd
-                        , void* aStats
+                        , SockStats_t* statsArr
+                        , int statsCount
                         , void* cState);
 
 int TcpListenStart(SockAddr_t* localAddress
                     , int listenQLen
-                    , void* aStats
+                    , SockStats_t* statsArr
+                    , int statsCount
                     , void* cState);
 
 int TcpAcceptConnection(int listenerFd
                         , SockAddr_t* lAddr
                         , SockAddr_t* rAddr
-                        , void* aStats
+                        , SockStats_t* statsArr
+                        , int statsCount
                         , void* cState);
                         
 void TcpClose(int fd
                 , int isLinger
                 , int lingerTime
-                , void* aStats
+                , SockStats_t* statsArr
+                , int statsCount
                 , void* cState);
                 
 void TcpWrShutdown(int fd, void* cState);
@@ -426,13 +440,15 @@ void TcpWrShutdown(int fd, void* cState);
 int TcpWrite(int fd
                 , const char* dataBuff
                 , int dataLen
-                , void* aStats
+                , SockStats_t* statsArr
+                , int statsCount
                 , void* cState);
 
 int TcpRead(int fd
                 , char* dataBuffer
                 , int dataLen
-                , void* aStats
+                , SockStats_t* statsArr
+                , int statsCount
                 , void* cState);
 
 
@@ -456,19 +472,22 @@ enum ConnCloseType {EmClientClose = 1
 void DoSSLConnect(SSL* newSSL
                     , int fd
                     , int isClient
-                    , void* aStats
+                    , SockStats_t* statsArr
+                    , int statsCount
                     , void* cState);
 
 int SSLRead (SSL* newSSL
                     , char* dataBuffer
                     , int dataLen
-                    , void* aStats
+                    , SockStats_t* statsArr
+                    , int statsCount
                     , void* cState);
 
 int SSLWrite (SSL* newSSL
                     , const char* dataBuffer
                     , int dataLen
-                    , void* aStats
+                    , SockStats_t* statsArr
+                    , int statsCount
                     , void* cState);
 
 void SSLShutdown (SSL* newSSL
