@@ -253,8 +253,7 @@ int IsConnExpire (IoVentConn_t* newConn) {
 }
 
 int NewConnection (IoVentCtx_t* iovCtx
-                        , void* groupCtx
-                        , void* sessionData
+                        , void* connCtx
                         , SockAddr_t* localAddress
                         , LocalPortPool_t* localPortPool 
                         , SockAddr_t* remoteAddress
@@ -271,9 +270,7 @@ int NewConnection (IoVentCtx_t* iovCtx
     } else {
         SetAppState(newConn, CONNAPP_STATE_CONNECTION_IN_PROGRESS);
         newConn->cInfo.iovCtx = iovCtx;
-        newConn->cInfo.groupCtx = groupCtx;
-        newConn->cInfo.appCtx = iovCtx->appCtx;
-        newConn->cInfo.sessionData = sessionData;
+        newConn->cInfo.connCtx = connCtx;
         newConn->cInfo.localAddress = localAddress;
         newConn->cInfo.localPortPool = localPortPool;
         newConn->cInfo.remoteAddress = remoteAddress;
@@ -334,7 +331,7 @@ int NewConnection (IoVentCtx_t* iovCtx
 }
 
 void InitServer (IoVentCtx_t* iovCtx
-                    , void* groupCtx
+                    , void* srvCtx
                     , SockAddr_t* localAddress
                     , SockStats_t* statsArr
                     , int statsCount) {
@@ -344,8 +341,7 @@ void InitServer (IoVentCtx_t* iovCtx
         IncConnStats(statsArr, statsCount, tcpListenStructNotAvail);
     } else {
         newConn->cInfo.iovCtx = iovCtx;
-        newConn->cInfo.groupCtx = groupCtx;
-        newConn->cInfo.appCtx = iovCtx->appCtx;
+        newConn->cInfo.connCtx = srvCtx;
         newConn->cInfo.localAddress = localAddress;
         newConn->cInfo.statsArr = statsArr;
         newConn->cInfo.statsCount = statsCount;
@@ -391,8 +387,7 @@ static void OnTcpAcceptConnection(IoVentConn_t* lSockConn) {
                     , tcpConnStructNotAvail);
     } else {
         newConn->cInfo.iovCtx = lSockConn->cInfo.iovCtx;
-        newConn->cInfo.groupCtx = lSockConn->cInfo.groupCtx;
-        newConn->cInfo.appCtx = lSockConn->cInfo.appCtx;
+        newConn->cInfo.connCtx = lSockConn->cInfo.connCtx;
         newConn->cInfo.localAddress = &newConn->localAddressAccept;
         newConn->cInfo.remoteAddress = &newConn->remoteAddressAccept; 
         newConn->cInfo.statsArr = lSockConn->cInfo.statsArr;
@@ -997,7 +992,8 @@ void DisableReadNotification (IoVentConn_t* newConn) {
 
             UpdatePollWriteEvent(newConn->cInfo.iovCtx->eventQ
                                 , newConn->socketFd
-                                , newConn->cInfo.summaryStats
+                                , newConn->cInfo.statsArr
+                                , newConn->cInfo.statsCount
                                 , newConn);
         }
 
@@ -1013,13 +1009,15 @@ void EnableWriteNotification (IoVentConn_t* newConn) {
 
             NewPollWriteEvent(newConn->cInfo.iovCtx->eventQ
                                 , newConn->socketFd
-                                , newConn->cInfo.summaryStats
+                                , newConn->cInfo.statsArr
+                                , newConn->cInfo.statsCount
                                 , newConn);
         } else {
 
             UpdatePollReadWriteEvent(newConn->cInfo.iovCtx->eventQ
                                 , newConn->socketFd
-                                , newConn->cInfo.summaryStats
+                                , newConn->cInfo.statsArr
+                                , newConn->cInfo.statsCount
                                 , newConn);
         }
         SetCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT);
@@ -1034,13 +1032,15 @@ void DisableWriteNotification (IoVentConn_t* newConn) {
 
             StopPollReadWriteEvent(newConn->cInfo.iovCtx->eventQ
                                 , newConn->socketFd
-                                , newConn->cInfo.summaryStats
+                                , newConn->cInfo.statsArr
+                                , newConn->cInfo.statsCount
                                 , newConn);
         } else {
 
             UpdatePollReadEvent(newConn->cInfo.iovCtx->eventQ
                                 , newConn->socketFd
-                                , newConn->cInfo.summaryStats
+                                , newConn->cInfo.statsArr
+                                , newConn->cInfo.statsCount
                                 , newConn);
         }
         ClearCS1(newConn, STATE_TCP_POLL_WRITE_CURRENT);
@@ -1057,13 +1057,15 @@ void EnableReadWriteNotification (IoVentConn_t* newConn) {
 
             NewPollReadWriteEvent(newConn->cInfo.iovCtx->eventQ
                                 , newConn->socketFd
-                                , newConn->cInfo.summaryStats
+                                , newConn->cInfo.statsArr
+                                , newConn->cInfo.statsCount
                                 , newConn);
         } else {
 
             UpdatePollReadWriteEvent(newConn->cInfo.iovCtx->eventQ
                                 , newConn->socketFd
-                                , newConn->cInfo.summaryStats
+                                , newConn->cInfo.statsArr
+                                , newConn->cInfo.statsCount
                                 , newConn);
         }
         SetCS1(newConn, STATE_TCP_POLL_READ_CURRENT);
@@ -1078,7 +1080,8 @@ void DisableReadWriteNotification (IoVentConn_t* newConn) {
 
         StopPollReadWriteEvent(newConn->cInfo.iovCtx->eventQ
                             , newConn->socketFd
-                            , newConn->cInfo.summaryStats
+                            , newConn->cInfo.statsArr
+                            , newConn->cInfo.statsCount
                             , newConn);
 
         ClearCS1(newConn, STATE_TCP_POLL_READ_CURRENT);
@@ -1096,13 +1099,15 @@ void EnableReadOnlyNotification (IoVentConn_t* newConn) {
 
             NewPollReadEvent(newConn->cInfo.iovCtx->eventQ
                                 , newConn->socketFd
-                                , newConn->cInfo.summaryStats
+                                , newConn->cInfo.statsArr
+                                , newConn->cInfo.statsCount
                                 , newConn);
         } else {
 
             UpdatePollReadEvent(newConn->cInfo.iovCtx->eventQ
                                 , newConn->socketFd
-                                , newConn->cInfo.summaryStats
+                                , newConn->cInfo.statsArr
+                                , newConn->cInfo.statsCount 
                                 , newConn);
         }
         SetCS1(newConn, STATE_TCP_POLL_READ_CURRENT);
@@ -1120,13 +1125,15 @@ void EnableWriteOnlyNotification (IoVentConn_t* newConn) {
 
             NewPollWriteEvent(newConn->cInfo.iovCtx->eventQ
                                 , newConn->socketFd
-                                , newConn->cInfo.summaryStats
+                                , newConn->cInfo.statsArr
+                                , newConn->cInfo.statsCount
                                 , newConn);
         } else {
 
             UpdatePollWriteEvent(newConn->cInfo.iovCtx->eventQ
                                 , newConn->socketFd
-                                , newConn->cInfo.summaryStats
+                                , newConn->cInfo.statsArr
+                                , newConn->cInfo.statsCount
                                 , newConn);
         }
         ClearCS1(newConn, STATE_TCP_POLL_READ_CURRENT);

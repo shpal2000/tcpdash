@@ -3,7 +3,7 @@
 
 static void OnEstablish (struct IoVentConn* iovConn) {
 
-    AppConnBase_t* appConn = (AppConnBase_t*) iovConn->cInfo.appCtx;
+    AppConnBase_t* appConn = (AppConnBase_t*) iovConn->cInfo.connCtx;
     AppCtxBase_t* appCtx = (AppCtxBase_t*) appConn->appCtx;
 
     if ( IsConnErr (iovConn) ) {

@@ -61,7 +61,7 @@ double MsgIoTimeElapsed (MsgIoChannelId_t mioChannelId) {
 static void OnEstablish (struct IoVentConn* iovConn) {
 
     MsgIoChannel_t* mioChannel 
-        = (MsgIoChannel_t*) iovConn->cInfo.sessionData;
+        = (MsgIoChannel_t*) iovConn->cInfo.connCtx;
  
     if ( IsConnErr (iovConn) ) {
 
@@ -84,7 +84,7 @@ static void OnEstablish (struct IoVentConn* iovConn) {
 static void OnReadNext (struct IoVentConn* iovConn) {
 
     MsgIoChannel_t* mioChannel 
-        = (MsgIoChannel_t*) iovConn->cInfo.sessionData;
+        = (MsgIoChannel_t*) iovConn->cInfo.connCtx;
 
     char* readBuff;
     int readLen;
@@ -111,7 +111,7 @@ static void OnReadStatus (struct IoVentConn* iovConn
                                     , int bytesRead) {
 
     MsgIoChannel_t* mioChannel 
-        = (MsgIoChannel_t*) iovConn->cInfo.sessionData;
+        = (MsgIoChannel_t*) iovConn->cInfo.connCtx;
     
     if (bytesRead > 0) {
 
@@ -162,7 +162,7 @@ static void OnReadStatus (struct IoVentConn* iovConn
 static void OnWriteNext (struct IoVentConn* iovConn) {
 
     MsgIoChannel_t* mioChannel 
-        = (MsgIoChannel_t*) iovConn->cInfo.sessionData;
+        = (MsgIoChannel_t*) iovConn->cInfo.connCtx;
 
     if (mioChannel->sendMsg.len) {
         WriteNextData (iovConn
@@ -179,7 +179,7 @@ static void OnWriteStatus (struct IoVentConn* iovConn
                                     , int bytesWritten) {
 
     MsgIoChannel_t* mioChannel 
-        = (MsgIoChannel_t*) iovConn->cInfo.sessionData;
+        = (MsgIoChannel_t*) iovConn->cInfo.connCtx;
 
     DisableWriteNotification (iovConn);
 
@@ -255,7 +255,6 @@ MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
 
             int newConnInitErr = 
                 NewConnection (mioChannel->iovCtx
-                                , NULL
                                 , mioChannel
                                 , localAddress
                                 , NULL

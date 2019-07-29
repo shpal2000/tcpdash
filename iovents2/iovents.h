@@ -29,9 +29,8 @@ typedef struct IoVentConnInfo {
 
     SSL* cSSL;
 
-    void* sessionData;
-    void* groupCtx;
-    void* appCtx;
+    void* connCtx;
+
     struct IoVentCtx* iovCtx;
 
     char* writeBuffer;
@@ -73,12 +72,6 @@ typedef struct IoVentConn {
     SockAddr_t localAddressAccept;
     SockAddr_t remoteAddressAccept;
     
-    uint32_t statusId;
-    void* statusData;
-
-    uint32_t statusResponseId;
-    void* statusResponseData;
-
     IoVentConnInfo_t cInfo;
 
 } IoVentConn_t;
@@ -157,8 +150,7 @@ double TimeElapsedIoVentCtx(IoVentCtx_t* iovCtx);
 int ProcessIoVent (IoVentCtx_t* iovCtx);
 
 int NewConnection (IoVentCtx_t* iovCtx
-                        , void* groupCtx
-                        , void* sessionData
+                        , void* connCtx
                         , SockAddr_t* localAddress
                         , LocalPortPool_t* localPortPool 
                         , SockAddr_t* remoteAddress
