@@ -21,7 +21,6 @@ typedef void AppCtx_t;
 
 typedef struct AppConnBase {
     IoVentConn_t* ioVentConn;
-    AppCtx_t* appCtx;
     AppSess_t* appSess; 
 }AppConnBase_t;
 
@@ -93,7 +92,6 @@ typedef struct AppMethods {
 typedef struct AppCtxW {
 
     char* appName;
-    int appIndex;
     int appStatus;
 
     AppCtx_t* appCtx;
@@ -101,8 +99,12 @@ typedef struct AppCtxW {
     AppMethods_t appMethods;
 
     Pool_t freeSessPool;
-    Pool_t freeConnPool;
     Pool_t actSessPool;
+
+    Pool_t freeConnPool;
+    Pool_t actConnPool;
+
+    struct EngCtx* engCtx;
 
 } AppCtxW_t;
 
@@ -142,7 +144,7 @@ typedef struct EngCtx {
 } EngCtx_t;
 
 typedef struct SockAddrCtx {
-    const char* cIp;
+    char* cIp;
     SockAddr_t sockAddr;
     LocalPortPool_t portPool;
     uint32_t cPortB;
@@ -154,16 +156,19 @@ int nAdmin_channel_setup(EngCtx_t* engCtx);
 int App_get_methods (AppCtxW_t* appCtxW);
 
 int App_conn_session_new (AppCtx_t* appCtx
-                    , AppSess_t** appSess 
-                    , AppConn_t** appConn
-                    , SockAddr_t* localAddr
-                    , SockAddr_t* remoteAddr);
+                            , SockAddr_t* localAddr
+                            , LocalPortPool_t* localPortPool
+                            , SockAddr_t* remoteAddr
+                            , SockStats_t* statsArr
+                            , int statsCount);
 
 int App_conn_session_child (AppCtx_t* appCtx
-                    , AppSess_t* appSess
-                    , AppConn_t** appConn
-                    , SockAddr_t* localAddr
-                    , SockAddr_t* remoteAddr);
+                            , AppSess_t* appSess
+                            , SockAddr_t* localAddr
+                            , LocalPortPool_t* localPortPool
+                            , SockAddr_t* remoteAddr
+                            , SockStats_t* statsArr
+                            , int statsCount);
 
 #define GetSession(__appctx,__appsess) \
 { \
@@ -208,8 +213,9 @@ int App_conn_session_child (AppCtx_t* appCtx
 
 #define FreeConnetion(__appconn) \
 { \
-    AppCtx_t* __appctx = ((AppConnBase_t*)__appconn)->appCtx; \
-    AppCtxW_t* __appctx_w = ((AppCtxBase_t*)__appctx)->appCtxW; \
+    AppSessBase_t* __appSess = ((AppConnBase_t*)__appconn)->appSess; \
+    AppCtxBase_t* __appctx = (AppCtxBase_t*) __appSess->appCtx; \
+    AppCtxW_t* __appctx_w = __appctx->appCtxW; \
     RemoveFromPool (&__appctx_w->actConnPool, __appconn); \
     AddToPool (&__appctx_w->freeConnPool, __appconn); \
 } \

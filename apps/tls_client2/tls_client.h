@@ -9,7 +9,7 @@ typedef struct TlsClientStats {
 } TlsClientStats_t;
 
 typedef struct TlsClientGrp {
-    const char* srvIp;
+    char* srvIp;
     uint32_t srvPort;
 
     SockAddr_t srvAddr;

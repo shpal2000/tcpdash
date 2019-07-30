@@ -4,7 +4,8 @@
 static void OnEstablish (struct IoVentConn* iovConn) {
 
     AppConnBase_t* appConn = (AppConnBase_t*) iovConn->cInfo.connCtx;
-    AppCtxBase_t* appCtx = (AppCtxBase_t*) appConn->appCtx;
+    AppSessBase_t* appSess = (AppSessBase_t*) appConn->appSess;
+    AppCtxBase_t* appCtx = (AppCtxBase_t*) appSess->appCtx;
 
     if ( IsConnErr (iovConn) ) {
         (*appCtx->appCtxW->appMethods.OnEstablishErr) (appCtx, appConn);
@@ -94,7 +95,7 @@ static int App_ctx_setup (EngCtx_t* engCtx) {
                     for (int appIndex = 0; appIndex < engCtx->appCount; appIndex++) {
                         AppCtxW_t* appCtxW = &engCtx->appCtxWArr[appIndex];
                         JObject* appJ = JGET_ARR_ELEMENT_OBJ (appArrJ, appIndex);
-                        appCtxW->appIndex = appIndex;
+                        appCtxW->engCtx = engCtx;
                         appCtxW->appStatus = APP_STATUS_INIT;
                         JGET_MEMBER_STR (appJ, "appName", &appCtxW->appName);
                         if ( App_get_methods (appCtxW) ) {

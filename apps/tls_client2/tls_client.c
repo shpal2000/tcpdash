@@ -47,20 +47,24 @@ static uint32_t GetMaxErrConn (TlsClientCtx_t* appCtx) {
 }
 
 static int OnAppLoop (TlsClientCtx_t* appCtx) {
-    TlsClientSess_t* appSess;
-    TlsClientConn_t* appConn;
 
-    GetConnectionX (appCtx, &appSess, &appConn);
-    if (appConn) {
-        appSess->cConn = appConn; 
-        // int connInitErr = App_conn_new (appCtx
-        //                                 , appConn
-        //                                 , lAddr
-        //                                 , rAddr);
+    TlsClientGrp_t* csGrp = &appCtx->csGrpArr[0]; //todo
+    SockAddr_t* localAddr = &csGrp->cAddrArr[0].sockAddr;
+    SockAddr_t* remoteAddr = &csGrp->srvAddr;
+    LocalPortPool_t* localPortPool = &csGrp->cAddrArr[0].portPool;
+
+    if ( App_conn_session_new (appCtx
+                                , localAddr
+                                , localPortPool 
+                                , remoteAddr
+                                , NULL
+                                , 0) ) { //??? stats array
+
+        // log stats 
     } else {
-        //log
+        //log stats
     }
-    
+
     return 0;
 }
 
@@ -132,6 +136,7 @@ static TlsClientCtx_t* OnAppInit (JObject* appJ) {
                 //server address
                 JGET_MEMBER_STR (csGrpJ, "srvIp", &csGrp->srvIp);
                 JGET_MEMBER_INT (csGrpJ, "srvPort", &csGrp->srvPort);
+                SetSockAddress (&csGrp->srvAddr, csGrp->srvIp, csGrp->srvPort);
 
                 //client address array
                 JArray *cAddrArrJ;
@@ -148,7 +153,7 @@ static TlsClientCtx_t* OnAppInit (JObject* appJ) {
                         JGET_MEMBER_STR (cAddrJ, "cIp", &cAddrCtx->cIp);
                         JGET_MEMBER_INT (cAddrJ, "cPortB", &cAddrCtx->cPortB);
                         JGET_MEMBER_INT (cAddrJ, "cPortE", &cAddrCtx->cPortE);
-
+                        SetSockAddress (&cAddrCtx->sockAddr, cAddrCtx->cIp, 0);
                         InitPool( &cAddrCtx->portPool );
                         for (int srcPort = cAddrCtx->cPortB; 
                                                         srcPort <= cAddrCtx->cPortE; 

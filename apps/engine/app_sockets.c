@@ -13,43 +13,62 @@
 
 int App_conn_session_child (AppCtx_t* appCtx
                     , AppSess_t* appSess
-                    , AppConn_t** appConn
                     , SockAddr_t* localAddr
-                    , SockAddr_t* remoteAddr) {
+                    , LocalPortPool_t* localPortPool
+                    , SockAddr_t* remoteAddr
+                    , SockStats_t* statsArr
+                    , int statsCount) {
     int isErr = -1;
-    // GetConnection(appSess, appConn);
-    // if (*appConn) {
-    //     if ( NewConnection (...) ) {
-    //         // stats
-    //         // handle error ??? free resources
-    //         FreeConnetion(*appConn);
-    //     } else {
-    //         isErr = 0;    
-    //     }
-    // } else {
-    //     //stats no free connection resource
-    // }
+    AppConn_t* appConn;
+    GetConnection(appSess, &appConn);
+    if (appConn) {
+        IoVentCtx_t* iovCtx = ((AppCtxBase_t*)appCtx)->appCtxW->engCtx->iovCtx;
+        if ( NewConnection (iovCtx
+                            , appConn
+                            , localAddr
+                            , localPortPool
+                            , remoteAddr
+                            , 0
+                            , statsArr
+                            , statsCount) ) {
+            // stats
+            // handle error ??? free resources
+            FreeConnetion(appConn);
+        } else {
+            isErr = 0;    
+        }
+    } else {
+        //stats no free connection resource
+    }
     return isErr;
 }
 
 int App_conn_session_new (AppCtx_t* appCtx
-                    , AppSess_t** appSess 
-                    , AppConn_t** appConn
                     , SockAddr_t* localAddr
-                    , SockAddr_t* remoteAddr) {
+                    , LocalPortPool_t* localPortPool
+                    , SockAddr_t* remoteAddr
+                    , SockStats_t* statsArr
+                    , int statsCount) {
     int isErr = -1;
-    // GetSession(appCtx, appSess);
-    // if (*appSess) {
-    //     if ( App_conn_session_child (appCtx, *appSess, appConn, ...) ) {
-    //         // stats
-    //         // handle error ??? free resources
-    //         FreeSession (*appSess);
-    //     } else {
-    //         isErr = 0;    
-    //     }
-    // } else {
-    //     // stats no free session resurce
-    // }
+    AppSess_t* appSess;
+    GetSession(appCtx, &appSess);
+    if (appSess) {
+        if ( App_conn_session_child (appCtx
+                                        , appSess
+                                        , localAddr
+                                        , localPortPool
+                                        , remoteAddr
+                                        , statsArr
+                                        , statsCount) ) {
+            // stats
+            // handle error ??? free resources
+            FreeSession (appSess);
+        } else {
+            isErr = 0;    
+        }
+    } else {
+        // stats no free session resurce
+    }
 
     return isErr;
 }
