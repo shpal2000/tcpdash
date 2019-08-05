@@ -1,6 +1,7 @@
 tls_client_src = ['tls_client.c']
 
 glib_dep = dependency('glib-2.0')
+openssl = dependency('openssl')
 json_glib_dep = dependency('json-glib-1.0')
 
 incdir = include_directories(['../../platform2/'

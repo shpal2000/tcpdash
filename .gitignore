@@ -58,3 +58,5 @@ build/
 .DS_Store
 
 nadmin/node_modules
+
+openssl-1.1.1c/

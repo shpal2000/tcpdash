@@ -3,7 +3,7 @@ const http = require('http');
 const net = require('net');
 // const plainTextParser = require('plaintextparser');
 
-const host = '10.116.6.3';
+const host = '192.168.1.24';
 const adminPort = 8777;
 const msgIoPort = 9777;
 
