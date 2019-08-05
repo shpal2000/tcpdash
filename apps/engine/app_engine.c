@@ -244,7 +244,7 @@ static int Engine_loop (EngCtx_t* engCtx) {
                 double timeDelta = TimeElapsedIoVentCtx (engCtx->iovCtx) 
                                                 - appCtxW->lastConnInitTime;
 
-                int newConnectionInits = timeDelta * appCtxW->connPerSec;
+                appCtxW->nextConnInits = timeDelta * appCtxW->connPerSec;
                 
                 int loopStatus 
                             = (*appCtxW->appMethods.OnAppLoop)(appCtxW->appCtx);

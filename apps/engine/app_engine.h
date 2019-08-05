@@ -109,6 +109,7 @@ typedef struct AppCtxW {
     uint32_t connPerSec;
     double lastConnInitTime;
     uint64_t connInitCount;
+    int nextConnInits; 
 
     struct EngCtx* engCtx;
 
@@ -276,4 +277,5 @@ void __app_name (AppMethods_t* __app_methods) \
     } \
 }
 
+#define APP_GET_CONN_INITS(__appctx) ((AppCtxBase_t*)appCtx)->appCtxW->nextConnInits 
 #endif
