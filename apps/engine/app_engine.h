@@ -87,6 +87,7 @@ typedef struct AppMethods {
     GetAppAttribUint32_t GetMaxErrSess;
     GetAppAttribUint32_t GetMaxErrConn;
 
+    GetAppAttribUint32_t GetConnPerSec;
 } AppMethods_t;
 
 typedef struct AppCtxW {
@@ -103,6 +104,11 @@ typedef struct AppCtxW {
 
     Pool_t freeConnPool;
     Pool_t actConnPool;
+
+    //for rate control
+    uint32_t connPerSec;
+    double lastConnInitTime;
+    uint64_t connInitCount;
 
     struct EngCtx* engCtx;
 
@@ -258,6 +264,8 @@ void __app_name (AppMethods_t* __app_methods) \
 \
     __app_methods->GetMaxErrSess = (GetAppAttribUint32_t) &GetMaxErrSess; \
     __app_methods->GetMaxErrConn = (GetAppAttribUint32_t) &GetMaxErrConn; \
+\
+    __app_methods->GetConnPerSec = (GetAppAttribUint32_t) &GetConnPerSec; \
 }
 
 #define APP_GET_METHODS(__appctx_w, __app_name) \

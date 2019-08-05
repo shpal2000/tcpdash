@@ -22,7 +22,10 @@ int App_conn_session_child (AppCtx_t* appCtx
     AppConn_t* appConn;
     GetConnection(appSess, &appConn);
     if (appConn) {
-        IoVentCtx_t* iovCtx = ((AppCtxBase_t*)appCtx)->appCtxW->engCtx->iovCtx;
+        AppCtxW_t* appCtxW = ((AppCtxBase_t*)appCtx)->appCtxW; 
+        IoVentCtx_t* iovCtx = appCtxW->engCtx->iovCtx;
+        appCtxW->connInitCount++;
+        appCtxW->lastConnInitTime = TimeElapsedIoVentCtx (iovCtx);
         if ( NewConnection (iovCtx
                             , appConn
                             , localAddr

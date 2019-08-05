@@ -218,6 +218,13 @@ static int Engine_loop (EngCtx_t* engCtx) {
 
     int status = 0;
 
+    for (int i = 0; i < engCtx->appCount; i++) {
+        AppCtxW_t* appCtxW = &engCtx->appCtxWArr[i];
+        if ( appCtxW->appStatus == APP_STATUS_RUNNING ) {
+            appCtxW->lastConnInitTime = TimeElapsedIoVentCtx (engCtx->iovCtx);
+        }
+    }
+
     while (1) {
         MsgIoProcess (engCtx->chanId);
 
@@ -233,7 +240,12 @@ static int Engine_loop (EngCtx_t* engCtx) {
             if ( appCtxW->appStatus == APP_STATUS_RUNNING ) {
                 if (engCtx->isMinTick) {
                     (*appCtxW->appMethods.OnMinTick)(appCtxW->appCtx);
-                } 
+                }
+                double timeDelta = TimeElapsedIoVentCtx (engCtx->iovCtx) 
+                                                - appCtxW->lastConnInitTime;
+
+                int newConnectionInits = timeDelta * appCtxW->connPerSec;
+                
                 int loopStatus 
                             = (*appCtxW->appMethods.OnAppLoop)(appCtxW->appCtx);
                 if (loopStatus){

@@ -46,6 +46,10 @@ static uint32_t GetMaxErrConn (TlsClientCtx_t* appCtx) {
     return appCtx->maxErrSess * 1;
 }
 
+static uint32_t GetConnPerSec (TlsClientCtx_t* appCtx) {
+    return appCtx->connPerSec;
+}
+
 static int OnAppLoop (TlsClientCtx_t* appCtx) {
 
     TlsClientGrp_t* csGrp = &appCtx->csGrpArr[0]; //todo
