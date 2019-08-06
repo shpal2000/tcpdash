@@ -57,7 +57,7 @@ typedef struct IoVentConnInfo {
     double connInitTime;
     double connLifetime;
 
-    SockStats_t* statsArr;
+    SockStats_t** statsArr;
     int statsCount;
 
 } IoVentConnInfo_t;
@@ -155,13 +155,13 @@ int NewConnection (IoVentCtx_t* iovCtx
                         , LocalPortPool_t* localPortPool 
                         , SockAddr_t* remoteAddress
                         , int connLifetime
-                        , SockStats_t* statsArr
+                        , SockStats_t** statsArr
                         , int statsCount);
 
 void InitServer (IoVentCtx_t* iovCtx
                         , void* groupCtx
                         , SockAddr_t* localAddress
-                        , SockStats_t* statsArr
+                        , SockStats_t** statsArr
                         , int statsCount);
                     
 void SslClientInit (IoVentConn_t* newConn

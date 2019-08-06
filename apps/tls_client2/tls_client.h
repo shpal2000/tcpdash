@@ -5,10 +5,13 @@
 #define COMMON_WRITEBUFF_MAXLEN     1048576
 
 typedef struct TlsClientStats {
-    SockStats_t connStats;
+    __APPSTATS_BASE__;
+
 } TlsClientStats_t;
 
 typedef struct TlsClientGrp {
+    TlsClientStats_t grpStats;
+
     char* srvIp;
     uint32_t srvPort;
 
@@ -16,13 +19,13 @@ typedef struct TlsClientGrp {
 
     uint32_t cAddrCount;
     SockAddrCtx_t* cAddrArr;
-    uint32_t cAddrNextIndex;
-
-    TlsClientStats_t cStats;
+    uint32_t cAddrNextIndex;    
 } TlsClientGrp_t;
 
 typedef struct TlsClientCtx {
     __APPCTX_BASE__;
+
+    TlsClientStats_t allStats;
 
     uint32_t connPerSec;
     uint32_t maxActSess;

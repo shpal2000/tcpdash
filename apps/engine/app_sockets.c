@@ -5,7 +5,7 @@ int App_conn_session_child (AppCtx_t* appCtx
                     , SockAddr_t* localAddr
                     , LocalPortPool_t* localPortPool
                     , SockAddr_t* remoteAddr
-                    , SockStats_t* statsArr
+                    , SockStats_t** statsArr
                     , int statsCount) {
     int isErr = -1;
     AppConn_t* appConn;
@@ -39,7 +39,7 @@ int App_conn_session_new (AppCtx_t* appCtx
                     , SockAddr_t* localAddr
                     , LocalPortPool_t* localPortPool
                     , SockAddr_t* remoteAddr
-                    , SockStats_t* statsArr
+                    , SockStats_t** statsArr
                     , int statsCount) {
     int isErr = -1;
     AppSess_t* appSess;

@@ -28,6 +28,10 @@ typedef struct AppSessBase {
     AppCtx_t* appCtx;
 }AppSessBase_t;
 
+typedef struct AppStatsBase {
+    SockStats_t connStats;
+}AppStatsBase_t;
+
 //App Function Ptrs
 typedef AppCtx_t* (*OnAppInit_t) (JObject*);
 typedef int (*OnAppLoop_t) (AppCtx_t*);
@@ -166,7 +170,7 @@ int App_conn_session_new (AppCtx_t* appCtx
                             , SockAddr_t* localAddr
                             , LocalPortPool_t* localPortPool
                             , SockAddr_t* remoteAddr
-                            , SockStats_t* statsArr
+                            , SockStats_t** statsArr
                             , int statsCount);
 
 int App_conn_session_child (AppCtx_t* appCtx
@@ -174,7 +178,7 @@ int App_conn_session_child (AppCtx_t* appCtx
                             , SockAddr_t* localAddr
                             , LocalPortPool_t* localPortPool
                             , SockAddr_t* remoteAddr
-                            , SockStats_t* statsArr
+                            , SockStats_t** statsArr
                             , int statsCount);
 
 #define GetSession(__appctx,__appsess) \
@@ -230,6 +234,7 @@ int App_conn_session_child (AppCtx_t* appCtx
 #define __APPCTX_BASE__ AppCtxBase_t appCtxBase;
 #define __APPCONN_BASE__ AppConnBase_t appConnBase;
 #define __APPSESS_BASE__ AppSessBase_t appSessBase;
+#define __APPSTATS_BASE__ AppStatsBase_t appStatsBase;
 
 
 #define APP_DECLARE_METHODS(__app_name) \
@@ -277,5 +282,5 @@ void __app_name (AppMethods_t* __app_methods) \
     } \
 }
 
-#define APP_GET_CONN_INITS(__appctx) ((AppCtxBase_t*)appCtx)->appCtxW->nextConnInits 
+#define APP_GET_NEW_CONN_COUNT(__appctx) ((AppCtxBase_t*)appCtx)->appCtxW->nextConnInits 
 #endif

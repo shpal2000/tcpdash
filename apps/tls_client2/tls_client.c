@@ -53,19 +53,22 @@ static uint32_t GetConnPerSec (TlsClientCtx_t* appCtx) {
 static int OnAppLoop (TlsClientCtx_t* appCtx) {
 
     //New Connections
-    int connInits = APP_GET_CONN_INITS(appCtx);
-    for (uint32_t connIndex = 0; connIndex < connInits; connIndex++) {
+    int newConnCount = APP_GET_NEW_CONN_COUNT(appCtx);
+
+    for (uint32_t connIndex = 0; connIndex < newConnCount; connIndex++) {
         TlsClientGrp_t* csGrp = &appCtx->csGrpArr[0]; //todo
         SockAddr_t* localAddr = &csGrp->cAddrArr[0].sockAddr;
         SockAddr_t* remoteAddr = &csGrp->srvAddr;
         LocalPortPool_t* localPortPool = &csGrp->cAddrArr[0].portPool;
-
+        int statsCount = 2;
+        SockStats_t* statsArr[] = { (SockStats_t*) &appCtx->allStats
+                                    , (SockStats_t*) &csGrp->grpStats};
         if ( App_conn_session_new (appCtx
                                     , localAddr
                                     , localPortPool 
                                     , remoteAddr
-                                    , NULL
-                                    , 0) ) { //??? stats array
+                                    , statsArr 
+                                    , statsCount) ) {
 
             // log stats 
         } else {

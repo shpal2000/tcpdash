@@ -252,7 +252,8 @@ MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
             = CreateIoVentCtx (&iovMethods, &iovOptions, NULL);
 
         if (mioChannel->iovCtx) {
-
+            int statsCount = 1;
+            SockStats_t* statsArr[] = {(SockStats_t*) &mioChannel->cStats}; 
             int newConnInitErr = 
                 NewConnection (mioChannel->iovCtx
                                 , mioChannel
@@ -260,8 +261,8 @@ MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
                                 , NULL
                                 , remoteAddress
                                 , 0
-                                , (SockStats_t*) &mioChannel->cStats
-                                , 1);
+                                , statsArr
+                                , statsCount);
 
             if (newConnInitErr == 0) {
                 status = 0;

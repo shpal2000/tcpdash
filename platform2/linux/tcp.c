@@ -20,7 +20,7 @@
  */
 int TcpNewConnection(SockAddr_t* lAddr
                         , SockAddr_t* rAddr
-                        , SockStats_t* statsArr
+                        , SockStats_t** statsArr
                         , int statsCount
                         , void* cState){
 
@@ -134,7 +134,7 @@ int TcpNewConnection(SockAddr_t* lAddr
 }
 
 void VerifyTcpConnectionEstablished(int fd
-                                    , SockStats_t* statsArr
+                                    , SockStats_t** statsArr
                                     , int statsCount
                                     , void* cState){
     int socketErr;
@@ -158,7 +158,7 @@ void VerifyTcpConnectionEstablished(int fd
 
 int TcpListenStart(SockAddr_t* lAddr
                     , int listenQLen
-                    , SockStats_t* statsArr
+                    , SockStats_t** statsArr
                     , int statsCount
                     , void* cState) {
 
@@ -254,7 +254,7 @@ int TcpListenStart(SockAddr_t* lAddr
 void TcpClose(int fd
                 , int isLinger
                 , int lingerTime
-                , SockStats_t* statsArr
+                , SockStats_t** statsArr
                 , int statsCount
                 , void* cState) {
 
@@ -293,7 +293,7 @@ void TcpWrShutdown(int fd, void* cState) {
 int TcpWrite(int fd
                 , const char* dataBuffer
                 , int dataLen
-                , SockStats_t* statsArr
+                , SockStats_t** statsArr
                 , int statsCount
                 , void* cState) {
     // int bytesSent = send(fd, dataBuffer, dataLen, MSG_NOSIGNAL);
@@ -314,7 +314,7 @@ int TcpWrite(int fd
 int TcpRead(int fd
                 , char* dataBuffer
                 , int dataLen
-                , SockStats_t* statsArr
+                , SockStats_t** statsArr
                 , int statsCount
                 , void* cState) {
     int bytesRead = read(fd, dataBuffer, dataLen);
@@ -347,7 +347,7 @@ int TcpRead(int fd
 int TcpAcceptConnection(int listenerFd
                         , SockAddr_t* lAddr
                         , SockAddr_t* rAddr
-                        , SockStats_t* statsArr
+                        , SockStats_t** statsArr
                         , int statsCount
                         , void* cState) {
     
@@ -413,7 +413,7 @@ int TcpAcceptConnection(int listenerFd
 void DoSSLConnect(SSL* newSSL
                     , int fd
                     , int isClient
-                    , SockStats_t* statsArr
+                    , SockStats_t** statsArr
                     , int statsCount
                     , void* cState) {
 
@@ -472,7 +472,7 @@ void DoSSLConnect(SSL* newSSL
 int SSLRead (SSL* newSSL
                 , char* dataBuffer
                 , int dataLen
-                , SockStats_t* statsArr
+                , SockStats_t** statsArr
                 , int statsCount
                 , void* cState) {
 
@@ -502,7 +502,7 @@ int SSLRead (SSL* newSSL
 int SSLWrite (SSL* newSSL
                 , const char* dataBuffer
                 , int dataLen
-                , SockStats_t* statsArr
+                , SockStats_t** statsArr
                 , int statsCount
                 , void* cState) {
 

@@ -143,7 +143,7 @@ static inline void CSInit(void* cState) {
 #define IncConnStats(__statsArr,__statsCount,__stat) \
 { \
     for (int __stats_index = 0; __stats_index < __statsCount; __stats_index++) { \
-        ((SockStats_t*) (&__statsArr[__stats_index]))->__stat++; \
+        ((SockStats_t*) (__statsArr[__stats_index]))->__stat++; \
     } \
 }
 
@@ -167,50 +167,50 @@ static inline void SetCESSL(void* aSession, uint64_t errState, int sslErrno) {
 
 void NewPollReadWriteEvent(int pollId
                         , int fd
-                        , SockStats_t* statsArr
+                        , SockStats_t** statsArr
                         , int statsCount
                         , void* cState);
 
 void NewPollReadEvent(int pollId
                         , int fd
-                        , SockStats_t* statsArr
+                        , SockStats_t** statsArr
                         , int statsCount
                         , void* cState);
 
 void NewPollWriteEvent(int pollId
                         , int fd
-                        , SockStats_t* statsArr
+                        , SockStats_t** statsArr
                         , int statsCount
                         , void* cState);
 
 void UpdatePollReadWriteEvent(int pollId
                         , int fd
-                        , SockStats_t* statsArr
+                        , SockStats_t** statsArr
                         , int statsCount
                         , void* cState);
 
 void UpdatePollReadEvent(int pollId
                         , int fd
-                        , SockStats_t* statsArr
+                        , SockStats_t** statsArr
                         , int statsCount
                         , void* cState);
 
 
 void UpdatePollWriteEvent(int pollId
                         , int fd
-                        , SockStats_t* statsArr
+                        , SockStats_t** statsArr
                         , int statsCount
                         , void* cState);
 
 void StopPollReadWriteEvent(int pollId
                         , int fd
-                        , SockStats_t* statsArr
+                        , SockStats_t** statsArr
                         , int statsCount
                         , void* cState);
 
 void AssignSocketLocalPort(SockAddr_t* localAddres
                         , LocalPortPool_t* portPool
-                        , SockStats_t* statsArr
+                        , SockStats_t** statsArr
                         , int statsCount
                         , void* cState);
 
@@ -413,32 +413,32 @@ void SetSockAddress(SockAddr_t* addr, char* str, int port);
 //#################TCP Start###############
 int TcpNewConnection(SockAddr_t* localAddress
                         , SockAddr_t* remoteAddress
-                        , SockStats_t* statsArr
+                        , SockStats_t** statsArr
                         , int statsCount
                         , void* cState);
 
 void VerifyTcpConnectionEstablished(int fd
-                        , SockStats_t* statsArr
+                        , SockStats_t** statsArr
                         , int statsCount
                         , void* cState);
 
 int TcpListenStart(SockAddr_t* localAddress
                     , int listenQLen
-                    , SockStats_t* statsArr
+                    , SockStats_t** statsArr
                     , int statsCount
                     , void* cState);
 
 int TcpAcceptConnection(int listenerFd
                         , SockAddr_t* lAddr
                         , SockAddr_t* rAddr
-                        , SockStats_t* statsArr
+                        , SockStats_t** statsArr
                         , int statsCount
                         , void* cState);
                         
 void TcpClose(int fd
                 , int isLinger
                 , int lingerTime
-                , SockStats_t* statsArr
+                , SockStats_t** statsArr
                 , int statsCount
                 , void* cState);
                 
@@ -447,14 +447,14 @@ void TcpWrShutdown(int fd, void* cState);
 int TcpWrite(int fd
                 , const char* dataBuff
                 , int dataLen
-                , SockStats_t* statsArr
+                , SockStats_t** statsArr
                 , int statsCount
                 , void* cState);
 
 int TcpRead(int fd
                 , char* dataBuffer
                 , int dataLen
-                , SockStats_t* statsArr
+                , SockStats_t** statsArr
                 , int statsCount
                 , void* cState);
 
@@ -479,21 +479,21 @@ enum ConnCloseType {EmClientClose = 1
 void DoSSLConnect(SSL* newSSL
                     , int fd
                     , int isClient
-                    , SockStats_t* statsArr
+                    , SockStats_t** statsArr
                     , int statsCount
                     , void* cState);
 
 int SSLRead (SSL* newSSL
                     , char* dataBuffer
                     , int dataLen
-                    , SockStats_t* statsArr
+                    , SockStats_t** statsArr
                     , int statsCount
                     , void* cState);
 
 int SSLWrite (SSL* newSSL
                     , const char* dataBuffer
                     , int dataLen
-                    , SockStats_t* statsArr
+                    , SockStats_t** statsArr
                     , int statsCount
                     , void* cState);
 

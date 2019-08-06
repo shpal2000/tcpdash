@@ -42,10 +42,11 @@ int App_alloc_resources (AppCtx_t* appCtx) {
 
     InitPool (&appCtxW->actSessPool);
     InitPool (&appCtxW->freeSessPool);
+    InitPool (&appCtxW->actConnPool);
+    InitPool (&appCtxW->freeConnPool);
 
+    // ??? uint32_t maxErrSess = (*appCtxW->appMethods.GetMaxErrSess)(appCtx); 
     uint32_t maxActSess = (*appCtxW->appMethods.GetMaxActSess)(appCtx);
-    // uint32_t maxErrSess = (*appCtxW->appMethods.GetMaxErrSess)(appCtx); 
-
     for (uint32_t i = 0; i < maxActSess; i++) {
         AppSess_t* newSess = (*appCtxW->appMethods.OnCreateSess)();
         if (newSess) {
@@ -65,7 +66,25 @@ int App_alloc_resources (AppCtx_t* appCtx) {
         }
     }
 
-    // todo for connection pool ???
+    if (status == 0) {
+        uint32_t maxActConn = (*appCtxW->appMethods.GetMaxActConn)(appCtx);
+        for (uint32_t i = 0; i < maxActConn; i++) {
+            AppConn_t* newConn = (*appCtxW->appMethods.OnCreateConn)();
+            if (newConn) {
+                AddToPool (&appCtxW->freeConnPool, newConn);
+            } else {
+                while (1) {
+                    AppConn_t* oldConn = GetFromPool (&appCtxW->freeConnPool);
+                    if (oldConn == NULL) {
+                        break;
+                    }
+                    (*appCtxW->appMethods.OnDeleteConn)(oldConn);
+                }
+                status = -1;
+                break; 
+            }
+        }
+    }
 
     return status;
 }

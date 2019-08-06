@@ -9,7 +9,7 @@
 
 void AssignSocketLocalPort(SockAddr_t* localAddres
                             , LocalPortPool_t* portPool
-                            , SockStats_t* statsArr
+                            , SockStats_t** statsArr
                             , int statsCount
                             , void* cState) {
    int nextSrcPort = GetPortFromPool(portPool);

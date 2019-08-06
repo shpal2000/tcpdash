@@ -258,7 +258,7 @@ int NewConnection (IoVentCtx_t* iovCtx
                         , LocalPortPool_t* localPortPool 
                         , SockAddr_t* remoteAddress
                         , int connLifetime
-                        , SockStats_t* statsArr
+                        , SockStats_t** statsArr
                         , int statsCount) {
     
     int isErr = -1;
@@ -333,7 +333,7 @@ int NewConnection (IoVentCtx_t* iovCtx
 void InitServer (IoVentCtx_t* iovCtx
                     , void* srvCtx
                     , SockAddr_t* localAddress
-                    , SockStats_t* statsArr
+                    , SockStats_t** statsArr
                     , int statsCount) {
     int status = -1;
     IoVentConn_t* newConn = GetFreeConnection (iovCtx);

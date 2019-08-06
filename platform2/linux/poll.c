@@ -9,7 +9,7 @@
 
 void NewPollReadWriteEvent(int pollId
                         , int fd
-                        , SockStats_t* statsArr
+                        , SockStats_t** statsArr
                         , int statsCount
                         , void* cState) {
 
@@ -23,7 +23,7 @@ void NewPollReadWriteEvent(int pollId
 
 void NewPollReadEvent(int pollId
                         , int fd
-                        , SockStats_t* statsArr
+                        , SockStats_t** statsArr
                         , int statsCount
                         , void* cState) {
 
@@ -37,7 +37,7 @@ void NewPollReadEvent(int pollId
 
 void NewPollWriteEvent(int pollId
                         , int fd
-                        , SockStats_t* statsArr
+                        , SockStats_t** statsArr
                         , int statsCount
                         , void* cState) {
 
@@ -51,7 +51,7 @@ void NewPollWriteEvent(int pollId
 
 void UpdatePollReadWriteEvent(int pollId
                         , int fd
-                        , SockStats_t* statsArr
+                        , SockStats_t** statsArr
                         , int statsCount
                         , void* cState) {
 
@@ -65,7 +65,7 @@ void UpdatePollReadWriteEvent(int pollId
 
 void UpdatePollReadEvent(int pollId
                         , int fd
-                        , SockStats_t* statsArr
+                        , SockStats_t** statsArr
                         , int statsCount
                         , void* cState) {
 
@@ -79,7 +79,7 @@ void UpdatePollReadEvent(int pollId
 
 void UpdatePollWriteEvent(int pollId
                         , int fd
-                        , SockStats_t* statsArr
+                        , SockStats_t** statsArr
                         , int statsCount
                         , void* cState) {
 
@@ -93,7 +93,7 @@ void UpdatePollWriteEvent(int pollId
 
 void StopPollReadWriteEvent(int pollId
                         , int fd
-                        , SockStats_t* statsArr
+                        , SockStats_t** statsArr
                         , int statsCount
                         , void* cState) {
 
