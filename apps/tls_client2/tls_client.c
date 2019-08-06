@@ -130,7 +130,9 @@ static void OnEstablish (TlsClientCtx_t* appCtx
 
 static void OnEstablishErr (TlsClientCtx_t* appCtx
                             , TlsClientConn_t* appConn) {
-
+    //log ???
+    FreeParentSession (appConn);
+    FreeConnetion (appConn);
 }
 
 static void OnWriteNext (TlsClientCtx_t* appCtx

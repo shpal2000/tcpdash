@@ -205,6 +205,8 @@ void App_conn_abort (AppCtx_t* appCtx
 
 #define GetParentSession(__conn) ((AppConnBase_t*)(__conn))->appSess 
 
+#define FreeParentSession(__conn) FreeSession((((AppConnBase_t*)(__conn))->appSess))
+
 #define GetConnection(__appsess,__appconn) \
 { \
     if (__appsess) { \
