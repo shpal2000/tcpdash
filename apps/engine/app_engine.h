@@ -33,7 +33,7 @@ typedef struct AppStatsBase {
 
 //App Function Ptrs
 typedef AppCtx_t* (*OnAppInit_t) (JObject*);
-typedef void (*OnAppLoop_t) (AppCtx_t*);
+typedef void (*OnAppLoop_t) (AppCtx_t*, int);
 typedef void (*OnAppExit_t) (AppCtx_t*);
 typedef int (*OnContinue_t) (AppCtx_t*);
 typedef void (*OnMinTick_t) (AppCtx_t*);
@@ -114,7 +114,6 @@ typedef struct AppCtxW {
     uint32_t connPerSec;
     double lastConnInitTime;
     uint64_t connInitCount;
-    int nextConnInits; 
 
     struct EngCtx* engCtx;
 
@@ -182,6 +181,9 @@ int App_conn_session_child (AppCtx_t* appCtx
                             , SockStats_t** statsArr
                             , int statsCount);
 
+void App_conn_abort (AppCtx_t* appCtx
+                            , AppConn_t* appConn);
+
 #define GetSession(__appctx,__appsess) \
 { \
     AppCtxW_t* __appctx_w = ((AppCtxBase_t*)__appctx)->appCtxW; \
@@ -217,11 +219,6 @@ int App_conn_session_child (AppCtx_t* appCtx
         *(__appconn) = NULL; \
     } \
 } \
-
-#define GetConnectionX(__appctx,__appsess,__appconn) { \
-    GetSession (__appctx, __appsess); \
-    GetConnection (*(__appsess), __appconn); \
-}
 
 #define FreeConnetion(__appconn) \
 { \

@@ -260,13 +260,12 @@ static int Engine_loop (EngCtx_t* engCtx) {
                 if (engCtx->isMinTick) {
                     (*appCtxW->appMethods.OnMinTick)(appCtxW->appCtx);
                 }
-                double timeDelta = TimeElapsedIoVentCtx (engCtx->iovCtx) 
-                                                - appCtxW->lastConnInitTime;
-
-                appCtxW->nextConnInits = timeDelta * appCtxW->connPerSec;
-
                 if ( (*appCtxW->appMethods.OnContinue)(appCtxW->appCtx) ) {
-                    (*appCtxW->appMethods.OnAppLoop)(appCtxW->appCtx);
+                    double timeDelta = TimeElapsedIoVentCtx (engCtx->iovCtx) 
+                                                - appCtxW->lastConnInitTime;
+                    int newConnCount = timeDelta * appCtxW->connPerSec;
+                    (*appCtxW->appMethods.OnAppLoop)(appCtxW->appCtx
+                                                            , newConnCount);
                     appRunning = 1;
                 } else {
                     appCtxW->appStatus = APP_STATUS_EXIT;

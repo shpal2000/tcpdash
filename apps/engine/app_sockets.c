@@ -65,3 +65,9 @@ int App_conn_session_new (AppCtx_t* appCtx
     return isErr;
 }
 
+void App_conn_abort (AppCtx_t* appCtx
+                        , AppConn_t* appConn) {
+    AppConnBase_t* appConnBase = (AppConnBase_t*) appConn; 
+    AbortConnection (appConnBase->ioVentConn);
+    FreeConnetion(appConn);
+}

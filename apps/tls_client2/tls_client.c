@@ -65,9 +65,8 @@ static int OnContinue (TlsClientCtx_t* appCtx) {
     return 1;
 }
 
-static void OnAppLoop (TlsClientCtx_t* appCtx) {
+static void OnAppLoop (TlsClientCtx_t* appCtx, int newConnCount) {
 
-    int newConnCount = APP_GET_NEW_CONN_COUNT(appCtx);
     for (uint32_t connIndex = 0; connIndex < newConnCount; connIndex++) {
         TlsClientGrp_t* csGrp = &appCtx->csGrpArr[0]; //todo
         SockAddr_t* localAddr = &csGrp->cAddrArr[0].sockAddr;
@@ -76,6 +75,29 @@ static void OnAppLoop (TlsClientCtx_t* appCtx) {
         int statsCount = 2;
         SockStats_t* statsArr[] = { (SockStats_t*) &appCtx->allStats
                                     , (SockStats_t*) &csGrp->grpStats};
+
+        if (csGrp->sslCtx == NULL) {
+            csGrp->sslCtx = SSL_CTX_new(SSLv23_client_method());
+
+            if (csGrp->sslCtx) {
+                SSL_CTX_set_verify(csGrp->sslCtx
+                                        , SSL_VERIFY_NONE, 0);
+
+                SSL_CTX_set_options(csGrp->sslCtx
+                                        , SSL_OP_NO_SSLv2 
+                                        | SSL_OP_NO_SSLv3 
+                                        | SSL_OP_NO_COMPRESSION);
+                                        
+                SSL_CTX_set_mode(csGrp->sslCtx
+                                        , SSL_MODE_ENABLE_PARTIAL_WRITE);
+
+                SSL_CTX_set_session_cache_mode(csGrp->sslCtx
+                                        , SSL_SESS_CACHE_OFF);                
+            } else {
+                //log
+                continue;
+            }
+        }
 
         if ( App_conn_session_new (appCtx
                                     , localAddr
@@ -100,7 +122,9 @@ static void OnMinTick (TlsClientCtx_t* appCtx) {
 }
 
 static void OnEstablish (TlsClientCtx_t* appCtx
-                        , TlsClientConn_t* appConn) { 
+                        , TlsClientConn_t* appConn) {
+
+    // App_conn_abort (appCtx, appConn);
 
 }
 

@@ -14,12 +14,13 @@ typedef struct TlsClientGrp {
 
     char* srvIp;
     uint32_t srvPort;
-
     SockAddr_t srvAddr;
 
     uint32_t cAddrCount;
     SockAddrCtx_t* cAddrArr;
-    uint32_t cAddrNextIndex;    
+    uint32_t cAddrNextIndex;
+
+    SSL_CTX* sslCtx;
 } TlsClientGrp_t;
 
 typedef struct TlsClientCtx {
