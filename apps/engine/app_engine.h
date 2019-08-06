@@ -13,7 +13,6 @@
 #define APP_STATUS_INIT                     1
 #define APP_STATUS_RUNNING                  2
 #define APP_STATUS_EXIT                     100
-#define APP_STATUS_EXIT_WITH_ERROR          101
 
 typedef void AppConn_t;
 typedef void AppSess_t;
@@ -34,8 +33,9 @@ typedef struct AppStatsBase {
 
 //App Function Ptrs
 typedef AppCtx_t* (*OnAppInit_t) (JObject*);
-typedef int (*OnAppLoop_t) (AppCtx_t*);
+typedef void (*OnAppLoop_t) (AppCtx_t*);
 typedef void (*OnAppExit_t) (AppCtx_t*);
+typedef int (*OnContinue_t) (AppCtx_t*);
 typedef void (*OnMinTick_t) (AppCtx_t*);
 
 // Socket event Function Ptrs
@@ -66,6 +66,7 @@ typedef struct AppMethods {
     OnAppInit_t OnAppInit;
     OnAppLoop_t OnAppLoop;
     OnAppExit_t OnAppExit;
+    OnContinue_t OnContinue;
     OnMinTick_t OnMinTick;
 
     OnEstablish_t OnEstablish;
@@ -231,6 +232,8 @@ int App_conn_session_child (AppCtx_t* appCtx
     AddToPool (&__appctx_w->freeConnPool, __appconn); \
 } \
 
+#define IsNoActSess(__appctx) IsPoolEmpty((&((AppCtxBase_t*)__appctx)->appCtxW->actSessPool)) 
+
 #define __APPCTX_BASE__ AppCtxBase_t appCtxBase;
 #define __APPCONN_BASE__ AppConnBase_t appConnBase;
 #define __APPSESS_BASE__ AppSessBase_t appSessBase;
@@ -246,6 +249,7 @@ void __app_name (AppMethods_t* __app_methods) \
     __app_methods->OnAppInit = (OnAppInit_t) &OnAppInit; \
     __app_methods->OnAppLoop = (OnAppLoop_t) &OnAppLoop; \
     __app_methods->OnAppExit = (OnAppExit_t) &OnAppExit; \
+    __app_methods->OnContinue = (OnContinue_t) &OnContinue; \
     __app_methods->OnMinTick = (OnMinTick_t) &OnMinTick; \
 \
     __app_methods->OnEstablish = (OnEstablish_t) &OnEstablish; \

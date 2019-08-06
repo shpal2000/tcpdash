@@ -50,11 +50,24 @@ static uint32_t GetConnPerSec (TlsClientCtx_t* appCtx) {
     return appCtx->connPerSec;
 }
 
-static int OnAppLoop (TlsClientCtx_t* appCtx) {
+static int OnContinue (TlsClientCtx_t* appCtx) {
 
-    //New Connections
+    if ( GetConnStats(&appCtx->allStats, tcpConnInitFail) 
+                                            >= appCtx->maxErrSess ) {
+        return 0;
+    }
+
+    if ( (GetConnStats(&appCtx->allStats, tcpConnInit) 
+                        == appCtx->maxSess) && IsNoActSess(appCtx) ) {
+        return 0;
+    }
+
+    return 1;
+}
+
+static void OnAppLoop (TlsClientCtx_t* appCtx) {
+
     int newConnCount = APP_GET_NEW_CONN_COUNT(appCtx);
-
     for (uint32_t connIndex = 0; connIndex < newConnCount; connIndex++) {
         TlsClientGrp_t* csGrp = &appCtx->csGrpArr[0]; //todo
         SockAddr_t* localAddr = &csGrp->cAddrArr[0].sockAddr;
@@ -63,6 +76,7 @@ static int OnAppLoop (TlsClientCtx_t* appCtx) {
         int statsCount = 2;
         SockStats_t* statsArr[] = { (SockStats_t*) &appCtx->allStats
                                     , (SockStats_t*) &csGrp->grpStats};
+
         if ( App_conn_session_new (appCtx
                                     , localAddr
                                     , localPortPool 
@@ -75,8 +89,6 @@ static int OnAppLoop (TlsClientCtx_t* appCtx) {
             //log stats
         }
     }
-
-    return 0;
 }
 
 static void OnAppExit (TlsClientCtx_t* appCtx) {

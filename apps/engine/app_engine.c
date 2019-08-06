@@ -264,17 +264,12 @@ static int Engine_loop (EngCtx_t* engCtx) {
                                                 - appCtxW->lastConnInitTime;
 
                 appCtxW->nextConnInits = timeDelta * appCtxW->connPerSec;
-                
-                int loopStatus 
-                            = (*appCtxW->appMethods.OnAppLoop)(appCtxW->appCtx);
-                if (loopStatus){
-                    if (loopStatus > 0) {
-                        appCtxW->appStatus = APP_STATUS_EXIT;
-                    } else {
-                        appCtxW->appStatus = APP_STATUS_EXIT_WITH_ERROR;
-                    }
-                } else {
+
+                if ( (*appCtxW->appMethods.OnContinue)(appCtxW->appCtx) ) {
+                    (*appCtxW->appMethods.OnAppLoop)(appCtxW->appCtx);
                     appRunning = 1;
+                } else {
+                    appCtxW->appStatus = APP_STATUS_EXIT;
                 }
             }
         }
