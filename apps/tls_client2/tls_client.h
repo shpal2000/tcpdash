@@ -20,6 +20,11 @@ typedef struct TlsClientGrp {
     SockAddrCtx_t* cAddrArr;
     uint32_t cAddrNextIndex;
 
+    uint64_t csDataLen;
+    uint64_t scDataLen;
+    uint64_t csStartTlsLen;
+    uint64_t scStartTlsLen;    
+
     SSL_CTX* sslCtx;
 } TlsClientGrp_t;
 
@@ -37,8 +42,8 @@ typedef struct TlsClientCtx {
 
     uint32_t nextCsGrpIndex;
 
-    char commonReadBuff[COMMON_READBUFF_MAXLEN];
-    char commonWriteBuff[COMMON_WRITEBUFF_MAXLEN];
+    char appRdBuff[COMMON_READBUFF_MAXLEN];
+    char appWrBuff[COMMON_WRITEBUFF_MAXLEN];
 } TlsClientCtx_t;
 
 typedef struct TlsClientConn {
@@ -48,6 +53,9 @@ typedef struct TlsClientConn {
     uint64_t bytesWritten;
     uint32_t writeBuffOffset;
 
+    uint32_t isSslInit; 
+
+    TlsClientGrp_t* csGrp;
 } TlsClientConn_t;
 
 typedef struct TlsClientSess {

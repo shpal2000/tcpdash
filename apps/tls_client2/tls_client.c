@@ -22,6 +22,8 @@ static void OnInitConn (TlsClientConn_t* appConn) {
     appConn->bytesRead = 0;
     appConn->bytesWritten = 0;
     appConn->writeBuffOffset = 0;
+    appConn->isSslInit = 0;
+    appConn->csGrp = NULL;
 }
 
 static void OnDeleteConn (TlsClientConn_t* appConn) {
@@ -58,11 +60,24 @@ static int OnContinue (TlsClientCtx_t* appCtx) {
     }
 
     if ( (GetConnStats(&appCtx->allStats, tcpConnInit) 
-                        == appCtx->maxSess) && IsNoActSess(appCtx) ) {
+                        == appCtx->maxSess) && App_zero_act_sess(appCtx) ) {
         return 0;
     }
 
     return 1;
+}
+
+static void StartTls (TlsClientCtx_t* appCtx, TlsClientConn_t* appConn) {
+
+    SSL* sslCtx = SSL_new(appConn->csGrp->sslCtx);
+
+    if (sslCtx) {
+        appConn->isSslInit = 1;
+        App_ssl_client_init (appConn, sslCtx);            
+    } else {
+        //??? update stats; mark connection state why fail 
+        App_conn_abort (appConn);
+    }
 }
 
 static void OnAppLoop (TlsClientCtx_t* appCtx, int newConnCount) {
@@ -99,16 +114,19 @@ static void OnAppLoop (TlsClientCtx_t* appCtx, int newConnCount) {
             }
         }
 
-        if ( App_conn_session_new (appCtx
-                                    , localAddr
-                                    , localPortPool 
-                                    , remoteAddr
-                                    , statsArr 
-                                    , statsCount) ) {
-
+        TlsClientConn_t* appConn 
+            = (TlsClientConn_t*) App_conn_session_new (appCtx
+                                        , localAddr
+                                        , localPortPool 
+                                        , remoteAddr
+                                        , statsArr 
+                                        , statsCount);
+        if (appConn == NULL) {
+            // handle error
             // log stats 
         } else {
             //log stats
+            appConn->csGrp = csGrp; 
         }
     }
 }
@@ -130,9 +148,7 @@ static void OnEstablish (TlsClientCtx_t* appCtx
 
 static void OnEstablishErr (TlsClientCtx_t* appCtx
                             , TlsClientConn_t* appConn) {
-    //log ???
-    FreeParentSession (appConn);
-    FreeConnetion (appConn);
+    
 }
 
 static void OnWriteNext (TlsClientCtx_t* appCtx
@@ -145,7 +161,27 @@ static void OnWriteStatus (TlsClientCtx_t* appCtx
 }
 
 static void OnReadNext (TlsClientCtx_t* appCtx
-                        , TlsClientConn_t* appConn) { 
+                        , TlsClientConn_t* appConn) {
+    if ( appConn->bytesRead < appConn->csGrp->scStartTlsLen ) {
+        App_conn_read_next (appConn
+                        , appCtx->appRdBuff
+                        , 0
+                        , appConn->csGrp->scStartTlsLen - appConn->bytesRead
+                        , 1);
+    } else {
+        if (appConn->isSslInit == 0) {
+            if ( appConn->bytesWritten == appConn->csGrp->csStartTlsLen
+                    && appConn->bytesRead == appConn->csGrp->scStartTlsLen ) {
+                StartTls (appCtx, appConn);
+            }
+        } else {
+            App_conn_read_next (appConn
+                        , appCtx->appRdBuff
+                        , 0
+                        , COMMON_READBUFF_MAXLEN
+                        , 1);
+        }
+    }
 }
 
 static void OnReadStatus (TlsClientCtx_t* appCtx
@@ -158,7 +194,8 @@ static void OnStatus (TlsClientCtx_t* appCtx
 }
 
 static void OnCleanup (TlsClientCtx_t* appCtx
-                        , TlsClientConn_t* appConn) { 
+                        , TlsClientConn_t* appConn) {
+    App_conn_release (appConn, 1);
 }
 
 static TlsClientCtx_t* OnAppInit (JObject* appJ) {

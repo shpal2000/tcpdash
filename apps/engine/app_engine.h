@@ -166,14 +166,14 @@ int nAdmin_channel_setup(EngCtx_t* engCtx);
 
 int App_get_methods (AppCtxW_t* appCtxW);
 
-int App_conn_session_new (AppCtx_t* appCtx
+AppConn_t* App_conn_session_new (AppCtx_t* appCtx
                             , SockAddr_t* localAddr
                             , LocalPortPool_t* localPortPool
                             , SockAddr_t* remoteAddr
                             , SockStats_t** statsArr
                             , int statsCount);
 
-int App_conn_session_child (AppCtx_t* appCtx
+AppConn_t* App_conn_session_child (AppCtx_t* appCtx
                             , AppSess_t* appSess
                             , SockAddr_t* localAddr
                             , LocalPortPool_t* localPortPool
@@ -181,57 +181,20 @@ int App_conn_session_child (AppCtx_t* appCtx
                             , SockStats_t** statsArr
                             , int statsCount);
 
-void App_conn_abort (AppCtx_t* appCtx
-                            , AppConn_t* appConn);
+void App_conn_release (AppConn_t* appConn
+                        , int toFreeSess);
 
-#define GetSession(__appctx,__appsess) \
-{ \
-    AppCtxW_t* __appctx_w = ((AppCtxBase_t*)__appctx)->appCtxW; \
-    *(__appsess) = GetFromPool (&__appctx_w->freeSessPool); \
-    if (*(__appsess)) { \
-        (*__appctx_w->appMethods.OnInitSess) (*(__appsess)); \
-    } \
-} \
+#define IOVENT_CONN(__appConn) (((AppConnBase_t*)__appConn)->ioVentConn)
 
-#define FreeSession(__appsess) \
-{ \
-    AppCtx_t* __appctx = ((AppSessBase_t*)__appsess)->appCtx; \
-    AppCtxW_t* __appctx_w = ((AppCtxBase_t*)__appctx)->appCtxW; \
-    RemoveFromPool (&__appctx_w->actSessPool, __appsess); \
-    AddToPool (&__appctx_w->freeSessPool, __appsess); \
-} \
+#define App_conn_abort(__appConn) AbortConnection (IOVENT_CONN(__appConn))
 
-#define SetParentSession(__conn,__sess) ((AppConnBase_t*)(__conn))->appSess = __sess 
+#define App_conn_read_next(__appConn,__rbuf,__roff,__rlen,__rpart) \
+ReadNextData(IOVENT_CONN(__appConn),__rbuf,__roff,__rlen,__rpart)
 
-#define GetParentSession(__conn) ((AppConnBase_t*)(__conn))->appSess 
+#define App_ssl_client_init(__appConn,__sslCtx) \
+SslClientInit (IOVENT_CONN(__appConn), __sslCtx);
 
-#define FreeParentSession(__conn) FreeSession((((AppConnBase_t*)(__conn))->appSess))
-
-#define GetConnection(__appsess,__appconn) \
-{ \
-    if (__appsess) { \
-        AppCtx_t* __appctx = ((AppSessBase_t*)__appsess)->appCtx; \
-        AppCtxW_t* __appctx_w = ((AppCtxBase_t*)__appctx)->appCtxW; \
-        *(__appconn) = GetFromPool (&__appctx_w->freeConnPool); \
-        if (*(__appconn)) { \
-            (*__appctx_w->appMethods.OnInitConn) (*(__appconn)); \
-            SetParentSession(__appconn,__appsess); \
-        } \
-    } else { \
-        *(__appconn) = NULL; \
-    } \
-} \
-
-#define FreeConnetion(__appconn) \
-{ \
-    AppSessBase_t* __appSess = ((AppConnBase_t*)__appconn)->appSess; \
-    AppCtxBase_t* __appctx = (AppCtxBase_t*) __appSess->appCtx; \
-    AppCtxW_t* __appctx_w = __appctx->appCtxW; \
-    RemoveFromPool (&__appctx_w->actConnPool, __appconn); \
-    AddToPool (&__appctx_w->freeConnPool, __appconn); \
-} \
-
-#define IsNoActSess(__appctx) IsPoolEmpty((&((AppCtxBase_t*)__appctx)->appCtxW->actSessPool)) 
+#define App_zero_act_sess(__appctx) IsPoolEmpty((&((AppCtxBase_t*)__appctx)->appCtxW->actSessPool)) 
 
 #define __APPCTX_BASE__ AppCtxBase_t appCtxBase;
 #define __APPCONN_BASE__ AppConnBase_t appConnBase;
