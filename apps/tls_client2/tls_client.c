@@ -142,13 +142,12 @@ static void OnMinTick (TlsClientCtx_t* appCtx) {
 static void OnEstablish (TlsClientCtx_t* appCtx
                         , TlsClientConn_t* appConn) {
 
-    // App_conn_abort (appCtx, appConn);
-
+    // log stats
 }
 
 static void OnEstablishErr (TlsClientCtx_t* appCtx
                             , TlsClientConn_t* appConn) {
-    
+    // log stats
 }
 
 static void OnWriteNext (TlsClientCtx_t* appCtx
@@ -186,7 +185,12 @@ static void OnReadNext (TlsClientCtx_t* appCtx
 
 static void OnReadStatus (TlsClientCtx_t* appCtx
                             , TlsClientConn_t* appConn
-                            , int bytesRcvd) { 
+                            , int bytesRcvd) {
+    if (bytesRcvd > 0) {
+        appConn->bytesRead += bytesRcvd;
+    } else {
+        
+    }
 }
 
 static void OnStatus (TlsClientCtx_t* appCtx

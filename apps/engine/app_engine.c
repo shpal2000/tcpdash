@@ -15,11 +15,29 @@ static void OnEstablish (struct IoVentConn* iovConn) {
 }
 
 static void OnReadNext (struct IoVentConn* iovConn) {
+    AppConnBase_t* appConn = (AppConnBase_t*) iovConn->cInfo.connCtx;
+    AppSessBase_t* appSess = (AppSessBase_t*) appConn->appSess;
+    AppCtxBase_t* appCtx = (AppCtxBase_t*) appSess->appCtx;
+    (*appCtx->appCtxW->appMethods.OnReadNext) (appCtx, appConn);
 }
 
 static void OnReadStatus (struct IoVentConn* iovConn
                                     , int bytesRead) {
+    AppConnBase_t* appConn = (AppConnBase_t*) iovConn->cInfo.connCtx;
+    AppSessBase_t* appSess = (AppSessBase_t*) appConn->appSess;
+    AppCtxBase_t* appCtx = (AppCtxBase_t*) appSess->appCtx;
 
+    if (bytesRead > 0) {
+        (*appCtx->appCtxW->appMethods.OnReadStatus) (appCtx, appConn, bytesRead);
+    } else {
+        int closeErr = bytesRead;
+        if (closeErr == ON_CLOSE_ERROR_NONE) { 
+            (*appCtx->appCtxW->appMethods.OnClose) (appCtx, appConn);
+        } else {
+            (*appCtx->appCtxW->appMethods.OnCloseErr) (appCtx, appConn);
+            AbortConnection (iovConn);
+        }
+    }
 }
 
 static void OnWriteNext (struct IoVentConn* iovConn) {
