@@ -152,11 +152,51 @@ static void OnEstablishErr (TlsClientCtx_t* appCtx
 
 static void OnWriteNext (TlsClientCtx_t* appCtx
                         , TlsClientConn_t* appConn) { 
+    if (appConn->bytesWritten < appConn->csGrp->csStartTlsLen) {
+        int nextChunkLen = 0;
+        if ( (appConn->csGrp->csStartTlsLen - appConn->bytesWritten) > 1200 ) {
+            nextChunkLen = 1200;
+        } else {
+            nextChunkLen 
+                = (int) (appConn->csGrp->csStartTlsLen - appConn->bytesWritten);
+        }
+        App_conn_write_next (appConn
+                        , appCtx->appWrBuff
+                        , 0
+                        , nextChunkLen
+                        , 1);
+    } else {
+        if (appConn->isSslInit == 0) {
+            if ( appConn->bytesWritten == appConn->csGrp->csStartTlsLen
+                    && appConn->bytesRead == appConn->csGrp->scStartTlsLen ) {
+                StartTls (appCtx, appConn);
+            }
+        } else {
+            if (appConn->bytesWritten < appConn->csGrp->csDataLen) {
+                int nextChunkLen = 0;
+                if ( (appConn->csGrp->csDataLen - appConn->bytesWritten) > 1200 ) {
+                    nextChunkLen = 1200;
+                } else {
+                    nextChunkLen 
+                        = (int) (appConn->csGrp->csDataLen - appConn->bytesWritten);
+                }
+                App_conn_write_next (appConn
+                                , appCtx->appWrBuff
+                                , 0
+                                , nextChunkLen
+                                , 1);
+            }
+        }
+    }
 }
 
 static void OnWriteStatus (TlsClientCtx_t* appCtx
                             , TlsClientConn_t* appConn
-                            , int bytesSent) { 
+                            , int bytesSent) {
+    appConn->bytesWritten += bytesSent;
+    if (appConn->bytesWritten == appConn->csGrp->csDataLen) {
+        App_conn_write_close (appConn, 0);
+    }
 }
 
 static void OnReadNext (TlsClientCtx_t* appCtx
@@ -186,11 +226,15 @@ static void OnReadNext (TlsClientCtx_t* appCtx
 static void OnReadStatus (TlsClientCtx_t* appCtx
                             , TlsClientConn_t* appConn
                             , int bytesRcvd) {
-    if (bytesRcvd > 0) {
-        appConn->bytesRead += bytesRcvd;
-    } else {
-        
-    }
+    appConn->bytesRead += bytesRcvd;
+}
+
+static void OnClose (TlsClientCtx_t* appCtx
+                        , TlsClientConn_t* appConn) {
+}
+
+static void OnCloseErr (TlsClientCtx_t* appCtx
+                        , TlsClientConn_t* appConn) {
 }
 
 static void OnStatus (TlsClientCtx_t* appCtx

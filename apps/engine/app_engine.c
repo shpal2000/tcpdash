@@ -31,26 +31,41 @@ static void OnReadStatus (struct IoVentConn* iovConn
         (*appCtx->appCtxW->appMethods.OnReadStatus) (appCtx, appConn, bytesRead);
     } else {
         int closeErr = bytesRead;
-        if (closeErr == ON_CLOSE_ERROR_NONE) { 
-            (*appCtx->appCtxW->appMethods.OnClose) (appCtx, appConn);
-        } else {
+        if (closeErr != ON_CLOSE_ERROR_NONE) { 
             (*appCtx->appCtxW->appMethods.OnCloseErr) (appCtx, appConn);
             AbortConnection (iovConn);
+        } else {
+            (*appCtx->appCtxW->appMethods.OnClose) (appCtx, appConn);
         }
     }
 }
 
 static void OnWriteNext (struct IoVentConn* iovConn) {
-
+    AppConnBase_t* appConn = (AppConnBase_t*) iovConn->cInfo.connCtx;
+    AppSessBase_t* appSess = (AppSessBase_t*) appConn->appSess;
+    AppCtxBase_t* appCtx = (AppCtxBase_t*) appSess->appCtx;
+    (*appCtx->appCtxW->appMethods.OnWriteNext) (appCtx, appConn);
 }
 
 static void OnWriteStatus (struct IoVentConn* iovConn
                                     , int bytesWritten) {
+    AppConnBase_t* appConn = (AppConnBase_t*) iovConn->cInfo.connCtx;
+    AppSessBase_t* appSess = (AppSessBase_t*) appConn->appSess;
+    AppCtxBase_t* appCtx = (AppCtxBase_t*) appSess->appCtx;
 
+    if (bytesWritten > 0) {
+        (*appCtx->appCtxW->appMethods.OnWriteStatus) (appCtx, appConn, bytesWritten);
+    } else {
+        (*appCtx->appCtxW->appMethods.OnCloseErr) (appCtx, appConn);
+        AbortConnection (iovConn);
+    }
 }
 
 static void OnCleanup (struct IoVentConn* iovConn) {
-
+    AppConnBase_t* appConn = (AppConnBase_t*) iovConn->cInfo.connCtx;
+    AppSessBase_t* appSess = (AppSessBase_t*) appConn->appSess;
+    AppCtxBase_t* appCtx = (AppCtxBase_t*) appSess->appCtx;
+    (*appCtx->appCtxW->appMethods.OnCleanup) (appCtx, appConn);
 }
 
 int App_alloc_resources (AppCtx_t* appCtx) {

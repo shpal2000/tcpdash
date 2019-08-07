@@ -45,6 +45,8 @@ typedef void (*OnWriteNext_t) (AppCtx_t*, AppConn_t*);
 typedef void (*OnWriteStatus_t) (AppCtx_t*, AppConn_t*, int);
 typedef void (*OnReadNext_t) (AppCtx_t*, AppConn_t*);
 typedef void (*OnReadStatus_t) (AppCtx_t*, AppConn_t*, int);
+typedef void (*OnClose_t) (AppCtx_t*, AppConn_t*);
+typedef void (*OnCloseErr_t) (AppCtx_t*, AppConn_t*);
 typedef void (*OnStatus_t) (AppCtx_t*, AppConn_t*);
 typedef void (*OnCleanup_t) (AppCtx_t*, AppConn_t*);
 
@@ -75,6 +77,8 @@ typedef struct AppMethods {
     OnWriteStatus_t OnWriteStatus;
     OnReadNext_t OnReadNext;
     OnReadStatus_t OnReadStatus;
+    OnClose_t OnClose;
+    OnCloseErr_t OnCloseErr;
     OnStatus_t OnStatus;
     OnCleanup_t OnCleanup;
 
@@ -191,6 +195,12 @@ void App_conn_release (AppConn_t* appConn
 #define App_conn_read_next(__appConn,__rbuf,__roff,__rlen,__rpart) \
 ReadNextData(IOVENT_CONN(__appConn),__rbuf,__roff,__rlen,__rpart)
 
+#define App_conn_write_next(__appConn,__wbuf,__woff,__wlen,__wpart) \
+WriteNextData(IOVENT_CONN(__appConn),__wbuf,__woff,__wlen,__wpart)
+
+#define App_conn_write_close(__appConn,__ssl_close_notify) \
+WriteClose (IOVENT_CONN(__appConn))
+
 #define App_ssl_client_init(__appConn,__sslCtx) \
 SslClientInit (IOVENT_CONN(__appConn), __sslCtx);
 
@@ -220,6 +230,8 @@ void __app_name (AppMethods_t* __app_methods) \
     __app_methods->OnWriteStatus = (OnWriteStatus_t) &OnWriteStatus; \
     __app_methods->OnReadNext = (OnReadNext_t) &OnReadNext; \
     __app_methods->OnReadStatus = (OnReadStatus_t) &OnReadStatus; \
+    __app_methods->OnClose = (OnClose_t) &OnClose; \
+    __app_methods->OnCloseErr = (OnCloseErr_t) &OnCloseErr; \
     __app_methods->OnStatus = (OnStatus_t) &OnStatus; \
     __app_methods->OnCleanup = (OnCleanup_t) &OnCleanup; \
 \
