@@ -7,6 +7,7 @@ static void OnEstablish (struct IoVentConn* iovConn) {
     AppSessBase_t* appSess = (AppSessBase_t*) appConn->appSess;
     AppCtxBase_t* appCtx = (AppCtxBase_t*) appSess->appCtx;
 
+    appConn->ioVentConn = iovConn; 
     if ( IsConnErr (iovConn) ) {
         (*appCtx->appCtxW->appMethods.OnEstablishErr) (appCtx, appConn);
     } else {

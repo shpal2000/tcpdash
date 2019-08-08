@@ -8,7 +8,7 @@
         *(__appconn) = GetFromPool (&__appctx_w->freeConnPool); \
         if (*(__appconn)) { \
             (*__appctx_w->appMethods.OnInitConn) (*(__appconn)); \
-            ((AppConnBase_t*)(__appconn))->appSess = __appsess; \
+            ((AppConnBase_t*)(*(__appconn)))->appSess = __appsess; \
         } \
     } else { \
         *(__appconn) = NULL; \

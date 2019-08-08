@@ -272,6 +272,10 @@ static TlsClientCtx_t* OnAppInit (JObject* appJ) {
                 
                 JObject* csGrpJ = JGET_ARR_ELEMENT_OBJ (csGrpArrJ, csGrpIndex);
 
+                // ???
+                csGrp->csDataLen = 1;
+                csGrp->scDataLen = 1;
+
                 //server address
                 JGET_MEMBER_STR (csGrpJ, "srvIp", &csGrp->srvIp);
                 JGET_MEMBER_INT (csGrpJ, "srvPort", &csGrp->srvPort);
