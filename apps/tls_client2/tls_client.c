@@ -30,25 +30,25 @@ static void OnDeleteConn (TlsClientConn_t* appConn) {
     DeleteStruct (TlsClientConn_t, appConn);
 }
 
-static uint32_t GetMaxActSess (TlsClientCtx_t* appCtx) {
+static uint32_t OnGetMaxActSess (TlsClientCtx_t* appCtx) {
     return appCtx->maxActSess;
 }
 
-static uint32_t GetMaxActConn (TlsClientCtx_t* appCtx) {
+static uint32_t OnGetMaxActConn (TlsClientCtx_t* appCtx) {
     // 1 connection per session
     return appCtx->maxActSess * 1;
 }
 
-static uint32_t GetMaxErrSess (TlsClientCtx_t* appCtx) {
+static uint32_t OnGetMaxErrSess (TlsClientCtx_t* appCtx) {
     return appCtx->maxErrSess;
 }
 
-static uint32_t GetMaxErrConn (TlsClientCtx_t* appCtx) {
+static uint32_t OnGetMaxErrConn (TlsClientCtx_t* appCtx) {
     // 1 connection per session
     return appCtx->maxErrSess * 1;
 }
 
-static uint32_t GetConnPerSec (TlsClientCtx_t* appCtx) {
+static uint32_t OnGetConnPerSec (TlsClientCtx_t* appCtx) {
     return appCtx->connPerSec;
 }
 
@@ -231,11 +231,11 @@ static void OnReadStatus (TlsClientCtx_t* appCtx
     appConn->bytesRead += bytesRcvd;
 }
 
-static void OnClose (TlsClientCtx_t* appCtx
+static void OnRemoteClose (TlsClientCtx_t* appCtx
                         , TlsClientConn_t* appConn) {
 }
 
-static void OnCloseErr (TlsClientCtx_t* appCtx
+static void OnRemoteCloseErr (TlsClientCtx_t* appCtx
                         , TlsClientConn_t* appConn) {
 }
 
@@ -272,9 +272,11 @@ static TlsClientCtx_t* OnAppInit (JObject* appJ) {
                 
                 JObject* csGrpJ = JGET_ARR_ELEMENT_OBJ (csGrpArrJ, csGrpIndex);
 
-                // ???
-                csGrp->csDataLen = 1;
-                csGrp->scDataLen = 1;
+                //data lens
+                JGET_MEMBER_INT (csGrpJ, "csDataLen", &csGrp->csDataLen);
+                JGET_MEMBER_INT (csGrpJ, "scDataLen", &csGrp->scDataLen);
+                JGET_MEMBER_INT (csGrpJ, "csStartTlsLen", &csGrp->csStartTlsLen);
+                JGET_MEMBER_INT (csGrpJ, "scStartTlsLen", &csGrp->scStartTlsLen);
 
                 //server address
                 JGET_MEMBER_STR (csGrpJ, "srvIp", &csGrp->srvIp);

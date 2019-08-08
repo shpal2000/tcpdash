@@ -7,6 +7,7 @@
         AppCtxW_t* __appctx_w = ((AppCtxBase_t*)__appctx)->appCtxW; \
         *(__appconn) = GetFromPool (&__appctx_w->freeConnPool); \
         if (*(__appconn)) { \
+            AddToPool (&__appctx_w->actConnPool,*(__appconn)); \
             (*__appctx_w->appMethods.OnInitConn) (*(__appconn)); \
             ((AppConnBase_t*)(*(__appconn)))->appSess = __appsess; \
         } \
@@ -29,6 +30,7 @@
     AppCtxW_t* __appctx_w = ((AppCtxBase_t*)__appctx)->appCtxW; \
     *(__appsess) = GetFromPool (&__appctx_w->freeSessPool); \
     if (*(__appsess)) { \
+        AddToPool (&__appctx_w->actSessPool,*(__appsess)); \
         (*__appctx_w->appMethods.OnInitSess) (*(__appsess)); \
     } \
 } 

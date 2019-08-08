@@ -33,10 +33,10 @@ static void OnReadStatus (struct IoVentConn* iovConn
     } else {
         int closeErr = bytesRead;
         if (closeErr != ON_CLOSE_ERROR_NONE) { 
-            (*appCtx->appCtxW->appMethods.OnCloseErr) (appCtx, appConn);
+            (*appCtx->appCtxW->appMethods.OnRemoteCloseErr) (appCtx, appConn);
             AbortConnection (iovConn);
         } else {
-            (*appCtx->appCtxW->appMethods.OnClose) (appCtx, appConn);
+            (*appCtx->appCtxW->appMethods.OnRemoteClose) (appCtx, appConn);
         }
     }
 }
@@ -57,7 +57,7 @@ static void OnWriteStatus (struct IoVentConn* iovConn
     if (bytesWritten > 0) {
         (*appCtx->appCtxW->appMethods.OnWriteStatus) (appCtx, appConn, bytesWritten);
     } else {
-        (*appCtx->appCtxW->appMethods.OnCloseErr) (appCtx, appConn);
+        (*appCtx->appCtxW->appMethods.OnRemoteCloseErr) (appCtx, appConn);
         AbortConnection (iovConn);
     }
 }
@@ -79,8 +79,8 @@ int App_alloc_resources (AppCtx_t* appCtx) {
     InitPool (&appCtxW->actConnPool);
     InitPool (&appCtxW->freeConnPool);
 
-    // ??? uint32_t maxErrSess = (*appCtxW->appMethods.GetMaxErrSess)(appCtx); 
-    uint32_t maxActSess = (*appCtxW->appMethods.GetMaxActSess)(appCtx);
+    // ??? uint32_t maxErrSess = (*appCtxW->appMethods.OnGetMaxErrSess)(appCtx); 
+    uint32_t maxActSess = (*appCtxW->appMethods.OnGetMaxActSess)(appCtx);
     for (uint32_t i = 0; i < maxActSess; i++) {
         AppSess_t* newSess = (*appCtxW->appMethods.OnCreateSess)();
         if (newSess) {
@@ -101,7 +101,7 @@ int App_alloc_resources (AppCtx_t* appCtx) {
     }
 
     if (status == 0) {
-        uint32_t maxActConn = (*appCtxW->appMethods.GetMaxActConn)(appCtx);
+        uint32_t maxActConn = (*appCtxW->appMethods.OnGetMaxActConn)(appCtx);
         for (uint32_t i = 0; i < maxActConn; i++) {
             AppConn_t* newConn = (*appCtxW->appMethods.OnCreateConn)();
             if (newConn) {
@@ -165,12 +165,12 @@ static int App_ctx_setup (EngCtx_t* engCtx) {
                                 break;
                             } else {
                                 engCtx->maxActConn 
-                                        += (*appCtxW->appMethods.GetMaxActConn)(appCtx);
+                                        += (*appCtxW->appMethods.OnGetMaxActConn)(appCtx);
                                 engCtx->maxErrConn 
-                                        += (*appCtxW->appMethods.GetMaxErrConn)(appCtx);
+                                        += (*appCtxW->appMethods.OnGetMaxErrConn)(appCtx);
 
                                 appCtxW->connPerSec 
-                                    = (*appCtxW->appMethods.GetConnPerSec)(appCtx);
+                                    = (*appCtxW->appMethods.OnGetConnPerSec)(appCtx);
                                 
                                 appCtxW->appStatus = APP_STATUS_RUNNING;
                             }

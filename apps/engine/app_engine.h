@@ -45,8 +45,8 @@ typedef void (*OnWriteNext_t) (AppCtx_t*, AppConn_t*);
 typedef void (*OnWriteStatus_t) (AppCtx_t*, AppConn_t*, int);
 typedef void (*OnReadNext_t) (AppCtx_t*, AppConn_t*);
 typedef void (*OnReadStatus_t) (AppCtx_t*, AppConn_t*, int);
-typedef void (*OnClose_t) (AppCtx_t*, AppConn_t*);
-typedef void (*OnCloseErr_t) (AppCtx_t*, AppConn_t*);
+typedef void (*OnRemoteClose_t) (AppCtx_t*, AppConn_t*);
+typedef void (*OnRemoteCloseErr_t) (AppCtx_t*, AppConn_t*);
 typedef void (*OnStatus_t) (AppCtx_t*, AppConn_t*);
 typedef void (*OnCleanup_t) (AppCtx_t*, AppConn_t*);
 
@@ -77,8 +77,8 @@ typedef struct AppMethods {
     OnWriteStatus_t OnWriteStatus;
     OnReadNext_t OnReadNext;
     OnReadStatus_t OnReadStatus;
-    OnClose_t OnClose;
-    OnCloseErr_t OnCloseErr;
+    OnRemoteClose_t OnRemoteClose;
+    OnRemoteCloseErr_t OnRemoteCloseErr;
     OnStatus_t OnStatus;
     OnCleanup_t OnCleanup;
 
@@ -90,13 +90,13 @@ typedef struct AppMethods {
     OnInitConn_t OnInitConn;
     OnDeleteConn_t OnDeleteConn;
 
-    GetAppAttribUint32_t GetMaxActSess;
-    GetAppAttribUint32_t GetMaxActConn;
+    GetAppAttribUint32_t OnGetMaxActSess;
+    GetAppAttribUint32_t OnGetMaxActConn;
 
-    GetAppAttribUint32_t GetMaxErrSess;
-    GetAppAttribUint32_t GetMaxErrConn;
+    GetAppAttribUint32_t OnGetMaxErrSess;
+    GetAppAttribUint32_t OnGetMaxErrConn;
 
-    GetAppAttribUint32_t GetConnPerSec;
+    GetAppAttribUint32_t OnGetConnPerSec;
 } AppMethods_t;
 
 typedef struct AppCtxW {
@@ -230,8 +230,8 @@ void __app_name (AppMethods_t* __app_methods) \
     __app_methods->OnWriteStatus = (OnWriteStatus_t) &OnWriteStatus; \
     __app_methods->OnReadNext = (OnReadNext_t) &OnReadNext; \
     __app_methods->OnReadStatus = (OnReadStatus_t) &OnReadStatus; \
-    __app_methods->OnClose = (OnClose_t) &OnClose; \
-    __app_methods->OnCloseErr = (OnCloseErr_t) &OnCloseErr; \
+    __app_methods->OnRemoteClose = (OnRemoteClose_t) &OnRemoteClose; \
+    __app_methods->OnRemoteCloseErr = (OnRemoteCloseErr_t) &OnRemoteCloseErr; \
     __app_methods->OnStatus = (OnStatus_t) &OnStatus; \
     __app_methods->OnCleanup = (OnCleanup_t) &OnCleanup; \
 \
@@ -243,13 +243,13 @@ void __app_name (AppMethods_t* __app_methods) \
     __app_methods->OnInitConn = (OnInitConn_t) &OnInitConn; \
     __app_methods->OnDeleteConn = (OnDeleteConn_t) &OnDeleteConn; \
 \
-    __app_methods->GetMaxActSess = (GetAppAttribUint32_t) &GetMaxActSess; \
-    __app_methods->GetMaxActConn = (GetAppAttribUint32_t) &GetMaxActConn; \
+    __app_methods->OnGetMaxActSess = (GetAppAttribUint32_t) &OnGetMaxActSess; \
+    __app_methods->OnGetMaxActConn = (GetAppAttribUint32_t) &OnGetMaxActConn; \
 \
-    __app_methods->GetMaxErrSess = (GetAppAttribUint32_t) &GetMaxErrSess; \
-    __app_methods->GetMaxErrConn = (GetAppAttribUint32_t) &GetMaxErrConn; \
+    __app_methods->OnGetMaxErrSess = (GetAppAttribUint32_t) &OnGetMaxErrSess; \
+    __app_methods->OnGetMaxErrConn = (GetAppAttribUint32_t) &OnGetMaxErrConn; \
 \
-    __app_methods->GetConnPerSec = (GetAppAttribUint32_t) &GetConnPerSec; \
+    __app_methods->OnGetConnPerSec = (GetAppAttribUint32_t) &OnGetConnPerSec; \
 }
 
 #define APP_GET_METHODS(__appctx_w, __app_name) \

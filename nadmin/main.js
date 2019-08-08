@@ -236,7 +236,11 @@ const config6 = `{
                                 "cPortB" : 20000,
                                 "cPortE" : 29999 
                             }
-                        ]
+                        ],
+                        "csDataLen" : 10,
+                        "scDataLen" : 20,
+                        "csStartTlsLen" : 0,
+                        "scStartTlsLen" : 0
                     }
                 ]
             }
