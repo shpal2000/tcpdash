@@ -1,7 +1,6 @@
 subdir('tcp_client')
 subdir('tcp_server')
 subdir('tcp_proxy')
-subdir('tls_server')
 subdir('tls_client2')
-subdir('jparse')
+subdir('tls_server2')
 subdir('engine')

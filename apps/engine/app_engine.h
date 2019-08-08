@@ -204,6 +204,8 @@ WriteClose (IOVENT_CONN(__appConn))
 #define App_ssl_client_init(__appConn,__sslCtx) \
 SslClientInit (IOVENT_CONN(__appConn), __sslCtx);
 
+#define App_server_init(__appctx,__srvctx,__srvaddr,__statsarr,__statscount) InitServer( (((AppCtxBase_t*)__appctx)->appCtxW)->engCtx->iovCtx,__srvctx,__srvaddr,__statsarr,__statscount)
+
 #define App_zero_act_sess(__appctx) IsPoolEmpty((&((AppCtxBase_t*)__appctx)->appCtxW->actSessPool)) 
 
 #define __APPCTX_BASE__ AppCtxBase_t appCtxBase;

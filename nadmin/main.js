@@ -223,8 +223,8 @@ const config6 = `{
                 "maxSess" : 1,
                 "csGrpArr" : [
                     {
-                        "srvIp"   : "216.58.194.164",
-                        "srvPort" : 443,
+                        "srvIp"   : "192.168.1.24",
+                        "srvPort" : 8443,
                         "cAddrArr"  : [
                             {
                                 "cIp" : "192.168.1.24",
@@ -251,15 +251,16 @@ const config6 = `{
        "appList" : [
             {
                 "appName" : "TlsServer",
-                "srvArr" : [
+                "maxActSess" : 10000,
+                "maxErrSess" : 10000,
+                "csGrpArr" : [
                     {
-                        "srvIp"   : "12.20.60.5",
-                        "srvPort" : 443
-                    },
-
-                    {
-                        "srvIp"   : "12.20.60.6",
-                        "srvPort" : 443
+                        "srvIp"   : "192.168.1.24",
+                        "srvPort" : 8443,
+                        "csDataLen" : 10,
+                        "scDataLen" : 20,
+                        "csStartTlsLen" : 0,
+                        "scStartTlsLen" : 0
                     }
                 ]
             }

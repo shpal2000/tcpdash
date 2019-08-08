@@ -18,4 +18,5 @@ executable('app_engine.exe'
             , link_with : [platform2_lib
                             , iovent2_lib
                             , msg_io2_lib
-                            , tls_client_lib])
+                            , tls_client_lib
+                            , tls_server_lib])
