@@ -220,7 +220,7 @@ const config6 = `{
                 "connPerSec" : 500,
                 "maxActSess" : 10000,
                 "maxErrSess" : 10000,
-                "maxSess" : 4,
+                "maxSess" : 1,
                 "csGrpArr" : [
                     {
                         "srvIp"   : "216.58.194.164",

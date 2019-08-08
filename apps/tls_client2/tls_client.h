@@ -12,6 +12,9 @@ typedef struct TlsClientStats {
 typedef struct TlsClientGrp {
     TlsClientStats_t grpStats;
 
+    SockStats_t* statsArr[2];
+    int statsCount;
+
     char* srvIp;
     uint32_t srvPort;
     SockAddr_t srvAddr;

@@ -92,9 +92,6 @@ static void OnAppLoop (TlsClientCtx_t* appCtx, int newConnCount) {
         SockAddr_t* localAddr = &csGrp->cAddrArr[0].sockAddr;
         SockAddr_t* remoteAddr = &csGrp->srvAddr;
         LocalPortPool_t* localPortPool = &csGrp->cAddrArr[0].portPool;
-        int statsCount = 2;
-        SockStats_t* statsArr[] = { (SockStats_t*) &appCtx->allStats
-                                    , (SockStats_t*) &csGrp->grpStats};
 
         if (csGrp->sslCtx == NULL) {
             csGrp->sslCtx = SSL_CTX_new(SSLv23_client_method());
@@ -124,8 +121,8 @@ static void OnAppLoop (TlsClientCtx_t* appCtx, int newConnCount) {
                                         , localAddr
                                         , localPortPool 
                                         , remoteAddr
-                                        , statsArr 
-                                        , statsCount);
+                                        , csGrp->statsArr 
+                                        , csGrp->statsCount);
         if (appConn == NULL) {
             // handle error
             // log stats 
@@ -269,6 +266,9 @@ static TlsClientCtx_t* OnAppInit (JObject* appJ) {
         if (appCtx->csGrpArr) {
             for (int csGrpIndex = 0; csGrpIndex < appCtx->csGrpCount; csGrpIndex++) {
                 TlsClientGrp_t* csGrp = &appCtx->csGrpArr[csGrpIndex];
+                csGrp->statsCount = 2;
+                csGrp->statsArr [0] = (SockStats_t*) &appCtx->allStats;
+                csGrp->statsArr [1] = (SockStats_t*) &csGrp->grpStats;
                 
                 JObject* csGrpJ = JGET_ARR_ELEMENT_OBJ (csGrpArrJ, csGrpIndex);
 
