@@ -83,6 +83,11 @@ static void StartTls (TlsClientCtx_t* appCtx, TlsClientConn_t* appConn) {
 static void OnAppLoop (TlsClientCtx_t* appCtx, int newConnCount) {
 
     for (uint32_t connIndex = 0; connIndex < newConnCount; connIndex++) {
+        uint64_t tcpConnInitCount = GetConnStats(&appCtx->allStats, tcpConnInit);
+        if (tcpConnInitCount >= appCtx->maxSess) {
+            break;
+        }
+
         TlsClientGrp_t* csGrp = &appCtx->csGrpArr[0]; //todo
         SockAddr_t* localAddr = &csGrp->cAddrArr[0].sockAddr;
         SockAddr_t* remoteAddr = &csGrp->srvAddr;

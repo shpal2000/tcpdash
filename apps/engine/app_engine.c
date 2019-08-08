@@ -167,6 +167,10 @@ static int App_ctx_setup (EngCtx_t* engCtx) {
                                         += (*appCtxW->appMethods.GetMaxActConn)(appCtx);
                                 engCtx->maxErrConn 
                                         += (*appCtxW->appMethods.GetMaxErrConn)(appCtx);
+
+                                appCtxW->connPerSec 
+                                    = (*appCtxW->appMethods.GetConnPerSec)(appCtx);
+                                
                                 appCtxW->appStatus = APP_STATUS_RUNNING;
                             }
                         } else {

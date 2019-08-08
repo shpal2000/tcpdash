@@ -220,19 +220,19 @@ const config6 = `{
                 "connPerSec" : 500,
                 "maxActSess" : 10000,
                 "maxErrSess" : 10000,
-                "maxSess" : 1000000,
+                "maxSess" : 4,
                 "csGrpArr" : [
                     {
-                        "srvIp"   : "172.217.0.36",
+                        "srvIp"   : "216.58.194.164",
                         "srvPort" : 443,
                         "cAddrArr"  : [
                             {
-                                "cIp" : "10.116.6.3",
+                                "cIp" : "192.168.1.24",
                                 "cPortB" : 10000,
                                 "cPortE" : 19999 
                             },
                             {
-                                "cIp" : "10.116.6.3",
+                                "cIp" : "192.168.1.24",
                                 "cPortB" : 20000,
                                 "cPortE" : 29999 
                             }
