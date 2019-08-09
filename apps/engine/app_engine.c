@@ -1,7 +1,7 @@
 #include "app_engine.h"
 
 static void OnEstablish (struct IoVentConn* iovConn) {
-
+    //change this to iovConn macro
     AppConnBase_t* appConn = (AppConnBase_t*) iovConn->cInfo.connCtx;
     AppSessBase_t* appSess = (AppSessBase_t*) appConn->appSess;
     AppCtxBase_t* appCtx = (AppCtxBase_t*) appSess->appCtx;
@@ -13,11 +13,13 @@ static void OnEstablish (struct IoVentConn* iovConn) {
         if (newAppSess) {
             GetConnection(newAppSess, &newAppConn);
             if (newAppConn) {
+                //change this to iovConn macro
+                iovConn->cInfo.connCtx = newAppConn; 
                 ((AppConnBase_t*)newAppConn)->ioVentConn = iovConn;
                 ((AppConnBase_t*)newAppConn)->appConnCtx = appConn->appConnCtx;
                 (*appCtx->appCtxW->appMethods.OnEstablish) (appCtx
-                                                    , newAppConn
-                                                    , appConn->appConnCtx);
+                                    , newAppConn
+                                    , ((AppConnBase_t*)newAppConn)->appConnCtx);
             } else {
                 FreeSession (newAppSess);
                 AbortConnection (iovConn);

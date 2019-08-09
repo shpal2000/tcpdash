@@ -59,15 +59,15 @@ static int OnContinue (TlsServerCtx_t* appCtx) {
 
 static void StartTls (TlsServerCtx_t* appCtx, TlsServerConn_t* appConn) {
 
-    SSL* sslCtx = SSL_new(appConn->csGrp->sslCtx);
+    // SSL* sslCtx = SSL_new(appConn->csGrp->sslCtx);
 
-    if (sslCtx) {
-        appConn->isSslInit = 1;
-        App_ssl_client_init (appConn, sslCtx);            
-    } else {
-        //??? update stats; mark connection state why fail 
-        App_conn_abort (appConn);
-    }
+    // if (sslCtx) {
+    //     appConn->isSslInit = 1;
+    //     App_ssl_client_init (appConn, sslCtx);            
+    // } else {
+    //     //??? update stats; mark connection state why fail 
+    //     App_conn_abort (appConn);
+    // }
 }
 
 static void OnAppLoop (TlsServerCtx_t* appCtx, int newConnCount) {
