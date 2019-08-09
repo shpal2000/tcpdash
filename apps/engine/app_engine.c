@@ -1,5 +1,30 @@
 #include "app_engine.h"
 
+static AppConn_t* App_conn_accept_new (AppConn_t* appConnS) {
+    AppSess_t* appSess = NULL;
+    AppConn_t* appConn = NULL;
+    GetSession(appCtx, &appSess);
+    if (appSess) {
+        GetConnection(appSess, &appConn); 
+        if ( appConn == NULL ) {
+            // stats
+            // handle error ??? free resources
+            FreeSession (appSess);
+        } else {
+            ((AppConnBase_t*)appConn)->isSrv = 1;
+            ((AppConnBase_t*)appConn)->srvCtx = srvCtx;
+            InitServer((((AppCtxBase_t*)appCtx)->appCtxW)->engCtx->iovCtx
+                , appConn
+                , localAddress
+                , statsArr
+                , statsCount);
+        }
+    } else {
+        // stats no free session resurce
+        // handle error ???
+    }
+    return appConn;
+}
 
 static void OnEstablish (struct IoVentConn* iovConn) {
 
@@ -7,11 +32,16 @@ static void OnEstablish (struct IoVentConn* iovConn) {
     AppSessBase_t* appSess = (AppSessBase_t*) appConn->appSess;
     AppCtxBase_t* appCtx = (AppCtxBase_t*) appSess->appCtx;
 
-    appConn->ioVentConn = iovConn; 
-    if ( IsConnErr (iovConn) ) {
-        (*appCtx->appCtxW->appMethods.OnEstablishErr) (appCtx, appConn);
-    } else {
-        (*appCtx->appCtxW->appMethods.OnEstablish) (appCtx, appConn);
+    if (appConn->isSrv) { //server connection
+
+    }
+    else { //client connection
+        appConn->ioVentConn = iovConn;
+        if ( IsConnErr (iovConn) ) {
+            (*appCtx->appCtxW->appMethods.OnEstablishErr) (appCtx, appConn);
+        } else {
+            (*appCtx->appCtxW->appMethods.OnEstablish) (appCtx, appConn);
+        }
     }
 }
 

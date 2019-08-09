@@ -17,10 +17,13 @@
 typedef void AppConn_t;
 typedef void AppSess_t;
 typedef void AppCtx_t;
+typedef void SrvCtx_t;
 
 typedef struct AppConnBase {
     IoVentConn_t* ioVentConn;
-    AppSess_t* appSess; 
+    AppSess_t* appSess;
+    int isSrv;
+    SrvCtx_t* srvCtx;
 }AppConnBase_t;
 
 typedef struct AppSessBase {
@@ -204,7 +207,52 @@ WriteClose (IOVENT_CONN(__appConn))
 #define App_ssl_client_init(__appConn,__sslCtx) \
 SslClientInit (IOVENT_CONN(__appConn), __sslCtx);
 
-#define App_server_init(__appctx,__srvctx,__srvaddr,__statsarr,__statscount) InitServer( (((AppCtxBase_t*)__appctx)->appCtxW)->engCtx->iovCtx,__srvctx,__srvaddr,__statsarr,__statscount)
+#define GetConnection(__appsess,__appconn) \
+{ \
+    if (__appsess) { \
+        AppCtx_t* __appctx = ((AppSessBase_t*)__appsess)->appCtx; \
+        AppCtxW_t* __appctx_w = ((AppCtxBase_t*)__appctx)->appCtxW; \
+        *(__appconn) = GetFromPool (&__appctx_w->freeConnPool); \
+        if (*(__appconn)) { \
+            AddToPool (&__appctx_w->actConnPool,*(__appconn)); \
+            (*__appctx_w->appMethods.OnInitConn) (*(__appconn)); \
+            ((AppConnBase_t*)(*(__appconn)))->appSess = __appsess; \
+            ((AppConnBase_t*)(*(__appconn)))->isSrv = 0; \
+            ((AppConnBase_t*)(*(__appconn)))->srvCtx = NULL; \
+        } \
+    } else { \
+        *(__appconn) = NULL; \
+    } \
+} 
+
+#define FreeConnetion(__appconn) \
+{ \
+    AppSessBase_t* __appSess = ((AppConnBase_t*)__appconn)->appSess; \
+    AppCtxBase_t* __appctx = (AppCtxBase_t*) __appSess->appCtx; \
+    AppCtxW_t* __appctx_w = __appctx->appCtxW; \
+    RemoveFromPool (&__appctx_w->actConnPool, __appconn); \
+    AddToPool (&__appctx_w->freeConnPool, __appconn); \
+}
+
+#define GetSession(__appctx,__appsess) \
+{ \
+    AppCtxW_t* __appctx_w = ((AppCtxBase_t*)__appctx)->appCtxW; \
+    *(__appsess) = GetFromPool (&__appctx_w->freeSessPool); \
+    if (*(__appsess)) { \
+        AddToPool (&__appctx_w->actSessPool,*(__appsess)); \
+        (*__appctx_w->appMethods.OnInitSess) (*(__appsess)); \
+    } \
+} 
+
+#define FreeSession(__appsess) \
+{ \
+    AppCtx_t* __appctx = ((AppSessBase_t*)__appsess)->appCtx; \
+    AppCtxW_t* __appctx_w = ((AppCtxBase_t*)__appctx)->appCtxW; \
+    RemoveFromPool (&__appctx_w->actSessPool, __appsess); \
+    AddToPool (&__appctx_w->freeSessPool, __appsess); \
+} 
+
+#define FreeParentSession(__conn) FreeSession((((AppConnBase_t*)(__conn))->appSess))
 
 #define App_zero_act_sess(__appctx) IsPoolEmpty((&((AppCtxBase_t*)__appctx)->appCtxW->actSessPool)) 
 

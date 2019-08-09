@@ -1,50 +1,5 @@
 #include "app_engine.h"
 
-#define GetConnection(__appsess,__appconn) \
-{ \
-    if (__appsess) { \
-        AppCtx_t* __appctx = ((AppSessBase_t*)__appsess)->appCtx; \
-        AppCtxW_t* __appctx_w = ((AppCtxBase_t*)__appctx)->appCtxW; \
-        *(__appconn) = GetFromPool (&__appctx_w->freeConnPool); \
-        if (*(__appconn)) { \
-            AddToPool (&__appctx_w->actConnPool,*(__appconn)); \
-            (*__appctx_w->appMethods.OnInitConn) (*(__appconn)); \
-            ((AppConnBase_t*)(*(__appconn)))->appSess = __appsess; \
-        } \
-    } else { \
-        *(__appconn) = NULL; \
-    } \
-} 
-
-#define FreeConnetion(__appconn) \
-{ \
-    AppSessBase_t* __appSess = ((AppConnBase_t*)__appconn)->appSess; \
-    AppCtxBase_t* __appctx = (AppCtxBase_t*) __appSess->appCtx; \
-    AppCtxW_t* __appctx_w = __appctx->appCtxW; \
-    RemoveFromPool (&__appctx_w->actConnPool, __appconn); \
-    AddToPool (&__appctx_w->freeConnPool, __appconn); \
-}
-
-#define GetSession(__appctx,__appsess) \
-{ \
-    AppCtxW_t* __appctx_w = ((AppCtxBase_t*)__appctx)->appCtxW; \
-    *(__appsess) = GetFromPool (&__appctx_w->freeSessPool); \
-    if (*(__appsess)) { \
-        AddToPool (&__appctx_w->actSessPool,*(__appsess)); \
-        (*__appctx_w->appMethods.OnInitSess) (*(__appsess)); \
-    } \
-} 
-
-#define FreeSession(__appsess) \
-{ \
-    AppCtx_t* __appctx = ((AppSessBase_t*)__appsess)->appCtx; \
-    AppCtxW_t* __appctx_w = ((AppCtxBase_t*)__appctx)->appCtxW; \
-    RemoveFromPool (&__appctx_w->actSessPool, __appsess); \
-    AddToPool (&__appctx_w->freeSessPool, __appsess); \
-} 
-
-#define FreeParentSession(__conn) FreeSession((((AppConnBase_t*)(__conn))->appSess))
-
 AppConn_t* App_conn_session_child (AppCtx_t* appCtx
                     , AppSess_t* appSess
                     , SockAddr_t* localAddr
@@ -116,4 +71,33 @@ void App_conn_release (AppConn_t* appConn
         FreeParentSession(appConn);
     }
     FreeConnetion(appConn);
+}
+
+void App_server_init (AppCtx_t* appCtx
+                    , void* srvCtx
+                    , SockAddr_t* localAddress
+                    , SockStats_t** statsArr
+                    , int statsCount) {
+    AppSess_t* appSess = NULL;
+    AppConn_t* appConn = NULL;
+    GetSession(appCtx, &appSess);
+    if (appSess) {
+        GetConnection(appSess, &appConn); 
+        if ( appConn == NULL ) {
+            // stats
+            // handle error ??? free resources
+            FreeSession (appSess);
+        } else {
+            ((AppConnBase_t*)appConn)->isSrv = 1;
+            ((AppConnBase_t*)appConn)->srvCtx = srvCtx;
+            InitServer((((AppCtxBase_t*)appCtx)->appCtxW)->engCtx->iovCtx
+                , appConn
+                , localAddress
+                , statsArr
+                , statsCount);
+        }
+    } else {
+        // stats no free session resurce
+        // handle error ???
+    }
 }
