@@ -65,14 +65,6 @@ AppConn_t* App_conn_session_new (AppCtx_t* appCtx
     return appConn;
 }
 
-void App_conn_release (AppConn_t* appConn
-                        , int toFreeSess) {
-    if (toFreeSess) {
-        FreeParentSession(appConn);
-    }
-    FreeConnetion(appConn);
-}
-
 void App_server_init (AppCtx_t* appCtx
                     , void* srvCtx
                     , SockAddr_t* localAddress

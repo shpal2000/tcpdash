@@ -1,31 +1,5 @@
 #include "app_engine.h"
 
-static AppConn_t* App_conn_accept_new (AppConn_t* appConnS) {
-    AppSess_t* appSess = NULL;
-    AppConn_t* appConn = NULL;
-    GetSession(appCtx, &appSess);
-    if (appSess) {
-        GetConnection(appSess, &appConn); 
-        if ( appConn == NULL ) {
-            // stats
-            // handle error ??? free resources
-            FreeSession (appSess);
-        } else {
-            ((AppConnBase_t*)appConn)->isSrv = 1;
-            ((AppConnBase_t*)appConn)->srvCtx = srvCtx;
-            InitServer((((AppCtxBase_t*)appCtx)->appCtxW)->engCtx->iovCtx
-                , appConn
-                , localAddress
-                , statsArr
-                , statsCount);
-        }
-    } else {
-        // stats no free session resurce
-        // handle error ???
-    }
-    return appConn;
-}
-
 static void OnEstablish (struct IoVentConn* iovConn) {
 
     AppConnBase_t* appConn = (AppConnBase_t*) iovConn->cInfo.connCtx;
@@ -33,7 +7,23 @@ static void OnEstablish (struct IoVentConn* iovConn) {
     AppCtxBase_t* appCtx = (AppCtxBase_t*) appSess->appCtx;
 
     if (appConn->isSrv) { //server connection
-
+        AppSess_t* newAppSess = NULL;
+        AppConn_t* newAppConn = NULL;
+        GetSession(appCtx, &newAppSess);
+        if (newAppSess) {
+            GetConnection(newAppSess, &newAppConn);
+            if (newAppConn) {
+                ((AppConnBase_t*)newAppConn)->ioVentConn = iovConn;
+                (*appCtx->appCtxW->appMethods.OnEstablish) (appCtx, newAppConn);
+            } else {
+                FreeSession (newAppSess);
+                AbortConnection (iovConn);
+                //??? error handling 
+            }
+        } else {
+            AbortConnection (iovConn);
+            //??? error handling
+        }
     }
     else { //client connection
         appConn->ioVentConn = iovConn;
@@ -96,7 +86,10 @@ static void OnCleanup (struct IoVentConn* iovConn) {
     AppConnBase_t* appConn = (AppConnBase_t*) iovConn->cInfo.connCtx;
     AppSessBase_t* appSess = (AppSessBase_t*) appConn->appSess;
     AppCtxBase_t* appCtx = (AppCtxBase_t*) appSess->appCtx;
-    (*appCtx->appCtxW->appMethods.OnCleanup) (appCtx, appConn);
+
+    if (appConn->isSrv == 0) {
+        (*appCtx->appCtxW->appMethods.OnCleanup) (appCtx, appConn);
+    }
 }
 
 int App_alloc_resources (AppCtx_t* appCtx) {

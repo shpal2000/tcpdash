@@ -256,6 +256,14 @@ SslClientInit (IOVENT_CONN(__appConn), __sslCtx);
 
 #define App_zero_act_sess(__appctx) IsPoolEmpty((&((AppCtxBase_t*)__appctx)->appCtxW->actSessPool)) 
 
+#define App_conn_release(__appconn,__free_parent_sess) \
+{ \
+    if (__free_parent_sess) { \
+        FreeParentSession(__appconn); \
+    } \
+    FreeConnetion(__appconn); \
+}
+
 #define __APPCTX_BASE__ AppCtxBase_t appCtxBase;
 #define __APPCONN_BASE__ AppConnBase_t appConnBase;
 #define __APPSESS_BASE__ AppSessBase_t appSessBase;
