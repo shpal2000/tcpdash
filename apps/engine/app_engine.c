@@ -14,7 +14,10 @@ static void OnEstablish (struct IoVentConn* iovConn) {
             GetConnection(newAppSess, &newAppConn);
             if (newAppConn) {
                 ((AppConnBase_t*)newAppConn)->ioVentConn = iovConn;
-                (*appCtx->appCtxW->appMethods.OnEstablish) (appCtx, newAppConn);
+                ((AppConnBase_t*)newAppConn)->appConnCtx = appConn->appConnCtx;
+                (*appCtx->appCtxW->appMethods.OnEstablish) (appCtx
+                                                    , newAppConn
+                                                    , appConn->appConnCtx);
             } else {
                 FreeSession (newAppSess);
                 AbortConnection (iovConn);
@@ -28,9 +31,13 @@ static void OnEstablish (struct IoVentConn* iovConn) {
     else { //client connection
         appConn->ioVentConn = iovConn;
         if ( IsConnErr (iovConn) ) {
-            (*appCtx->appCtxW->appMethods.OnEstablishErr) (appCtx, appConn);
+            (*appCtx->appCtxW->appMethods.OnEstablishErr) (appCtx
+                                                    , appConn
+                                                    , appConn->appConnCtx);
         } else {
-            (*appCtx->appCtxW->appMethods.OnEstablish) (appCtx, appConn);
+            (*appCtx->appCtxW->appMethods.OnEstablish) (appCtx
+                                                    , appConn
+                                                    , appConn->appConnCtx);
         }
     }
 }

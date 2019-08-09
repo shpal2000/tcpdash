@@ -2,6 +2,7 @@
 
 AppConn_t* App_conn_session_child (AppCtx_t* appCtx
                     , AppSess_t* appSess
+                    , AppConnCtx_t* appConnCtx
                     , SockAddr_t* localAddr
                     , LocalPortPool_t* localPortPool
                     , SockAddr_t* remoteAddr
@@ -27,6 +28,7 @@ AppConn_t* App_conn_session_child (AppCtx_t* appCtx
             FreeConnetion(appConn);
             appConn = NULL;
         } else {
+            ((AppConnBase_t*)appConn)->appConnCtx = appConnCtx;
         }
     } else {
         //stats no free connection resource
@@ -35,6 +37,7 @@ AppConn_t* App_conn_session_child (AppCtx_t* appCtx
 }
 
 AppConn_t* App_conn_session_new (AppCtx_t* appCtx
+                    , AppConnCtx_t* appConnCtx
                     , SockAddr_t* localAddr
                     , LocalPortPool_t* localPortPool
                     , SockAddr_t* remoteAddr
@@ -46,6 +49,7 @@ AppConn_t* App_conn_session_new (AppCtx_t* appCtx
     if (appSess) {
         appConn = App_conn_session_child (appCtx
                                         , appSess
+                                        , appConnCtx
                                         , localAddr
                                         , localPortPool
                                         , remoteAddr
@@ -66,7 +70,7 @@ AppConn_t* App_conn_session_new (AppCtx_t* appCtx
 }
 
 void App_server_init (AppCtx_t* appCtx
-                    , void* srvCtx
+                    , AppConnCtx_t* appConnCtx
                     , SockAddr_t* localAddress
                     , SockStats_t** statsArr
                     , int statsCount) {
@@ -81,7 +85,7 @@ void App_server_init (AppCtx_t* appCtx
             FreeSession (appSess);
         } else {
             ((AppConnBase_t*)appConn)->isSrv = 1;
-            ((AppConnBase_t*)appConn)->srvCtx = srvCtx;
+            ((AppConnBase_t*)appConn)->appConnCtx = appConnCtx;
             InitServer((((AppCtxBase_t*)appCtx)->appCtxW)->engCtx->iovCtx
                 , appConn
                 , localAddress

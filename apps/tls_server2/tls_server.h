@@ -18,6 +18,7 @@ typedef struct TlsServerGrp {
     char* srvIp;
     uint32_t srvPort;
     SockAddr_t srvAddr;
+    int srvStarted;
 
     uint64_t csDataLen;
     uint64_t scDataLen;

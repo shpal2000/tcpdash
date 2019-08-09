@@ -71,6 +71,15 @@ static void StartTls (TlsServerCtx_t* appCtx, TlsServerConn_t* appConn) {
 }
 
 static void OnAppLoop (TlsServerCtx_t* appCtx, int newConnCount) {
+    TlsServerGrp_t* csGrp = &appCtx->csGrpArr[0]; //todo
+    if (csGrp->srvStarted == 0) {
+        csGrp->srvStarted = 1;
+        App_server_init(appCtx
+                , csGrp
+                , &csGrp->srvAddr
+                , csGrp->statsArr
+                , csGrp->statsCount);
+    }
 
 }
 
@@ -83,13 +92,16 @@ static void OnMinTick (TlsServerCtx_t* appCtx) {
 }
 
 static void OnEstablish (TlsServerCtx_t* appCtx
-                        , TlsServerConn_t* appConn) {
-
+                        , TlsServerConn_t* appConn
+                        , TlsServerGrp_t* csGrp) {
+    appConn->csGrp = csGrp;
     // log stats
 }
 
 static void OnEstablishErr (TlsServerCtx_t* appCtx
-                            , TlsServerConn_t* appConn) {
+                            , TlsServerConn_t* appConn
+                            , TlsServerGrp_t* csGrp) {
+    appConn->csGrp = csGrp;
     // log stats
 }
 
@@ -221,12 +233,6 @@ static TlsServerCtx_t* OnAppInit (JObject* appJ) {
                 JGET_MEMBER_STR (csGrpJ, "srvIp", &csGrp->srvIp);
                 JGET_MEMBER_INT (csGrpJ, "srvPort", &csGrp->srvPort);
                 SetSockAddress (&csGrp->srvAddr, csGrp->srvIp, csGrp->srvPort);
-
-                App_server_init(appCtx
-                        , csGrp
-                        , &csGrp->srvAddr
-                        , csGrp->statsArr
-                        , csGrp->statsCount);
             }
         } else {
             // log

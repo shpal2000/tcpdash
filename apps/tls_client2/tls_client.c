@@ -118,6 +118,7 @@ static void OnAppLoop (TlsClientCtx_t* appCtx, int newConnCount) {
 
         TlsClientConn_t* appConn 
             = (TlsClientConn_t*) App_conn_session_new (appCtx
+                                        , csGrp
                                         , localAddr
                                         , localPortPool 
                                         , remoteAddr
@@ -128,7 +129,6 @@ static void OnAppLoop (TlsClientCtx_t* appCtx, int newConnCount) {
             // log stats 
         } else {
             //log stats
-            appConn->csGrp = csGrp; 
         }
     }
 }
@@ -142,13 +142,16 @@ static void OnMinTick (TlsClientCtx_t* appCtx) {
 }
 
 static void OnEstablish (TlsClientCtx_t* appCtx
-                        , TlsClientConn_t* appConn) {
-
+                        , TlsClientConn_t* appConn
+                        , TlsClientGrp_t* csGrp) {
+    appConn->csGrp = csGrp;
     // log stats
 }
 
 static void OnEstablishErr (TlsClientCtx_t* appCtx
-                            , TlsClientConn_t* appConn) {
+                            , TlsClientConn_t* appConn
+                            , TlsClientGrp_t* csGrp) {
+    appConn->csGrp = csGrp;
     // log stats
 }
 

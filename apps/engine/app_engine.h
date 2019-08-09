@@ -18,12 +18,13 @@ typedef void AppConn_t;
 typedef void AppSess_t;
 typedef void AppCtx_t;
 typedef void SrvCtx_t;
+typedef void AppConnCtx_t;
 
 typedef struct AppConnBase {
     IoVentConn_t* ioVentConn;
     AppSess_t* appSess;
     int isSrv;
-    SrvCtx_t* srvCtx;
+    AppConnCtx_t* appConnCtx;
 }AppConnBase_t;
 
 typedef struct AppSessBase {
@@ -42,8 +43,8 @@ typedef int (*OnContinue_t) (AppCtx_t*);
 typedef void (*OnMinTick_t) (AppCtx_t*);
 
 // Socket event Function Ptrs
-typedef void (*OnEstablish_t) (AppCtx_t*, AppConn_t*);
-typedef void (*OnEstablishErr_t) (AppCtx_t*, AppConn_t*);
+typedef void (*OnEstablish_t) (AppCtx_t*, AppConn_t*, AppConnCtx_t*);
+typedef void (*OnEstablishErr_t) (AppCtx_t*, AppConn_t*, AppConnCtx_t*);
 typedef void (*OnWriteNext_t) (AppCtx_t*, AppConn_t*);
 typedef void (*OnWriteStatus_t) (AppCtx_t*, AppConn_t*, int);
 typedef void (*OnReadNext_t) (AppCtx_t*, AppConn_t*);
@@ -174,6 +175,7 @@ int nAdmin_channel_setup(EngCtx_t* engCtx);
 int App_get_methods (AppCtxW_t* appCtxW);
 
 AppConn_t* App_conn_session_new (AppCtx_t* appCtx
+                            , AppConnCtx_t* appConnCtx
                             , SockAddr_t* localAddr
                             , LocalPortPool_t* localPortPool
                             , SockAddr_t* remoteAddr
@@ -182,6 +184,7 @@ AppConn_t* App_conn_session_new (AppCtx_t* appCtx
 
 AppConn_t* App_conn_session_child (AppCtx_t* appCtx
                             , AppSess_t* appSess
+                            , AppConnCtx_t* appConnCtx
                             , SockAddr_t* localAddr
                             , LocalPortPool_t* localPortPool
                             , SockAddr_t* remoteAddr
@@ -207,6 +210,12 @@ WriteClose (IOVENT_CONN(__appConn))
 #define App_ssl_client_init(__appConn,__sslCtx) \
 SslClientInit (IOVENT_CONN(__appConn), __sslCtx);
 
+void App_server_init (AppCtx_t* appCtx
+                    , AppConnCtx_t* appConnCtx
+                    , SockAddr_t* localAddress
+                    , SockStats_t** statsArr
+                    , int statsCount);
+
 #define GetConnection(__appsess,__appconn) \
 { \
     if (__appsess) { \
@@ -218,7 +227,7 @@ SslClientInit (IOVENT_CONN(__appConn), __sslCtx);
             (*__appctx_w->appMethods.OnInitConn) (*(__appconn)); \
             ((AppConnBase_t*)(*(__appconn)))->appSess = __appsess; \
             ((AppConnBase_t*)(*(__appconn)))->isSrv = 0; \
-            ((AppConnBase_t*)(*(__appconn)))->srvCtx = NULL; \
+            ((AppConnBase_t*)(*(__appconn)))->appConnCtx = NULL; \
         } \
     } else { \
         *(__appconn) = NULL; \
