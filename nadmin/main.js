@@ -223,8 +223,8 @@ const config6 = `{
                 "maxSess" : 1,
                 "csGrpArr" : [
                     {
-                        "srvIp"   : "192.168.1.24",
-                        "srvPort" : 8443,
+                        "srvIp"   : "172.217.0.36",
+                        "srvPort" : 443,
                         "cAddrArr"  : [
                             {
                                 "cIp" : "192.168.1.24",
@@ -268,6 +268,55 @@ const config6 = `{
     }
 }`;
 
+const config7 = `{
+    "Id" : ${N_ADMIN_MESSAGE_ID_SET_TEST_CONFIG},
+    "connPerSec" : 500,
+    "maxActSessions" : 20000,
+    "maxErrSessions" : 20000,
+    "maxSessions" : 100,
+    "csGroupArr" : [
+        {
+            "clientAddrArr" : [ "12.20.50.92"
+                , "12.20.50.93"
+                , "12.20.50.94"
+                , "12.20.50.95"
+                , "12.20.50.96"
+                , "12.20.50.97"
+                , "12.20.50.98"
+                , "12.20.50.99"
+                , "12.20.50.100"
+                , "12.20.50.101"
+                , "12.20.50.102"
+                , "12.20.50.103"
+                , "12.20.50.104"
+                , "12.20.50.105"
+                , "12.20.50.106"
+                , "12.20.50.107"
+                , "12.20.50.108"
+                , "12.20.50.109"
+                , "12.20.50.110"
+                , "12.20.50.111"
+                , "12.20.50.112"
+                , "12.20.50.113"
+                , "12.20.50.114"
+                , "12.20.50.115"
+                , "12.20.50.116"
+                , "12.20.50.117"
+                , "12.20.50.118"
+                , "12.20.50.119"
+                , "12.20.50.120"
+                , "12.20.50.121"
+            ],
+        
+            "serverAddr" : "192.168.1.24",
+            "csDataLen" : 10,
+            "scDataLen" : 10,
+            "csStartTlsLen" : 0,
+            "scStartTlsLen" : 0
+        }
+    ]
+}`;
+
 msgIoServer.listen(msgIoPort, host, () => {
     console.log('msgIoServer running on port ' + msgIoPort + '.');
 });
@@ -295,7 +344,10 @@ function msgIoHandler (sock, sockCtx, rcvMsg) {
         case 'test6':
             sendMsg = config6;
             break;
-    }
+        case 'test7':
+            sendMsg = config7;
+            break;
+        }
 
     if (sendMsg) {
         var s1 = "0000000" + sendMsg.length;

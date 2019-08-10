@@ -418,7 +418,7 @@ static void OnTcpAcceptConnection(IoVentConn_t* lSockConn) {
     }
 }
 
-static void InitSslConnection(IoVentConn_t* newConn
+void InitSslConnection(IoVentConn_t* newConn
                                         , SSL* newSSL
                                         , int isClient) {
 

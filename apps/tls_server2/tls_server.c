@@ -59,21 +59,52 @@ static int OnContinue (TlsServerCtx_t* appCtx) {
 
 static void StartTls (TlsServerCtx_t* appCtx, TlsServerConn_t* appConn) {
 
-    // SSL* sslCtx = SSL_new(appConn->csGrp->sslCtx);
+    SSL* sslCtx = SSL_new(appConn->csGrp->sslCtx);
 
-    // if (sslCtx) {
-    //     appConn->isSslInit = 1;
-    //     App_ssl_client_init (appConn, sslCtx);            
-    // } else {
-    //     //??? update stats; mark connection state why fail 
-    //     App_conn_abort (appConn);
-    // }
+    if (sslCtx) {
+        appConn->isSslInit = 1;
+        App_ssl_server_init (appConn, sslCtx);            
+    } else {
+        //??? update stats; mark connection state why fail 
+        App_conn_abort (appConn);
+    }
 }
 
 static void OnAppLoop (TlsServerCtx_t* appCtx, int newConnCount) {
+            int __ret = 0;
+
     TlsServerGrp_t* csGrp = &appCtx->csGrpArr[0]; //todo
     if (csGrp->srvStarted == 0) {
         csGrp->srvStarted = 1;
+
+        csGrp->sslCtx = SSL_CTX_new(SSLv23_server_method());
+
+        if (csGrp->sslCtx) {
+            SSL_CTX_set_verify(csGrp->sslCtx
+                                    , SSL_VERIFY_NONE, 0);
+
+            SSL_CTX_set_options(csGrp->sslCtx
+                                    , SSL_OP_NO_SSLv2 
+                                    | SSL_OP_NO_SSLv3 
+                                    | SSL_OP_NO_COMPRESSION);
+                                    
+            SSL_CTX_set_mode(csGrp->sslCtx
+                                    , SSL_MODE_ENABLE_PARTIAL_WRITE);
+
+            // SSL_CTX_set_session_cache_mode(csGrp->sslCtx
+            //                         , SSL_SESS_CACHE_OFF);                
+
+            __ret += SSL_CTX_use_certificate_file(csGrp->sslCtx
+                    , "./certkeys/selfsigned/rsa/ss_rsa2048_a_tcpdash_com.crt"
+                    , SSL_FILETYPE_PEM);
+
+            __ret += SSL_CTX_use_PrivateKey_file(csGrp->sslCtx
+                    , "./certkeys/selfsigned/rsa/ss_rsa2048_a_tcpdash_com.key"
+                    , SSL_FILETYPE_PEM);
+        } else {
+            //log
+        }
+
         App_server_init(appCtx
                 , csGrp
                 , &csGrp->srvAddr

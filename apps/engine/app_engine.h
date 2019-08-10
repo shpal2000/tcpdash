@@ -208,7 +208,10 @@ WriteNextData(IOVENT_CONN(__appConn),__wbuf,__woff,__wlen,__wpart)
 WriteClose (IOVENT_CONN(__appConn))
 
 #define App_ssl_client_init(__appConn,__sslCtx) \
-SslClientInit (IOVENT_CONN(__appConn), __sslCtx);
+InitSslConnection(IOVENT_CONN(__appConn), __sslCtx, 1);
+
+#define App_ssl_server_init(__appConn,__sslCtx) \
+InitSslConnection(IOVENT_CONN(__appConn), __sslCtx, 0);
 
 void App_server_init (AppCtx_t* appCtx
                     , AppConnCtx_t* appConnCtx
