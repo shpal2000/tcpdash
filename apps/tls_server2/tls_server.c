@@ -95,11 +95,11 @@ static void OnAppLoop (TlsServerCtx_t* appCtx, int newConnCount) {
             //                         , SSL_SESS_CACHE_OFF);                
 
             __ret += SSL_CTX_use_certificate_file(csGrp->sslCtx
-                    , "./certkeys/selfsigned/rsa/ss_rsa2048_a_tcpdash_com.crt"
+                    , "/usr/local/tcpdash_bin/ss_rsa2048_a_tcpdash_com.crt"
                     , SSL_FILETYPE_PEM);
 
             __ret += SSL_CTX_use_PrivateKey_file(csGrp->sslCtx
-                    , "./certkeys/selfsigned/rsa/ss_rsa2048_a_tcpdash_com.key"
+                    , "/usr/local/tcpdash_bin/ss_rsa2048_a_tcpdash_com.key"
                     , SSL_FILETYPE_PEM);
         } else {
             //log
