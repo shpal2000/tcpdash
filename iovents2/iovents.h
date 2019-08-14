@@ -28,10 +28,13 @@
 typedef struct IoVentConnInfo {
 
     SSL* cSSL;
-
     void* connCtx;
-
     struct IoVentCtx* iovCtx;
+    SockAddr_t* localAddress;
+    LocalPortPool_t* localPortPool;
+    SockAddr_t* remoteAddress;
+    SockStats_t** statsArr;
+    int statsCount;
 
     char* writeBuffer;
     int writeBuffOffset;
@@ -48,17 +51,6 @@ typedef struct IoVentConnInfo {
     int readBuffOffsetCur;
     int readDataLenCur;
     int readBytesLenCur;
-
-    SockAddr_t* localAddress;
-    SockAddr_t* remoteAddress;
-
-    LocalPortPool_t* localPortPool;
-
-    double connInitTime;
-    double connLifetime;
-
-    SockStats_t** statsArr;
-    int statsCount;
 
 } IoVentConnInfo_t;
 
@@ -168,13 +160,9 @@ void InitSslConnection(IoVentConn_t* newConn
                         , SSL* newSSL
                         , int isClient);
 
-#define FreeSslConnection(__iovconn) \
-{ \
-    if ((__iovconn)->cInfo.cSSL) { \
-        SSL_free((__iovconn)->cInfo.cSSL); \
-        (__iovconn)->cInfo.cSSL = NULL; \
-    }\
-}
+#define IOV_GET_SSL(__iovconn) (__iovconn)->cInfo.cSSL
+#define IOV_GET_CONN_CTX(__iovconn) (__iovconn)->cInfo.connCtx
+#define IOV_SET_CONN_CTX(__iovconn,__ctx) (__iovconn)->cInfo.connCtx = __ctx 
 
 void SslClientInit (IoVentConn_t* newConn
                         , SSL* newSSL);

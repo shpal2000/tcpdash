@@ -29,11 +29,11 @@ static int OnContinue (TlsClientCtx_t* appCtx) {
     return APP_CONTINUE;
 }
 
-static void InitSSL (TlsClientCtx_t* appCtx, TlsClientConn_t* appConn) {
+static void InitSSL (TlsClientCtx_t* appCtx, TlsClientConn_t* appConn) {    
     SSL* ssl = SSL_new(appConn->csGrp->sslCtx);
     if (ssl) {
         appConn->isSslInit = 1;
-        App_ssl_client_init (appConn, ssl);         
+        App_conn_set_ssl_as_client (appConn, ssl);        
     } else {
         //??? update stats; mark connection state why fail 
         App_conn_abort (appConn);
@@ -42,7 +42,8 @@ static void InitSSL (TlsClientCtx_t* appCtx, TlsClientConn_t* appConn) {
 
 static void CleanupSSL (TlsClientCtx_t* appCtx, TlsClientConn_t* appConn) {
     if (appConn->isSslInit) {
-        App_ssl_client_cleanup (appConn);
+        SSL* ssl = App_conn_get_ssl (appConn);
+        SSL_free (ssl);
     }
 }
 

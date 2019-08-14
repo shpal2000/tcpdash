@@ -190,8 +190,6 @@ void App_conn_release (AppConn_t* appConn
                         , int toFreeSess);
 
 #define APP_IOVENT_CONN(__appConn) (((AppConnBase_t*)__appConn)->ioVentConn)
-#define APP_IOVENT_SSL(__appConn) IOVENT_SSL(APP_IOVENT_CONN(__appConn))
-
 
 #define App_conn_abort(__appConn) AbortConnection (APP_IOVENT_CONN(__appConn))
 
@@ -204,16 +202,13 @@ WriteNextData(APP_IOVENT_CONN(__appConn),__wbuf,__woff,__wlen,__wpart)
 #define App_conn_write_close(__appConn,__ssl_close_notify) \
 WriteClose (APP_IOVENT_CONN(__appConn))
 
-#define App_ssl_client_init(__appConn,__ssl) \
+#define App_conn_set_ssl_as_client(__appConn,__ssl) \
 InitSslConnection(APP_IOVENT_CONN(__appConn), __ssl, 1);
 
-#define App_ssl_server_init(__appConn,__ssl) \
-InitSslConnection(APP_IOVENT_CONN(__appConn), __ssl, 0);
+#define App_conn_set_ssl_as_server(__appConn,__ssl) \
+InitSslConnection(APP_IOVENT_CONN(__appConn), __ssl, 0)
 
-#define App_ssl_client_cleanup(__appConn) \
-FreeSslConnection(APP_IOVENT_CONN(__appConn));
-
-#define App_ssl_server_cleanup(__appConn) App_ssl_client_cleanup(__appConn)
+#define App_conn_get_ssl(__appConn) IOV_GET_SSL(APP_IOVENT_CONN(__appConn))
 
 void App_server_init (AppCtx_t* appCtx
                     , AppConnCtx_t* appConnCtx

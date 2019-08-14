@@ -269,6 +269,7 @@ int NewConnection (IoVentCtx_t* iovCtx
         IncConnStats(statsArr, statsCount, tcpConnStructNotAvail);
     } else {
         SetAppState(newConn, CONNAPP_STATE_CONNECTION_IN_PROGRESS);
+        newConn->cInfo.cSSL = NULL;
         newConn->cInfo.iovCtx = iovCtx;
         newConn->cInfo.connCtx = connCtx;
         newConn->cInfo.localAddress = localAddress;
@@ -277,15 +278,6 @@ int NewConnection (IoVentCtx_t* iovCtx
         newConn->cInfo.statsArr = statsArr;
         newConn->cInfo.statsCount = statsCount;
 
-        newConn->cInfo.connInitTime = TimeElapsedIoVentCtx (iovCtx);
-        
-        newConn->cInfo.connLifetime = connLifetime; 
-        if (connLifetime) {
-            newConn->cInfo.connLifetime += newConn->cInfo.connInitTime;
-        }
-
-         
-        
         int localPortAssignError = 0;
         if (newConn->cInfo.localPortPool) {
             AssignSocketLocalPort(newConn->cInfo.localAddress
@@ -340,19 +332,18 @@ void InitServer (IoVentCtx_t* iovCtx
     if (newConn == NULL) {
         IncConnStats(statsArr, statsCount, tcpListenStructNotAvail);
     } else {
+        newConn->cInfo.cSSL = NULL;
         newConn->cInfo.iovCtx = iovCtx;
         newConn->cInfo.connCtx = srvCtx;
         newConn->cInfo.localAddress = localAddress;
+        newConn->cInfo.localPortPool = NULL;
+        newConn->cInfo.remoteAddress = NULL;
         newConn->cInfo.statsArr = statsArr;
         newConn->cInfo.statsCount = statsCount;
-        newConn->cInfo.connInitTime = TimeElapsedIoVentCtx (iovCtx);
-        newConn->cInfo.connLifetime = 0;
-        newConn->cInfo.connInitTime = TimeElapsedIoVentCtx (iovCtx);
-        newConn->cInfo.connLifetime = 0; //??? hardcoed 
         
         newConn->socketFd 
             = TcpListenStart(newConn->cInfo.localAddress
-                                , 20000 //remove hardcoded 
+                                , 20000 //???remove hardcoded 
                                 , statsArr
                                 , statsCount
                                 , newConn);
@@ -392,8 +383,6 @@ static void OnTcpAcceptConnection(IoVentConn_t* lSockConn) {
         newConn->cInfo.remoteAddress = &newConn->remoteAddressAccept; 
         newConn->cInfo.statsArr = lSockConn->cInfo.statsArr;
         newConn->cInfo.statsCount = lSockConn->cInfo.statsCount;
-        newConn->cInfo.connInitTime = TimeElapsedIoVentCtx (newConn->cInfo.iovCtx);
-        newConn->cInfo.connLifetime = newConn->cInfo.connInitTime + 15;
 
         newConn->socketFd = TcpAcceptConnection(lSockConn->socketFd
                                             , newConn->cInfo.localAddress
