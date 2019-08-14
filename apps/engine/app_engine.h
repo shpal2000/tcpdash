@@ -64,9 +64,6 @@ typedef AppConn_t* (*OnCreateConn_t) ();
 typedef void (*OnInitConn_t) (AppConn_t*);
 typedef void (*OnDeleteConn_t) (AppConn_t*);
 
-// Get uint32_t application attribute Ptrs
-typedef uint32_t (*GetAppAttribUint32_t) (AppCtx_t*);
-
 typedef struct AppMethods {
 
     OnAppInit_t OnAppInit;
@@ -94,13 +91,6 @@ typedef struct AppMethods {
     OnInitConn_t OnInitConn;
     OnDeleteConn_t OnDeleteConn;
 
-    GetAppAttribUint32_t OnGetMaxActSess;
-    GetAppAttribUint32_t OnGetMaxActConn;
-
-    GetAppAttribUint32_t OnGetMaxErrSess;
-    GetAppAttribUint32_t OnGetMaxErrConn;
-
-    GetAppAttribUint32_t OnGetConnPerSec;
 } AppMethods_t;
 
 typedef struct AppCtxW {
@@ -112,6 +102,12 @@ typedef struct AppCtxW {
 
     AppMethods_t appMethods;
 
+    uint32_t connPerSec;
+    uint32_t maxActSess;
+    uint32_t maxErrSess;
+    uint32_t maxActConn;
+    uint32_t maxErrConn;
+    
     Pool_t freeSessPool;
     Pool_t actSessPool;
 
@@ -119,7 +115,6 @@ typedef struct AppCtxW {
     Pool_t actConnPool;
 
     //for rate control
-    uint32_t connPerSec;
     double lastConnInitTime;
     uint64_t connInitCount;
 
@@ -292,21 +287,21 @@ void App_server_init (AppCtx_t* appCtx
 #define APP_DECLARE_METHODS(__app_name) \
 void __app_name (AppMethods_t* __app_methods);
 
-#define APP_REGISTER_METHODS(__app_name, __session_struct, __conn__struct) \
-static __session_struct* OnCreateSess () { \
-    return CreateStruct0 (__session_struct); \
+#define APP_REGISTER_METHODS(__app_name) \
+static __app_name##Sess_t* OnCreateSess () { \
+    return CreateStruct0 (__app_name##Sess_t); \
 } \
 \
-static void OnDeleteSess (__session_struct* appSess) { \
-    DeleteStruct (__session_struct, appSess); \
+static void OnDeleteSess (__app_name##Sess_t* appSess) { \
+    DeleteStruct (__app_name##Sess_t, appSess); \
 } \
 \
-static __conn__struct* OnCreateConn () { \
-    return CreateStruct0 (__conn__struct); \
+static __app_name##Conn_t* OnCreateConn () { \
+    return CreateStruct0 (__app_name##Conn_t); \
 } \
 \
-static void OnDeleteConn (__conn__struct* appConn) { \
-    DeleteStruct (__conn__struct, appConn); \
+static void OnDeleteConn (__app_name##Conn_t* appConn) { \
+    DeleteStruct (__app_name##Conn_t, appConn); \
 } \
 void __app_name (AppMethods_t* __app_methods) \
 { \
@@ -334,14 +329,6 @@ void __app_name (AppMethods_t* __app_methods) \
     __app_methods->OnCreateConn = (OnCreateConn_t) &OnCreateConn; \
     __app_methods->OnInitConn = (OnInitConn_t) &OnInitConn; \
     __app_methods->OnDeleteConn = (OnDeleteConn_t) &OnDeleteConn; \
-\
-    __app_methods->OnGetMaxActSess = (GetAppAttribUint32_t) &OnGetMaxActSess; \
-    __app_methods->OnGetMaxActConn = (GetAppAttribUint32_t) &OnGetMaxActConn; \
-\
-    __app_methods->OnGetMaxErrSess = (GetAppAttribUint32_t) &OnGetMaxErrSess; \
-    __app_methods->OnGetMaxErrConn = (GetAppAttribUint32_t) &OnGetMaxErrConn; \
-\
-    __app_methods->OnGetConnPerSec = (GetAppAttribUint32_t) &OnGetConnPerSec; \
 }
 
 #define APP_GET_METHODS(__appctx_w, __app_name) \
@@ -354,5 +341,17 @@ void __app_name (AppMethods_t* __app_methods) \
 
 #define APP_GET_NEW_CONN_COUNT(__appctx) ((AppCtxBase_t*)appCtx)->appCtxW->nextConnInits
 
+#define APP_SET_CONN_SESS_LIMITS(__appctx,__cps,__act_s,__err_s,__c_per_s) \
+{ \
+    AppCtxW_t* __appctx_w = ((AppCtxBase_t*)__appctx)->appCtxW; \
+    __appctx_w->connPerSec = __cps; \
+    __appctx_w->maxActSess = __act_s; \
+    __appctx_w->maxErrSess = __err_s; \
+    __appctx_w->maxActConn = (__act_s) * (__c_per_s); \
+    __appctx_w->maxErrConn = (__err_s) * (__c_per_s); \
+}
+
+#define APP_CONTINUE 1
+#define APP_EXIT 0
 
 #endif

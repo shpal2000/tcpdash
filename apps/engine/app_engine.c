@@ -112,8 +112,7 @@ int App_alloc_resources (AppCtx_t* appCtx) {
     InitPool (&appCtxW->freeConnPool);
 
     // ??? uint32_t maxErrSess = (*appCtxW->appMethods.OnGetMaxErrSess)(appCtx); 
-    uint32_t maxActSess = (*appCtxW->appMethods.OnGetMaxActSess)(appCtx);
-    for (uint32_t i = 0; i < maxActSess; i++) {
+    for (uint32_t i = 0; i < appCtxW->maxActSess; i++) {
         AppSess_t* newSess = (*appCtxW->appMethods.OnCreateSess)();
         if (newSess) {
             AppSessBase_t* newSessBase = (AppSessBase_t*) newSess; 
@@ -133,8 +132,7 @@ int App_alloc_resources (AppCtx_t* appCtx) {
     }
 
     if (status == 0) {
-        uint32_t maxActConn = (*appCtxW->appMethods.OnGetMaxActConn)(appCtx);
-        for (uint32_t i = 0; i < maxActConn; i++) {
+        for (uint32_t i = 0; i < appCtxW->maxActConn; i++) {
             AppConn_t* newConn = (*appCtxW->appMethods.OnCreateConn)();
             if (newConn) {
                 AddToPool (&appCtxW->freeConnPool, newConn);
@@ -196,14 +194,8 @@ static int App_ctx_setup (EngCtx_t* engCtx) {
                                 status = -1; //??? log
                                 break;
                             } else {
-                                engCtx->maxActConn 
-                                        += (*appCtxW->appMethods.OnGetMaxActConn)(appCtx);
-                                engCtx->maxErrConn 
-                                        += (*appCtxW->appMethods.OnGetMaxErrConn)(appCtx);
-
-                                appCtxW->connPerSec 
-                                    = (*appCtxW->appMethods.OnGetConnPerSec)(appCtx);
-                                
+                                engCtx->maxActConn += appCtxW->maxActConn;
+                                engCtx->maxErrConn += appCtxW->maxErrConn;
                                 appCtxW->appStatus = APP_STATUS_RUNNING;
                             }
                         } else {

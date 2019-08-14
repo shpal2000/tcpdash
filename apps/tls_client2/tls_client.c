@@ -14,41 +14,19 @@ static void OnInitConn (TlsClientConn_t* appConn) {
     appConn->csGrp = NULL;
 }
 
-static uint32_t OnGetMaxActSess (TlsClientCtx_t* appCtx) {
-    return appCtx->maxActSess;
-}
-
-static uint32_t OnGetMaxActConn (TlsClientCtx_t* appCtx) {
-    // 1 connection per session
-    return appCtx->maxActSess * 1;
-}
-
-static uint32_t OnGetMaxErrSess (TlsClientCtx_t* appCtx) {
-    return appCtx->maxErrSess;
-}
-
-static uint32_t OnGetMaxErrConn (TlsClientCtx_t* appCtx) {
-    // 1 connection per session
-    return appCtx->maxErrSess * 1;
-}
-
-static uint32_t OnGetConnPerSec (TlsClientCtx_t* appCtx) {
-    return appCtx->connPerSec;
-}
-
 static int OnContinue (TlsClientCtx_t* appCtx) {
 
     if ( GetConnStats(&appCtx->allStats, tcpConnInitFail) 
                                             >= appCtx->maxErrSess ) {
-        return 0;
+        return APP_EXIT;
     }
 
     if ( (GetConnStats(&appCtx->allStats, tcpConnInit) 
                         == appCtx->maxSess) && App_zero_act_sess(appCtx) ) {
-        return 0;
+        return APP_EXIT;
     }
 
-    return 1;
+    return APP_CONTINUE;
 }
 
 static void InitSSL (TlsClientCtx_t* appCtx, TlsClientConn_t* appConn) {
@@ -250,6 +228,12 @@ static TlsClientCtx_t* OnAppInit (JObject* appJ) {
         JGET_MEMBER_INT (appJ, "maxErrSess", &appCtx->maxErrSess);
         JGET_MEMBER_INT (appJ, "maxSess", &appCtx->maxSess);
 
+        APP_SET_CONN_SESS_LIMITS (appCtx
+                                    , appCtx->connPerSec
+                                    , appCtx->maxActSess
+                                    , appCtx->maxErrSess
+                                    , TLS_CLIENT_MAX_ACT_CONN_PER_SESSION);
+
         JArray* csGrpArrJ;
         JGET_MEMBER_ARR (appJ, "csGrpArr", &csGrpArrJ);
         appCtx->csGrpCount = JGET_ARR_LEN (csGrpArrJ);
@@ -315,6 +299,4 @@ static TlsClientCtx_t* OnAppInit (JObject* appJ) {
     return appCtx;
 }
 
-APP_REGISTER_METHODS (TlsClient
-                        , TlsClientSess_t
-                        , TlsClientConn_t);
+APP_REGISTER_METHODS (TlsClient);

@@ -67,4 +67,5 @@ typedef struct TlsClientSess {
     TlsClientConn_t* cConn;
 } TlsClientSess_t;
 
+#define TLS_CLIENT_MAX_ACT_CONN_PER_SESSION  1
 #endif
