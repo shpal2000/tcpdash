@@ -219,83 +219,78 @@ static void OnCleanup (TlsClientCtx_t* appCtx
     App_conn_release (appConn, 1);
 }
 
-static TlsClientCtx_t* OnAppInit (TlsClientCtx_t* appCtx, JObject* appJ) {
+static int OnAppInit (TlsClientCtx_t* appCtx, JObject* appJ) {
 
-    if (appCtx) {
-        JGET_MEMBER_INT (appJ, "connPerSec", &appCtx->connPerSec);
-        JGET_MEMBER_INT (appJ, "maxActSess", &appCtx->maxActSess);
-        JGET_MEMBER_INT (appJ, "maxErrSess", &appCtx->maxErrSess);
-        JGET_MEMBER_INT (appJ, "maxSess", &appCtx->maxSess);
+    JGET_MEMBER_INT (appJ, "connPerSec", &appCtx->connPerSec);
+    JGET_MEMBER_INT (appJ, "maxActSess", &appCtx->maxActSess);
+    JGET_MEMBER_INT (appJ, "maxErrSess", &appCtx->maxErrSess);
+    JGET_MEMBER_INT (appJ, "maxSess", &appCtx->maxSess);
 
-        APP_SET_CONN_SESS_LIMITS (appCtx
-                                    , appCtx->connPerSec
-                                    , appCtx->maxActSess
-                                    , appCtx->maxErrSess
-                                    , TLS_CLIENT_MAX_ACT_CONN_PER_SESSION);
+    APP_SET_CONN_SESS_LIMITS (appCtx
+                                , appCtx->connPerSec
+                                , appCtx->maxActSess
+                                , appCtx->maxErrSess
+                                , TLS_CLIENT_MAX_ACT_CONN_PER_SESSION);
 
-        JArray* csGrpArrJ;
-        JGET_MEMBER_ARR (appJ, "csGrpArr", &csGrpArrJ);
-        appCtx->csGrpCount = JGET_ARR_LEN (csGrpArrJ);
-        appCtx->csGrpArr = CreateArray0 (TlsClientGrp_t, appCtx->csGrpCount);
-        
-        if (appCtx->csGrpArr) {
-            for (int csGrpIndex = 0; csGrpIndex < appCtx->csGrpCount; csGrpIndex++) {
-                TlsClientGrp_t* csGrp = &appCtx->csGrpArr[csGrpIndex];
-                csGrp->statsCount = 2;
-                csGrp->statsArr [0] = (SockStats_t*) &appCtx->allStats;
-                csGrp->statsArr [1] = (SockStats_t*) &csGrp->grpStats;
-                
-                JObject* csGrpJ = JGET_ARR_ELEMENT_OBJ (csGrpArrJ, csGrpIndex);
+    JArray* csGrpArrJ;
+    JGET_MEMBER_ARR (appJ, "csGrpArr", &csGrpArrJ);
+    appCtx->csGrpCount = JGET_ARR_LEN (csGrpArrJ);
+    appCtx->csGrpArr = CreateArray0 (TlsClientGrp_t, appCtx->csGrpCount);
+    
+    if (appCtx->csGrpArr) {
+        for (int csGrpIndex = 0; csGrpIndex < appCtx->csGrpCount; csGrpIndex++) {
+            TlsClientGrp_t* csGrp = &appCtx->csGrpArr[csGrpIndex];
+            csGrp->statsCount = 2;
+            csGrp->statsArr [0] = (SockStats_t*) &appCtx->allStats;
+            csGrp->statsArr [1] = (SockStats_t*) &csGrp->grpStats;
+            
+            JObject* csGrpJ = JGET_ARR_ELEMENT_OBJ (csGrpArrJ, csGrpIndex);
 
-                //data lens
-                JGET_MEMBER_INT (csGrpJ, "csDataLen", &csGrp->csDataLen);
-                JGET_MEMBER_INT (csGrpJ, "scDataLen", &csGrp->scDataLen);
-                JGET_MEMBER_INT (csGrpJ, "csStartTlsLen", &csGrp->csStartTlsLen);
-                JGET_MEMBER_INT (csGrpJ, "scStartTlsLen", &csGrp->scStartTlsLen);
+            //data lens
+            JGET_MEMBER_INT (csGrpJ, "csDataLen", &csGrp->csDataLen);
+            JGET_MEMBER_INT (csGrpJ, "scDataLen", &csGrp->scDataLen);
+            JGET_MEMBER_INT (csGrpJ, "csStartTlsLen", &csGrp->csStartTlsLen);
+            JGET_MEMBER_INT (csGrpJ, "scStartTlsLen", &csGrp->scStartTlsLen);
 
-                //server address
-                JGET_MEMBER_STR (csGrpJ, "srvIp", &csGrp->srvIp);
-                JGET_MEMBER_INT (csGrpJ, "srvPort", &csGrp->srvPort);
-                SetSockAddress (&csGrp->srvAddr, csGrp->srvIp, csGrp->srvPort);
+            //server address
+            JGET_MEMBER_STR (csGrpJ, "srvIp", &csGrp->srvIp);
+            JGET_MEMBER_INT (csGrpJ, "srvPort", &csGrp->srvPort);
+            SetSockAddress (&csGrp->srvAddr, csGrp->srvIp, csGrp->srvPort);
 
-                //client address array
-                JArray *cAddrArrJ;
-                JGET_MEMBER_ARR (csGrpJ, "cAddrArr", &cAddrArrJ);
-                csGrp->cAddrCount = JGET_ARR_LEN (cAddrArrJ);
-                csGrp->cAddrArr = CreateArray0 (SockAddrCtx_t, csGrp->cAddrCount);
+            //client address array
+            JArray *cAddrArrJ;
+            JGET_MEMBER_ARR (csGrpJ, "cAddrArr", &cAddrArrJ);
+            csGrp->cAddrCount = JGET_ARR_LEN (cAddrArrJ);
+            csGrp->cAddrArr = CreateArray0 (SockAddrCtx_t, csGrp->cAddrCount);
 
-                if (csGrp->cAddrArr) { 
-                    for (int cAddrIndex = 0; cAddrIndex < csGrp->cAddrCount; cAddrIndex++) {
-                        SockAddrCtx_t* cAddrCtx = &csGrp->cAddrArr[cAddrIndex]; 
+            if (csGrp->cAddrArr) { 
+                for (int cAddrIndex = 0; cAddrIndex < csGrp->cAddrCount; cAddrIndex++) {
+                    SockAddrCtx_t* cAddrCtx = &csGrp->cAddrArr[cAddrIndex]; 
 
-                        JObject* cAddrJ = JGET_ARR_ELEMENT_OBJ (cAddrArrJ, cAddrIndex);
+                    JObject* cAddrJ = JGET_ARR_ELEMENT_OBJ (cAddrArrJ, cAddrIndex);
 
-                        JGET_MEMBER_STR (cAddrJ, "cIp", &cAddrCtx->cIp);
-                        JGET_MEMBER_INT (cAddrJ, "cPortB", &cAddrCtx->cPortB);
-                        JGET_MEMBER_INT (cAddrJ, "cPortE", &cAddrCtx->cPortE);
-                        SetSockAddress (&cAddrCtx->sockAddr, cAddrCtx->cIp, 0);
-                        InitPool( &cAddrCtx->portPool );
-                        for (int srcPort = cAddrCtx->cPortB; 
-                                                        srcPort <= cAddrCtx->cPortE; 
-                                                        srcPort++) {
-                            SetPortToPool(&cAddrCtx->portPool, htons(srcPort));
-                        }
+                    JGET_MEMBER_STR (cAddrJ, "cIp", &cAddrCtx->cIp);
+                    JGET_MEMBER_INT (cAddrJ, "cPortB", &cAddrCtx->cPortB);
+                    JGET_MEMBER_INT (cAddrJ, "cPortE", &cAddrCtx->cPortE);
+                    SetSockAddress (&cAddrCtx->sockAddr, cAddrCtx->cIp, 0);
+                    InitPool( &cAddrCtx->portPool );
+                    for (int srcPort = cAddrCtx->cPortB; 
+                                                    srcPort <= cAddrCtx->cPortE; 
+                                                    srcPort++) {
+                        SetPortToPool(&cAddrCtx->portPool, htons(srcPort));
                     }
-                } else {
-                    // log
-                    return NULL;
                 }
+            } else {
+                // log
+                return -1;
             }
-        } else {
-            // log
-            return NULL;
         }
     } else {
         // log
-        return NULL;
+        return -1;
     }
 
-    return appCtx;
+    return 0;
 }
 
 APP_REGISTER_METHODS (TlsClient);

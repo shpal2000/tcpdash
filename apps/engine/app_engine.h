@@ -36,7 +36,7 @@ typedef struct AppStatsBase {
 }AppStatsBase_t;
 
 //App Function Ptrs
-typedef void (*OnAppInit_t) (AppCtx_t*, JObject*);
+typedef int (*OnAppInit_t) (AppCtx_t*, JObject*);
 typedef void (*OnAppLoop_t) (AppCtx_t*, int);
 typedef void (*OnAppExit_t) (AppCtx_t*);
 typedef int (*OnContinue_t) (AppCtx_t*);
