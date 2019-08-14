@@ -194,24 +194,31 @@ AppConn_t* App_conn_session_child (AppCtx_t* appCtx
 void App_conn_release (AppConn_t* appConn
                         , int toFreeSess);
 
-#define IOVENT_CONN(__appConn) (((AppConnBase_t*)__appConn)->ioVentConn)
+#define APP_IOVENT_CONN(__appConn) (((AppConnBase_t*)__appConn)->ioVentConn)
+#define APP_IOVENT_SSL(__appConn) IOVENT_SSL(APP_IOVENT_CONN(__appConn))
 
-#define App_conn_abort(__appConn) AbortConnection (IOVENT_CONN(__appConn))
+
+#define App_conn_abort(__appConn) AbortConnection (APP_IOVENT_CONN(__appConn))
 
 #define App_conn_read_next(__appConn,__rbuf,__roff,__rlen,__rpart) \
-ReadNextData(IOVENT_CONN(__appConn),__rbuf,__roff,__rlen,__rpart)
+ReadNextData(APP_IOVENT_CONN(__appConn),__rbuf,__roff,__rlen,__rpart)
 
 #define App_conn_write_next(__appConn,__wbuf,__woff,__wlen,__wpart) \
-WriteNextData(IOVENT_CONN(__appConn),__wbuf,__woff,__wlen,__wpart)
+WriteNextData(APP_IOVENT_CONN(__appConn),__wbuf,__woff,__wlen,__wpart)
 
 #define App_conn_write_close(__appConn,__ssl_close_notify) \
-WriteClose (IOVENT_CONN(__appConn))
+WriteClose (APP_IOVENT_CONN(__appConn))
 
-#define App_ssl_client_init(__appConn,__sslCtx) \
-InitSslConnection(IOVENT_CONN(__appConn), __sslCtx, 1);
+#define App_ssl_client_init(__appConn,__ssl) \
+InitSslConnection(APP_IOVENT_CONN(__appConn), __ssl, 1);
 
-#define App_ssl_server_init(__appConn,__sslCtx) \
-InitSslConnection(IOVENT_CONN(__appConn), __sslCtx, 0);
+#define App_ssl_server_init(__appConn,__ssl) \
+InitSslConnection(APP_IOVENT_CONN(__appConn), __ssl, 0);
+
+#define App_ssl_client_cleanup(__appConn) \
+FreeSslConnection(APP_IOVENT_CONN(__appConn));
+
+#define App_ssl_server_cleanup(__appConn) App_ssl_client_cleanup(__appConn)
 
 void App_server_init (AppCtx_t* appCtx
                     , AppConnCtx_t* appConnCtx
@@ -285,7 +292,22 @@ void App_server_init (AppCtx_t* appCtx
 #define APP_DECLARE_METHODS(__app_name) \
 void __app_name (AppMethods_t* __app_methods);
 
-#define APP_REGISTER_METHODS(__app_name) \
+#define APP_REGISTER_METHODS(__app_name, __session_struct, __conn__struct) \
+static __session_struct* OnCreateSess () { \
+    return CreateStruct0 (__session_struct); \
+} \
+\
+static void OnDeleteSess (__session_struct* appSess) { \
+    DeleteStruct (__session_struct, appSess); \
+} \
+\
+static __conn__struct* OnCreateConn () { \
+    return CreateStruct0 (__conn__struct); \
+} \
+\
+static void OnDeleteConn (__conn__struct* appConn) { \
+    DeleteStruct (__conn__struct, appConn); \
+} \
 void __app_name (AppMethods_t* __app_methods) \
 { \
     __app_methods->OnAppInit = (OnAppInit_t) &OnAppInit; \
@@ -330,5 +352,7 @@ void __app_name (AppMethods_t* __app_methods) \
     } \
 }
 
-#define APP_GET_NEW_CONN_COUNT(__appctx) ((AppCtxBase_t*)appCtx)->appCtxW->nextConnInits 
+#define APP_GET_NEW_CONN_COUNT(__appctx) ((AppCtxBase_t*)appCtx)->appCtxW->nextConnInits
+
+
 #endif

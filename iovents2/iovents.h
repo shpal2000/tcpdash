@@ -168,6 +168,14 @@ void InitSslConnection(IoVentConn_t* newConn
                         , SSL* newSSL
                         , int isClient);
 
+#define FreeSslConnection(__iovconn) \
+{ \
+    if ((__iovconn)->cInfo.cSSL) { \
+        SSL_free((__iovconn)->cInfo.cSSL); \
+        (__iovconn)->cInfo.cSSL = NULL; \
+    }\
+}
+
 void SslClientInit (IoVentConn_t* newConn
                         , SSL* newSSL);
 
@@ -205,5 +213,7 @@ void EnableWriteOnlyNotification (IoVentConn_t* newConn);
 void WriteClose (IoVentConn_t* newConn);
 
 void AbortConnection (IoVentConn_t* newConn);
+
+#define IOVENT_SSL(__iovconn) ((__iovconn)->cInfo.cSSL)
 
 #endif

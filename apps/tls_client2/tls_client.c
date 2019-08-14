@@ -2,20 +2,8 @@
 
 #include "tls_client.h"
 
-static TlsClientSess_t* OnCreateSess () {
-    return CreateStruct0 (TlsClientSess_t);
-}
-
 static void OnInitSess (TlsClientSess_t* appSess) {
     appSess->cConn = NULL;
-}
-
-static void OnDeleteSess (TlsClientSess_t* appSess) {
-    DeleteStruct (TlsClientSess_t, appSess);
-}
-
-static TlsClientConn_t* OnCreateConn () {
-    return CreateStruct0 (TlsClientConn_t);
 }
 
 static void OnInitConn (TlsClientConn_t* appConn) {
@@ -24,10 +12,6 @@ static void OnInitConn (TlsClientConn_t* appConn) {
     appConn->writeBuffOffset = 0;
     appConn->isSslInit = 0;
     appConn->csGrp = NULL;
-}
-
-static void OnDeleteConn (TlsClientConn_t* appConn) {
-    DeleteStruct (TlsClientConn_t, appConn);
 }
 
 static uint32_t OnGetMaxActSess (TlsClientCtx_t* appCtx) {
@@ -67,16 +51,20 @@ static int OnContinue (TlsClientCtx_t* appCtx) {
     return 1;
 }
 
-static void StartTls (TlsClientCtx_t* appCtx, TlsClientConn_t* appConn) {
-
-    SSL* sslCtx = SSL_new(appConn->csGrp->sslCtx);
-
-    if (sslCtx) {
+static void InitSSL (TlsClientCtx_t* appCtx, TlsClientConn_t* appConn) {
+    SSL* ssl = SSL_new(appConn->csGrp->sslCtx);
+    if (ssl) {
         appConn->isSslInit = 1;
-        App_ssl_client_init (appConn, sslCtx);            
+        App_ssl_client_init (appConn, ssl);         
     } else {
         //??? update stats; mark connection state why fail 
         App_conn_abort (appConn);
+    }
+}
+
+static void CleanupSSL (TlsClientCtx_t* appCtx, TlsClientConn_t* appConn) {
+    if (appConn->isSslInit) {
+        App_ssl_client_cleanup (appConn);
     }
 }
 
@@ -174,7 +162,7 @@ static void OnWriteNext (TlsClientCtx_t* appCtx
         if (appConn->isSslInit == 0) {
             if ( appConn->bytesWritten == appConn->csGrp->csStartTlsLen
                     && appConn->bytesRead == appConn->csGrp->scStartTlsLen ) {
-                StartTls (appCtx, appConn);
+                InitSSL (appCtx, appConn);
             }
         } else {
             if (appConn->bytesWritten < appConn->csGrp->csDataLen) {
@@ -216,7 +204,7 @@ static void OnReadNext (TlsClientCtx_t* appCtx
         if (appConn->isSslInit == 0) {
             if ( appConn->bytesWritten == appConn->csGrp->csStartTlsLen
                     && appConn->bytesRead == appConn->csGrp->scStartTlsLen ) {
-                StartTls (appCtx, appConn);
+                InitSSL (appCtx, appConn);
             }
         } else {
             App_conn_read_next (appConn
@@ -248,6 +236,7 @@ static void OnStatus (TlsClientCtx_t* appCtx
 
 static void OnCleanup (TlsClientCtx_t* appCtx
                         , TlsClientConn_t* appConn) {
+    CleanupSSL(appCtx, appConn);
     App_conn_release (appConn, 1);
 }
 
@@ -326,4 +315,6 @@ static TlsClientCtx_t* OnAppInit (JObject* appJ) {
     return appCtx;
 }
 
-APP_REGISTER_METHODS (TlsClient);
+APP_REGISTER_METHODS (TlsClient
+                        , TlsClientSess_t
+                        , TlsClientConn_t);
