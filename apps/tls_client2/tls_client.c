@@ -219,9 +219,7 @@ static void OnCleanup (TlsClientCtx_t* appCtx
     App_conn_release (appConn, 1);
 }
 
-static TlsClientCtx_t* OnAppInit (JObject* appJ) {
-
-    TlsClientCtx_t* appCtx = CreateStruct0 (TlsClientCtx_t);
+static TlsClientCtx_t* OnAppInit (TlsClientCtx_t* appCtx, JObject* appJ) {
 
     if (appCtx) {
         JGET_MEMBER_INT (appJ, "connPerSec", &appCtx->connPerSec);

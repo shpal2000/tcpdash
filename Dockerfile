@@ -8,4 +8,5 @@ RUN ldconfig
 RUN apt-get update
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get install -yq libglib2.0 libjson-glib-1.0
+RUN apt-get install -yq gdb
 

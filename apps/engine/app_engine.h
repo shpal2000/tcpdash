@@ -36,7 +36,7 @@ typedef struct AppStatsBase {
 }AppStatsBase_t;
 
 //App Function Ptrs
-typedef AppCtx_t* (*OnAppInit_t) (JObject*);
+typedef void (*OnAppInit_t) (AppCtx_t*, JObject*);
 typedef void (*OnAppLoop_t) (AppCtx_t*, int);
 typedef void (*OnAppExit_t) (AppCtx_t*);
 typedef int (*OnContinue_t) (AppCtx_t*);
@@ -53,6 +53,9 @@ typedef void (*OnRemoteClose_t) (AppCtx_t*, AppConn_t*);
 typedef void (*OnRemoteCloseErr_t) (AppCtx_t*, AppConn_t*);
 typedef void (*OnStatus_t) (AppCtx_t*, AppConn_t*);
 typedef void (*OnCleanup_t) (AppCtx_t*, AppConn_t*);
+
+// AppCtx Function Ptrs
+typedef AppCtx_t* (*OnCreateAppCtx_t) ();
 
 // Session Function Ptrs
 typedef AppSess_t* (*OnCreateSess_t) ();
@@ -83,6 +86,7 @@ typedef struct AppMethods {
     OnStatus_t OnStatus;
     OnCleanup_t OnCleanup;
 
+    OnCreateAppCtx_t OnCreateAppCtx;
     OnCreateSess_t OnCreateSess;
     OnInitSess_t OnInitSess;
     OnDeleteSess_t OnDeleteSess;
@@ -283,6 +287,9 @@ void App_server_init (AppCtx_t* appCtx
 void __app_name (AppMethods_t* __app_methods);
 
 #define APP_REGISTER_METHODS(__app_name) \
+static __app_name##Ctx_t* OnCreateAppCtx () { \
+    return CreateStruct0 (__app_name##Ctx_t); \
+} \
 static __app_name##Sess_t* OnCreateSess () { \
     return CreateStruct0 (__app_name##Sess_t); \
 } \
@@ -316,6 +323,8 @@ void __app_name (AppMethods_t* __app_methods) \
     __app_methods->OnRemoteCloseErr = (OnRemoteCloseErr_t) &OnRemoteCloseErr; \
     __app_methods->OnStatus = (OnStatus_t) &OnStatus; \
     __app_methods->OnCleanup = (OnCleanup_t) &OnCleanup; \
+\
+    __app_methods->OnCreateAppCtx = (OnCreateAppCtx_t) &OnCreateAppCtx; \
 \
     __app_methods->OnCreateSess = (OnCreateSess_t) &OnCreateSess; \
     __app_methods->OnInitSess = (OnInitSess_t) &OnInitSess; \
