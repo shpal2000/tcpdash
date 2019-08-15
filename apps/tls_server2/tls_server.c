@@ -201,55 +201,48 @@ static void OnCleanup (TlsServerCtx_t* appCtx
     App_conn_release (appConn, 1);
 }
 
-static TlsServerCtx_t* OnAppInit (JObject* appJ) {
+static int OnAppInit (TlsServerCtx_t* appCtx, JObject* appJ) {
 
-    TlsServerCtx_t* appCtx = CreateStruct0 (TlsServerCtx_t);
+    JGET_MEMBER_INT (appJ, "maxActSess", &appCtx->maxActSess);
+    JGET_MEMBER_INT (appJ, "maxErrSess", &appCtx->maxErrSess);
 
-    if (appCtx) {
-        JGET_MEMBER_INT (appJ, "maxActSess", &appCtx->maxActSess);
-        JGET_MEMBER_INT (appJ, "maxErrSess", &appCtx->maxErrSess);
+    APP_SET_CONN_SESS_LIMITS (appCtx
+                                , 0
+                                , appCtx->maxActSess
+                                , appCtx->maxErrSess
+                                , TLS_SERVER_MAX_ACT_CONN_PER_SESSION);
 
-        APP_SET_CONN_SESS_LIMITS (appCtx
-                                    , 0
-                                    , appCtx->maxActSess
-                                    , appCtx->maxErrSess
-                                    , TLS_SERVER_MAX_ACT_CONN_PER_SESSION);
+    JArray* csGrpArrJ;
+    JGET_MEMBER_ARR (appJ, "csGrpArr", &csGrpArrJ);
+    appCtx->csGrpCount = JGET_ARR_LEN (csGrpArrJ);
+    appCtx->csGrpArr = CreateArray0 (TlsServerGrp_t, appCtx->csGrpCount);
+    
+    if (appCtx->csGrpArr) {
+        for (int csGrpIndex = 0; csGrpIndex < appCtx->csGrpCount; csGrpIndex++) {
+            TlsServerGrp_t* csGrp = &appCtx->csGrpArr[csGrpIndex];
+            csGrp->statsCount = 2;
+            csGrp->statsArr [0] = (SockStats_t*) &appCtx->allStats;
+            csGrp->statsArr [1] = (SockStats_t*) &csGrp->grpStats;
+            
+            JObject* csGrpJ = JGET_ARR_ELEMENT_OBJ (csGrpArrJ, csGrpIndex);
 
-        JArray* csGrpArrJ;
-        JGET_MEMBER_ARR (appJ, "csGrpArr", &csGrpArrJ);
-        appCtx->csGrpCount = JGET_ARR_LEN (csGrpArrJ);
-        appCtx->csGrpArr = CreateArray0 (TlsServerGrp_t, appCtx->csGrpCount);
-        
-        if (appCtx->csGrpArr) {
-            for (int csGrpIndex = 0; csGrpIndex < appCtx->csGrpCount; csGrpIndex++) {
-                TlsServerGrp_t* csGrp = &appCtx->csGrpArr[csGrpIndex];
-                csGrp->statsCount = 2;
-                csGrp->statsArr [0] = (SockStats_t*) &appCtx->allStats;
-                csGrp->statsArr [1] = (SockStats_t*) &csGrp->grpStats;
-                
-                JObject* csGrpJ = JGET_ARR_ELEMENT_OBJ (csGrpArrJ, csGrpIndex);
+            //data lens
+            JGET_MEMBER_INT (csGrpJ, "csDataLen", &csGrp->csDataLen);
+            JGET_MEMBER_INT (csGrpJ, "scDataLen", &csGrp->scDataLen);
+            JGET_MEMBER_INT (csGrpJ, "csStartTlsLen", &csGrp->csStartTlsLen);
+            JGET_MEMBER_INT (csGrpJ, "scStartTlsLen", &csGrp->scStartTlsLen);
 
-                //data lens
-                JGET_MEMBER_INT (csGrpJ, "csDataLen", &csGrp->csDataLen);
-                JGET_MEMBER_INT (csGrpJ, "scDataLen", &csGrp->scDataLen);
-                JGET_MEMBER_INT (csGrpJ, "csStartTlsLen", &csGrp->csStartTlsLen);
-                JGET_MEMBER_INT (csGrpJ, "scStartTlsLen", &csGrp->scStartTlsLen);
-
-                //server address
-                JGET_MEMBER_STR (csGrpJ, "srvIp", &csGrp->srvIp);
-                JGET_MEMBER_INT (csGrpJ, "srvPort", &csGrp->srvPort);
-                SetSockAddress (&csGrp->srvAddr, csGrp->srvIp, csGrp->srvPort);
-            }
-        } else {
-            // log
-            return NULL;
+            //server address
+            JGET_MEMBER_STR (csGrpJ, "srvIp", &csGrp->srvIp);
+            JGET_MEMBER_INT (csGrpJ, "srvPort", &csGrp->srvPort);
+            SetSockAddress (&csGrp->srvAddr, csGrp->srvIp, csGrp->srvPort);
         }
     } else {
         // log
-        return NULL;
+        return -1;
     }
-
-    return appCtx;
+    
+    return 0;
 }
 
 APP_REGISTER_METHODS (TlsServer);

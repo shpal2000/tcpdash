@@ -160,7 +160,7 @@ static int App_ctx_setup (EngCtx_t* engCtx) {
     JObject* cfgObjAll = NULL;
     JObject* cfgObj = NULL;
 
-    puts(engCtx->cfgData);
+    // puts(engCtx->cfgData);
     JGET_ROOT_NODE (engCtx->cfgData, &cfgNode, &cfgObjAll);
     if (cfgObjAll) {
         JGET_MEMBER_OBJ (cfgObjAll, engCtx->testCfgSelect, &cfgObj);
@@ -183,18 +183,22 @@ static int App_ctx_setup (EngCtx_t* engCtx) {
                             status = -1; //??? log
                             break;
                         }
-                        
-                        AppCtx_t* appCtx = (*appCtxW->appMethods.OnAppInit) (appJ);
+                        AppCtx_t* appCtx = (*appCtxW->appMethods.OnCreateAppCtx) ();
                         if (appCtx) {
                             appCtxW->appCtx = appCtx; 
                             ((AppCtxBase_t*)appCtx)->appCtxW = appCtxW;
-                            if (App_alloc_resources (appCtx)) {
+                            if ( (*appCtxW->appMethods.OnAppInit) (appCtx, appJ) ) {
                                 status = -1; //??? log
                                 break;
                             } else {
-                                engCtx->maxActConn += appCtxW->maxActConn;
-                                engCtx->maxErrConn += appCtxW->maxErrConn;
-                                appCtxW->appStatus = APP_STATUS_RUNNING;
+                                if (App_alloc_resources (appCtx)) {
+                                    status = -1; //??? log
+                                    break;
+                                } else {
+                                    engCtx->maxActConn += appCtxW->maxActConn;
+                                    engCtx->maxErrConn += appCtxW->maxErrConn;
+                                    appCtxW->appStatus = APP_STATUS_RUNNING;
+                                }
                             }
                         } else {
                             status = -1; //??? log
