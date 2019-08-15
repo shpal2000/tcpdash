@@ -2,11 +2,11 @@
 
 #include "tls_client.h"
 
-static void OnInitSess (TlsClientSess_t* appSess) {
+static void OnInitSessState (TlsClientSess_t* appSess) {
     appSess->cConn = NULL;
 }
 
-static void OnInitConn (TlsClientConn_t* appConn) {
+static void OnInitConnState (TlsClientConn_t* appConn) {
     appConn->bytesRead = 0;
     appConn->bytesWritten = 0;
     appConn->writeBuffOffset = 0;

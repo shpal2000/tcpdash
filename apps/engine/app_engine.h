@@ -59,12 +59,12 @@ typedef AppCtx_t* (*OnCreateAppCtx_t) ();
 
 // Session Function Ptrs
 typedef AppSess_t* (*OnCreateSess_t) ();
-typedef void (*OnInitSess_t) (AppSess_t*);
+typedef void (*OnInitSessState_t) (AppSess_t*);
 typedef void (*OnDeleteSess_t) (AppSess_t*);
 
 // Connection Function Ptrs
 typedef AppConn_t* (*OnCreateConn_t) ();
-typedef void (*OnInitConn_t) (AppConn_t*);
+typedef void (*OnInitConnState_t) (AppConn_t*);
 typedef void (*OnDeleteConn_t) (AppConn_t*);
 
 typedef struct AppMethods {
@@ -88,11 +88,11 @@ typedef struct AppMethods {
 
     OnCreateAppCtx_t OnCreateAppCtx;
     OnCreateSess_t OnCreateSess;
-    OnInitSess_t OnInitSess;
+    OnInitSessState_t OnInitSessState;
     OnDeleteSess_t OnDeleteSess;
 
     OnCreateConn_t OnCreateConn;
-    OnInitConn_t OnInitConn;
+    OnInitConnState_t OnInitConnState;
     OnDeleteConn_t OnDeleteConn;
 
 } AppMethods_t;
@@ -190,9 +190,6 @@ AppConn_t* App_conn_session_child (AppCtx_t* appCtx
                             , SockStats_t** statsArr
                             , int statsCount);
 
-void App_conn_release (AppConn_t* appConn
-                        , int toFreeSess);
-
 #define APP_IOVENT_CONN(__appConn) (((AppConnBase_t*)__appConn)->ioVentConn)
 
 #define App_conn_abort(__appConn) AbortConnection (APP_IOVENT_CONN(__appConn))
@@ -228,7 +225,7 @@ void App_server_init (AppCtx_t* appCtx
         *(__appconn) = GetFromPool (&__appctx_w->freeConnPool); \
         if (*(__appconn)) { \
             AddToPool (&__appctx_w->actConnPool,*(__appconn)); \
-            (*__appctx_w->appMethods.OnInitConn) (*(__appconn)); \
+            (*__appctx_w->appMethods.OnInitConnState) (*(__appconn)); \
             ((AppConnBase_t*)(*(__appconn)))->appSess = __appsess; \
             ((AppConnBase_t*)(*(__appconn)))->isSrv = 0; \
             ((AppConnBase_t*)(*(__appconn)))->appConnCtx = NULL; \
@@ -253,7 +250,7 @@ void App_server_init (AppCtx_t* appCtx
     *(__appsess) = GetFromPool (&__appctx_w->freeSessPool); \
     if (*(__appsess)) { \
         AddToPool (&__appctx_w->actSessPool,*(__appsess)); \
-        (*__appctx_w->appMethods.OnInitSess) (*(__appsess)); \
+        (*__appctx_w->appMethods.OnInitSessState) (*(__appsess)); \
     } \
 } 
 
@@ -327,11 +324,11 @@ void __app_name (AppMethods_t* __app_methods) \
     __app_methods->OnCreateAppCtx = (OnCreateAppCtx_t) &OnCreateAppCtx; \
 \
     __app_methods->OnCreateSess = (OnCreateSess_t) &OnCreateSess; \
-    __app_methods->OnInitSess = (OnInitSess_t) &OnInitSess; \
+    __app_methods->OnInitSessState = (OnInitSessState_t) &OnInitSessState; \
     __app_methods->OnDeleteSess = (OnDeleteSess_t) &OnDeleteSess; \
 \
     __app_methods->OnCreateConn = (OnCreateConn_t) &OnCreateConn; \
-    __app_methods->OnInitConn = (OnInitConn_t) &OnInitConn; \
+    __app_methods->OnInitConnState = (OnInitConnState_t) &OnInitConnState; \
     __app_methods->OnDeleteConn = (OnDeleteConn_t) &OnDeleteConn; \
 }
 
