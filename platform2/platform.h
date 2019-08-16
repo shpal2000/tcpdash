@@ -592,6 +592,7 @@ typedef JsonArray JArray;
 
 #define JCREATE_ROOT_NODE(__rootNodep,__rootNodeObjp) \
 { \
+    *(__rootNodeObjp) = NULL; \
     *(__rootNodep) = json_node_alloc (); \
     if ( *(__rootNodep) ) { \
         *(__rootNodeObjp) = json_object_new (); \
@@ -604,10 +605,7 @@ typedef JsonArray JArray;
     } \
 }
 
-#define JFREE_ROOT_NODE(__rootNode,__rootNodeObj) \
-{ \
-    json_node_free (__rootNode); \
-} \
+#define JFREE_ROOT_NODE(__rootNode,__rootNodeObj) json_node_free (__rootNode)
 
 #define JNODE_TO_STRING(__node,__pretty) json_to_string(__node, __pretty)
 

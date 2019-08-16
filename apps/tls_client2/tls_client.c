@@ -113,6 +113,7 @@ static void OnMinTick (TlsClientCtx_t* appCtx) {
     if (jObj) {
         SetAppEngStatsJ (&appCtx->allStats, jObj);
         puts (JNODE_TO_STRING (jNode, 1));
+        JFREE_ROOT_NODE (jNode, jObj);
     } else {
         puts ("OnMinTick\n");
     }
