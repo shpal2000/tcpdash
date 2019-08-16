@@ -1,0 +1,13 @@
+apt-get install openvswitch-switch
+
+apt-get -y install docker.io
+
+docker save -o ~/tcpdash.tar tcpdash
+
+docker load -i /home/user/tcpdash.tar
+
+docker run --cap-add=SYS_PTRACE  -it --name tcpdash_s1 -v /home/user/tcpdash_bin:/usr/local/tcpdash_bin tcpdash /bin/bash
+
+docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined  -it --name tcpdash_s1 -v /home/user/tcpdash_bin:/usr/local/tcpdash_bin tcpdash /bin/bash
+
+
