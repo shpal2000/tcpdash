@@ -51,6 +51,8 @@ typedef struct MsgIoChannel {
     MsgIoDataBuff_t sendMsg;
     MsgIoDataBuff_t recvMsg;
 
+    int sendPending;
+
 } MsgIoChannel_t;
 
 MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
@@ -63,6 +65,8 @@ void MsgIoSend (MsgIoChannelId_t mioChanelId, const char* msg, int msg_len);
 void MsgIoProcess (MsgIoChannelId_t mioChannelId);
 void* MsgIoGetCtx (MsgIoChannelId_t mioChannelId);
 double MsgIoTimeElapsed (MsgIoChannelId_t mioChannelId);
+
+#define MsgIoIsSendPending(__mioChanId) (((MsgIoChannel_t*)(__mioChanId))->sendPending)
 
 #endif
 

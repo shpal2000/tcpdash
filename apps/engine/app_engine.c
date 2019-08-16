@@ -258,11 +258,7 @@ static int App_library_init (EngCtx_t* engCtx) {
     return 0;
 }
 
-static void Engine_post_1sec_tick (EngCtx_t* engCtx) {
-
-}
-
-static void Engine_post_5sec_tick (EngCtx_t* engCtx) {
+static void Engine_post_stats (EngCtx_t* engCtx) {
 
     JNode* rootNode;
     JsonObject* rootObj;
@@ -305,7 +301,14 @@ static void Engine_post_5sec_tick (EngCtx_t* engCtx) {
     } else {
         // ??? log
     }
+}
 
+static void Engine_post_1sec_tick (EngCtx_t* engCtx) {
+
+}
+
+static void Engine_post_5sec_tick (EngCtx_t* engCtx) {
+    Engine_post_stats (engCtx);
 }
 
 static void Engine_post_60sec_tick (EngCtx_t* engCtx) {
@@ -388,6 +391,23 @@ static int Engine_loop (EngCtx_t* engCtx) {
     return status;
 }
 
+
+static void Engine_post_final_stats (EngCtx_t* engCtx) {
+
+    Engine_post_stats (engCtx);
+
+    double statsSendPendingTime = MsgIoTimeElapsed (engCtx->chanId);
+
+    while ( MsgIoIsSendPending (engCtx->chanId) ) {
+        MsgIoProcess (engCtx->chanId);
+
+        if ( (MsgIoTimeElapsed (engCtx->chanId) - statsSendPendingTime) >= 10 ) {
+            // ??? log
+            break;
+        } 
+    }
+}
+
 void SetCommonAppStats (AppStats_t* aStats
                             , JObject* jObj) {
                                 
@@ -430,5 +450,7 @@ int main(int argc, char** argv) {
     }
 
     Engine_loop (engCtx);
+
+    Engine_post_final_stats (engCtx);
 }
 

@@ -29,6 +29,8 @@ void MsgIoSend (MsgIoChannelId_t mioChannelId, const char* msg, int msgLen) {
     memcpy (mioChannel->sendMsg.data, msg, mioChannel->sendMsg.len);
 
     EnableWriteNotification ( mioChannel->iovConn);
+
+    mioChannel->sendPending = 1;
 }
 
 void MsgIoRecv (MsgIoChannelId_t mioChannelId
@@ -184,6 +186,8 @@ static void OnWriteStatus (struct IoVentConn* iovConn
     DisableWriteNotification (iovConn);
 
     (*mioChannel->mioMethods.OnMsgSent)( (MsgIoChannelId_t) mioChannel);
+
+    mioChannel->sendPending = 0;
 }
 
 static void OnCleanup (struct IoVentConn* iovConn) {
@@ -224,6 +228,8 @@ MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
 
         mioChannel->sendMsg.len = 0;
         mioChannel->recvMsg.len = 0;
+
+        mioChannel->sendPending = 0;
 
         mioChannel->sendMsg.data 
             = mioChannel->sendBuff + MSG_IO_MESSAGEL_LENGTH_BYTES;
