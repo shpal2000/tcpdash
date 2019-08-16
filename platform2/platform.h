@@ -501,12 +501,13 @@ void SSLShutdown (SSL* newSSL
                 , void* cState);
 
 
-
 // json helpers
 
 typedef JsonNode JNode;
 typedef JsonObject JObject;
 typedef JsonArray JArray;
+
+#define JSET_MEMBER_INT(__obj,__name,__intv) json_object_set_int_member(__obj,__name,__intv)
 
 #define JGET_MEMBER_INT(__obj,__name,__intp) \
 { \
@@ -514,11 +515,21 @@ typedef JsonArray JArray;
     *(__intp) = json_node_get_int(__node); \
 } \
 
+#define JSET_MEMBER_STR(__obj,__name,__strp) json_object_set_string_member(__obj,__name,__strp)
+
 #define JGET_MEMBER_STR(__obj,__name,__strp) \
 { \
     JsonNode* __node = json_object_get_member(__obj,__name); \
     *(__strp) = (char*) json_node_get_string(__node); \
 } \
+
+#define JSET_MEMBER_OBJ(__obj,__name,__objp) \
+{ \
+    *(__objp) = json_object_new (); \
+    if ( *(__objp) ) { \
+        json_object_set_object_member (__obj,__name,*(__objp)); \
+    } \
+}
 
 #define JGET_MEMBER_OBJ(__obj,__name,__objp) \
 { \
@@ -526,19 +537,49 @@ typedef JsonArray JArray;
     *(__objp) = (JObject*) json_node_get_object(__node); \
 } \
 
+#define JSET_MEMBER_ARR(__obj,__name,__arrp) \
+{ \
+    *(__arrp) = json_array_new (); \
+    if ( *(__arrp) ) { \
+        json_object_set_array_member (__obj,__name,*(__arrp)); \
+    } \
+}
+
 #define JGET_MEMBER_ARR(__obj,__name,__arrp) \
 { \
     JsonNode* __node = json_object_get_member(__obj,__name); \
     *(__arrp) = json_node_get_array(__node); \
-} \
+}
 
 #define JGET_ARR_LEN(__arr) json_array_get_length(__arr)
 
+#define JADD_ARR_ELEMENT_INT(__arr,__intv) json_array_add_int_element(__arr,__intv)
+
 #define JGET_ARR_ELEMENT_INT(__arr,__index) json_array_get_int_element(__arr,__index)
+
+#define JADD_ARR_ELEMENT_STR(__arr,__strp) json_array_add_string_element(__arr,__strp)
 
 #define JGET_ARR_ELEMENT_STR(__arr,__index) json_array_get_string_element(__arr,__index)
 
+#define JADD_ARR_ELEMENT_OBJ(__arr,__objp) \
+{ \
+    *(__objp) = json_object_new (); \
+    if ( *(__objp) ) { \
+        json_array_add_object_element (__arr,*(__objp)); \
+    } \
+}
+
 #define JGET_ARR_ELEMENT_OBJ(__arr,__index) json_array_get_object_element(__arr,__index)
+
+#define JADD_ARR_ELEMENT_ARR(__arr,__arrp) \
+{ \
+    *(__arrp) = json_array_new (); \
+    if ( *(__arrp) ) { \
+        json_array_add_array_element(__arr,*(__arrp)); \
+    } \
+}
+
+#define JGET_ARR_ELEMENT_ARR(__arr,__index) json_array_get_array_element(__arr,__index)
 
 #define JGET_ROOT_NODE(__jstr,__rootNodep,__rootNodeObjp) \
 { \
@@ -549,10 +590,29 @@ typedef JsonArray JArray;
     } \
 } \
 
+#define JCREATE_ROOT_NODE(__rootNodep,__rootNodeObjp) \
+{ \
+    *(__rootNodep) = json_node_alloc (); \
+    if ( *(__rootNodep) ) { \
+        *(__rootNodeObjp) = json_object_new (); \
+        if ( *(__rootNodeObjp) ) { \
+            json_node_init_object ( *(__rootNodep), *(__rootNodeObjp) ); \
+        } else { \
+            json_node_free ( *(__rootNodep) ); \
+            *(__rootNodep) = NULL; \
+        } \
+    } \
+}
+
 #define JFREE_ROOT_NODE(__rootNode,__rootNodeObj) \
 { \
     json_node_free (__rootNode); \
 } \
+
+#define JNODE_TO_STRING(__node,__pretty) json_to_string(__node, __pretty)
+
+int SetSockStatsJ (SockStats_t* cStats
+                    , JObject* jObj);
 
 #endif
 

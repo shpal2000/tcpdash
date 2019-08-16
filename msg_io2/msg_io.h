@@ -41,7 +41,6 @@ typedef struct MsgIoChannel {
     void* mioCtx;
     MsgIoMethods_t mioMethods;
     MsgIoChannelStats_t cStats;
-    MsgIoChannelStats_t gStats;
     
     int onMsgState;
     int expectedRecvMsgLen;

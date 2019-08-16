@@ -353,6 +353,34 @@ static int Engine_loop (EngCtx_t* engCtx) {
     return status;
 }
 
+int SetAppEngStatsJ (AppStats_t* aStats
+                        , JObject* jObj) {
+    int status = 0;
+
+    JSET_MEMBER_INT (jObj, "appEngStats1", 1);
+    JSET_MEMBER_INT (jObj, "appEngStats2", 2);
+    JSET_MEMBER_INT (jObj, "appEngStats3", 3);
+    JSET_MEMBER_INT (jObj, "appEngStats4", 4);
+
+    char* sockStatsHeader = "socketStats";
+
+    JObject* jSocketStats;
+    JSET_MEMBER_OBJ (jObj, sockStatsHeader, &jSocketStats);
+    if (jSocketStats){
+        AppStatsBase_t* appStatsBase = (AppStatsBase_t*) aStats; 
+        if (SetSockStatsJ (&appStatsBase->connStats, jSocketStats)) {
+            status = -1;
+        }
+    } else {
+        status = -1;
+    }
+
+    if (status) {
+        JSET_MEMBER_STR (jObj, sockStatsHeader, "error");
+    }
+    return status;
+}
+
 int main(int argc, char** argv) {
 
     signal(SIGPIPE, SIG_IGN);

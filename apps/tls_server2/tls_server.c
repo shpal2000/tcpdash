@@ -87,7 +87,17 @@ static void OnAppExit (TlsServerCtx_t* appCtx) {
 }
 
 static void OnMinTick (TlsServerCtx_t* appCtx) {
-    puts ("OnMinTick\n");
+    JNode* jNode;
+    JObject* jObj;
+
+    JCREATE_ROOT_NODE (&jNode, &jObj);
+
+    if (jObj) {
+        SetAppEngStatsJ (&appCtx->allStats, jObj);
+        puts (JNODE_TO_STRING (jNode, 1));
+    } else {
+        puts ("OnMinTick\n");
+    }
 }
 
 static void OnEstablish (TlsServerCtx_t* appCtx

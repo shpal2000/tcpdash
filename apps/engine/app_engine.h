@@ -19,6 +19,7 @@ typedef void AppSess_t;
 typedef void AppCtx_t;
 typedef void SrvCtx_t;
 typedef void AppConnCtx_t;
+typedef void AppStats_t;
 
 typedef struct AppConnBase {
     IoVentConn_t* ioVentConn;
@@ -354,5 +355,8 @@ void __app_name (AppMethods_t* __app_methods) \
 
 #define APP_CONTINUE 1
 #define APP_EXIT 0
+
+int SetAppEngStatsJ (AppStats_t* aStats
+                        , JObject* jObj);
 
 #endif
