@@ -42,6 +42,7 @@ typedef void (*OnAppLoop_t) (AppCtx_t*, int);
 typedef void (*OnAppExit_t) (AppCtx_t*);
 typedef int (*OnContinue_t) (AppCtx_t*);
 typedef void (*OnMinTick_t) (AppCtx_t*);
+typedef int (*OnAppStats_t) (AppCtx_t*, JObject*);
 
 // Socket event Function Ptrs
 typedef void (*OnEstablish_t) (AppCtx_t*, AppConn_t*, AppConnCtx_t*);
@@ -75,6 +76,7 @@ typedef struct AppMethods {
     OnAppExit_t OnAppExit;
     OnContinue_t OnContinue;
     OnMinTick_t OnMinTick;
+    OnAppStats_t OnAppStats;
 
     OnEstablish_t OnEstablish;
     OnEstablishErr_t OnEstablishErr;
@@ -101,6 +103,7 @@ typedef struct AppMethods {
 typedef struct AppCtxW {
 
     char* appName;
+    int appIndex;
     int appStatus;
 
     AppCtx_t* appCtx;
@@ -218,6 +221,11 @@ void App_server_init (AppCtx_t* appCtx
                     , SockStats_t** statsArr
                     , int statsCount);
 
+#define GetAppIndex(__appctx) (((AppCtxBase_t*)__appctx)->appCtxW->appIndex)
+
+#define GetAppStatsIdBuff(__appctx) \
+(((AppCtxBase_t*)__appctx)->appCtxW->appStatsIdBuff)
+
 #define GetConnection(__appsess,__appconn) \
 { \
     if (__appsess) { \
@@ -310,6 +318,7 @@ void __app_name (AppMethods_t* __app_methods) \
     __app_methods->OnAppExit = (OnAppExit_t) &OnAppExit; \
     __app_methods->OnContinue = (OnContinue_t) &OnContinue; \
     __app_methods->OnMinTick = (OnMinTick_t) &OnMinTick; \
+    __app_methods->OnAppStats = (OnAppStats_t) &OnAppStats; \
 \
     __app_methods->OnEstablish = (OnEstablish_t) &OnEstablish; \
     __app_methods->OnEstablishErr = (OnEstablishErr_t) &OnEstablishErr; \
@@ -356,7 +365,7 @@ void __app_name (AppMethods_t* __app_methods) \
 #define APP_CONTINUE 1
 #define APP_EXIT 0
 
-int SetAppEngStatsJ (AppStats_t* aStats
+void SetCommonAppStats (AppStats_t* aStats
                         , JObject* jObj);
 
 #endif

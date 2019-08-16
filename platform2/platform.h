@@ -609,8 +609,8 @@ typedef JsonArray JArray;
 
 #define JNODE_TO_STRING(__node,__pretty) json_to_string(__node, __pretty)
 
-int SetSockStatsJ (SockStats_t* cStats
-                    , JObject* jObj);
+void SetSockStats (SockStats_t* cStats
+                        , JObject* jObj);
 
 #endif
 

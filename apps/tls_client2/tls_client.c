@@ -100,23 +100,51 @@ static void OnAppLoop (TlsClientCtx_t* appCtx, int newConnCount) {
     }
 }
 
+static void SetStatsHelper (TlsClientStats_t* stats, JObject* jObj) {
+    
+    JSET_MEMBER_INT (jObj, "TlsClientStats1", 1);
+    JSET_MEMBER_INT (jObj, "TlsClientStats2", 2);
+    JSET_MEMBER_INT (jObj, "TlsClientStats3", 3);
+    JSET_MEMBER_INT (jObj, "TlsClientStats4", 4);
+
+    SetCommonAppStats (stats, jObj);
+}
+
+static int OnAppStats (TlsClientCtx_t* appCtx, JObject* jAppObj) {
+    
+    int status = 0;
+
+    JObject* jObjSummary;
+    JSET_MEMBER_OBJ (jAppObj, "Summary", &jObjSummary);
+    if (jObjSummary) {
+        SetStatsHelper (&appCtx->allStats, jObjSummary);
+        JArray* jArrGrps;
+        JSET_MEMBER_ARR (jAppObj, "CsGroups", &jArrGrps);
+        if (jArrGrps) {
+            for (int grpI=0; grpI < appCtx->csGrpCount; grpI++) {
+                JObject* jObjGrp;
+                JADD_ARR_ELEMENT_OBJ (jArrGrps, &jObjGrp);
+                if (jObjGrp) {
+                    SetStatsHelper (&appCtx->csGrpArr[grpI].grpStats, jObjGrp);
+                } else {
+                    status = -1;
+                }
+            }
+        } else {
+            status = -1;
+        }
+    } else {
+        status = -1;
+    }
+
+    return status;
+}
+
 static void OnAppExit (TlsClientCtx_t* appCtx) {
 
 }
 
 static void OnMinTick (TlsClientCtx_t* appCtx) {
-    JNode* jNode;
-    JObject* jObj;
-
-    JCREATE_ROOT_NODE (&jNode, &jObj);
-
-    if (jObj) {
-        SetAppEngStatsJ (&appCtx->allStats, jObj);
-        puts (JNODE_TO_STRING (jNode, 1));
-        JFREE_ROOT_NODE (jNode, jObj);
-    } else {
-        puts ("OnMinTick\n");
-    }
 }
 
 static void OnEstablish (TlsClientCtx_t* appCtx

@@ -47,6 +47,7 @@ typedef struct TlsClientCtx {
 
     char appRdBuff[COMMON_READBUFF_MAXLEN];
     char appWrBuff[COMMON_WRITEBUFF_MAXLEN];
+    char statsBuff[];
 } TlsClientCtx_t;
 
 typedef struct TlsClientConn {

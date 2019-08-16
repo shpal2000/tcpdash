@@ -260,18 +260,52 @@ static int App_library_init (EngCtx_t* engCtx) {
 
 static void Engine_post_1sec_tick (EngCtx_t* engCtx) {
 
-    // statsString = 
-    MsgIoSend (engCtx->chanId
-                , "1"
-                , strlen("1") );
 }
 
 static void Engine_post_5sec_tick (EngCtx_t* engCtx) {
 
-    // statsString = 
-    MsgIoSend (engCtx->chanId
-                , "5"
-                , strlen("5") );
+    JNode* rootNode;
+    JsonObject* rootObj;
+
+    JCREATE_ROOT_NODE (&rootNode, &rootObj);
+
+    if (rootNode) {
+        JArray* jArrApps;
+        JSET_MEMBER_ARR (rootObj, engCtx->testCfgSelect, &jArrApps);
+
+        if (jArrApps) {
+            for (int appIndex = 0; appIndex < engCtx->appCount; appIndex++) {
+                AppCtxW_t* appCtxW = &engCtx->appCtxWArr[appIndex];
+                if ( appCtxW->appStatus >= APP_STATUS_RUNNING ) {
+                    JObject* jObjApp;
+                    JADD_ARR_ELEMENT_OBJ (jArrApps, &jObjApp);
+                    if (jObjApp) {
+                        if ( (*appCtxW->appMethods.OnAppStats)(appCtxW->appCtx, jObjApp) ) {
+                            // ??? log
+                        } else {
+                            char* statsStr = JNODE_TO_STRING (rootNode, 1);
+                            if (statsStr) {
+                                MsgIoSend (engCtx->chanId
+                                            , statsStr
+                                            , strlen(statsStr) );
+                            } else {
+                                // ??? log
+                            }
+                        }
+                    } else {
+                        // ??? log
+                    }
+                }
+            }
+        } else {
+             // ??? log
+        }
+
+        JFREE_ROOT_NODE (rootNode, rootObj);
+    } else {
+        // ??? log
+    }
+
 }
 
 static void Engine_post_60sec_tick (EngCtx_t* engCtx) {
@@ -318,8 +352,9 @@ static int Engine_loop (EngCtx_t* engCtx) {
         }
 
         int appRunning = 0;
-        for (int i = 0; i < engCtx->appCount; i++) {
-            AppCtxW_t* appCtxW = &engCtx->appCtxWArr[i];
+        for (int appIndex = 0; appIndex < engCtx->appCount; appIndex++) {
+            AppCtxW_t* appCtxW = &engCtx->appCtxWArr[appIndex];
+            appCtxW->appIndex = appIndex;
             if ( appCtxW->appStatus == APP_STATUS_RUNNING ) {
                 if (engCtx->isMinTick) {
                     (*appCtxW->appMethods.OnMinTick)(appCtxW->appCtx);
@@ -343,8 +378,8 @@ static int Engine_loop (EngCtx_t* engCtx) {
         }
     }
 
-    for (int i = 0; i < engCtx->appCount; i++) {
-        AppCtxW_t* appCtxW = &engCtx->appCtxWArr[i];
+    for (int appIndex = 0; appIndex < engCtx->appCount; appIndex++) {
+        AppCtxW_t* appCtxW = &engCtx->appCtxWArr[appIndex];
         if ( appCtxW->appStatus >= APP_STATUS_EXIT ) {
             (*appCtxW->appMethods.OnAppExit)(appCtxW->appCtx);
         }
@@ -353,32 +388,17 @@ static int Engine_loop (EngCtx_t* engCtx) {
     return status;
 }
 
-int SetAppEngStatsJ (AppStats_t* aStats
-                        , JObject* jObj) {
-    int status = 0;
+void SetCommonAppStats (AppStats_t* aStats
+                            , JObject* jObj) {
+                                
+    JSET_MEMBER_INT (jObj, "appCommStats1", 1);
+    JSET_MEMBER_INT (jObj, "appCommStats2", 2);
+    JSET_MEMBER_INT (jObj, "appCommStats3", 3);
+    JSET_MEMBER_INT (jObj, "appCommStats4", 4);
 
-    JSET_MEMBER_INT (jObj, "appEngStats1", 1);
-    JSET_MEMBER_INT (jObj, "appEngStats2", 2);
-    JSET_MEMBER_INT (jObj, "appEngStats3", 3);
-    JSET_MEMBER_INT (jObj, "appEngStats4", 4);
+    AppStatsBase_t* baseStats = (AppStatsBase_t*) aStats;
 
-    char* sockStatsHeader = "socketStats";
-
-    JObject* jSocketStats;
-    JSET_MEMBER_OBJ (jObj, sockStatsHeader, &jSocketStats);
-    if (jSocketStats){
-        AppStatsBase_t* appStatsBase = (AppStatsBase_t*) aStats; 
-        if (SetSockStatsJ (&appStatsBase->connStats, jSocketStats)) {
-            status = -1;
-        }
-    } else {
-        status = -1;
-    }
-
-    if (status) {
-        JSET_MEMBER_STR (jObj, sockStatsHeader, "error");
-    }
-    return status;
+    SetSockStats (&baseStats->connStats, jObj);
 }
 
 int main(int argc, char** argv) {

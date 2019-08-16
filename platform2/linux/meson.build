@@ -1,8 +1,7 @@
 platform_src = ['tcp.c'
                 , 'tls.c'
                 , 'poll.c'
-                , 'utils.c'
-                , '../common.c']
+                , 'utils.c']
 
 glib = dependency('glib-2.0')
 openssl = dependency('openssl')
