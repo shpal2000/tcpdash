@@ -7,6 +7,8 @@ TCPDASH_C_NIC=$4
 TCPDASH_S1_PID=$(docker inspect -f '{{.State.Pid}}' "$TCPDASH_S1_NAME")
 TCPDASH_C1_PID=$(docker inspect -f '{{.State.Pid}}' "$TCPDASH_C1_NAME")
 
+mkdir -p  /var/run/netns
+
 $(ln -s /proc/"$TCPDASH_S1_PID"/ns/net /var/run/netns/"$TCPDASH_S1_PID")
 $(ln -s /proc/"$TCPDASH_C1_PID"/ns/net /var/run/netns/"$TCPDASH_C1_PID")
 
@@ -16,7 +18,6 @@ ovs-vsctl del-br sAppVs
 ovs-vsctl add-br cAppVs
 ovs-vsctl add-br sAppVs
 
-mkdir -p  /var/run/netns
 
 $(ovs-vsctl add-port cAppVs "$TCPDASH_C_NIC")
 $(ovs-vsctl set interface "$TCPDASH_C_NIC" type=patch)
