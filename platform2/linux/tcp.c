@@ -26,6 +26,7 @@ int TcpNewConnection(SockAddr_t* lAddr
 
     //stats
     IncConnStats(statsArr, statsCount, tcpConnInit);
+    IncConnStats(statsArr, statsCount, tcpConnInitInSec);
 
     //check ipv6
     int is_ipv6;
@@ -149,6 +150,7 @@ void VerifyTcpConnectionEstablished(int fd
     if ((retGetsockopt|socketErr) == 0){
         SetCS1 (cState, STATE_TCP_CONN_ESTABLISHED);
         IncConnStats(statsArr, statsCount, tcpConnInitSuccess);
+        IncConnStats(statsArr, statsCount, tcpConnInitSuccessInSec);
     }else {
         SetCES(cState, STATE_TCP_SOCK_CONNECT_FAIL);
         SaveSockErrno(cState, socketErr);
@@ -367,6 +369,7 @@ int TcpAcceptConnection(int listenerFd
         SetCS1 (cState, STATE_TCP_CONN_ESTABLISHED);
 
         IncConnStats(statsArr, statsCount, tcpAcceptSuccess);
+        IncConnStats(statsArr, statsCount, tcpAcceptSuccessInSec);
 
         int flags = fcntl(socket_fd, F_GETFL, 0);
         if (flags < 0) {
@@ -420,6 +423,7 @@ void DoSSLConnect(SSL* newSSL
     if (IsSetCS1(cState, STATE_SSL_CONN_INIT) == 0) {
         SetCS1(cState, STATE_SSL_CONN_INIT);
         IncConnStats(statsArr, statsCount, sslConnInit);
+        IncConnStats(statsArr, statsCount, sslConnInitInSec);
         int status = SSL_set_fd(newSSL, fd);
 
         if (status != 1) {
@@ -440,7 +444,13 @@ void DoSSLConnect(SSL* newSSL
         int sslErrno = SSL_get_error (newSSL, status);
         if (status == 1) {
             SetCS1(cState, STATE_SSL_CONN_ESTABLISHED);
-            IncConnStats(statsArr, statsCount, sslConnInitSuccess);
+            if (isClient) {
+                IncConnStats(statsArr, statsCount, sslConnInitSuccess);
+                IncConnStats(statsArr, statsCount, sslConnInitSuccessInSec);
+            } else {
+                IncConnStats(statsArr, statsCount, sslAcceptSuccess);
+                IncConnStats(statsArr, statsCount, sslAcceptSuccessInSec);
+            }
         } else if (status == -1) {
             if (IsSetCS1(cState, STATE_SSL_CONN_IN_PROGRESS) == 0) {
                 SetCS1(cState, STATE_SSL_CONN_IN_PROGRESS);

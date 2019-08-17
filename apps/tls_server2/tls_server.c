@@ -84,10 +84,10 @@ static void OnAppLoop (TlsServerCtx_t* appCtx, int newConnCount) {
 
 static void SetStatsHelper (TlsServerStats_t* stats, JObject* jObj) {
 
-    JSET_MEMBER_INT (jObj, "TlsServerStats1", 1);
-    JSET_MEMBER_INT (jObj, "TlsServerStats2", 2);
-    JSET_MEMBER_INT (jObj, "TlsServerStats3", 3);
-    JSET_MEMBER_INT (jObj, "TlsServerStats4", 4);
+    // JSET_MEMBER_INT (jObj, "TlsServerStats1", 1);
+    // JSET_MEMBER_INT (jObj, "TlsServerStats2", 2);
+    // JSET_MEMBER_INT (jObj, "TlsServerStats3", 3);
+    // JSET_MEMBER_INT (jObj, "TlsServerStats4", 4);
 
     SetCommonAppStats (stats, jObj);
 }
@@ -124,6 +124,15 @@ static int OnAppStats (TlsServerCtx_t* appCtx, JObject* jAppObj) {
 
 static void OnAppExit (TlsServerCtx_t* appCtx) {
 
+}
+
+static void OnSecTick (TlsServerCtx_t* appCtx) {
+
+    SetCommonAppStatsRate (&appCtx->allStats);
+
+    for (int grpI=0; grpI < appCtx->csGrpCount; grpI++) {
+        SetCommonAppStatsRate (&appCtx->csGrpArr[grpI].grpStats);
+    }
 }
 
 static void OnMinTick (TlsServerCtx_t* appCtx) {

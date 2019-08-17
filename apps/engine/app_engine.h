@@ -41,6 +41,7 @@ typedef int (*OnAppInit_t) (AppCtx_t*, JObject*);
 typedef void (*OnAppLoop_t) (AppCtx_t*, int);
 typedef void (*OnAppExit_t) (AppCtx_t*);
 typedef int (*OnContinue_t) (AppCtx_t*);
+typedef void (*OnSecTick_t) (AppCtx_t*);
 typedef void (*OnMinTick_t) (AppCtx_t*);
 typedef int (*OnAppStats_t) (AppCtx_t*, JObject*);
 
@@ -75,6 +76,7 @@ typedef struct AppMethods {
     OnAppLoop_t OnAppLoop;
     OnAppExit_t OnAppExit;
     OnContinue_t OnContinue;
+    OnMinTick_t OnSecTick;
     OnMinTick_t OnMinTick;
     OnAppStats_t OnAppStats;
 
@@ -159,6 +161,7 @@ typedef struct EngCtx {
     int tick5Count;
     int tick60Count;
     int isMinTick;
+    int isSecTick;
 
     uint32_t maxActConn;
     uint32_t maxErrConn;
@@ -317,6 +320,7 @@ void __app_name (AppMethods_t* __app_methods) \
     __app_methods->OnAppLoop = (OnAppLoop_t) &OnAppLoop; \
     __app_methods->OnAppExit = (OnAppExit_t) &OnAppExit; \
     __app_methods->OnContinue = (OnContinue_t) &OnContinue; \
+    __app_methods->OnSecTick = (OnMinTick_t) &OnSecTick; \
     __app_methods->OnMinTick = (OnMinTick_t) &OnMinTick; \
     __app_methods->OnAppStats = (OnAppStats_t) &OnAppStats; \
 \
@@ -367,5 +371,7 @@ void __app_name (AppMethods_t* __app_methods) \
 
 void SetCommonAppStats (AppStats_t* aStats
                         , JObject* jObj);
+
+void SetCommonAppStatsRate (AppStats_t* aStats);
 
 #endif

@@ -41,7 +41,11 @@ typedef struct SockStats{
     uint64_t socketConnectEstablishFail2;    
 
     uint64_t tcpConnInit;
+    uint64_t tcpConnInitInSec;
+    uint64_t tcpConnInitRate;
     uint64_t tcpConnInitSuccess;
+    uint64_t tcpConnInitSuccessInSec;
+    uint64_t tcpConnInitSuccessRate;
     uint64_t tcpConnInitFail;
     uint64_t tcpConnInitFailImmediateEaddrNotAvail;
     uint64_t tcpConnInitFailImmediateOther;
@@ -55,14 +59,23 @@ typedef struct SockStats{
     uint64_t tcpListenStartFail;
     uint64_t tcpAcceptFail;
     uint64_t tcpAcceptSuccess;
+    uint64_t tcpAcceptSuccessInSec;
+    uint64_t tcpAcceptSuccessRate;
 
     uint64_t tcpLocalPortAssignFail;
     uint64_t tcpPollRegUnregFail;
 
     uint64_t sslConnInit;
+    uint64_t sslConnInitInSec;
+    uint64_t sslConnInitRate;
     uint64_t sslConnInitSuccess;
+    uint64_t sslConnInitSuccessInSec;
+    uint64_t sslConnInitSuccessRate;
     uint64_t sslConnInitFail;
     uint64_t sslConnInitProgress;
+    uint64_t sslAcceptSuccess; 
+    uint64_t sslAcceptSuccessInSec;
+    uint64_t sslAcceptSuccessRate; 
 
     uint64_t tcpConnStructNotAvail;
     uint64_t tcpListenStructNotAvail;
@@ -73,7 +86,6 @@ typedef struct SockStats{
 
     uint64_t tcpGetSockNameFail;
 
-    uint64_t dummyCount;
 } SockStats_t;
 
 typedef struct SockState {
@@ -145,6 +157,12 @@ static inline void CSInit(void* cState) {
     for (int __stats_index = 0; __stats_index < __statsCount; __stats_index++) { \
         ((SockStats_t*) (__statsArr[__stats_index]))->__stat++; \
     } \
+}
+
+#define SET_CONN_RATE(__aStats,__stat) \
+{ \
+    __aStats->__stat##Rate = __aStats->__stat##InSec; \
+    __aStats->__stat##InSec = 0; \
 }
 
 static inline void SetCES(void* aSession, uint64_t errState) {
@@ -611,6 +629,8 @@ typedef JsonArray JArray;
 
 void SetSockStats (SockStats_t* cStats
                         , JObject* jObj);
+
+void SetSockStatsRate (SockStats_t* cStats);
 
 #endif
 

@@ -66,17 +66,32 @@ void SetSockAddress(SockAddr_t* addr, char* str, int port) {
 void SetSockStats (SockStats_t* cStats
                     , JObject* jObj) {
 
-    JSET_MEMBER_INT (jObj, "socketCreate", cStats->socketCreate);
-    JSET_MEMBER_INT (jObj, "socketCreateFail", cStats->socketCreateFail);
-    JSET_MEMBER_INT (jObj, "socketListenFail", cStats->socketListenFail);
+    // JSET_MEMBER_INT (jObj, "socketCreate", cStats->socketCreate);
+    // JSET_MEMBER_INT (jObj, "socketCreateFail", cStats->socketCreateFail);
+    // JSET_MEMBER_INT (jObj, "socketListenFail", cStats->socketListenFail);
 
-    JSET_MEMBER_INT (jObj, "tcpAcceptFail", cStats->tcpAcceptFail);
-    JSET_MEMBER_INT (jObj, "tcpAcceptSuccess", cStats->tcpAcceptSuccess);
+    // JSET_MEMBER_INT (jObj, "tcpAcceptFail", cStats->tcpAcceptFail);
+    // JSET_MEMBER_INT (jObj, "tcpAcceptSuccess", cStats->tcpAcceptSuccess);
 
-    JSET_MEMBER_INT (jObj, "tcpConnInit", cStats->tcpConnInit);
-    JSET_MEMBER_INT (jObj, "tcpConnInitSuccess", cStats->tcpConnInitSuccess);
-    JSET_MEMBER_INT (jObj, "tcpConnInitFail", cStats->tcpConnInitFail);
+    // JSET_MEMBER_INT (jObj, "tcpConnInit", cStats->tcpConnInit);
+    // JSET_MEMBER_INT (jObj, "tcpConnInitSuccess", cStats->tcpConnInitSuccess);
+    // JSET_MEMBER_INT (jObj, "tcpConnInitFail", cStats->tcpConnInitFail);
 
+    JSET_MEMBER_INT (jObj, "tcpConnInitRate", cStats->tcpConnInitRate);
+    JSET_MEMBER_INT (jObj, "sslConnInitSuccessRate", cStats->sslConnInitSuccessRate);
+    JSET_MEMBER_INT (jObj, "sslAcceptSuccessRate", cStats->sslAcceptSuccessRate);
+
+}
+
+void SetSockStatsRate (SockStats_t* cStats) {
+
+    SET_CONN_RATE (cStats, tcpConnInit);
+    SET_CONN_RATE (cStats, tcpConnInitSuccess);
+    SET_CONN_RATE (cStats, tcpAcceptSuccess);
+
+    SET_CONN_RATE (cStats, sslConnInit);
+    SET_CONN_RATE (cStats, sslConnInitSuccess);
+    SET_CONN_RATE (cStats, sslAcceptSuccess);
 }
 
 #if 0

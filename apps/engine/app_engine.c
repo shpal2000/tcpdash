@@ -304,6 +304,7 @@ static void Engine_post_stats (EngCtx_t* engCtx) {
 }
 
 static void Engine_post_1sec_tick (EngCtx_t* engCtx) {
+    engCtx->isSecTick = 1;
 }
 
 static void Engine_post_5sec_tick (EngCtx_t* engCtx) {
@@ -358,6 +359,9 @@ static int Engine_loop (EngCtx_t* engCtx) {
             AppCtxW_t* appCtxW = &engCtx->appCtxWArr[appIndex];
             appCtxW->appIndex = appIndex;
             if ( appCtxW->appStatus == APP_STATUS_RUNNING ) {
+                if (engCtx->isSecTick) {
+                    (*appCtxW->appMethods.OnSecTick)(appCtxW->appCtx);
+                }
                 if (engCtx->isMinTick) {
                     (*appCtxW->appMethods.OnMinTick)(appCtxW->appCtx);
                 }
@@ -373,6 +377,7 @@ static int Engine_loop (EngCtx_t* engCtx) {
                 }
             }
         }
+        engCtx->isSecTick = 0;
         engCtx->isMinTick = 0;
 
         if (appRunning == 0) {
@@ -414,14 +419,21 @@ static void Engine_post_final_stats (EngCtx_t* engCtx) {
 void SetCommonAppStats (AppStats_t* aStats
                             , JObject* jObj) {
                                 
-    JSET_MEMBER_INT (jObj, "appCommStats1", 1);
-    JSET_MEMBER_INT (jObj, "appCommStats2", 2);
-    JSET_MEMBER_INT (jObj, "appCommStats3", 3);
-    JSET_MEMBER_INT (jObj, "appCommStats4", 4);
+    // JSET_MEMBER_INT (jObj, "appCommStats1", 1);
+    // JSET_MEMBER_INT (jObj, "appCommStats2", 2);
+    // JSET_MEMBER_INT (jObj, "appCommStats3", 3);
+    // JSET_MEMBER_INT (jObj, "appCommStats4", 4);
 
     AppStatsBase_t* baseStats = (AppStatsBase_t*) aStats;
 
     SetSockStats (&baseStats->connStats, jObj);
+}
+
+void SetCommonAppStatsRate (AppStats_t* aStats) {
+
+    AppStatsBase_t* baseStats = (AppStatsBase_t*) aStats;
+
+    SetSockStatsRate (&baseStats->connStats);
 }
 
 int main(int argc, char** argv) {
