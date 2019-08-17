@@ -62,7 +62,8 @@ int nAdmin_channel_setup(EngCtx_t* engCtx) {
     engCtx->chanId =  MsgIoNew (&engCtx->nLocalAddr
                         , &engCtx->nAdminAddr
                         , &mioMethods
-                        , engCtx);
+                        , engCtx
+                        , 100);
 
     if ( engCtx->chanId ) {
         engCtx->chanState = N_ADMIN_CHANNEL_STATE_INIT;

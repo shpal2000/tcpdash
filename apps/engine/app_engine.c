@@ -304,11 +304,11 @@ static void Engine_post_stats (EngCtx_t* engCtx) {
 }
 
 static void Engine_post_1sec_tick (EngCtx_t* engCtx) {
-
+    Engine_post_stats (engCtx);
 }
 
 static void Engine_post_5sec_tick (EngCtx_t* engCtx) {
-    Engine_post_stats (engCtx);
+    
 }
 
 static void Engine_post_60sec_tick (EngCtx_t* engCtx) {
@@ -398,8 +398,12 @@ static void Engine_post_final_stats (EngCtx_t* engCtx) {
 
     double statsSendPendingTime = MsgIoTimeElapsed (engCtx->chanId);
 
-    while ( MsgIoIsSendPending (engCtx->chanId) ) {
+    while (1) {
         MsgIoProcess (engCtx->chanId);
+
+        if ( MsgIoNoSendPending(engCtx->chanId) ) {
+            break;
+        }
 
         if ( (MsgIoTimeElapsed (engCtx->chanId) - statsSendPendingTime) >= 10 ) {
             // ??? log

@@ -12,8 +12,9 @@
 #define MSG_IO_ON_MESSAGE_STATE_READ_DATA        2
 
 typedef struct MsgIoDataBuff {
-    char* data;
     int len;
+    char* data;
+    char msgBuff [MSG_IO_READ_WRITE_BUFF_MAXLEN];
 } MsgIoDataBuff_t;
 
 typedef void* MsgIoChannelId_t;
@@ -45,20 +46,21 @@ typedef struct MsgIoChannel {
     int onMsgState;
     int expectedRecvMsgLen;
 
-    char recvBuff[MSG_IO_READ_WRITE_BUFF_MAXLEN];
-    char sendBuff[MSG_IO_READ_WRITE_BUFF_MAXLEN];
+    // send queue
+    Pool_t freeSendPool;
+    Pool_t actSendPool;
+    MsgIoDataBuff_t* sendMsg;
 
-    MsgIoDataBuff_t sendMsg;
+    // receive ; queue needed ???
     MsgIoDataBuff_t recvMsg;
-
-    int sendPending;
 
 } MsgIoChannel_t;
 
 MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
                             , SockAddr_t* remoteAddress
                             , MsgIoMethods_t* mioMethods
-                            , void* mioCtx);
+                            , void* mioCtx
+                            , int sendQLen);
 void MsgIoDelete (MsgIoChannelId_t mioChanelId);
 void MsgIoRecv (MsgIoChannelId_t mioChanelId, char** pMsg, int* pLen);
 void MsgIoSend (MsgIoChannelId_t mioChanelId, const char* msg, int msg_len);
@@ -66,7 +68,7 @@ void MsgIoProcess (MsgIoChannelId_t mioChannelId);
 void* MsgIoGetCtx (MsgIoChannelId_t mioChannelId);
 double MsgIoTimeElapsed (MsgIoChannelId_t mioChannelId);
 
-#define MsgIoIsSendPending(__mioChanId) (((MsgIoChannel_t*)(__mioChanId))->sendPending)
+#define MsgIoNoSendPending(__mioChanId) ( IsPoolEmpty (&((MsgIoChannel_t*)__mioChanId)->actSendPool) )
 
 #endif
 

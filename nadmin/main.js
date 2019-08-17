@@ -217,10 +217,10 @@ const config6 = `{
         "appList" : [
             {
                 "appName" : "TlsClient",
-                "connPerSec" : 500,
+                "connPerSec" : 40,
                 "maxActSess" : 10000,
                 "maxErrSess" : 10000,
-                "maxSess" : 100,
+                "maxSess" : 1000000,
                 "csGrpArr" : [
                     {
                         "srvIp"   : "12.20.60.1",
@@ -229,12 +229,52 @@ const config6 = `{
                             {
                                 "cIp" : "12.20.50.1",
                                 "cPortB" : 10000,
-                                "cPortE" : 19999 
+                                "cPortE" : 60000 
                             },
                             {
                                 "cIp" : "12.20.50.2",
-                                "cPortB" : 20000,
-                                "cPortE" : 29999 
+                                "cPortB" : 10000,
+                                "cPortE" : 60000 
+                            },
+                            {
+                                "cIp" : "12.20.50.3",
+                                "cPortB" : 10000,
+                                "cPortE" : 60000 
+                            },
+                            {
+                                "cIp" : "12.20.50.4",
+                                "cPortB" : 10000,
+                                "cPortE" : 60000 
+                            },
+                            {
+                                "cIp" : "12.20.50.5",
+                                "cPortB" : 10000,
+                                "cPortE" : 60000 
+                            },
+                            {
+                                "cIp" : "12.20.50.6",
+                                "cPortB" : 10000,
+                                "cPortE" : 60000 
+                            },
+                            {
+                                "cIp" : "12.20.50.7",
+                                "cPortB" : 10000,
+                                "cPortE" : 60000 
+                            },
+                            {
+                                "cIp" : "12.20.50.8",
+                                "cPortB" : 10000,
+                                "cPortE" : 60000 
+                            },
+                            {
+                                "cIp" : "12.20.50.9",
+                                "cPortB" : 10000,
+                                "cPortE" : 60000 
+                            },
+                            {
+                                "cIp" : "12.20.50.10",
+                                "cPortB" : 10000,
+                                "cPortE" : 60000 
                             }
                         ],
                         "csDataLen" : 10,
