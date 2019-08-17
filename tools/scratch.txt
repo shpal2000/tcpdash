@@ -4,10 +4,32 @@ apt-get -y install docker.io
 
 docker save -o ~/tcpdash.tar tcpdash
 
+sudo scp ~/tcpdash.tar user@192.168.1.41:~/
+
 docker load -i /home/user/tcpdash.tar
+
+sudo docker save -o ~/nadmin.tar nadmin
+
+sudo scp ~/nadmin.tar user@192.168.1.41:~/
+
+docker load -i /home/user/nadmin.tar
 
 docker run --cap-add=SYS_PTRACE  -it --name tcpdash_s1 -v /home/user/tcpdash_bin:/usr/local/tcpdash_bin tcpdash /bin/bash
 
 docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined  -it --name tcpdash_s1 -v /home/user/tcpdash_bin:/usr/local/tcpdash_bin tcpdash /bin/bash
+
+node nadmin.js 192.168.1.24
+
+sudo docker run  -it -v /home/user/configs:/usr/src/nadmin/configs --network host nadmin /bin/sh
+
+/usr/local/tcpdash_bin/app_engine.exe "192.168.1.24" 9777 "test6" "sApps" 1
+
+docker run --cap-add=SYS_PTRACE -it --name tcpdash_c1 -v /home/user/tcpdash_bin:/usr/local/tcpdash_bin tcpdash /bin/bash
+
+docker run --cap-add=SYS_PTRACE -it --name tcpdash_s1 -v /home/user/tcpdash_bin:/usr/local/tcpdash_bin tcpdash /bin/bash
+
+
+
+
 
 
