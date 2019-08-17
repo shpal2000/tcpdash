@@ -304,11 +304,10 @@ static void Engine_post_stats (EngCtx_t* engCtx) {
 }
 
 static void Engine_post_1sec_tick (EngCtx_t* engCtx) {
-    Engine_post_stats (engCtx);
 }
 
 static void Engine_post_5sec_tick (EngCtx_t* engCtx) {
-    
+    Engine_post_stats (engCtx);    
 }
 
 static void Engine_post_60sec_tick (EngCtx_t* engCtx) {

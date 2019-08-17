@@ -1,9 +1,11 @@
 const express = require('express');
 const http = require('http');
 const net = require('net');
+const fs = require('fs');
+
 // const plainTextParser = require('plaintextparser');
 
-const host = '192.168.1.24';
+const host = process.argv[2];
 const adminPort = 8777;
 const msgIoPort = 9777;
 
@@ -74,19 +76,17 @@ msgIoServer.listen(msgIoPort, host, () => {
 });
 
 function msgIoHandler (sock, sockCtx, rcvMsg) {
-    console.log (rcvMsg);
-   
-    var sendMsg = '';
-    switch (rcvMsg.trim()) {
-        case 'test6':
-            sendMsg = config6;
-            break;
-        }
+    if (rcvMsg.startsWith('test')) {
+        var sendMsg = '';
+        sendMsg = fs.readFileSync(__dirname + '/configs/' + rcvMsg.trim());
 
-    if (sendMsg) {
-        var s1 = "0000000" + sendMsg.length;
-        var s2 = s1.substr(s1.length-7);
-        sock.write ( s2 + '\n' + sendMsg);
+        if (sendMsg) {
+            var s1 = "0000000" + sendMsg.length;
+            var s2 = s1.substr(s1.length-7);
+            sock.write ( s2 + '\n' + sendMsg);
+        }
+    } else {
+        console.log (rcvMsg);
     }
 }
 
