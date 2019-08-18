@@ -1,3 +1,8 @@
+
+"192.168.1.24" 9777 "test6" "sApps" 1
+
+"192.168.1.24" 9777 "test6" "cApps" 1
+
 apt-get install openvswitch-switch
 
 apt-get -y install docker.io
@@ -24,12 +29,25 @@ sudo docker run  -it -v /home/user/configs:/usr/src/nadmin/configs --network hos
 
 /usr/local/tcpdash_bin/app_engine.exe "192.168.1.24" 9777 "test6" "sApps" 1
 
+/usr/local/tcpdash_bin/app_engine.exe "192.168.1.24" 9777 "test6" "cApps" 1
+
 docker run --cap-add=SYS_PTRACE -it --name tcpdash_c1 -v /home/user/tcpdash_bin:/usr/local/tcpdash_bin tcpdash /bin/bash
 
 docker run --cap-add=SYS_PTRACE -it --name tcpdash_s1 -v /home/user/tcpdash_bin:/usr/local/tcpdash_bin tcpdash /bin/bash
 
 
+docker run --cap-add=SYS_PTRACE --privileged=true  -it --name tcpdash_s1 -v /home/user/tcpdash_bin:/usr/local/tcpdash_bin tcpdash /bin/bash
+
+docker run --cap-add=SYS_PTRACE --privileged=true  -it --name tcpdash_c1 -v /home/user/tcpdash_bin:/usr/local/tcpdash_bin tcpdash /bin/bash
+
+nc -lv  -s 12.20.50.1 -p 5060
+
+nc -v -s 12.20.60.1 12.20.50.1 5060
 
 
+sudo docker build -t tcpdash .
+
+
+/bin/bash ./t.sh tcpdash_s1 tcpdash_c1 eth1 eth2
 
 

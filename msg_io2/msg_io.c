@@ -273,8 +273,8 @@ MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
             if (mioChannel->iovCtx == NULL) {
                 // ??? log
             } else {
-                int statsCount = 1;
-                SockStats_t* statsArr[] = {(SockStats_t*) &mioChannel->cStats}; 
+                mioChannel->statsCount = 1;
+                mioChannel->statsArr[0] = (SockStats_t*) &mioChannel->cStats; 
                 int newConnInitErr = 
                     NewConnection (mioChannel->iovCtx
                                     , mioChannel
@@ -282,8 +282,8 @@ MsgIoChannelId_t MsgIoNew (SockAddr_t* localAddress
                                     , NULL
                                     , remoteAddress
                                     , 0
-                                    , statsArr
-                                    , statsCount);
+                                    , mioChannel->statsArr
+                                    , mioChannel->statsCount);
                 if (newConnInitErr) {
                     // ??? log
                 } else {

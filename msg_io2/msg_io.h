@@ -51,8 +51,11 @@ typedef struct MsgIoChannel {
     Pool_t actSendPool;
     MsgIoDataBuff_t* sendMsg;
 
-    // receive ; queue needed ???
+    // receive
     MsgIoDataBuff_t recvMsg;
+
+    SockStats_t* statsArr[1];
+    int statsCount;
 
 } MsgIoChannel_t;
 
