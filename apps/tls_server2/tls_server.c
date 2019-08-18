@@ -89,7 +89,7 @@ static void SetStatsHelper (TlsServerStats_t* stats, JObject* jObj) {
     // JSET_MEMBER_INT (jObj, "TlsServerStats3", 3);
     // JSET_MEMBER_INT (jObj, "TlsServerStats4", 4);
 
-    SetCommonAppStats (stats, jObj);
+    // SetCommonAppStats (stats, jObj);
 }
 
 static int OnAppStats (TlsServerCtx_t* appCtx, JObject* jAppObj) {

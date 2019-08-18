@@ -14,7 +14,6 @@ AppConn_t* App_conn_session_child (AppCtx_t* appCtx
         AppCtxW_t* appCtxW = ((AppCtxBase_t*)appCtx)->appCtxW; 
         IoVentCtx_t* iovCtx = appCtxW->engCtx->iovCtx;
         appCtxW->connInitCount++;
-        appCtxW->lastConnInitTime = TimeElapsedIoVentCtx (iovCtx);
         if ( NewConnection (iovCtx
                             , appConn
                             , localAddr
@@ -28,6 +27,7 @@ AppConn_t* App_conn_session_child (AppCtx_t* appCtx
             FreeConnetion(appConn);
             appConn = NULL;
         } else {
+            appCtxW->lastConnInitTime = TimeElapsedIoVentCtx (iovCtx);
             ((AppConnBase_t*)appConn)->appConnCtx = appConnCtx;
         }
     } else {

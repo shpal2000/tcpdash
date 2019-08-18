@@ -77,8 +77,14 @@ void SetSockStats (SockStats_t* cStats
     // JSET_MEMBER_INT (jObj, "tcpConnInitSuccess", cStats->tcpConnInitSuccess);
     // JSET_MEMBER_INT (jObj, "tcpConnInitFail", cStats->tcpConnInitFail);
 
+    JSET_MEMBER_INT (jObj, "tcpConnInitRate", cStats->tcpConnInitRate);
+    JSET_MEMBER_INT (jObj, "tcpConnInitSuccessRate", cStats->tcpConnInitSuccessRate);
+    JSET_MEMBER_INT (jObj, "sslConnInitRate", cStats->sslConnInitRate);
     JSET_MEMBER_INT (jObj, "sslConnInitSuccessRate", cStats->sslConnInitSuccessRate);
-    JSET_MEMBER_INT (jObj, "sslAcceptSuccessRate", cStats->sslAcceptSuccessRate);
+
+    JSET_MEMBER_INT (jObj, "tcpConnInitFail", cStats->tcpConnInitFail);
+    JSET_MEMBER_INT (jObj, "tcpConnInitFail-I", cStats->tcpConnInitFailImmediateEaddrNotAvail);
+    JSET_MEMBER_INT (jObj, "tcpConnInitFail-IO", cStats->tcpConnInitFailImmediateOther);
 
 }
 
