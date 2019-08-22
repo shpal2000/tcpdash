@@ -14,6 +14,8 @@
 #define APP_STATUS_RUNNING                  2
 #define APP_STATUS_EXIT                     100
 
+#define MAX_START_APP_MSG_LENGTH            1024
+
 typedef void AppConn_t;
 typedef void AppSess_t;
 typedef void AppCtx_t;
@@ -140,9 +142,10 @@ typedef struct EngCtx {
 
     char* nAdminIp;
     int nAdminPort;
-    char* testCfgId;
-    char* testCfgSelect;
-    char* testRunId;
+    char* cfgId;
+    char* cfgSelect;
+    char* docName;
+
     char* cfgData;
 
     SockAddr_t nAdminAddr;
@@ -373,5 +376,21 @@ void SetCommonAppStats (AppStats_t* aStats
                         , JObject* jObj);
 
 void SetCommonAppStatsRate (AppStats_t* aStats);
+
+
+#define SetAppStartMsg(__msg,__mId,__cfgId,__cfgSelect,__docName) { \
+sprintf (__msg, \
+"{ \
+    \"MessageType\" : \"AppStart\", \
+    \"MessageId\" : %d, \
+    \"Message\" : { \
+        \"cfgId\" : \"%s\", \
+        \"cfgSelect\" : \"%s\" \
+        \"docName\" : \"%s\", \
+    } \
+}", \
+__mId,__cfgId,__cfgSelect,__docName); \
+}
+
 
 #endif

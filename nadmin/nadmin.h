@@ -16,3 +16,10 @@
 
 #define N_ADMIN_APPID_TLS_CLIENT                        0
 #define N_ADMIN_APPID_TLS_SERVER                        1
+
+
+
+//////////////
+
+#define MSG_ID_APP_START                                1
+#define MSG_ID_RESERVED                                 100

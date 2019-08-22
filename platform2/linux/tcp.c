@@ -108,6 +108,11 @@ int TcpNewConnection(SockAddr_t* lAddr
                     }else{
                         SetCES(cState, STATE_TCP_SOCK_CONNECT_FAIL_IMMEDIATE);
                         if ( (GetSysErrno(cState) == EADDRNOTAVAIL) ) {
+                            char lAddrStr [128]; uint16_t lPort;
+                            char rAddrStr [128]; uint16_t rPort;
+                            AddressToString (lAddr, lAddrStr); GET_SOCK_PORT (lAddr, &lPort);
+                            AddressToString (rAddr, rAddrStr); GET_SOCK_PORT (rAddr, &rPort);
+                            printf ("\n%s:%u -- %s:%u", lAddrStr, ntohs(lPort), rAddrStr, ntohs(rPort));
                             IncConnStats(statsArr, statsCount, tcpConnInitFailImmediateEaddrNotAvail);
                         }else{
                             IncConnStats(statsArr, statsCount, tcpConnInitFailImmediateOther);

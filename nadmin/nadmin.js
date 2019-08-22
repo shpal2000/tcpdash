@@ -2,8 +2,7 @@ const express = require('express');
 const http = require('http');
 const net = require('net');
 const fs = require('fs');
-
-// const plainTextParser = require('plaintextparser');
+const execSync = require('child_process').execSync;
 
 const host = process.argv[2];
 const adminPort = 8777;
@@ -14,79 +13,42 @@ const msgIoConns = new Map();
 
 const MSG_IO_MESSAGEL_LENGTH_BYTES = 8;
 const MSG_IO_READ_WRITE_DATA_MAXLEN = 1048576; 
-
-const config6 = `{
-    "cApps" : {
-        "appList" : [
-            {
-                "appName" : "TlsClient",
-                "connPerSec" : 500,
-                "maxActSess" : 10000,
-                "maxErrSess" : 10000,
-                "maxSess" : 100,
-                "csGrpArr" : [
-                    {
-                        "srvIp"   : "12.20.60.1",
-                        "srvPort" : 8443,
-                        "cAddrArr"  : [
-                            {
-                                "cIp" : "12.20.50.1",
-                                "cPortB" : 10000,
-                                "cPortE" : 19999 
-                            },
-                            {
-                                "cIp" : "12.20.50.2",
-                                "cPortB" : 20000,
-                                "cPortE" : 29999 
-                            }
-                        ],
-                        "csDataLen" : 10,
-                        "scDataLen" : 20,
-                        "csStartTlsLen" : 0,
-                        "scStartTlsLen" : 0
-                    }
-                ]
-            }
-       ]
-    },
-
-    "sApps" : {
-       "appList" : [
-            {
-                "appName" : "TlsServer",
-                "maxActSess" : 10000,
-                "maxErrSess" : 10000,
-                "csGrpArr" : [
-                    {
-                        "srvIp"   : "12.20.60.1",
-                        "srvPort" : 8443,
-                        "csDataLen" : 10,
-                        "scDataLen" : 20,
-                        "csStartTlsLen" : 0,
-                        "scStartTlsLen" : 0
-                    }
-                ]
-            }
-        ]
-    }
-}`;
+const MSG_ID_APP_START = 1;
+const MSG_ID_RESERVED = 100;
 
 msgIoServer.listen(msgIoPort, host, () => {
     console.log('msgIoServer running on port ' + msgIoPort + '.');
 });
 
-function msgIoHandler (sock, sockCtx, rcvMsg) {
-    if (rcvMsg.startsWith('test')) {
-        var sendMsg = '';
-        sendMsg = fs.readFileSync(__dirname + '/configs/' + rcvMsg.trim());
+function msgIoHandler (sock, sockCtx, rcvMsgStr) {
+    console.log (rcvMsgStr);
 
-        if (sendMsg) {
-            var s1 = "0000000" + sendMsg.length;
-            var s2 = s1.substr(s1.length-7);
-            sock.write ( s2 + '\n' + sendMsg);
-        }
-    } else {
-        console.log (rcvMsg);
+    try {
+        var rcvMsg = JSON.parse(rcvMsgStr);
+        
+        switch (rcvMsg.MessageType) {
+            case "AppStart":
+                var appInfo = rcvMsg.Message; 
+                var appCfgStr  = fs.readFileSync(__dirname + '/configs/' + appInfo.cfgId);
+                var appCfgObjAll = JSON.parse (appCfgStr);
+                var appCfgObj = appCfgObjAll[appInfo.cfgSelect]; 
+                execSync('/bin/bash ' + __dirname + '/tools/doc_connect.sh ' + appInfo.docName + ' ' + appCfgObj.port);
+                for (var i = 0; i < appCfgObj.subnets.length; i++ ) {
+                    execSync('/bin/bash ' + __dirname + '/tools/doc_ipaddr.sh ' + appInfo.docName + ' add ' + appCfgObj.subnets[i]);
+                }
+                var sndMsg = {};
+                sndMsg.MessageType = rcvMsg.MessageType;
+                sndMsg.MessageId = rcvMsg.MessageId;
+                sndMsg.Message = cfgObjAll; 
+                sndMsg.MessgeStatus = 0;
+                var sndMsgStr = JSON.stringify (sndMsg);
+                var s1 = "0000000" + sndMsgStr.length;
+                var s2 = s1.substr(s1.length-7);
+                sock.write ( s2 + '\n' + sndMsgStr);
+                break;
+        }  
+    } catch (err) {
+        console.log (err.message);
     }
 }
 

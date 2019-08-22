@@ -1,0 +1,61 @@
+{
+    "runId" : "sample1-latest",
+
+    "server" : {
+        "port" : "eth5",
+        "subnets" : ["12.20.60.0/24"],
+       	"apps" : [
+            {
+                "appName" : "TlsServer",
+                "maxActSess" : 10000,
+                "maxErrSess" : 10000,
+                "csGrpArr" : [
+                    {
+                        "srvIp"   : "12.20.60.1",
+                        "srvPort" : 8443,
+                        "csDataLen" : 10,
+                        "scDataLen" : 20,
+                        "csStartTlsLen" : 0,
+                        "scStartTlsLen" : 0
+                    }
+                ]
+            }
+        ]
+    },
+
+    "client" : {
+	    "port" : "eth2",
+	    "subnets" : ["12.20.50.0/24"],
+        "apps" : [
+            {
+                "appName" : "TlsClient",
+                "connPerSec" : 85,
+                "maxActSess" : 10000,
+                "maxErrSess" : 10000,
+                "maxSess" : 10,
+                "csGrpArr" : [
+                    {
+                        "srvIp"   : "12.20.60.1",
+                        "srvPort" : 8443,
+                        "cAddrArr"  : [
+                            {
+                                "cIp" : "12.20.50.1",
+                                "cPortB" : 10000,
+                                "cPortE" : 19999 
+                            },
+                            {
+                                "cIp" : "12.20.50.2",
+                                "cPortB" : 20000,
+                                "cPortE" : 29999 
+                            }
+                        ],
+                        "csDataLen" : 10,
+                        "scDataLen" : 20,
+                        "csStartTlsLen" : 0,
+                        "scStartTlsLen" : 0
+                    }
+                ]
+            }
+       ]
+    }
+}

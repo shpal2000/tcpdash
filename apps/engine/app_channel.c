@@ -6,9 +6,15 @@ void nAdmin_channel_open (MsgIoChannelId_t chanId) {
 
     if ( engCtx->chanState == N_ADMIN_CHANNEL_STATE_INIT ) {
         engCtx->chanState = N_ADMIN_CHANNEL_STATE_GET_CONFIG;
+        char msgBuf[MAX_START_APP_MSG_LENGTH];
+        SetAppStartMsg(msgBuf
+            , MSG_ID_APP_START
+            , engCtx->cfgId
+            , engCtx->cfgSelect
+            , engCtx->docName);
         MsgIoSend ( chanId
-            , engCtx->testCfgId
-            , strlen( engCtx->testCfgId) );
+            , msgBuf
+            , strlen( msgBuf) );
     } else if ( engCtx->chanState == N_ADMIN_CHANNEL_STATE_REINIT ) {
         engCtx->chanState = N_ADMIN_CHANNEL_STATE_ESTABLISHED;
     }

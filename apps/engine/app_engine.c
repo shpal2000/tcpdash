@@ -157,16 +157,28 @@ static int App_ctx_setup (EngCtx_t* engCtx) {
     engCtx->appCount = 0;
 
     JNode* cfgNode = NULL;
+    JObject* msgObj = NULL;
     JObject* cfgObjAll = NULL;
     JObject* cfgObj = NULL;
 
-    // puts(engCtx->cfgData);
-    JGET_ROOT_NODE (engCtx->cfgData, &cfgNode, &cfgObjAll);
+    puts(engCtx->cfgData); /// ??? log it
+    JGET_ROOT_NODE (engCtx->cfgData, &cfgNode, &msgObj);
+    int msgStatus = -1;
+    if (msgObj) {
+        const char* msgType;
+        JGET_MEMBER_STR (msgObj, "MessageType", &msgType);        
+        JGET_MEMBER_INT (msgObj, "MessgeStatus", &msgStatus);
+        if (msgStatus == 0 && strcmp (msgType, "AppStart") == 0) {
+            JGET_MEMBER_OBJ (msgObj, "Message", &cfgObjAll);
+        } else {
+            // ???
+        }
+    }
     if (cfgObjAll) {
-        JGET_MEMBER_OBJ (cfgObjAll, engCtx->testCfgSelect, &cfgObj);
+        JGET_MEMBER_OBJ (cfgObjAll, engCtx->cfgSelect, &cfgObj);
         if (cfgObj) {
             JArray* appArrJ;
-            JGET_MEMBER_ARR (cfgObj, "appList", &appArrJ);
+            JGET_MEMBER_ARR (cfgObj, "apps", &appArrJ);
             engCtx->appCount = JGET_ARR_LEN (appArrJ);
             if (engCtx->appCount) {
                 engCtx->appCtxWArr = CreateArray0 (AppCtxW_t, engCtx->appCount);
@@ -267,7 +279,7 @@ static void Engine_post_stats (EngCtx_t* engCtx) {
 
     if (rootNode) {
         JArray* jArrApps;
-        JSET_MEMBER_ARR (rootObj, engCtx->testCfgSelect, &jArrApps);
+        JSET_MEMBER_ARR (rootObj, engCtx->cfgSelect, &jArrApps);
 
         if (jArrApps) {
             for (int appIndex = 0; appIndex < engCtx->appCount; appIndex++) {
@@ -444,9 +456,9 @@ int main(int argc, char** argv) {
 
     engCtx->nAdminIp = argv[1];
     engCtx->nAdminPort = atoi(argv[2]);
-    engCtx->testCfgId = argv[3];
-    engCtx->testCfgSelect = argv[4];
-    engCtx->testRunId = argv[5];
+    engCtx->cfgId = argv[3];
+    engCtx->cfgSelect = argv[4];
+    engCtx->docName = argv[5];
     
     if ( nAdmin_channel_setup (engCtx) ) {
         exit (-1); //???
