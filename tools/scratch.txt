@@ -51,3 +51,4 @@ sudo docker build -t tcpdash .
 /bin/bash ./t.sh tcpdash_s1 tcpdash_c1 eth1 eth2
 
 
+echo "pass" | sshpass -p "pass" ssh -tt -o StrictHostKeyChecking=no user@192.168.1.41 "sudo ovs-vsctl show"
