@@ -27,8 +27,13 @@ function hostCommand (cmd) {
 msgIoServer.listen(msgIoPort, host, () => {
 
     hostCommand ('sudo ~/nadmin/tools/doc_brsetup.sh eth1');
-
     hostCommand ('sudo ~/nadmin/tools/doc_brsetup.sh eth2');
+
+    hostCommand ('sudo ovs-vsctl set interface eth1 type=patch');
+    hostCommand ('sudo ovs-vsctl set interface eth2 type=patch');
+
+    hostCommand ('sudo ovs-vsctl set interface eth1 options:peer=eth2');
+    hostCommand ('sudo ovs-vsctl set interface eth2 options:peer=eth1');
 
     console.log('msgIoServer running on port ' + msgIoPort + '.');
 });
