@@ -385,8 +385,8 @@ sprintf (__msg, \
     \"MessageId\" : %d, \
     \"Message\" : { \
         \"cfgId\" : \"%s\", \
-        \"cfgSelect\" : \"%s\" \
-        \"docName\" : \"%s\", \
+        \"cfgSelect\" : \"%s\", \
+        \"docName\" : \"%s\" \
     } \
 }", \
 __mId,__cfgId,__cfgSelect,__docName); \

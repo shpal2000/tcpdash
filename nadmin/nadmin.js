@@ -5,6 +5,9 @@ const fs = require('fs');
 const execSync = require('child_process').execSync;
 
 const host = process.argv[2];
+const userName = process.argv[3];
+const passWord = process.argv[4];
+
 const adminPort = 8777;
 const msgIoPort = 9777;
 
@@ -16,7 +19,17 @@ const MSG_IO_READ_WRITE_DATA_MAXLEN = 1048576;
 const MSG_ID_APP_START = 1;
 const MSG_ID_RESERVED = 100;
 
+function hostCommand (cmd) {
+    var cmd1 = 'echo \"' + passWord+ '\"' + ' | sshpass -p ' + '\"' + passWord + '\"' + ' ssh -tt -o StrictHostKeyChecking=no ' + userName + '@'+ host + ' \"' + cmd + '\"';
+    execSync (cmd1);
+}
+
 msgIoServer.listen(msgIoPort, host, () => {
+
+    hostCommand ('sudo ~/nadmin/tools/doc_brsetup.sh eth1');
+
+    hostCommand ('sudo ~/nadmin/tools/doc_brsetup.sh eth2');
+
     console.log('msgIoServer running on port ' + msgIoPort + '.');
 });
 
@@ -31,20 +44,21 @@ function msgIoHandler (sock, sockCtx, rcvMsgStr) {
                 var appInfo = rcvMsg.Message; 
                 var appCfgStr  = fs.readFileSync(__dirname + '/configs/' + appInfo.cfgId);
                 var appCfgObjAll = JSON.parse (appCfgStr);
-                var appCfgObj = appCfgObjAll[appInfo.cfgSelect]; 
-                execSync('/bin/bash ' + __dirname + '/tools/doc_connect.sh ' + appInfo.docName + ' ' + appCfgObj.port);
+                var appCfgObj = appCfgObjAll[appInfo.cfgSelect];
+                hostCommand ('sudo ~/nadmin/tools/doc_connect.sh ' + appInfo.docName + ' ' + appCfgObj.port);
                 for (var i = 0; i < appCfgObj.subnets.length; i++ ) {
-                    execSync('/bin/bash ' + __dirname + '/tools/doc_ipaddr.sh ' + appInfo.docName + ' add ' + appCfgObj.subnets[i]);
+                    hostCommand('sudo ~/nadmin/tools/doc_ipaddr.sh ' + appInfo.docName + ' add ' + appCfgObj.subnets[i]);
                 }
                 var sndMsg = {};
                 sndMsg.MessageType = rcvMsg.MessageType;
                 sndMsg.MessageId = rcvMsg.MessageId;
-                sndMsg.Message = cfgObjAll; 
+                sndMsg.Message = appCfgObjAll; 
                 sndMsg.MessgeStatus = 0;
                 var sndMsgStr = JSON.stringify (sndMsg);
                 var s1 = "0000000" + sndMsgStr.length;
                 var s2 = s1.substr(s1.length-7);
                 sock.write ( s2 + '\n' + sndMsgStr);
+                console.log (s2 + '\n' + sndMsgStr);
                 break;
         }  
     } catch (err) {

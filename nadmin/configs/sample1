@@ -2,7 +2,7 @@
     "runId" : "sample1-latest",
 
     "server" : {
-        "port" : "eth5",
+        "port" : "eth2",
         "subnets" : ["12.20.60.0/24"],
        	"apps" : [
             {
@@ -24,7 +24,7 @@
     },
 
     "client" : {
-	    "port" : "eth2",
+	    "port" : "eth1",
 	    "subnets" : ["12.20.50.0/24"],
         "apps" : [
             {
