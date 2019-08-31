@@ -55,10 +55,17 @@ static void OnAppLoop (TlsClientCtx_t* appCtx, int newConnCount) {
             break;
         }
 
-        TlsClientGrp_t* csGrp = &appCtx->csGrpArr[0]; //todo
-        SockAddr_t* localAddr = &csGrp->cAddrArr[0].sockAddr;
-        SockAddr_t* remoteAddr = &csGrp->srvAddr;
-        LocalPortPool_t* localPortPool = &csGrp->cAddrArr[0].portPool;
+        TlsClientGrp_t* csGrp = &appCtx->csGrpArr[appCtx->nextCsGrpIndex];
+        appCtx->nextCsGrpIndex += 1;
+        if (appCtx->nextCsGrpIndex == appCtx->csGrpCount) {
+            appCtx->nextCsGrpIndex = 0;
+        }
+
+        SockAddrCtx_t* cAddrCtx = &csGrp->cAddrArr[csGrp->cAddrNextIndex];
+        csGrp->cAddrNextIndex += 1;
+        if (csGrp->cAddrNextIndex == csGrp->cAddrCount) {
+            csGrp->cAddrNextIndex = 0;
+        }
 
         if (csGrp->sslCtx == NULL) {
             csGrp->sslCtx = SSL_CTX_new(SSLv23_client_method());
@@ -86,9 +93,9 @@ static void OnAppLoop (TlsClientCtx_t* appCtx, int newConnCount) {
         TlsClientConn_t* appConn 
             = (TlsClientConn_t*) App_conn_session_new (appCtx
                                         , csGrp
-                                        , localAddr
-                                        , localPortPool 
-                                        , remoteAddr
+                                        , &cAddrCtx->sockAddr
+                                        , &cAddrCtx->portPool 
+                                        , &csGrp->srvAddr
                                         , csGrp->statsArr 
                                         , csGrp->statsCount);
         if (appConn == NULL) {
@@ -306,20 +313,26 @@ static int OnAppInit (TlsClientCtx_t* appCtx, JObject* appJ) {
             SetSockAddress (&csGrp->srvAddr, csGrp->srvIp, csGrp->srvPort);
 
             //client address array
-            JArray *cAddrArrJ;
-            JGET_MEMBER_ARR (csGrpJ, "cAddrArr", &cAddrArrJ);
-            csGrp->cAddrCount = JGET_ARR_LEN (cAddrArrJ);
+            JGET_MEMBER_STR (csGrpJ, "cAddrBase", &csGrp->cAddrBase);
+            JGET_MEMBER_INT (csGrpJ, "cAddrCount", &csGrp->cAddrCount);
             csGrp->cAddrArr = CreateArray0 (SockAddrCtx_t, csGrp->cAddrCount);
 
-            if (csGrp->cAddrArr) { 
+            if (csGrp->cAddrArr) {
+                char* lastIpAddr = csGrp->cAddrBase;
                 for (int cAddrIndex = 0; cAddrIndex < csGrp->cAddrCount; cAddrIndex++) {
                     SockAddrCtx_t* cAddrCtx = &csGrp->cAddrArr[cAddrIndex]; 
 
-                    JObject* cAddrJ = JGET_ARR_ELEMENT_OBJ (cAddrArrJ, cAddrIndex);
+                    
+                    if (cAddrIndex == 0) {
+                        GetNextIpStr (lastIpAddr, 0, cAddrCtx->cIp);
+                    } else {
+                        GetNextIpStr (lastIpAddr, 1, cAddrCtx->cIp);
+                    }
+                    lastIpAddr = cAddrCtx->cIp; 
 
-                    JGET_MEMBER_STR (cAddrJ, "cIp", &cAddrCtx->cIp);
-                    JGET_MEMBER_INT (cAddrJ, "cPortB", &cAddrCtx->cPortB);
-                    JGET_MEMBER_INT (cAddrJ, "cPortE", &cAddrCtx->cPortE);
+                    JGET_MEMBER_INT (csGrpJ, "cPortB", &cAddrCtx->cPortB);
+                    JGET_MEMBER_INT (csGrpJ, "cPortE", &cAddrCtx->cPortE);
+
                     SetSockAddress (&cAddrCtx->sockAddr, cAddrCtx->cIp, 0);
                     InitPool( &cAddrCtx->portPool );
                     for (int srcPort = cAddrCtx->cPortB; 

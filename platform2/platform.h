@@ -426,6 +426,7 @@ void DumpCStats(void* aStats);
     } \
 }\
 
+void GetNextIpStr (char* str, int skip, char* n_str);
 void SetSockAddress(SockAddr_t* addr, char* str, int port);
 
 //#################TCP Start###############

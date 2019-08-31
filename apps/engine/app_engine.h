@@ -172,7 +172,7 @@ typedef struct EngCtx {
 } EngCtx_t;
 
 typedef struct SockAddrCtx {
-    char* cIp;
+    char cIp [INET6_ADDRSTRLEN];
     SockAddr_t sockAddr;
     LocalPortPool_t portPool;
     uint32_t cPortB;

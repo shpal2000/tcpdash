@@ -37,18 +37,12 @@
                     {
                         "srvIp"   : "12.20.60.1",
                         "srvPort" : 8443,
-                        "cAddrArr"  : [
-                            {
-                                "cIp" : "12.20.50.1",
-                                "cPortB" : 10000,
-                                "cPortE" : 19999 
-                            },
-                            {
-                                "cIp" : "12.20.50.2",
-                                "cPortB" : 20000,
-                                "cPortE" : 29999 
-                            }
-                        ],
+
+                        "cAddrBase" : "12.20.50.1",
+                        "cAddrCount" : 10,
+                        "cPortB" : 10000,
+                        "cPortE" : 19999,
+
                         "csDataLen" : 10,
                         "scDataLen" : 20,
                         "csStartTlsLen" : 0,

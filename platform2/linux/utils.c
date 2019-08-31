@@ -43,6 +43,35 @@ void AddressToString(SockAddr_t* addr, char* str) {
    }
 }
 
+void GetNextIpStr (char* str, int skip, char* n_str) {
+    //check str for ipv6 ???
+    int is_ipv6 = 0;
+
+    if (is_ipv6) {
+        strcpy (n_str, str);
+    } else {
+        int d1, d2, d3, d4;
+        sscanf (str, "%d.%d.%d.%d", &d1, &d2, &d3, &d4);
+        while (skip) {
+            skip--;
+            d4++;
+            if (d4 >= 255) {
+                d4 = 0;
+                d3++;
+                if (d3 >= 255) {
+                    d3 = 0;
+                    d2++;
+                    if (d2 >= 255) {
+                        d2 = 0;
+                        d1++;
+                    }
+                }
+            } 
+        }
+        sprintf (n_str, "%d.%d.%d.%d", d1, d2, d3, d4);
+    }
+}
+
 void SetSockAddress(SockAddr_t* addr, char* str, int port) {
 
     //check str for ipv6 ???

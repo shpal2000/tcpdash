@@ -19,6 +19,7 @@ typedef struct TlsClientGrp {
     uint32_t srvPort;
     SockAddr_t srvAddr;
 
+    char* cAddrBase;
     uint32_t cAddrCount;
     SockAddrCtx_t* cAddrArr;
     uint32_t cAddrNextIndex;
