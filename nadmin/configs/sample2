@@ -1,0 +1,83 @@
+{
+    "runId" : "sample2:latest",
+
+    "cores" : 20,
+
+    "loadParams" : {
+        "connPerSec" : 6000,
+        "actSess" : 40000,
+        "duration" : 300
+    },
+
+    "flowTypes" : {
+
+        "tls13_2k_ss_perf" : {
+
+            "base" : "TlsPerf",
+
+            "csDataLen" : 10,
+            "scDataLen" : 20,
+            "csStartTlsLen" : 0,
+            "scStartTlsLen" : 0,
+
+            "cVerChoice" : [
+                "tls1",
+                "tls1_1",
+                "tls1_2",
+                "tls1_3"
+            ],
+            "srvVerSelect" : "tls1_3",
+
+            "cCipherChoice" : [
+                "TLS_AES_256_GCM_SHA384",
+                "TLS_AES_128_GCM_SHA256",
+                "TLS_CHACHA20_POLY1305_SHA256"
+            ],
+            "srvCipherSelect" : "TLS_AES_256_GCM_SHA384",
+            "srvCertDepo" : "Default",
+            "srvCertSelect" : "RSA-2048-SS"
+        },
+
+        "tls13_4k_ss_perf" : {
+            "base" : "tls13_2k_ss_perf",
+            "srvCertSelect" : "RSA-4096-SS"
+        }
+    },
+
+
+    "trafficFlows" : {
+
+        "tFlow1" : {
+
+            "flowType" : "tls13_2k_ss_perf",
+
+            "cSubnets" : [
+                "22.168.1.0/24",
+                "23.168.1.0/24",
+                "24.168.1.0/24"
+            ],
+
+            "srvVip" : "",
+            "srvIpRange" : "200.8.52.1-10",
+
+            "sPort" : 443
+        },
+
+
+        "tFlow2" : {
+
+            "flowType" : "tls13_4k_ss_perf",
+
+            "cSubnets" : [
+                "22.168.2.0/24",
+                "23.168.2.0/24",
+                "24.168.2.0/24"
+            ],
+
+            "srvVip" : "",
+            "srvIpRange" : "200.8.52.1-10",
+
+            "sPort" : 443
+        }
+    }
+}
