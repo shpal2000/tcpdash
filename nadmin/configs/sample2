@@ -11,7 +11,7 @@
 
     "flowTypes" : {
 
-        "tls13_2k_ss_perf" : {
+        "tls13_perf" : {
 
             "base" : "TlsPerf",
 
@@ -35,11 +35,16 @@
             ],
             "srvCipherSelect" : "TLS_AES_256_GCM_SHA384",
             "srvCertDepo" : "Default",
+            "srvCertSelect" : ""
+        },
+
+        "tls13_2k_ss_perf" : {
+            "base" : "tls13_perf",
             "srvCertSelect" : "RSA-2048-SS"
         },
 
         "tls13_4k_ss_perf" : {
-            "base" : "tls13_2k_ss_perf",
+            "base" : "tls13_perf",
             "srvCertSelect" : "RSA-4096-SS"
         }
     },
