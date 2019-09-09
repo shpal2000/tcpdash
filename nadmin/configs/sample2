@@ -56,16 +56,17 @@
 
             "flowType" : "tls13_2k_ss_perf",
 
+            "cIface" : "eth2",
             "cSubnets" : [
                 "22.168.1.0/24",
                 "23.168.1.0/24",
                 "24.168.1.0/24"
             ],
 
+            "srvIface" : "eth3",
             "srvVip" : "",
             "srvIpRange" : "200.8.52.1-10",
-
-            "sPort" : 443
+            "srvPort" : 443
         },
 
 
@@ -73,16 +74,17 @@
 
             "flowType" : "tls13_4k_ss_perf",
 
+            "cIface" : "eth3",
             "cSubnets" : [
                 "22.168.2.0/24",
                 "23.168.2.0/24",
                 "24.168.2.0/24"
             ],
 
+            "srvIface" : "eth2",
             "srvVip" : "",
             "srvIpRange" : "200.8.52.1-10",
-
-            "sPort" : 443
+            "srvPort" : 443
         }
     }
 }
