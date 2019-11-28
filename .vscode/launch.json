@@ -5,13 +5,13 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(gdb) Launch",
+            "name": "(gdb) Launch tlspack",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/apps/engine/app_engine.exe",
+            "program": "${workspaceFolder}/tlspack/build/app_engine.exe",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}/tlspack",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
@@ -21,7 +21,8 @@
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
-            ]
+            ],
+            "preLaunchTask": "build tlspack"
         }
     ]
 }
