@@ -1,6 +1,6 @@
 #include "platform.hpp"
 
-class ev_socket
+class app_conn
 {
 private:
     int m_fd;
@@ -14,8 +14,8 @@ private:
     td_sockstats_arr m_sockstats_arr;
 
 public:
-    ev_socket(/* args */);
-    virtual ~ev_socket();
+    app_conn(/* args */);
+    virtual ~app_conn();
 
     virtual void on_establish () = 0;
     virtual void on_write_next () = 0;
