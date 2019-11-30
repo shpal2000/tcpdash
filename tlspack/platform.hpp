@@ -1,5 +1,5 @@
-#ifndef __TD_PLATFORM_H
-#define __TD_PLATFORM_H
+#ifndef __TLSPACK_PLATFORM_H
+#define __TLSPACK_PLATFORM_H
 
 #include <stdint.h>
 #include <sys/epoll.h>

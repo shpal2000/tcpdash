@@ -4,7 +4,7 @@ project('tlspack', 'cpp',
                       , 'cpp_std=c++11'])
 
 executable('tlspack.exe'
-            , sources : ['tlspack.cpp'
-                          , 'app_conn.cpp'
-                          , 'app_conn_manager.cpp' ]
+            , sources : ['ev_socket.cpp'
+                          , 'socket_manager.cpp'
+                          , 'tlspack.cpp' ]
             , install : true)
