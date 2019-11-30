@@ -5,6 +5,5 @@ project('tlspack', 'cpp',
 
 executable('tlspack.exe'
             , sources : ['ev_socket.cpp'
-                          , 'socket_manager.cpp'
-                          , 'tlspack.cpp' ]
+                          , 'tlspack_main.cpp' ]
             , install : true)

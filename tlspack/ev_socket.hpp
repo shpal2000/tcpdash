@@ -1,11 +1,13 @@
 #include "platform.hpp"
 
-union ev_sockaddr {
+union ev_sockaddr 
+{
     struct sockaddr_in in_addr;
     struct sockaddr_in6 in_addr6;
 };
 
-struct ev_sockstats{
+struct ev_sockstats
+{
     uint64_t socketCreate;    
     uint64_t socketCreateFail;
     uint64_t socketListenFail;
@@ -65,6 +67,28 @@ struct ev_sockstats{
     uint64_t tcpGetSockNameFail;
 };
 
+class epoll_ctx 
+{
+public:
+    int m_epoll_id;
+    int m_epoll_timeout;
+    int m_max_epoll_events;
+    struct epoll_event* m_epoll_event_arr;
+
+    epoll_ctx(int max_events, int epoll_timeout)
+    {
+        m_epoll_id = epoll_create (1);
+        m_max_epoll_events = max_events;
+        m_epoll_timeout = epoll_timeout;
+        m_epoll_event_arr = new struct epoll_event [max_events];
+    };
+
+    ~epoll_ctx()
+    {
+        //todo
+    }
+};
+
 class ev_socket
 {
 private:
@@ -88,6 +112,10 @@ public:
     {
         return m_state & sate_bits;
     };
+
+    static epoll_ctx* create_epoll_ctx(int max_events, int epoll_timeout);
+    static void free_epoll_ctx(epoll_ctx* epoll_ctx_ptr);
+    static void epoll_loop (epoll_ctx* epoll_ctx_ptr);
 
     ev_socket* accept_connection ();
 
