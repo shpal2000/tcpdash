@@ -117,12 +117,13 @@ public:
         return m_state & sate_bits;
     };
 
-    static epoll_ctx* create_epoll_ctx (int max_events, int epoll_timeout);
-    static void free_epoll_ctx (epoll_ctx* epoll_ctx_ptr);
-    static void ev_epoll (epoll_ctx* epoll_ctx_ptr);
+    static epoll_ctx* create_epoll (int max_events, int epoll_timeout);
+    static void free_epoll (epoll_ctx* epoll_ctxp);
+    static void process_epoll (epoll_ctx* epoll_ctxp);
 
-    ev_socket* accept_connection ();
-
+    static ev_socket* tcp_init (epoll_ctx* epoll_ctxp);
+    static ev_socket* tcp_accept (epoll_ctx* epoll_ctxp);
+    static ev_socket* tcp_listen (epoll_ctx* epoll_ctxp);
 };
 
 #define STATE_TCP_PORT_ASSIGNED                             0x0000000000000001

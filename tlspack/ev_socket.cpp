@@ -20,40 +20,40 @@ ev_socket::~ev_socket()
 {
 }
 
-ev_socket* ev_socket::accept_connection()
+ev_socket* ev_socket::tcp_accept(epoll_ctx* epoll_ctxp)
 {
     // ev_socket* new_ev_socket = new ev_socket ();
     return nullptr;
 }
 
-epoll_ctx* ev_socket::create_epoll_ctx(int max_events, int epoll_timeout)
+epoll_ctx* ev_socket::create_epoll(int max_events, int epoll_timeout)
 {
-    epoll_ctx* epoll_ctx_ptr = new epoll_ctx(max_events, epoll_timeout);
-    return epoll_ctx_ptr;
+    epoll_ctx* epoll_ctxp = new epoll_ctx(max_events, epoll_timeout);
+    return epoll_ctxp;
 }
 
-void ev_socket::free_epoll_ctx(epoll_ctx* epoll_ctx_ptr)
+void ev_socket::free_epoll(epoll_ctx* epoll_ctxp)
 {
-    delete epoll_ctx_ptr;
+    delete epoll_ctxp;
 }
 
-void ev_socket::ev_epoll(epoll_ctx* epoll_ctx_ptr)
+void ev_socket::process_epoll(epoll_ctx* epoll_ctxp)
 {
-    int event_count = epoll_wait (epoll_ctx_ptr->m_epoll_id
-                        , epoll_ctx_ptr->m_epoll_event_arr
-                        , epoll_ctx_ptr->m_max_epoll_events
-                        , epoll_ctx_ptr->m_epoll_timeout);
+    int event_count = epoll_wait (epoll_ctxp->m_epoll_id
+                        , epoll_ctxp->m_epoll_event_arr
+                        , epoll_ctxp->m_max_epoll_events
+                        , epoll_ctxp->m_epoll_timeout);
     
     if (event_count > 0)
     {
         for (int event_index = 0; event_index < event_count; event_index++)
         {
             ev_socket* event_socket_ptr 
-                = (ev_socket*) epoll_ctx_ptr->m_epoll_event_arr[event_index].data.ptr;
+                = (ev_socket*) epoll_ctxp->m_epoll_event_arr[event_index].data.ptr;
 
             if ( event_socket_ptr->is_set_state (STATE_TCP_LISTENING) )
             {
-                event_socket_ptr->accept_connection ();
+                event_socket_ptr->tcp_accept (epoll_ctxp);
             } 
             else
             {
