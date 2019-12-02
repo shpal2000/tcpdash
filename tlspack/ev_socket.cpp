@@ -37,7 +37,7 @@ void ev_socket::free_epoll_ctx(epoll_ctx* epoll_ctx_ptr)
     delete epoll_ctx_ptr;
 }
 
-void ev_socket::epoll_loop(epoll_ctx* epoll_ctx_ptr)
+void ev_socket::ev_epoll(epoll_ctx* epoll_ctx_ptr)
 {
     int event_count = epoll_wait (epoll_ctx_ptr->m_epoll_id
                         , epoll_ctx_ptr->m_epoll_event_arr

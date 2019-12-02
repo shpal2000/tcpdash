@@ -1,5 +1,7 @@
 #include "platform.hpp"
 
+class ev_app;
+
 union ev_sockaddr 
 {
     struct sockaddr_in in_addr;
@@ -92,6 +94,7 @@ public:
 class ev_socket
 {
 private:
+    ev_app* m_app;
     int m_fd;
     uint16_t m_saved_lport;
     uint16_t m_saved_rport;
@@ -104,6 +107,7 @@ private:
     std::queue<uint16_t> *m_port_pool;
     std::vector<ev_sockstats*> *m_sockstats_arr;
 
+
 public:
     ev_socket(/* args */);
     virtual ~ev_socket();
@@ -113,18 +117,12 @@ public:
         return m_state & sate_bits;
     };
 
-    static epoll_ctx* create_epoll_ctx(int max_events, int epoll_timeout);
-    static void free_epoll_ctx(epoll_ctx* epoll_ctx_ptr);
-    static void epoll_loop (epoll_ctx* epoll_ctx_ptr);
+    static epoll_ctx* create_epoll_ctx (int max_events, int epoll_timeout);
+    static void free_epoll_ctx (epoll_ctx* epoll_ctx_ptr);
+    static void ev_epoll (epoll_ctx* epoll_ctx_ptr);
 
     ev_socket* accept_connection ();
 
-    virtual void on_establish () = 0;
-    virtual void on_write_next () = 0;
-    virtual void on_write_status () = 0;
-    virtual void on_read_next () = 0;
-    virtual void on_read_status () = 0;
-    virtual void on_purge () = 0;
 };
 
 #define STATE_TCP_PORT_ASSIGNED                             0x0000000000000001
