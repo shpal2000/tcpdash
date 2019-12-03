@@ -26,18 +26,18 @@ ev_socket* ev_socket::tcp_accept(epoll_ctx* epoll_ctxp)
     return nullptr;
 }
 
-epoll_ctx* ev_socket::create_epoll(int max_events, int epoll_timeout)
+epoll_ctx* ev_socket::epoll_alloc(int max_events, int epoll_timeout)
 {
     epoll_ctx* epoll_ctxp = new epoll_ctx(max_events, epoll_timeout);
     return epoll_ctxp;
 }
 
-void ev_socket::free_epoll(epoll_ctx* epoll_ctxp)
+void ev_socket::epoll_free(epoll_ctx* epoll_ctxp)
 {
     delete epoll_ctxp;
 }
 
-void ev_socket::process_epoll(epoll_ctx* epoll_ctxp)
+void ev_socket::epoll_process(epoll_ctx* epoll_ctxp)
 {
     int event_count = epoll_wait (epoll_ctxp->m_epoll_id
                         , epoll_ctxp->m_epoll_event_arr

@@ -117,11 +117,11 @@ public:
         return m_state & sate_bits;
     };
 
-    static epoll_ctx* create_epoll (int max_events, int epoll_timeout);
-    static void free_epoll (epoll_ctx* epoll_ctxp);
-    static void process_epoll (epoll_ctx* epoll_ctxp);
+    static epoll_ctx* epoll_alloc(int max_events, int epoll_timeout);
+    static void epoll_free (epoll_ctx* epoll_ctxp);
+    static void epoll_process (epoll_ctx* epoll_ctxp);
 
-    static ev_socket* tcp_init (epoll_ctx* epoll_ctxp);
+    static ev_socket* tcp_connect (epoll_ctx* epoll_ctxp);
     static ev_socket* tcp_accept (epoll_ctx* epoll_ctxp);
     static ev_socket* tcp_listen (epoll_ctx* epoll_ctxp);
 };
