@@ -26,9 +26,9 @@ ev_socket* ev_socket::tcp_accept(epoll_ctx* epoll_ctxp)
     return nullptr;
 }
 
-epoll_ctx* ev_socket::epoll_alloc(int max_events, int epoll_timeout)
+epoll_ctx* ev_socket::epoll_alloc(ev_app* app_ptr, int max_events, int epoll_timeout)
 {
-    epoll_ctx* epoll_ctxp = new epoll_ctx(max_events, epoll_timeout);
+    epoll_ctx* epoll_ctxp = new epoll_ctx(app_ptr, max_events, epoll_timeout);
     return epoll_ctxp;
 }
 

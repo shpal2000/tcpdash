@@ -72,29 +72,31 @@ struct ev_sockstats
 class epoll_ctx 
 {
 public:
-    int m_epoll_id;
-    int m_epoll_timeout;
-    int m_max_epoll_events;
-    struct epoll_event* m_epoll_event_arr;
-
-    epoll_ctx(int max_events, int epoll_timeout)
+    epoll_ctx(ev_app* app_ptr, int max_events, int epoll_timeout)
     {
         m_epoll_id = epoll_create (1);
         m_max_epoll_events = max_events;
         m_epoll_timeout = epoll_timeout;
         m_epoll_event_arr = new struct epoll_event [max_events];
+        m_app = app_ptr;
     };
 
     ~epoll_ctx()
     {
         //todo
     }
+
+    ev_app* m_app;
+    int m_epoll_id;
+    int m_epoll_timeout;
+    int m_max_epoll_events;
+    struct epoll_event* m_epoll_event_arr;
 };
 
 class ev_socket
 {
 private:
-    ev_app* m_app;
+    epoll_ctx* m_epoll_ctx;
     int m_fd;
     uint16_t m_saved_lport;
     uint16_t m_saved_rport;
@@ -107,17 +109,16 @@ private:
     std::queue<uint16_t> *m_port_pool;
     std::vector<ev_sockstats*> *m_sockstats_arr;
 
-
 public:
     ev_socket(/* args */);
     virtual ~ev_socket();
 
-    uint64_t is_set_state (uint64_t sate_bits)
+    uint64_t is_set_state (uint64_t state_bits)
     {
-        return m_state & sate_bits;
+        return m_state & state_bits;
     };
 
-    static epoll_ctx* epoll_alloc(int max_events, int epoll_timeout);
+    static epoll_ctx* epoll_alloc (ev_app* app_ptr, int max_events, int epoll_timeout);
     static void epoll_free (epoll_ctx* epoll_ctxp);
     static void epoll_process (epoll_ctx* epoll_ctxp);
 
