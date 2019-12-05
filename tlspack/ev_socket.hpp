@@ -118,6 +118,16 @@ public:
         return m_state & state_bits;
     };
 
+    void set_state (uint64_t state_bits)
+    {
+        m_state |= state_bits;
+    };
+
+    void set_error_state (uint64_t state_bits)
+    {
+        m_error_state |= state_bits;
+    };
+
     static epoll_ctx* epoll_alloc (ev_app* app_ptr, int max_events, int epoll_timeout);
     static void epoll_free (epoll_ctx* epoll_ctxp);
     static void epoll_process (epoll_ctx* epoll_ctxp);
@@ -125,6 +135,10 @@ public:
     static ev_socket* tcp_connect (epoll_ctx* epoll_ctxp);
     static ev_socket* tcp_accept (epoll_ctx* epoll_ctxp);
     static ev_socket* tcp_listen (epoll_ctx* epoll_ctxp);
+
+private:
+    int ev_socket::tcp_connect_platform ();
+
 };
 
 #define STATE_TCP_PORT_ASSIGNED                             0x0000000000000001
@@ -196,3 +210,21 @@ public:
 #define STATE_TCP_SOCK_LINGER_FAIL                          0x0000000000800000
 #define STATE_TCP_GETSOCKNAME_FAIL                          0x0000000001000000
 #define STATE_TCP_CONNECTION_EXPIRE                         0x0000000002000000
+
+
+#define inc_stats(__stat_name) \
+{ \
+    for (ev_sockstats* __stats_ptr : *this->m_sockstats_arr) { \
+        __stats_ptr->__stat_name++; \
+    } \
+}
+
+#define CHECK_IPV6(__addr,__is_ipv6) \
+{ \
+    struct sockaddr* __uaddr = (struct sockaddr*) __addr; \
+    if (__uaddr->sa_family == AF_INET6) { \
+        *(__is_ipv6) = 1; \
+    } else { \
+        *(__is_ipv6) = 0; \
+    } \
+}

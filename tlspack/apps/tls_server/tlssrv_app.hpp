@@ -7,14 +7,14 @@ public:
     ~tlssrv_app();
 
     int run_iter();
-    tlssrv_socket* alloc_socket();
-    void free_socket (tlssrv_socket* ev_sock);
-    void on_establish (tlssrv_socket* ev_sock);
-    void on_write (tlssrv_socket* ev_sock);
-    void on_wstatus (tlssrv_socket* ev_sock);
-    void on_read (tlssrv_socket* ev_sock);
-    void on_rstatus (tlssrv_socket* ev_sock);
-    void on_finish (tlssrv_socket* ev_sock);
+    ev_socket* alloc_socket();
+    void free_socket (ev_socket* ev_sock);
+    void on_establish (ev_socket* ev_sock);
+    void on_write (ev_socket* ev_sock);
+    void on_wstatus (ev_socket* ev_sock);
+    void on_read (ev_socket* ev_sock);
+    void on_rstatus (ev_socket* ev_sock);
+    void on_finish (ev_socket* ev_sock);
 
 private:
 };
