@@ -175,32 +175,6 @@ int ev_socket::tcp_connect_platform ()
     return socket_fd;
 }
 
-void ev_socket::tcp_close_platform (int isLinger=0, int lingerTime=0) {
-
-    if (isLinger) {
-        struct linger sl;
-        sl.l_onoff = 1;
-        sl.l_linger = lingerTime;
-
-        int lingerStatus 
-            = setsockopt(m_fd, SOL_SOCKET, SO_LINGER, &sl, sizeof(sl));
-        
-        if (lingerStatus < 0) {
-            inc_stats (socketLingerSetFail);
-            set_error_state (STATE_TCP_SOCK_LINGER_FAIL);
-        } else {
-            inc_stats (socketLingerSet);
-            set_state (STATE_TCP_SOCK_LINGER);
-        }
-    }
-
-    if ( close (m_fd) ) {
-        set_error_state (STATE_TCP_SOCK_FD_CLOSE_FAIL);
-    } else {
-        set_state (STATE_TCP_SOCK_FD_CLOSE);
-    }
-}
-
 void ev_socket::tcp_verify_established_platform ()
 {
     int socketErr;
@@ -312,4 +286,146 @@ int ev_socket::tcp_listen_platform(int listenQLen) {
     }
 
     return socket_fd;
+}
+
+void ev_socket::tcp_close_platform (int isLinger=0, int lingerTime=0) {
+
+    if (isLinger) {
+        struct linger sl;
+        sl.l_onoff = 1;
+        sl.l_linger = lingerTime;
+
+        int lingerStatus 
+            = setsockopt(m_fd, SOL_SOCKET, SO_LINGER, &sl, sizeof(sl));
+        
+        if (lingerStatus < 0) {
+            inc_stats (socketLingerSetFail);
+            set_error_state (STATE_TCP_SOCK_LINGER_FAIL);
+        } else {
+            inc_stats (socketLingerSet);
+            set_state (STATE_TCP_SOCK_LINGER);
+        }
+    }
+
+    if ( close (m_fd) ) {
+        set_error_state (STATE_TCP_SOCK_FD_CLOSE_FAIL);
+    } else {
+        set_state (STATE_TCP_SOCK_FD_CLOSE);
+    }
+}
+
+void ev_socket::tcp_write_shutdown_platform() {    
+    if (shutdown(m_fd, SHUT_WR)) {
+        set_error_state (STATE_TCP_FIN_SEND_FAIL);
+    } else {
+        set_state (STATE_TCP_SENT_FIN);
+    }
+}
+
+int ev_socket::tcp_write_platform (const char* dataBuffer, int dataLen)
+{
+    // int bytesSent = send(fd, dataBuffer, dataLen, MSG_NOSIGNAL);
+    int bytesSent = write(m_fd, dataBuffer, dataLen);
+
+    if (bytesSent <= 0){
+        set_error_state (STATE_TCP_SOCK_WRITE_FAIL);
+        inc_stats (tcpWriteFail);
+
+        if (bytesSent == 0) {
+            inc_stats (tcpWriteReturnsZero);
+        }
+    }
+
+    return bytesSent;
+}
+
+int ev_socket::tcp_read_platform(char* dataBuffer, int dataLen)
+{
+    int bytesRead = read(m_fd, dataBuffer, dataLen);
+
+    if (bytesRead == 0) {
+        set_state (STATE_TCP_REMOTE_CLOSED);
+        int socketErr;
+        socklen_t socketErrBufLen = sizeof(int);
+
+        int retGetsockopt = getsockopt(m_fd
+                                        , SOL_SOCKET
+                                        , SO_ERROR
+                                        , &socketErr
+                                        , &socketErrBufLen);
+        if ((retGetsockopt|socketErr)) {
+            set_error_state (STATE_TCP_SOCK_READ_FAIL);
+        }
+    } else if (bytesRead < 0) {
+        if (errno == EAGAIN) {
+            //nothing to read; retry
+        } else {
+            set_error_state (STATE_TCP_SOCK_READ_FAIL);
+            inc_stats (tcpReadFail);
+        }
+    }
+
+    return bytesRead;
+}
+
+int ev_socket::tcp_accept_platform()
+{
+    set_state (STATE_TCP_CONN_ACCEPT);
+
+    int socket_fd = -1;
+    socklen_t addrLen = sizeof (ev_sockaddr);
+
+    socket_fd = accept(m_fd
+                        , (struct sockaddr *) m_remote_addr
+                        , &addrLen);
+    
+    if (socket_fd < 0) {
+        inc_stats (tcpAcceptFail);
+        set_error_state (STATE_TCP_CONN_ACCEPT_FAIL);        
+    } else {
+        set_state (STATE_TCP_CONN_ESTABLISHED);
+
+        inc_stats (tcpAcceptSuccess);
+        inc_stats (tcpAcceptSuccessInSec);
+
+        int flags = fcntl(socket_fd, F_GETFL, 0);
+        if (flags < 0) {
+            set_error_state (STATE_TCP_SOCK_F_GETFL_FAIL 
+                            | STATE_TCP_SOCK_O_NONBLOCK_FAIL);
+        } else {
+            int ret = fcntl(socket_fd, F_SETFL, flags | O_NONBLOCK);
+            if (ret < 0) {
+                set_error_state (STATE_TCP_SOCK_F_SETFL_FAIL 
+                                | STATE_TCP_SOCK_O_NONBLOCK_FAIL);
+            } else {
+                set_state (STATE_TCP_CONN_ACCEPT_O_NONBLOCK);
+
+                ret = setsockopt(socket_fd, SOL_SOCKET
+                                , SO_REUSEADDR, &(int){ 1 }, sizeof(int));
+                if (ret < 0) {
+                    inc_stats (socketReuseSetFail);
+                    set_error_state (STATE_TCP_SOCK_REUSE_FAIL);
+                } else {
+                    inc_stats (socketReuseSet);
+                    set_state (STATE_TCP_SOCK_REUSE);
+
+                    addrLen = sizeof (ev_sockaddr);
+                    ret = getsockname(socket_fd, (struct sockaddr*) m_remote_addr, &addrLen);
+                    if (ret < 0) {
+                        inc_stats (tcpGetSockNameFail);
+                        set_error_state (STATE_TCP_GETSOCKNAME_FAIL);
+                    }
+                }
+            }
+        }
+    }
+
+    if ( get_error_state () ){
+        if (socket_fd != -1){
+            tcp_close_platform ();
+        }
+        return -1;
+    }
+
+    return socket_fd;    
 }

@@ -161,6 +161,10 @@ private:
     void tcp_close_platform (int isLinger, int lingerTime);
     void tcp_verify_established_platform ();
     int tcp_listen_platform (int listenQLen);
+    void tcp_write_shutdown_platform ();
+    int tcp_write_platform (const char* dataBuffer, int dataLen);
+    int tcp_read_platform (char* dataBuffer, int dataLen);
+    int tcp_accept_platform ();
 
 };
 
