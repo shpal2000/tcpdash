@@ -148,7 +148,7 @@ int ev_socket::tcp_connect_platform ()
                         set_state (STATE_TCP_CONN_IN_PROGRESS);
                     }else{
                         set_error_state (STATE_TCP_SOCK_CONNECT_FAIL_IMMEDIATE);
-                        if ( (GetSysErrno(cState) == EADDRNOTAVAIL) ) {
+                        if ( (get_sys_errno () == EADDRNOTAVAIL) ) {
                             inc_stats (tcpConnInitFailImmediateEaddrNotAvail);
                         }else{
                             inc_stats (tcpConnInitFailImmediateOther);
@@ -162,12 +162,151 @@ int ev_socket::tcp_connect_platform ()
     }
 
 
-    if ( GetCES(cState) ){
+    if ( get_error_state () ){
 
         inc_stats (tcpConnInitFail);
 
         if (socket_fd != -1){
-            TcpClose(socket_fd, 0, 0, statsArr, statsCount, cState);
+            tcp_close_platform();
+        }
+        return -1;
+    }
+
+    return socket_fd;
+}
+
+void ev_socket::tcp_close_platform (int isLinger=0, int lingerTime=0) {
+
+    if (isLinger) {
+        struct linger sl;
+        sl.l_onoff = 1;
+        sl.l_linger = lingerTime;
+
+        int lingerStatus 
+            = setsockopt(m_fd, SOL_SOCKET, SO_LINGER, &sl, sizeof(sl));
+        
+        if (lingerStatus < 0) {
+            inc_stats (socketLingerSetFail);
+            set_error_state (STATE_TCP_SOCK_LINGER_FAIL);
+        } else {
+            inc_stats (socketLingerSet);
+            set_state (STATE_TCP_SOCK_LINGER);
+        }
+    }
+
+    if ( close (m_fd) ) {
+        set_error_state (STATE_TCP_SOCK_FD_CLOSE_FAIL);
+    } else {
+        set_state (STATE_TCP_SOCK_FD_CLOSE);
+    }
+}
+
+void ev_socket::tcp_verify_established_platform ()
+{
+    int socketErr;
+    socklen_t socketErrBufLen = sizeof(int);
+
+    int retGetsockopt = getsockopt(m_fd
+                                    , SOL_SOCKET
+                                    , SO_ERROR
+                                    , &socketErr
+                                    , &socketErrBufLen);
+    
+    if ((retGetsockopt|socketErr) == 0){
+        set_state (STATE_TCP_CONN_ESTABLISHED);
+        inc_stats (tcpConnInitSuccess);
+        inc_stats (tcpConnInitSuccessInSec);
+    }else {
+        set_error_state (STATE_TCP_SOCK_CONNECT_FAIL);
+        set_socket_errno (socketErr);
+        inc_stats (tcpConnInitFail);
+    }
+}
+
+int ev_socket::tcp_listen_platform(int listenQLen) {
+
+    //check ipv6
+    int is_ipv6;
+    CHECK_IPV6(m_local_addr, &is_ipv6);
+
+    //create socket
+    int socket_fd = -1;
+    if (is_ipv6){
+        socket_fd = socket(AF_INET6 , SOCK_STREAM | SOCK_NONBLOCK , 0);
+    }else{
+        socket_fd = socket(AF_INET , SOCK_STREAM | SOCK_NONBLOCK , 0);
+    }
+
+    if (socket_fd == -1) {
+        inc_stats (socketCreateFail);
+        set_error_state (STATE_TCP_SOCK_CREATE_FAIL);
+    }else{
+        inc_stats (socketCreate);
+        set_state (STATE_TCP_SOCK_CREATE);
+
+        //???
+        setsockopt(socket_fd, SOL_IP, IP_TRANSPARENT, &(int){ 1 }, sizeof(int));
+        // printf ("IP_TRANSPARENT = %d\n", ret_val);
+
+        
+
+        //bind local socket
+        int bind_status = -1;
+        if (is_ipv6){
+            bind_status = bind(socket_fd
+                                , (struct sockaddr*) m_local_addr
+                                , sizeof(struct sockaddr_in6));
+        }else{
+
+            //???
+            // struct addrinfo hints, *res;            
+            // memset(&hints, 0, sizeof(hints));
+            // if(getaddrinfo(NULL, "883", &hints, &res) != 0){
+            //     perror("getaddrinfo: ");
+            //     exit(EXIT_FAILURE);
+            // }
+
+            // bind_status = bind(socket_fd, res->ai_addr, res->ai_addrlen);
+
+            bind_status = bind(socket_fd
+                                , (struct sockaddr*) m_local_addr
+                                , sizeof(struct sockaddr_in));
+        }
+
+        if (bind_status == -1){
+            if (is_ipv6){
+                inc_stats (socketBindIpv6Fail);
+            }else{
+                inc_stats (socketBindIpv4Fail);
+            }
+            set_error_state (STATE_TCP_SOCK_BIND_FAIL);
+        }else{
+            if (is_ipv6){
+                inc_stats (socketBindIpv6);
+            }else{
+                inc_stats (socketBindIpv4);
+            }
+            set_state (STATE_TCP_SOCK_BIND);
+
+            //listen socket
+            int listen_status = -1;
+            listen_status = listen(socket_fd, listenQLen);
+
+            //check listen status
+            if (listen_status < 0) {
+                set_error_state (STATE_TCP_SOCK_LISTEN_FAIL); 
+            } else {
+                set_state (STATE_TCP_LISTENING);
+            }
+        }
+    }
+
+    if ( get_error_state () ){
+
+        inc_stats (tcpListenStartFail);
+
+        if (socket_fd != -1){
+            tcp_close_platform ();
         }
         return -1;
     }

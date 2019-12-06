@@ -104,6 +104,10 @@ private:
     uint64_t m_state;
     uint64_t m_error_state;
 
+    int m_sys_errno;
+    int m_socket_errno;
+    int m_ssl_errno;
+
     ev_sockaddr* m_local_addr;
     ev_sockaddr* m_remote_addr;
     std::queue<uint16_t> *m_port_pool;
@@ -126,7 +130,23 @@ public:
     void set_error_state (uint64_t state_bits)
     {
         m_error_state |= state_bits;
+        m_sys_errno = errno;
     };
+
+    uint64_t get_error_state ()
+    {
+        return m_error_state;
+    }
+
+    int get_sys_errno ()
+    {
+        return m_sys_errno;
+    }
+
+    void set_socket_errno (int sock_errno)
+    {
+        m_socket_errno = sock_errno;
+    }
 
     static epoll_ctx* epoll_alloc (ev_app* app_ptr, int max_events, int epoll_timeout);
     static void epoll_free (epoll_ctx* epoll_ctxp);
@@ -137,7 +157,10 @@ public:
     static ev_socket* tcp_listen (epoll_ctx* epoll_ctxp);
 
 private:
-    int ev_socket::tcp_connect_platform ();
+    int tcp_connect_platform ();
+    void tcp_close_platform (int isLinger, int lingerTime);
+    void tcp_verify_established_platform ();
+    int tcp_listen_platform (int listenQLen);
 
 };
 
