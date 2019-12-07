@@ -98,7 +98,6 @@ class ev_socket
 private:
     epoll_ctx* m_epoll_ctx;
     int m_fd;
-    SSL* m_ssl;
     uint16_t m_saved_lport;
     uint16_t m_saved_rport;
 
@@ -107,6 +106,9 @@ private:
 
     int m_sys_errno;
     int m_socket_errno;
+
+    SSL* m_ssl;
+    int m_ssl_client;    
     int m_ssl_errno;
 
     ev_sockaddr* m_local_addr;
@@ -115,7 +117,7 @@ private:
     std::vector<ev_sockstats*> *m_sockstats_arr;
 
 public:
-    ev_socket(/* args */);
+    ev_socket();
     virtual ~ev_socket();
 
     uint64_t is_set_state (uint64_t state_bits)
@@ -165,11 +167,38 @@ public:
         m_ssl_errno = ssl_errno;
     };
 
+    void set_ssl_as_client (SSL* ssl)
+    {
+        m_ssl = ssl;
+        m_ssl_client = 1;
+    }
+
+    void set_ssl_as_server (SSL* ssl)
+    {
+        m_ssl = ssl;
+        m_ssl_client = 0;
+    }
+
+    SSL* get_ssl () 
+    {
+        return m_ssl;
+    }
+
+    std::vector<ev_sockstats*>* get_sockstats_arr ()
+    {
+        return m_sockstats_arr;
+    }
+
     static epoll_ctx* epoll_alloc (ev_app* app_ptr, int max_events, int epoll_timeout);
     static void epoll_free (epoll_ctx* epoll_ctxp);
     static void epoll_process (epoll_ctx* epoll_ctxp);
 
-    static ev_socket* tcp_connect (epoll_ctx* epoll_ctxp);
+    static ev_socket* tcp_connect (epoll_ctx* epoll_ctxp
+                                    , ev_sockaddr* localAddress
+                                    , ev_sockaddr* remoteAddress
+                                    , std::queue<uint16_t>* local_port_pool
+                                    , std::vector<ev_sockstats*>* sockstats_arr);
+
     static ev_socket* tcp_accept (epoll_ctx* epoll_ctxp);
     static ev_socket* tcp_listen (epoll_ctx* epoll_ctxp);
 
@@ -268,6 +297,13 @@ private:
     } \
 }
 
+#define inc_stats2(__ev_sock,__stat_name) \
+{ \
+    for (ev_sockstats* __stats_ptr : *__ev_sock->get_sockstats_arr()) { \
+        __stats_ptr->__stat_name++; \
+    } \
+}
+
 #define CHECK_IPV6(__addr,__is_ipv6) \
 { \
     struct sockaddr* __uaddr = (struct sockaddr*) __addr; \
@@ -277,3 +313,16 @@ private:
         *(__is_ipv6) = 0; \
     } \
 }
+
+#define SET_SOCK_PORT(__addr,__sockport) \
+{ \
+    struct sockaddr* __uaddr = (struct sockaddr*) (__addr); \
+    if (__uaddr->sa_family == AF_INET6) { \
+        struct sockaddr_in6* __addr_in6 = (struct sockaddr_in6*) __addr; \
+        __addr_in6->sin6_port = __sockport; \
+    } else { \
+        struct sockaddr_in* __addr_in = (struct sockaddr_in*) (__addr); \
+        __addr_in->sin_port = __sockport; \
+    } \
+}
+

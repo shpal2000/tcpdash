@@ -1,19 +1,28 @@
 #include "ev_socket.hpp"
+#include "ev_app.hpp"
 
-ev_socket::ev_socket(/* args */)
+ev_socket::ev_socket()
 {
+    m_epoll_ctx = nullptr;
+    m_fd = -1;
     m_saved_lport = 0;
     m_saved_rport = 0;
 
     m_state = 0;
     m_error_state = 0;
 
+    m_sys_errno = 0;
+    m_socket_errno = 0;
+
+    m_ssl = nullptr;
+    m_ssl_client = 0;
+    m_ssl_errno = 0;
+
     m_local_addr = nullptr;
     m_remote_addr = nullptr;
 
     m_port_pool = nullptr;
     m_sockstats_arr = nullptr;
-
 }
 
 ev_socket::~ev_socket()
@@ -436,7 +445,7 @@ void ev_socket::do_ssl_connect(int isClient)
         set_state (STATE_SSL_CONN_INIT);
         inc_stats (sslConnInit);
         inc_stats (sslConnInitInSec);
-        int status = SSL_set_fd(m_ssl, fd);
+        int status = SSL_set_fd(m_ssl, m_fd);
 
         if (status != 1) {
             set_error_state (STATE_SSL_SOCK_CONNECT_FAIL
@@ -572,5 +581,42 @@ void ev_socket::ssl_shutdown ()
                     break;
             }
             break;
+    }
+}
+
+ev_socket* ev_socket::tcp_connect (epoll_ctx* epoll_ctxp
+                                    , ev_sockaddr* localAddress
+                                    , ev_sockaddr* remoteAddress
+                                    , std::queue<uint16_t>* local_port_pool
+                                    , std::vector<ev_sockstats*>* sockstats_arr)
+{
+    ev_socket* new_sock = epoll_ctxp->m_app->alloc_socket ();
+
+    if (new_sock == nullptr) 
+    {
+        inc_stats2 (new_sock null ???, tcpConnStructNotAvail);
+    }
+    else
+    {
+        new_sock->m_epoll_ctx = epoll_ctxp;
+        new_sock->m_local_addr = localAddress;
+        new_sock->m_remote_addr = remoteAddress;
+        new_sock->m_port_pool = local_port_pool;
+        new_sock->m_sockstats_arr = sockstats_arr;
+
+        int localPortAssignError = 0;
+        if (new_sock->m_port_pool)
+        {
+            if (new_sock->m_port_pool->empty ()) 
+            {
+                localPortAssignError = -1;
+                SetCES(cState, STATE_TCP_SOCK_PORT_ASSIGN_FAIL);
+            }
+            else
+            {
+                uint16_t lPort = new_sock->m_port_pool->front ();
+                new_sock->m_port_pool->pop ()
+            }
+        }
     }
 }
