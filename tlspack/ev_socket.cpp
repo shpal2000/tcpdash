@@ -429,3 +429,148 @@ int ev_socket::tcp_accept_platform()
 
     return socket_fd;    
 }
+
+void ev_socket::do_ssl_connect(int isClient) 
+{
+    if (is_set_state (STATE_SSL_CONN_INIT) == 0) {
+        set_state (STATE_SSL_CONN_INIT);
+        inc_stats (sslConnInit);
+        inc_stats (sslConnInitInSec);
+        int status = SSL_set_fd(m_ssl, fd);
+
+        if (status != 1) {
+            set_error_state (STATE_SSL_SOCK_CONNECT_FAIL
+                            | STATE_SSL_SOCK_FD_SET_ERROR);
+        }
+        if (isClient) {
+            SSL_set_connect_state (m_ssl);
+        } else {
+            SSL_set_accept_state (m_ssl);
+        }
+    }
+
+    if ( (is_set_state (STATE_SSL_CONN_ESTABLISHED)
+            && is_set_error_state (STATE_SSL_SOCK_CONNECT_FAIL)) == 0 ) {
+
+        int status = SSL_do_handshake(m_ssl);
+        int sslErrno = SSL_get_error (m_ssl, status);
+        if (status == 1) {
+            set_state (STATE_SSL_CONN_ESTABLISHED);
+            if (isClient) {
+                inc_stats (sslConnInitSuccess);
+                inc_stats (sslConnInitSuccessInSec);
+            } else {
+                inc_stats (sslAcceptSuccess);
+                inc_stats (sslAcceptSuccessInSec);
+            }
+        } else if (status == -1) {
+            if (is_set_state (STATE_SSL_CONN_IN_PROGRESS) == 0) {
+                set_state (STATE_SSL_CONN_IN_PROGRESS);
+                inc_stats (sslConnInitProgress);
+            }
+            switch (sslErrno) {
+                case SSL_ERROR_WANT_READ:
+                    set_state (STATE_SSL_HANDSHAKE_WANT_READ);
+                    break;
+                case SSL_ERROR_WANT_WRITE:
+                    set_state (STATE_SSL_HANDSHAKE_WANT_WRITE);
+                    break;
+                default:
+                    set_error_state_ssl (STATE_SSL_SOCK_CONNECT_FAIL, sslErrno);
+                    inc_stats (sslConnInitFail);
+                    break;  
+            }  
+        } else {
+            set_error_state_ssl (STATE_SSL_SOCK_CONNECT_FAIL, sslErrno);
+            inc_stats (sslConnInitFail);
+        }               
+    }
+}
+
+int ev_socket::ssl_read (char* dataBuffer, int dataLen) 
+{
+    int bytesSent = SSL_read(m_ssl, dataBuffer, dataLen);
+
+    if (bytesSent <= 0) {
+        int sslError = SSL_get_error(m_ssl, bytesSent);
+        switch (sslError) {
+            case SSL_ERROR_ZERO_RETURN:
+            case SSL_ERROR_SYSCALL:
+                set_state (STATE_TCP_REMOTE_CLOSED);
+                break;
+  
+            case SSL_ERROR_WANT_READ:
+            case SSL_ERROR_WANT_WRITE:
+                break;
+            
+            default:
+                set_error_state (STATE_SSL_SOCK_GENERAL_ERROR);
+                break;
+        }
+    }
+
+    return bytesSent;
+}
+
+int ev_socket::ssl_write (const char* dataBuffer, int dataLen) 
+{
+
+    int bytesSent = SSL_write(m_ssl, dataBuffer, dataLen);
+
+    if (bytesSent <= 0) {
+        int sslError = SSL_get_error(m_ssl, bytesSent);
+        switch (sslError) {
+            case SSL_ERROR_SYSCALL:
+                set_error_state (STATE_TCP_REMOTE_CLOSED_ERROR);
+                break;
+
+            case SSL_ERROR_ZERO_RETURN:
+            case SSL_ERROR_WANT_READ:
+            case SSL_ERROR_WANT_WRITE:
+                break;
+            
+            default:
+                set_error_state (STATE_SSL_SOCK_GENERAL_ERROR);
+                break;
+        }
+    }
+
+    return bytesSent;
+}
+
+void ev_socket::ssl_shutdown () 
+{
+
+    int status = SSL_shutdown(m_ssl);
+    int sslError = SSL_get_error(m_ssl, status);
+    
+    switch (status) {
+        case 1:
+            set_state (STATE_SSL_RECEIVED_SHUTDOWN);
+            clear_state (STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN);
+            set_state (STATE_SSL_SENT_SHUTDOWN);
+            clear_state (STATE_SSL_TO_SEND_SHUTDOWN);
+            break;
+
+        case 0:
+            set_state (STATE_SSL_SENT_SHUTDOWN);
+            clear_state (STATE_SSL_TO_SEND_SHUTDOWN);
+            break;
+
+        default:
+            switch (sslError) {
+                case SSL_ERROR_SYSCALL:
+                case SSL_ERROR_ZERO_RETURN:
+                case SSL_ERROR_WANT_READ:
+                case SSL_ERROR_WANT_WRITE:
+                    break;
+                
+                default:
+                    clear_state (STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN);
+                    clear_state (STATE_SSL_TO_SEND_SHUTDOWN);
+                    set_error_state (STATE_SSL_SOCK_GENERAL_ERROR);
+                    break;
+            }
+            break;
+    }
+}

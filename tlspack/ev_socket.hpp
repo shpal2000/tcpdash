@@ -98,6 +98,7 @@ class ev_socket
 private:
     epoll_ctx* m_epoll_ctx;
     int m_fd;
+    SSL* m_ssl;
     uint16_t m_saved_lport;
     uint16_t m_saved_rport;
 
@@ -127,6 +128,16 @@ public:
         m_state |= state_bits;
     };
 
+    void clear_state (uint64_t state_bits)
+    {
+        m_state &= ~state_bits;
+    };
+
+    uint64_t is_set_error_state (uint64_t state_bits)
+    {
+        return m_error_state & state_bits;
+    };
+
     void set_error_state (uint64_t state_bits)
     {
         m_error_state |= state_bits;
@@ -148,6 +159,12 @@ public:
         m_socket_errno = sock_errno;
     }
 
+    void set_error_state_ssl (uint64_t state_bits, int ssl_errno)
+    {
+        set_error_state (state_bits);
+        m_ssl_errno = ssl_errno;
+    };
+
     static epoll_ctx* epoll_alloc (ev_app* app_ptr, int max_events, int epoll_timeout);
     static void epoll_free (epoll_ctx* epoll_ctxp);
     static void epoll_process (epoll_ctx* epoll_ctxp);
@@ -155,6 +172,11 @@ public:
     static ev_socket* tcp_connect (epoll_ctx* epoll_ctxp);
     static ev_socket* tcp_accept (epoll_ctx* epoll_ctxp);
     static ev_socket* tcp_listen (epoll_ctx* epoll_ctxp);
+
+    void do_ssl_connect (int isClient);
+    int ssl_read (char* dataBuffer, int dataLen);
+    int ssl_write (const char* dataBuffer, int dataLen);
+    void ssl_shutdown ();
 
 private:
     int tcp_connect_platform ();
