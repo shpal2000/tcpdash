@@ -1,9 +1,9 @@
 #include "ev_socket.hpp"
 #include "ev_app.hpp"
 
-ev_socket::ev_socket()
+ev_socket::ev_socket(epoll_ctx* epoll_ctxp)
 {
-    m_epoll_ctx = nullptr;
+    m_epoll_ctx = epoll_ctxp;
     m_fd = -1;
     m_saved_lport = 0;
     m_saved_rport = 0;
@@ -18,10 +18,11 @@ ev_socket::ev_socket()
     m_ssl_client = 0;
     m_ssl_errno = 0;
 
+    m_status = CONNAPP_STATE_INIT;
+
     m_local_addr = nullptr;
     m_remote_addr = nullptr;
 
-    m_port_pool = nullptr;
     m_sockstats_arr = nullptr;
 }
 
@@ -72,7 +73,7 @@ void ev_socket::epoll_process(epoll_ctx* epoll_ctxp)
     }
 }
 
-int ev_socket::tcp_connect_platform ()
+void ev_socket::tcp_connect_platform ()
 {
     //stats
     inc_stats (tcpConnInit);
@@ -94,6 +95,7 @@ int ev_socket::tcp_connect_platform ()
         inc_stats (socketCreateFail);
         set_error_state (STATE_TCP_SOCK_CREATE_FAIL);
     }else{
+        m_fd = socket_fd;
         inc_stats (socketCreate);
         set_state (STATE_TCP_SOCK_CREATE);
 
@@ -170,7 +172,6 @@ int ev_socket::tcp_connect_platform ()
         }
     }
 
-
     if ( get_error_state () ){
 
         inc_stats (tcpConnInitFail);
@@ -178,10 +179,7 @@ int ev_socket::tcp_connect_platform ()
         if (socket_fd != -1){
             tcp_close_platform();
         }
-        return -1;
     }
-
-    return socket_fd;
 }
 
 void ev_socket::tcp_verify_established_platform ()
@@ -289,7 +287,7 @@ int ev_socket::tcp_listen_platform(int listenQLen) {
         inc_stats (tcpListenStartFail);
 
         if (socket_fd != -1){
-            tcp_close_platform ();
+            tcp_close_platform (); ??? m_fd 
         }
         return -1;
     }
@@ -671,13 +669,13 @@ void ev_socket::disable_rd_wr_notification ()
     }
 }
 
-int ev_socket::tcp_connect (epoll_ctx* epoll_ctxp
-                            , ev_sockaddr* localAddress
+int ev_socket::tcp_connect (ev_sockaddr* localAddress
                             , ev_sockaddr* remoteAddress)
 {
-    m_epoll_ctx = epoll_ctxp;
+    set_status (CONNAPP_STATE_CONNECTION_IN_PROGRESS);
+
     m_local_addr = localAddress;
     m_remote_addr = remoteAddress;
 
-
+    tcp_connect_platform ();
 }

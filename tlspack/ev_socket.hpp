@@ -111,13 +111,25 @@ private:
     int m_ssl_client;    
     int m_ssl_errno;
 
+    int m_status;
+
     ev_sockaddr* m_local_addr;
     ev_sockaddr* m_remote_addr;
     std::vector<ev_sockstats*> *m_sockstats_arr;
 
 public:
-    ev_socket();
+    ev_socket(epoll_ctx* epoll_ctxp);
     virtual ~ev_socket();
+
+    void set_status (int status)
+    {
+        m_status = status;
+    };
+
+    int get_status ()
+    {
+        return m_status;
+    }
 
     uint64_t is_set_state (uint64_t state_bits)
     {
@@ -193,7 +205,9 @@ public:
         return m_sockstats_arr;
     }
 
-    static epoll_ctx* epoll_alloc (ev_app* app_ptr, int max_events, int epoll_timeout);
+    static epoll_ctx* epoll_alloc (ev_app* app_ptr
+                                    , int max_events
+                                    , int epoll_timeout);
     static void epoll_free (epoll_ctx* epoll_ctxp);
     static void epoll_process (epoll_ctx* epoll_ctxp);
 
@@ -202,8 +216,7 @@ public:
     void enable_rd_wr_notification ();
     void disable_rd_wr_notification ();
 
-    int tcp_connect (epoll_ctx* epoll_ctxp
-                    , ev_sockaddr* localAddress
+    void tcp_connect (ev_sockaddr* localAddress
                     , ev_sockaddr* remoteAddress);
 
     static ev_socket* tcp_accept (epoll_ctx* epoll_ctxp);
@@ -296,6 +309,14 @@ private:
 #define STATE_TCP_GETSOCKNAME_FAIL                          0x0000000001000000
 #define STATE_TCP_CONNECTION_EXPIRE                         0x0000000002000000
 
+#define CONNAPP_STATE_INIT                               0
+#define CONNAPP_STATE_CONNECTION_IN_PROGRESS             1
+#define CONNAPP_STATE_CONNECTION_ESTABLISHED             2
+#define CONNAPP_STATE_CONNECTION_ESTABLISH_FAILED        3
+#define CONNAPP_STATE_CONNECTION_CLOSED                  4
+#define CONNAPP_STATE_SSL_CONNECTION_IN_PROGRESS         5
+#define CONNAPP_STATE_SSL_CONNECTION_ESTABLISHED         6
+#define CONNAPP_STATE_SSL_CONNECTION_ESTABLISH_FAILED    7
 
 #define inc_stats(__stat_name) \
 { \
