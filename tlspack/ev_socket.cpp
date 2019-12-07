@@ -584,39 +584,100 @@ void ev_socket::ssl_shutdown ()
     }
 }
 
-ev_socket* ev_socket::tcp_connect (epoll_ctx* epoll_ctxp
-                                    , ev_sockaddr* localAddress
-                                    , ev_sockaddr* remoteAddress
-                                    , std::queue<uint16_t>* local_port_pool
-                                    , std::vector<ev_sockstats*>* sockstats_arr)
+void ev_socket::enable_rd_only_notification () 
 {
-    ev_socket* new_sock = epoll_ctxp->m_app->alloc_socket ();
+    if ( is_set_state (STATE_TCP_POLL_READ_CURRENT) == 0 
+            || is_set_state (STATE_TCP_POLL_WRITE_CURRENT) ) {
 
-    if (new_sock == nullptr) 
-    {
-        inc_stats2 (new_sock null ???, tcpConnStructNotAvail);
-    }
-    else
-    {
-        new_sock->m_epoll_ctx = epoll_ctxp;
-        new_sock->m_local_addr = localAddress;
-        new_sock->m_remote_addr = remoteAddress;
-        new_sock->m_port_pool = local_port_pool;
-        new_sock->m_sockstats_arr = sockstats_arr;
+        struct epoll_event setEvent = {0};
+        setEvent.events = 0;
+        setEvent.data.ptr = this;
+        setEvent.events = EPOLLIN;
 
-        int localPortAssignError = 0;
-        if (new_sock->m_port_pool)
+        if ( is_set_state (STATE_TCP_POLL_READ_CURRENT) == 0 
+                && is_set_state (STATE_TCP_POLL_WRITE_CURRENT) == 0 ) 
         {
-            if (new_sock->m_port_pool->empty ()) 
-            {
-                localPortAssignError = -1;
-                SetCES(cState, STATE_TCP_SOCK_PORT_ASSIGN_FAIL);
-            }
-            else
-            {
-                uint16_t lPort = new_sock->m_port_pool->front ();
-                new_sock->m_port_pool->pop ()
-            }
+            epoll_ctl(m_epoll_ctx->m_epoll_id, EPOLL_CTL_ADD, m_fd, &setEvent);
+        } 
+        else 
+        {
+            epoll_ctl(m_epoll_ctx->m_epoll_id, EPOLL_CTL_MOD, m_fd, &setEvent);
         }
+
+        set_state (STATE_TCP_POLL_READ_CURRENT);
+        clear_state (STATE_TCP_POLL_WRITE_CURRENT);
     }
+}
+
+void ev_socket::enable_wr_only_notification () 
+{
+    if ( is_set_state (STATE_TCP_POLL_READ_CURRENT) 
+            || is_set_state (STATE_TCP_POLL_WRITE_CURRENT) == 0 ) {
+
+        struct epoll_event setEvent = {0};
+        setEvent.events = 0;
+        setEvent.data.ptr = this;
+        setEvent.events = EPOLLOUT;
+
+        if ( is_set_state (STATE_TCP_POLL_READ_CURRENT) == 0 
+                && is_set_state (STATE_TCP_POLL_WRITE_CURRENT) == 0 ) 
+        {
+            epoll_ctl(m_epoll_ctx->m_epoll_id, EPOLL_CTL_ADD, m_fd, &setEvent);
+        } 
+        else 
+        {
+            epoll_ctl(m_epoll_ctx->m_epoll_id, EPOLL_CTL_MOD, m_fd, &setEvent);
+        }
+
+        clear_state (STATE_TCP_POLL_READ_CURRENT);
+        set_state (STATE_TCP_POLL_WRITE_CURRENT);
+    }
+}
+
+void ev_socket::enable_rd_wr_notification () 
+{
+    if ( is_set_state (STATE_TCP_POLL_READ_CURRENT) == 0 
+            || is_set_state (STATE_TCP_POLL_WRITE_CURRENT) == 0 ) {
+
+        struct epoll_event setEvent = {0};
+        setEvent.events = 0;
+        setEvent.data.ptr = this;
+        setEvent.events = EPOLLIN | EPOLLOUT;
+
+        if ( is_set_state (STATE_TCP_POLL_READ_CURRENT) == 0
+                &&  is_set_state (STATE_TCP_POLL_WRITE_CURRENT) == 0) 
+        {
+            epoll_ctl(m_epoll_ctx->m_epoll_id, EPOLL_CTL_ADD, m_fd, &setEvent);
+        } 
+        else 
+        {
+            epoll_ctl(m_epoll_ctx->m_epoll_id, EPOLL_CTL_MOD, m_fd, &setEvent);
+        }
+
+        set_state (STATE_TCP_POLL_READ_CURRENT);
+        set_state (STATE_TCP_POLL_WRITE_CURRENT);
+    }
+}
+
+void ev_socket::disable_rd_wr_notification ()
+{
+    if ( is_set_state (STATE_TCP_POLL_READ_CURRENT) 
+            || is_set_state (STATE_TCP_POLL_WRITE_CURRENT) ) {
+
+        epoll_ctl(m_epoll_ctx->m_epoll_id, EPOLL_CTL_DEL, m_fd, NULL);
+
+        clear_state (STATE_TCP_POLL_READ_CURRENT);
+        clear_state (STATE_TCP_POLL_WRITE_CURRENT);
+    }
+}
+
+int ev_socket::tcp_connect (epoll_ctx* epoll_ctxp
+                            , ev_sockaddr* localAddress
+                            , ev_sockaddr* remoteAddress)
+{
+    m_epoll_ctx = epoll_ctxp;
+    m_local_addr = localAddress;
+    m_remote_addr = remoteAddress;
+
+
 }

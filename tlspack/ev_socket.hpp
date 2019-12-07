@@ -113,7 +113,6 @@ private:
 
     ev_sockaddr* m_local_addr;
     ev_sockaddr* m_remote_addr;
-    std::queue<uint16_t> *m_port_pool;
     std::vector<ev_sockstats*> *m_sockstats_arr;
 
 public:
@@ -184,6 +183,11 @@ public:
         return m_ssl;
     }
 
+    void set_sockstats_arr (std::vector<ev_sockstats*>* sockstats_arr)
+    {
+        m_sockstats_arr = sockstats_arr;
+    }
+
     std::vector<ev_sockstats*>* get_sockstats_arr ()
     {
         return m_sockstats_arr;
@@ -193,11 +197,14 @@ public:
     static void epoll_free (epoll_ctx* epoll_ctxp);
     static void epoll_process (epoll_ctx* epoll_ctxp);
 
-    static ev_socket* tcp_connect (epoll_ctx* epoll_ctxp
-                                    , ev_sockaddr* localAddress
-                                    , ev_sockaddr* remoteAddress
-                                    , std::queue<uint16_t>* local_port_pool
-                                    , std::vector<ev_sockstats*>* sockstats_arr);
+    void enable_rd_only_notification ();
+    void enable_wr_only_notification ();
+    void enable_rd_wr_notification ();
+    void disable_rd_wr_notification ();
+
+    int tcp_connect (epoll_ctx* epoll_ctxp
+                    , ev_sockaddr* localAddress
+                    , ev_sockaddr* remoteAddress);
 
     static ev_socket* tcp_accept (epoll_ctx* epoll_ctxp);
     static ev_socket* tcp_listen (epoll_ctx* epoll_ctxp);
