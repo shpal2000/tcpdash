@@ -210,9 +210,19 @@ public:
     }
 
     static epoll_ctx* epoll_alloc (ev_app* app_ptr
-                                    , int max_events
-                                    , int epoll_timeout);
+                                        , int max_events
+                                        , int epoll_timeout);
+
+    static ev_socket* tcp_new_client (epoll_ctx* epoll_ctxp
+                                        , ev_sockaddr* localAddress
+                                        , ev_sockaddr* remoteAddress);
+
+    static ev_socket* tcp_new_server (epoll_ctx* epoll_ctxp
+                                        , ev_sockaddr* localAddress
+                                        , int listenQLen);
+
     static void epoll_free (epoll_ctx* epoll_ctxp);
+
     static void epoll_process (epoll_ctx* epoll_ctxp);
 
     void enable_rd_only_notification ();
@@ -220,22 +230,20 @@ public:
     void enable_rd_wr_notification ();
     void disable_rd_wr_notification ();
 
-    int tcp_connect (epoll_ctx* epoll_ctxp
-                    , ev_sockaddr* localAddress
-                    , ev_sockaddr* remoteAddress);
-    
-    int tcp_listen (epoll_ctx* epoll_ctxp
-                    , ev_sockaddr* localAddress
-                    , int listenQLen);
-
-    static ev_socket* tcp_accept (epoll_ctx* epoll_ctxp);
-
     void do_ssl_connect (int isClient);
     int ssl_read (char* dataBuffer, int dataLen);
     int ssl_write (const char* dataBuffer, int dataLen);
     void ssl_shutdown ();
 
 private:
+    int tcp_connect (ev_sockaddr* localAddress
+                    , ev_sockaddr* remoteAddress);
+    
+    int tcp_listen (ev_sockaddr* localAddress
+                    , int listenQLen);
+
+    ev_socket* tcp_accept ();
+
     void tcp_close_platform (int isLinger, int lingerTime);
     void tcp_verify_established_platform ();
     void tcp_write_shutdown_platform ();

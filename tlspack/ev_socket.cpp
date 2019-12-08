@@ -471,8 +471,7 @@ void ev_socket::disable_rd_wr_notification ()
     }
 }
 
-int ev_socket::tcp_connect (epoll_ctx* epoll_ctxp
-                            , ev_sockaddr* localAddress
+int ev_socket::tcp_connect (ev_sockaddr* localAddress
                             , ev_sockaddr* remoteAddress)
 {
     //socket stats
@@ -642,8 +641,7 @@ int ev_socket::tcp_connect (epoll_ctx* epoll_ctxp
     return ret_status;
 }
 
-int ev_socket::tcp_listen(epoll_ctx* epoll_ctxp
-                            , ev_sockaddr* localAddress
+int ev_socket::tcp_listen(ev_sockaddr* localAddress
                             , int listenQLen)
 {
     //stats
