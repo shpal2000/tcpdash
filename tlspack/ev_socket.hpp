@@ -15,6 +15,8 @@ struct ev_sockstats
     uint64_t socketListenFail;
     uint64_t socketReuseSet;
     uint64_t socketReuseSetFail;
+    uint64_t socketIpTransparentSet;
+    uint64_t socketIpTransparentSetFail;
     uint64_t socketLingerSet;
     uint64_t socketLingerSetFail;
     uint64_t socketBindIpv4;    
@@ -115,6 +117,8 @@ private:
 
     ev_sockaddr* m_local_addr;
     ev_sockaddr* m_remote_addr;
+
+    bool m_ipv6;
     std::vector<ev_sockstats*> *m_sockstats_arr;
 
 public:
@@ -216,7 +220,8 @@ public:
     void enable_rd_wr_notification ();
     void disable_rd_wr_notification ();
 
-    void tcp_connect (ev_sockaddr* localAddress
+    int tcp_connect (epoll_ctx* epoll_ctxp
+                    , ev_sockaddr* localAddress
                     , ev_sockaddr* remoteAddress);
 
     static ev_socket* tcp_accept (epoll_ctx* epoll_ctxp);
@@ -281,6 +286,7 @@ private:
 #define STATE_CONN_MARK_DELETE                              0x0000008000000000
 #define STATE_TCP_SOCK_LINGER                               0x0000010000000000
 #define STATE_CONN_PARTIAL_READ                             0x0000020000000000
+#define STATE_TCP_SOCK_IP_TRANSPARENT                       0x0000040000000000
 
 #define STATE_TCP_SOCK_CREATE_FAIL                          0x0000000000000001
 #define STATE_TCP_SOCK_BIND_FAIL                            0x0000000000000002
@@ -308,6 +314,8 @@ private:
 #define STATE_TCP_SOCK_LINGER_FAIL                          0x0000000000800000
 #define STATE_TCP_GETSOCKNAME_FAIL                          0x0000000001000000
 #define STATE_TCP_CONNECTION_EXPIRE                         0x0000000002000000
+#define STATE_TCP_TRANSPARENT_IP_FAIL                       0x0000000004000000
+
 
 #define CONNAPP_STATE_INIT                               0
 #define CONNAPP_STATE_CONNECTION_IN_PROGRESS             1
@@ -336,9 +344,9 @@ private:
 { \
     struct sockaddr* __uaddr = (struct sockaddr*) __addr; \
     if (__uaddr->sa_family == AF_INET6) { \
-        *(__is_ipv6) = 1; \
+        *(__is_ipv6) = true; \
     } else { \
-        *(__is_ipv6) = 0; \
+        *(__is_ipv6) = false; \
     } \
 }
 

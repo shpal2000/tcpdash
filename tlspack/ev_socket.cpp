@@ -23,6 +23,8 @@ ev_socket::ev_socket(epoll_ctx* epoll_ctxp)
     m_local_addr = nullptr;
     m_remote_addr = nullptr;
 
+    m_ipv6 = false;
+
     m_sockstats_arr = nullptr;
 }
 
@@ -69,115 +71,6 @@ void ev_socket::epoll_process(epoll_ctx* epoll_ctxp)
             {
 
             }
-        }
-    }
-}
-
-void ev_socket::tcp_connect_platform ()
-{
-    //stats
-    inc_stats (tcpConnInit);
-    inc_stats (tcpConnInitInSec);
-
-    //check ipv6
-    int is_ipv6;
-    CHECK_IPV6(m_local_addr, &is_ipv6);
-
-    //create socket
-    int socket_fd = -1;
-    if (is_ipv6){
-        socket_fd = socket(AF_INET6 , SOCK_STREAM | SOCK_NONBLOCK , 0);
-    }else{
-        socket_fd = socket(AF_INET , SOCK_STREAM | SOCK_NONBLOCK , 0);
-    }
-
-    if (socket_fd == -1) {
-        inc_stats (socketCreateFail);
-        set_error_state (STATE_TCP_SOCK_CREATE_FAIL);
-    }else{
-        m_fd = socket_fd;
-        inc_stats (socketCreate);
-        set_state (STATE_TCP_SOCK_CREATE);
-
-        int setsockopt_status = -1;
-        setsockopt_status = setsockopt(socket_fd, SOL_SOCKET
-                                , SO_REUSEADDR, &(int){ 1 }, sizeof(int));
-
-        //???
-        setsockopt(socket_fd, SOL_IP, IP_TRANSPARENT, &(int){ 1 }, sizeof(int));
-        // printf ("IP_TRANSPARENT = %d\n", ret_val);
-
-        if (setsockopt_status == -1){
-            inc_stats (socketReuseSetFail);
-            set_error_state (STATE_TCP_SOCK_REUSE_FAIL);
-        } else {
-            inc_stats (socketReuseSet);
-            set_state (STATE_TCP_SOCK_REUSE);
-            //bind local socket
-            int bind_status = -1;
-            if (is_ipv6){
-                bind_status = bind(socket_fd
-                                    , (struct sockaddr*)m_local_addr
-                                    , sizeof(struct sockaddr_in6));
-            }else{
-                bind_status = bind(socket_fd
-                                    , (struct sockaddr*)m_local_addr
-                                    , sizeof(struct sockaddr_in));
-            }
-
-            if (bind_status == -1){
-                if (is_ipv6){
-                    inc_stats (socketBindIpv6Fail);
-                }else{
-                    inc_stats (socketBindIpv4Fail);
-                }
-                set_error_state (STATE_TCP_SOCK_BIND_FAIL);
-            }else{
-                if (is_ipv6){
-                    inc_stats (socketBindIpv6);
-                }else{
-                    inc_stats (socketBindIpv4);
-                }
-                set_state (STATE_TCP_SOCK_BIND);
-
-                //connect socket
-                int connect_status = -1;
-                if (is_ipv6){
-                    connect_status = connect(socket_fd
-                                    , (struct sockaddr*)m_remote_addr
-                                    , sizeof(struct sockaddr_in6));
-                }else{
-                    connect_status = connect(socket_fd
-                                    , (struct sockaddr*)m_remote_addr
-                                    , sizeof(struct sockaddr_in));
-                }
-                set_state (STATE_TCP_CONN_INIT);
-
-                //check connect status
-                if (connect_status < 0){
-                    if (errno == EINPROGRESS){
-                        set_state (STATE_TCP_CONN_IN_PROGRESS);
-                    }else{
-                        set_error_state (STATE_TCP_SOCK_CONNECT_FAIL_IMMEDIATE);
-                        if ( (get_sys_errno () == EADDRNOTAVAIL) ) {
-                            inc_stats (tcpConnInitFailImmediateEaddrNotAvail);
-                        }else{
-                            inc_stats (tcpConnInitFailImmediateOther);
-                        }
-                    }
-                }else{
-                    set_state (STATE_TCP_CONN_IN_PROGRESS2);
-                }
-            }
-        }
-    }
-
-    if ( get_error_state () ){
-
-        inc_stats (tcpConnInitFail);
-
-        if (socket_fd != -1){
-            tcp_close_platform();
         }
     }
 }
@@ -669,13 +562,169 @@ void ev_socket::disable_rd_wr_notification ()
     }
 }
 
-int ev_socket::tcp_connect (ev_sockaddr* localAddress
+int ev_socket::tcp_connect (epoll_ctx* epoll_ctxp
+                            , ev_sockaddr* localAddress
                             , ev_sockaddr* remoteAddress)
 {
-    set_status (CONNAPP_STATE_CONNECTION_IN_PROGRESS);
+    //socket stats
+    inc_stats (tcpConnInit);
+    inc_stats (tcpConnInitInSec);
 
+    //socket contexts
+    m_epoll_ctx = epoll_ctxp;
     m_local_addr = localAddress;
     m_remote_addr = remoteAddress;
 
-    tcp_connect_platform ();
+    //socket if ipv6 
+    CHECK_IPV6(m_local_addr, &m_ipv6);
+
+    //create socket
+    if (m_ipv6){
+        m_fd = socket(AF_INET6 , SOCK_STREAM | SOCK_NONBLOCK , 0);
+    }else{
+        m_fd = socket(AF_INET , SOCK_STREAM | SOCK_NONBLOCK , 0);
+    }
+
+    if (m_fd == -1) 
+    {
+        inc_stats (socketCreateFail);
+        set_error_state (STATE_TCP_SOCK_CREATE_FAIL);
+    }
+    else
+    {
+        inc_stats (socketCreate);
+        set_state (STATE_TCP_SOCK_CREATE);
+
+        int so_reuse_status = setsockopt(m_fd
+                                        , SOL_SOCKET
+                                        , SO_REUSEADDR
+                                        , &(int){ 1 }
+                                        , sizeof(int));
+        if (so_reuse_status == -1)
+        {
+            inc_stats (socketReuseSetFail);
+            set_error_state (STATE_TCP_SOCK_REUSE_FAIL);
+        }
+        else
+        {
+            inc_stats (socketReuseSet);
+            set_state (STATE_TCP_SOCK_REUSE);
+        }
+
+        //???
+        int so_iptrans_status = setsockopt(m_fd
+                                        , SOL_IP
+                                        , IP_TRANSPARENT
+                                        , &(int){ 1 }
+                                        , sizeof(int));
+        if (so_iptrans_status == -1)
+        {
+            inc_stats (socketIpTransparentSetFail);
+            set_error_state (STATE_TCP_TRANSPARENT_IP_FAIL);
+        }
+        else
+        {
+            inc_stats (socketIpTransparentSet);
+            set_state (STATE_TCP_SOCK_IP_TRANSPARENT);
+        }
+
+        if (so_reuse_status == 0 && so_iptrans_status == 0)
+        {
+            //socket bind
+            int bind_status = -1;
+            if (m_ipv6)
+            {
+                bind_status = bind(m_fd
+                                    , (struct sockaddr*)m_local_addr
+                                    , sizeof(struct sockaddr_in6));
+            }
+            else
+            {
+                bind_status = bind(m_fd
+                                    , (struct sockaddr*)m_local_addr
+                                    , sizeof(struct sockaddr_in));
+            }
+
+            if (bind_status == -1)
+            {
+                if (m_ipv6)
+                {
+                    inc_stats (socketBindIpv6Fail);
+                }
+                else
+                {
+                    inc_stats (socketBindIpv4Fail);
+                }
+                set_error_state (STATE_TCP_SOCK_BIND_FAIL);
+            }
+            else
+            {
+                if (m_ipv6)
+                {
+                    inc_stats (socketBindIpv6);
+                }
+                else
+                {
+                    inc_stats (socketBindIpv4);
+                }
+                set_state (STATE_TCP_SOCK_BIND);
+
+                //socket connect
+                int connect_status = -1;
+                if (m_ipv6)
+                {
+                    connect_status = connect(m_fd
+                                            , (struct sockaddr*)m_remote_addr
+                                            , sizeof(struct sockaddr_in6));
+                }
+                else
+                {
+                    connect_status = connect(m_fd
+                                            , (struct sockaddr*)m_remote_addr
+                                            , sizeof(struct sockaddr_in));
+                }
+                set_state (STATE_TCP_CONN_INIT);
+
+                //check connect status
+                if (connect_status < 0)
+                {
+                    if (errno == EINPROGRESS)
+                    {
+                        set_state (STATE_TCP_CONN_IN_PROGRESS);
+                    }
+                    else
+                    {
+                        set_error_state (STATE_TCP_SOCK_CONNECT_FAIL_IMMEDIATE);
+                        if ( (get_sys_errno () == EADDRNOTAVAIL) ) 
+                        {
+                            inc_stats (tcpConnInitFailImmediateEaddrNotAvail);
+                        }
+                        else
+                        {
+                            inc_stats (tcpConnInitFailImmediateOther);
+                        }
+                    }
+                }
+                else
+                {
+                    set_state (STATE_TCP_CONN_IN_PROGRESS2);
+                } 
+            }
+        }
+    }
+
+    if ( get_error_state () )
+    {
+        inc_stats (tcpConnInitFail);
+
+        if (m_fd != -1){
+            tcp_close_platform();
+        }
+    }
+    else
+    {
+        //socket status
+        set_status (CONNAPP_STATE_CONNECTION_IN_PROGRESS);
+        enable_rd_wr_notification ();
+    }
 }
