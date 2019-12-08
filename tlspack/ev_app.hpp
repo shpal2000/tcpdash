@@ -20,19 +20,14 @@ public:
     virtual void on_finish (ev_socket* ev_sock) = 0;
 
 
-    ev_socket* tcp_connect ()
+    ev_socket* tcp_new_client (ev_sockaddr* laddr, ev_sockaddr* raddr)
     {
-        return ev_socket::tcp_connect (m_epoll_ctx);
+        return ev_socket::tcp_new_client (m_epoll_ctx, laddr, raddr);
     }
 
-    ev_socket* tcp_accept ()
+    ev_socket* tcp_new_server (ev_sockaddr* laddr, int lqlen)
     {
-        return ev_socket::tcp_accept (m_epoll_ctx);
-    }
-
-    ev_socket* tcp_listen ()
-    {
-        return ev_socket::tcp_listen (m_epoll_ctx);
+        return ev_socket::tcp_new_server (m_epoll_ctx, laddr, lqlen);
     }
 
 private:
