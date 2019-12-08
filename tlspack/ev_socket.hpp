@@ -122,7 +122,7 @@ private:
     std::vector<ev_sockstats*> *m_sockstats_arr;
 
 public:
-    ev_socket(epoll_ctx* epoll_ctxp);
+    ev_socket();
     virtual ~ev_socket();
 
     void set_status (int status)
@@ -223,9 +223,12 @@ public:
     int tcp_connect (epoll_ctx* epoll_ctxp
                     , ev_sockaddr* localAddress
                     , ev_sockaddr* remoteAddress);
+    
+    int tcp_listen (epoll_ctx* epoll_ctxp
+                    , ev_sockaddr* localAddress
+                    , int listenQLen);
 
     static ev_socket* tcp_accept (epoll_ctx* epoll_ctxp);
-    static ev_socket* tcp_listen (epoll_ctx* epoll_ctxp);
 
     void do_ssl_connect (int isClient);
     int ssl_read (char* dataBuffer, int dataLen);
@@ -233,10 +236,8 @@ public:
     void ssl_shutdown ();
 
 private:
-    int tcp_connect_platform ();
     void tcp_close_platform (int isLinger, int lingerTime);
     void tcp_verify_established_platform ();
-    int tcp_listen_platform (int listenQLen);
     void tcp_write_shutdown_platform ();
     int tcp_write_platform (const char* dataBuffer, int dataLen);
     int tcp_read_platform (char* dataBuffer, int dataLen);
@@ -325,6 +326,9 @@ private:
 #define CONNAPP_STATE_SSL_CONNECTION_IN_PROGRESS         5
 #define CONNAPP_STATE_SSL_CONNECTION_ESTABLISHED         6
 #define CONNAPP_STATE_SSL_CONNECTION_ESTABLISH_FAILED    7
+
+#define CONNAPP_STATE_LISTEN                             1000
+
 
 #define inc_stats(__stat_name) \
 { \
