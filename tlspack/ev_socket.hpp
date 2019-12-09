@@ -213,11 +213,11 @@ public:
                                         , int max_events
                                         , int epoll_timeout);
 
-    static ev_socket* tcp_new_client (epoll_ctx* epoll_ctxp
+    static ev_socket* new_tcp_connect (epoll_ctx* epoll_ctxp
                                         , ev_sockaddr* localAddress
                                         , ev_sockaddr* remoteAddress);
 
-    static ev_socket* tcp_new_server (epoll_ctx* epoll_ctxp
+    static ev_socket* new_tcp_listen (epoll_ctx* epoll_ctxp
                                         , ev_sockaddr* localAddress
                                         , int listenQLen);
 

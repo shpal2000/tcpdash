@@ -773,3 +773,33 @@ int ev_socket::tcp_listen(ev_sockaddr* localAddress
 
     return ret_status;
 }
+
+ev_socket* ev_socket::new_tcp_connect (epoll_ctx* epoll_ctxp
+                                        , ev_sockaddr* localAddress
+                                        , ev_sockaddr* remoteAddress)
+{
+    ev_socket* new_sock = epoll_ctxp->m_app->alloc_socket ();
+
+    if (new_sock) {
+
+    } else {
+
+    }
+
+    return new_sock;
+}
+
+ev_socket* ev_socket::new_tcp_listen (epoll_ctx* epoll_ctxp
+                                        , ev_sockaddr* localAddress
+                                        , int lqlen)
+{
+    ev_socket* new_sock = epoll_ctxp->m_app->alloc_socket ();
+
+    if (new_sock) {
+
+    } else {
+
+    }
+    
+    return new_sock;
+}
