@@ -44,32 +44,6 @@ void ev_socket::epoll_free(epoll_ctx* epoll_ctxp)
     delete epoll_ctxp;
 }
 
-void ev_socket::epoll_process(epoll_ctx* epoll_ctxp)
-{
-    int event_count = epoll_wait (epoll_ctxp->m_epoll_id
-                        , epoll_ctxp->m_epoll_event_arr
-                        , epoll_ctxp->m_max_epoll_events
-                        , epoll_ctxp->m_epoll_timeout);
-    
-    if (event_count > 0)
-    {
-        for (int event_index = 0; event_index < event_count; event_index++)
-        {
-            ev_socket* event_socket_ptr 
-                = (ev_socket*) epoll_ctxp->m_epoll_event_arr[event_index].data.ptr;
-
-            if ( event_socket_ptr->is_set_state (STATE_TCP_LISTENING) )
-            {
-                event_socket_ptr->tcp_accept (epoll_ctxp);
-            } 
-            else
-            {
-
-            }
-        }
-    }
-}
-
 void ev_socket::tcp_verify_established ()
 {
     int socketErr;
@@ -172,18 +146,22 @@ int ev_socket::tcp_read (char* dataBuffer, int dataLen)
     return bytesRead;
 }
 
-int ev_socket::tcp_accept ()
+void ev_socket::tcp_accept (ev_socket* ev_sock_parent)
 {
     set_state (STATE_TCP_CONN_ACCEPT);
 
-    int socket_fd = -1;
-    socklen_t addrLen = sizeof (ev_sockaddr);
+    m_epoll_ctx = ev_sock_parent->m_epoll_ctx;
+    std::memcpy (&m_local_addr
+                    , &ev_sock_parent->m_local_addr
+                    , sizeof (ev_sockaddr));
+    m_sockstats_arr = ev_sock_parent->m_sockstats_arr;
 
-    socket_fd = accept(m_fd
-                        , (struct sockaddr *) m_remote_addr
-                        , &addrLen);
+    socklen_t addrLen = sizeof (ev_sockaddr);
+    m_fd = accept(ev_sock_parent->m_fd
+                    , (struct sockaddr *) &m_remote_addr
+                    , &addrLen);
     
-    if (socket_fd < 0) {
+    if (m_fd < 0) {
         inc_stats (tcpAcceptFail);
         set_error_state (STATE_TCP_CONN_ACCEPT_FAIL);        
     } else {
@@ -192,19 +170,20 @@ int ev_socket::tcp_accept ()
         inc_stats (tcpAcceptSuccess);
         inc_stats (tcpAcceptSuccessInSec);
 
-        int flags = fcntl(socket_fd, F_GETFL, 0);
+        int flags = fcntl(m_fd, F_GETFL, 0);
         if (flags < 0) {
             set_error_state (STATE_TCP_SOCK_F_GETFL_FAIL 
                             | STATE_TCP_SOCK_O_NONBLOCK_FAIL);
         } else {
-            int ret = fcntl(socket_fd, F_SETFL, flags | O_NONBLOCK);
+            int ret = fcntl(m_fd, F_SETFL, flags | O_NONBLOCK);
             if (ret < 0) {
                 set_error_state (STATE_TCP_SOCK_F_SETFL_FAIL 
                                 | STATE_TCP_SOCK_O_NONBLOCK_FAIL);
             } else {
                 set_state (STATE_TCP_CONN_ACCEPT_O_NONBLOCK);
 
-                ret = setsockopt(socket_fd, SOL_SOCKET
+                //??? is it necessary
+                ret = setsockopt(m_fd, SOL_SOCKET
                                 , SO_REUSEADDR, &(int){ 1 }, sizeof(int));
                 if (ret < 0) {
                     inc_stats (socketReuseSetFail);
@@ -212,26 +191,16 @@ int ev_socket::tcp_accept ()
                 } else {
                     inc_stats (socketReuseSet);
                     set_state (STATE_TCP_SOCK_REUSE);
-
-                    addrLen = sizeof (ev_sockaddr);
-                    ret = getsockname(socket_fd, (struct sockaddr*) m_remote_addr, &addrLen);
-                    if (ret < 0) {
-                        inc_stats (tcpGetSockNameFail);
-                        set_error_state (STATE_TCP_GETSOCKNAME_FAIL);
-                    }
                 }
             }
         }
     }
 
     if ( get_error_state () ){
-        if (socket_fd != -1){
-            tcp_close_platform ();
+        if (m_fd != -1){
+            tcp_close ();
         }
-        return -1;
-    }
-
-    return socket_fd;    
+    }  
 }
 
 int ev_socket::ssl_read (char* dataBuffer, int dataLen) 
@@ -419,11 +388,11 @@ int ev_socket::tcp_connect (epoll_ctx* epoll_ctxp
 
     //socket contexts
     m_epoll_ctx = epoll_ctxp;
-    m_local_addr = localAddress;
-    m_remote_addr = remoteAddress;
+    std::memcpy (&m_local_addr, localAddress, sizeof (ev_sockaddr));
+    std::memcpy (&m_remote_addr, remoteAddress, sizeof (ev_sockaddr));
 
     //socket if ipv6 
-    CHECK_IPV6(m_local_addr, &m_ipv6);
+    CHECK_IPV6(&m_local_addr, &m_ipv6);
 
     //create socket
     if (m_ipv6){
@@ -482,13 +451,13 @@ int ev_socket::tcp_connect (epoll_ctx* epoll_ctxp
             if (m_ipv6)
             {
                 bind_status = bind(m_fd
-                                    , (struct sockaddr*)m_local_addr
+                                    , (struct sockaddr*)&m_local_addr
                                     , sizeof(struct sockaddr_in6));
             }
             else
             {
                 bind_status = bind(m_fd
-                                    , (struct sockaddr*)m_local_addr
+                                    , (struct sockaddr*)&m_local_addr
                                     , sizeof(struct sockaddr_in));
             }
 
@@ -521,13 +490,13 @@ int ev_socket::tcp_connect (epoll_ctx* epoll_ctxp
                 if (m_ipv6)
                 {
                     connect_status = connect(m_fd
-                                            , (struct sockaddr*)m_remote_addr
+                                            , (struct sockaddr*)&m_remote_addr
                                             , sizeof(struct sockaddr_in6));
                 }
                 else
                 {
                     connect_status = connect(m_fd
-                                            , (struct sockaddr*)m_remote_addr
+                                            , (struct sockaddr*)&m_remote_addr
                                             , sizeof(struct sockaddr_in));
                 }
                 set_state (STATE_TCP_CONN_INIT);
@@ -589,10 +558,10 @@ int ev_socket::tcp_listen(epoll_ctx* epoll_ctxp
 
     //socket contexts
     m_epoll_ctx = epoll_ctxp;
-    m_local_addr = localAddress;
+    std::memcpy (&m_local_addr, localAddress, sizeof (ev_sockaddr));
 
     //socket if ipv6 
-    CHECK_IPV6(m_local_addr, &m_ipv6);
+    CHECK_IPV6(&m_local_addr, &m_ipv6);
 
     //create socket
     if (m_ipv6){
@@ -648,13 +617,13 @@ int ev_socket::tcp_listen(epoll_ctx* epoll_ctxp
             if (m_ipv6)
             {
                 bind_status = bind(m_fd
-                                    , (struct sockaddr*)m_local_addr
+                                    , (struct sockaddr*)&m_local_addr
                                     , sizeof(struct sockaddr_in6));
             }
             else
             {
                 bind_status = bind(m_fd
-                                    , (struct sockaddr*)m_local_addr
+                                    , (struct sockaddr*)&m_local_addr
                                     , sizeof(struct sockaddr_in));
             }
 
@@ -746,10 +715,24 @@ ev_socket* ev_socket::new_tcp_listen (epoll_ctx* epoll_ctxp
 }
 
 
-ev_socket* ev_socket::do_tcp_accept ()
+void ev_socket::do_tcp_accept ()
 {
-    // ev_socket* new_ev_socket = new ev_socket ();
-    return nullptr;
+    ev_socket* ev_sock_ptr = m_epoll_ctx->m_app->alloc_socket ();
+
+    if (ev_sock_ptr == nullptr) {
+        inc_stats (tcpConnStructNotAvail);
+    } else {
+        ev_sock_ptr->tcp_accept (this);
+
+        if ( ev_sock_ptr->get_error_state() ) {
+            m_epoll_ctx->m_app->free_socket (ev_sock_ptr);
+        } else {
+            ev_sock_ptr->set_status (CONNAPP_STATE_CONNECTION_ESTABLISHED);
+            ev_sock_ptr->enable_rd_wr_notification ();
+            m_epoll_ctx->m_app->on_establish (ev_sock_ptr);
+            ev_sock_ptr->process_if_mark_abort ();
+        }
+    }
 }
 
 void ev_socket::do_ssl_connect(int isClient) 
@@ -806,5 +789,32 @@ void ev_socket::do_ssl_connect(int isClient)
             set_error_state_ssl (STATE_SSL_SOCK_CONNECT_FAIL, sslErrno);
             inc_stats (sslConnInitFail);
         }               
+    }
+}
+
+////////////////////////////////////////////////////event processing//////////////////////////////////////////
+void ev_socket::epoll_process(epoll_ctx* epoll_ctxp)
+{
+    int event_count = epoll_wait (epoll_ctxp->m_epoll_id
+                        , epoll_ctxp->m_epoll_event_arr
+                        , epoll_ctxp->m_max_epoll_events
+                        , epoll_ctxp->m_epoll_timeout);
+    
+    if (event_count > 0)
+    {
+        for (int event_index = 0; event_index < event_count; event_index++)
+        {
+            ev_socket* ev_sock_ptr 
+                = (ev_socket*) epoll_ctxp->m_epoll_event_arr[event_index].data.ptr;
+
+            if ( ev_sock_ptr->is_set_state (STATE_TCP_LISTENING) )
+            {
+                ev_sock_ptr->do_tcp_accept ();
+            } 
+            else
+            {
+
+            }
+        }
     }
 }

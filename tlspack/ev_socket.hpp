@@ -115,8 +115,8 @@ private:
 
     int m_status;
 
-    ev_sockaddr* m_local_addr;
-    ev_sockaddr* m_remote_addr;
+    ev_sockaddr m_local_addr;
+    ev_sockaddr m_remote_addr;
 
     bool m_ipv6;
     std::vector<ev_sockstats*> *m_sockstats_arr;
@@ -244,14 +244,14 @@ private:
     void tcp_write_shutdown ();
     int tcp_write (const char* dataBuffer, int dataLen);
     int tcp_read (char* dataBuffer, int dataLen);
-    int tcp_accept ();
+    void tcp_accept (ev_socket* ev_sock_parent);
 
     int ssl_read (char* dataBuffer, int dataLen);
     int ssl_write (const char* dataBuffer, int dataLen);
     void ssl_shutdown ();
 
     /////////////////////////////////helper functions////////////////////////////
-    ev_socket* do_tcp_accept ();
+    void do_tcp_accept ();
     void do_ssl_connect (int isClient);
 
 };
