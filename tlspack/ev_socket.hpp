@@ -212,6 +212,8 @@ public:
     static epoll_ctx* epoll_alloc (ev_app* app_ptr
                                         , int max_events
                                         , int epoll_timeout);
+    static void epoll_free (epoll_ctx* epoll_ctxp);
+    static void epoll_process (epoll_ctx* epoll_ctxp);
 
     static ev_socket* new_tcp_connect (epoll_ctx* epoll_ctxp
                                         , ev_sockaddr* localAddress
@@ -221,35 +223,36 @@ public:
                                         , ev_sockaddr* localAddress
                                         , int listenQLen);
 
-    static void epoll_free (epoll_ctx* epoll_ctxp);
-
-    static void epoll_process (epoll_ctx* epoll_ctxp);
-
     void enable_rd_only_notification ();
     void enable_wr_only_notification ();
     void enable_rd_wr_notification ();
     void disable_rd_wr_notification ();
 
-    void do_ssl_connect (int isClient);
+
+private:
+    /////////////////////////////////tcp platform functions////////////////////////
+    int tcp_connect (epoll_ctx* epoll_ctxp
+                    , ev_sockaddr* localAddress
+                    , ev_sockaddr* remoteAddress);
+    
+    int tcp_listen (epoll_ctx* epoll_ctxp
+                    , ev_sockaddr* localAddress
+                    , int listenQLen);
+
+    void tcp_verify_established ();
+    void tcp_close (int isLinger, int lingerTime);
+    void tcp_write_shutdown ();
+    int tcp_write (const char* dataBuffer, int dataLen);
+    int tcp_read (char* dataBuffer, int dataLen);
+    int tcp_accept ();
+
     int ssl_read (char* dataBuffer, int dataLen);
     int ssl_write (const char* dataBuffer, int dataLen);
     void ssl_shutdown ();
 
-private:
-    int tcp_connect (ev_sockaddr* localAddress
-                    , ev_sockaddr* remoteAddress);
-    
-    int tcp_listen (ev_sockaddr* localAddress
-                    , int listenQLen);
-
-    ev_socket* tcp_accept ();
-
-    void tcp_close_platform (int isLinger, int lingerTime);
-    void tcp_verify_established_platform ();
-    void tcp_write_shutdown_platform ();
-    int tcp_write_platform (const char* dataBuffer, int dataLen);
-    int tcp_read_platform (char* dataBuffer, int dataLen);
-    int tcp_accept_platform ();
+    /////////////////////////////////helper functions////////////////////////////
+    ev_socket* do_tcp_accept ();
+    void do_ssl_connect (int isClient);
 
 };
 

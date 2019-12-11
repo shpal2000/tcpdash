@@ -32,12 +32,7 @@ ev_socket::~ev_socket()
 {
 }
 
-ev_socket* ev_socket::tcp_accept(epoll_ctx* epoll_ctxp)
-{
-    // ev_socket* new_ev_socket = new ev_socket ();
-    return nullptr;
-}
-
+//////////////////////////////// platform functions///////////////////////////////
 epoll_ctx* ev_socket::epoll_alloc(ev_app* app_ptr, int max_events, int epoll_timeout)
 {
     epoll_ctx* epoll_ctxp = new epoll_ctx(app_ptr, max_events, epoll_timeout);
@@ -75,7 +70,7 @@ void ev_socket::epoll_process(epoll_ctx* epoll_ctxp)
     }
 }
 
-void ev_socket::tcp_verify_established_platform ()
+void ev_socket::tcp_verify_established ()
 {
     int socketErr;
     socklen_t socketErrBufLen = sizeof(int);
@@ -97,7 +92,7 @@ void ev_socket::tcp_verify_established_platform ()
     }
 }
 
-void ev_socket::tcp_close_platform (int isLinger=0, int lingerTime=0) {
+void ev_socket::tcp_close (int isLinger=0, int lingerTime=0) {
 
     if (isLinger) {
         struct linger sl;
@@ -123,7 +118,7 @@ void ev_socket::tcp_close_platform (int isLinger=0, int lingerTime=0) {
     }
 }
 
-void ev_socket::tcp_write_shutdown_platform() {    
+void ev_socket::tcp_write_shutdown() {    
     if (shutdown(m_fd, SHUT_WR)) {
         set_error_state (STATE_TCP_FIN_SEND_FAIL);
     } else {
@@ -131,7 +126,7 @@ void ev_socket::tcp_write_shutdown_platform() {
     }
 }
 
-int ev_socket::tcp_write_platform (const char* dataBuffer, int dataLen)
+int ev_socket::tcp_write (const char* dataBuffer, int dataLen)
 {
     // int bytesSent = send(fd, dataBuffer, dataLen, MSG_NOSIGNAL);
     int bytesSent = write(m_fd, dataBuffer, dataLen);
@@ -148,7 +143,7 @@ int ev_socket::tcp_write_platform (const char* dataBuffer, int dataLen)
     return bytesSent;
 }
 
-int ev_socket::tcp_read_platform(char* dataBuffer, int dataLen)
+int ev_socket::tcp_read (char* dataBuffer, int dataLen)
 {
     int bytesRead = read(m_fd, dataBuffer, dataLen);
 
@@ -177,7 +172,7 @@ int ev_socket::tcp_read_platform(char* dataBuffer, int dataLen)
     return bytesRead;
 }
 
-int ev_socket::tcp_accept_platform()
+int ev_socket::tcp_accept ()
 {
     set_state (STATE_TCP_CONN_ACCEPT);
 
@@ -237,63 +232,6 @@ int ev_socket::tcp_accept_platform()
     }
 
     return socket_fd;    
-}
-
-void ev_socket::do_ssl_connect(int isClient) 
-{
-    if (is_set_state (STATE_SSL_CONN_INIT) == 0) {
-        set_state (STATE_SSL_CONN_INIT);
-        inc_stats (sslConnInit);
-        inc_stats (sslConnInitInSec);
-        int status = SSL_set_fd(m_ssl, m_fd);
-
-        if (status != 1) {
-            set_error_state (STATE_SSL_SOCK_CONNECT_FAIL
-                            | STATE_SSL_SOCK_FD_SET_ERROR);
-        }
-        if (isClient) {
-            SSL_set_connect_state (m_ssl);
-        } else {
-            SSL_set_accept_state (m_ssl);
-        }
-    }
-
-    if ( (is_set_state (STATE_SSL_CONN_ESTABLISHED)
-            && is_set_error_state (STATE_SSL_SOCK_CONNECT_FAIL)) == 0 ) {
-
-        int status = SSL_do_handshake(m_ssl);
-        int sslErrno = SSL_get_error (m_ssl, status);
-        if (status == 1) {
-            set_state (STATE_SSL_CONN_ESTABLISHED);
-            if (isClient) {
-                inc_stats (sslConnInitSuccess);
-                inc_stats (sslConnInitSuccessInSec);
-            } else {
-                inc_stats (sslAcceptSuccess);
-                inc_stats (sslAcceptSuccessInSec);
-            }
-        } else if (status == -1) {
-            if (is_set_state (STATE_SSL_CONN_IN_PROGRESS) == 0) {
-                set_state (STATE_SSL_CONN_IN_PROGRESS);
-                inc_stats (sslConnInitProgress);
-            }
-            switch (sslErrno) {
-                case SSL_ERROR_WANT_READ:
-                    set_state (STATE_SSL_HANDSHAKE_WANT_READ);
-                    break;
-                case SSL_ERROR_WANT_WRITE:
-                    set_state (STATE_SSL_HANDSHAKE_WANT_WRITE);
-                    break;
-                default:
-                    set_error_state_ssl (STATE_SSL_SOCK_CONNECT_FAIL, sslErrno);
-                    inc_stats (sslConnInitFail);
-                    break;  
-            }  
-        } else {
-            set_error_state_ssl (STATE_SSL_SOCK_CONNECT_FAIL, sslErrno);
-            inc_stats (sslConnInitFail);
-        }               
-    }
 }
 
 int ev_socket::ssl_read (char* dataBuffer, int dataLen) 
@@ -471,7 +409,8 @@ void ev_socket::disable_rd_wr_notification ()
     }
 }
 
-int ev_socket::tcp_connect (ev_sockaddr* localAddress
+int ev_socket::tcp_connect (epoll_ctx* epoll_ctxp
+                            , ev_sockaddr* localAddress
                             , ev_sockaddr* remoteAddress)
 {
     //socket stats
@@ -628,7 +567,7 @@ int ev_socket::tcp_connect (ev_sockaddr* localAddress
         inc_stats (tcpConnInitFail);
 
         if (m_fd != -1){
-            tcp_close_platform();
+            tcp_close();
         }
     }
     else
@@ -641,7 +580,8 @@ int ev_socket::tcp_connect (ev_sockaddr* localAddress
     return ret_status;
 }
 
-int ev_socket::tcp_listen(ev_sockaddr* localAddress
+int ev_socket::tcp_listen(epoll_ctx* epoll_ctxp
+                            , ev_sockaddr* localAddress
                             , int listenQLen)
 {
     //stats
@@ -649,6 +589,7 @@ int ev_socket::tcp_listen(ev_sockaddr* localAddress
 
     //socket contexts
     m_epoll_ctx = epoll_ctxp;
+    m_local_addr = localAddress;
 
     //socket if ipv6 
     CHECK_IPV6(m_local_addr, &m_ipv6);
@@ -762,7 +703,7 @@ int ev_socket::tcp_listen(ev_sockaddr* localAddress
         inc_stats (tcpListenStartFail);
 
         if (m_fd != -1){
-            tcp_close_platform ();
+            tcp_close ();
         }
     }
     else
@@ -781,7 +722,7 @@ ev_socket* ev_socket::new_tcp_connect (epoll_ctx* epoll_ctxp
     ev_socket* new_sock = epoll_ctxp->m_app->alloc_socket ();
 
     if (new_sock) {
-
+        new_sock->tcp_connect (epoll_ctxp, localAddress, remoteAddress);
     } else {
 
     }
@@ -796,10 +737,74 @@ ev_socket* ev_socket::new_tcp_listen (epoll_ctx* epoll_ctxp
     ev_socket* new_sock = epoll_ctxp->m_app->alloc_socket ();
 
     if (new_sock) {
-
+        new_sock->tcp_listen (epoll_ctxp, localAddress, lqlen);
     } else {
 
     }
     
     return new_sock;
+}
+
+
+ev_socket* ev_socket::do_tcp_accept ()
+{
+    // ev_socket* new_ev_socket = new ev_socket ();
+    return nullptr;
+}
+
+void ev_socket::do_ssl_connect(int isClient) 
+{
+    if (is_set_state (STATE_SSL_CONN_INIT) == 0) {
+        set_state (STATE_SSL_CONN_INIT);
+        inc_stats (sslConnInit);
+        inc_stats (sslConnInitInSec);
+        int status = SSL_set_fd(m_ssl, m_fd);
+
+        if (status != 1) {
+            set_error_state (STATE_SSL_SOCK_CONNECT_FAIL
+                            | STATE_SSL_SOCK_FD_SET_ERROR);
+        }
+        if (isClient) {
+            SSL_set_connect_state (m_ssl);
+        } else {
+            SSL_set_accept_state (m_ssl);
+        }
+    }
+
+    if ( (is_set_state (STATE_SSL_CONN_ESTABLISHED)
+            && is_set_error_state (STATE_SSL_SOCK_CONNECT_FAIL)) == 0 ) {
+
+        int status = SSL_do_handshake(m_ssl);
+        int sslErrno = SSL_get_error (m_ssl, status);
+        if (status == 1) {
+            set_state (STATE_SSL_CONN_ESTABLISHED);
+            if (isClient) {
+                inc_stats (sslConnInitSuccess);
+                inc_stats (sslConnInitSuccessInSec);
+            } else {
+                inc_stats (sslAcceptSuccess);
+                inc_stats (sslAcceptSuccessInSec);
+            }
+        } else if (status == -1) {
+            if (is_set_state (STATE_SSL_CONN_IN_PROGRESS) == 0) {
+                set_state (STATE_SSL_CONN_IN_PROGRESS);
+                inc_stats (sslConnInitProgress);
+            }
+            switch (sslErrno) {
+                case SSL_ERROR_WANT_READ:
+                    set_state (STATE_SSL_HANDSHAKE_WANT_READ);
+                    break;
+                case SSL_ERROR_WANT_WRITE:
+                    set_state (STATE_SSL_HANDSHAKE_WANT_WRITE);
+                    break;
+                default:
+                    set_error_state_ssl (STATE_SSL_SOCK_CONNECT_FAIL, sslErrno);
+                    inc_stats (sslConnInitFail);
+                    break;  
+            }  
+        } else {
+            set_error_state_ssl (STATE_SSL_SOCK_CONNECT_FAIL, sslErrno);
+            inc_stats (sslConnInitFail);
+        }               
+    }
 }
