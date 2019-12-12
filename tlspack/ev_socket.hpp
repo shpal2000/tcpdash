@@ -199,6 +199,10 @@ public:
         return m_ssl;
     }
 
+    epoll_ctx* get_epoll_ctx () {
+        return m_epoll_ctx;
+    }
+
     void set_sockstats_arr (std::vector<ev_sockstats*>* sockstats_arr)
     {
         m_sockstats_arr = sockstats_arr;
@@ -254,8 +258,9 @@ private:
     /////////////////////////////////helper functions////////////////////////////
     void do_tcp_accept ();
     void do_ssl_connect (int isClient);
+    static void do_appcb (ev_socket* ev_sockp, int cbid);
+public:
     void do_abort ();
-
 };
 
 #define STATE_TCP_PORT_ASSIGNED                             0x0000000000000001
@@ -301,6 +306,7 @@ private:
 #define STATE_TCP_SOCK_LINGER                               0x0000010000000000
 #define STATE_CONN_PARTIAL_READ                             0x0000020000000000
 #define STATE_TCP_SOCK_IP_TRANSPARENT                       0x0000040000000000
+#define STATE_CONN_MARK_FINISH                              0x0000080000000000
 
 #define STATE_TCP_SOCK_CREATE_FAIL                          0x0000000000000001
 #define STATE_TCP_SOCK_BIND_FAIL                            0x0000000000000002
@@ -339,9 +345,14 @@ private:
 #define CONNAPP_STATE_SSL_CONNECTION_IN_PROGRESS         5
 #define CONNAPP_STATE_SSL_CONNECTION_ESTABLISHED         6
 #define CONNAPP_STATE_SSL_CONNECTION_ESTABLISH_FAILED    7
-
 #define CONNAPP_STATE_LISTEN                             1000
 
+#define CB_ID_ON_ESTABLISH      1
+#define CB_ID_ON_WRITE          2
+#define CB_ID_ON_WSTATUS        3
+#define CB_ID_ON_READ           4
+#define CB_ID_ON_RSTATUS        5
+#define CB_ID_ON_FINISH         6
 
 #define inc_stats(__stat_name) \
 { \

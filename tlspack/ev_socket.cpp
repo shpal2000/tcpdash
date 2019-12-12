@@ -19,10 +19,7 @@ ev_socket::ev_socket()
     m_ssl_errno = 0;
 
     m_status = CONNAPP_STATE_INIT;
-
-    m_local_addr = nullptr;
-    m_remote_addr = nullptr;
-
+    
     m_ipv6 = false;
 
     m_sockstats_arr = nullptr;
@@ -736,9 +733,7 @@ void ev_socket::do_tcp_accept ()
         } else {
             ev_sock_ptr->set_status (CONNAPP_STATE_CONNECTION_ESTABLISHED);
             ev_sock_ptr->enable_rd_wr_notification ();
-            m_epoll_ctx->m_app->on_establish (ev_sock_ptr);
-            if ev_sock_ptr->
-            ev_sock_ptr->process_if_mark_abort ();
+            ev_socket::do_appcb (ev_sock_ptr, CB_ID_ON_ESTABLISH);
         }
     }
 }
@@ -797,6 +792,43 @@ void ev_socket::do_ssl_connect(int isClient)
             set_error_state_ssl (STATE_SSL_SOCK_CONNECT_FAIL, sslErrno);
             inc_stats (sslConnInitFail);
         }               
+    }
+}
+
+void ev_socket::do_appcb (ev_socket* ev_sockp, int cbid)
+{
+    epoll_ctx* epoll_ctxp = ev_sockp->get_epoll_ctx();
+    switch (cbid)
+    {
+        case CB_ID_ON_ESTABLISH:
+            epoll_ctxp->m_app->on_establish (ev_sockp);
+            break;
+        case CB_ID_ON_WRITE:
+            epoll_ctxp->m_app->on_write (ev_sockp);
+            break;
+        case CB_ID_ON_WSTATUS:
+            epoll_ctxp->m_app->on_wstatus (ev_sockp);
+            break;
+        case CB_ID_ON_READ:
+            epoll_ctxp->m_app->on_read (ev_sockp);
+            break;
+        case CB_ID_ON_RSTATUS:
+            epoll_ctxp->m_app->on_rstatus (ev_sockp);
+            break;
+        case CB_ID_ON_FINISH:
+            epoll_ctxp->m_app->on_finish (ev_sockp);
+            ev_sockp->set_state (STATE_CONN_MARK_FINISH);
+            break;
+    }
+
+    if ( ev_sockp->is_set_state (STATE_CONN_MARK_DELETE) ) 
+    {
+        ev_sockp->do_abort ();
+    }
+
+    if ( ev_sockp->is_set_state (STATE_CONN_MARK_FINISH) ) 
+    {
+        epoll_ctxp->m_app->free_socket (ev_sockp);        
     }
 }
 
