@@ -227,6 +227,7 @@ public:
     void enable_wr_only_notification ();
     void enable_rd_wr_notification ();
     void disable_rd_wr_notification ();
+    void abort ();
 
 
 private:
@@ -249,10 +250,11 @@ private:
     int ssl_read (char* dataBuffer, int dataLen);
     int ssl_write (const char* dataBuffer, int dataLen);
     void ssl_shutdown ();
-
+    
     /////////////////////////////////helper functions////////////////////////////
     void do_tcp_accept ();
     void do_ssl_connect (int isClient);
+    void do_abort ();
 
 };
 

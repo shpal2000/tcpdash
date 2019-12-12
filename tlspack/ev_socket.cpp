@@ -378,6 +378,13 @@ void ev_socket::disable_rd_wr_notification ()
     }
 }
 
+void ev_socket::abort ()
+{
+    if ( is_set_state (STATE_CONN_MARK_DELETE) == 0 ) {
+        set_state (STATE_CONN_MARK_DELETE | STATE_TCP_TO_SEND_RST);
+    }
+}
+
 int ev_socket::tcp_connect (epoll_ctx* epoll_ctxp
                             , ev_sockaddr* localAddress
                             , ev_sockaddr* remoteAddress)
@@ -730,6 +737,7 @@ void ev_socket::do_tcp_accept ()
             ev_sock_ptr->set_status (CONNAPP_STATE_CONNECTION_ESTABLISHED);
             ev_sock_ptr->enable_rd_wr_notification ();
             m_epoll_ctx->m_app->on_establish (ev_sock_ptr);
+            if ev_sock_ptr->
             ev_sock_ptr->process_if_mark_abort ();
         }
     }
