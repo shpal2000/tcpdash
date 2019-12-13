@@ -178,6 +178,12 @@ public:
         m_socket_errno = sock_errno;
     }
 
+    bool is_fd_closed ()
+    {
+        return ( is_set_state (STATE_TCP_SOCK_FD_CLOSE) 
+                    || is_set_error_state (STATE_TCP_SOCK_FD_CLOSE_FAIL) );
+    }
+
     void set_error_state_ssl (uint64_t state_bits, int ssl_errno)
     {
         set_error_state (state_bits);
@@ -231,8 +237,16 @@ public:
 
     void enable_rd_only_notification ();
     void enable_wr_only_notification ();
+
     void enable_rd_wr_notification ();
     void disable_rd_wr_notification ();
+
+    void disable_wr_notification ();
+    void disable_rd_notification ();
+
+    void enable_wr_notification ();
+    void enable_rd_notification ();
+
     void abort ();
 
 private:
@@ -260,6 +274,8 @@ private:
     void handle_tcp_accept ();
     void do_ssl_handshake (int isClient);
     void invoke_app_cb (int cbid);
+    void close_socket ();
+    void close_connection ();
 };
 
 #define STATE_TCP_PORT_ASSIGNED                             0x0000000000000001

@@ -375,6 +375,96 @@ void ev_socket::disable_rd_wr_notification ()
     }
 }
 
+void ev_socket::disable_wr_notification ()
+{
+    if ( is_set_state (STATE_TCP_POLL_WRITE_CURRENT) ) {
+
+        if ( is_set_state (STATE_TCP_POLL_READ_CURRENT) == 0 ) {
+
+            epoll_ctl(m_epoll_ctx->m_epoll_id, EPOLL_CTL_DEL, m_fd, NULL);
+
+        } else {
+
+            struct epoll_event setEvent = {0};
+            setEvent.events = 0;
+            setEvent.data.ptr = this;
+            setEvent.events = EPOLLIN;
+
+            epoll_ctl(m_epoll_ctx->m_epoll_id, EPOLL_CTL_MOD, m_fd, &setEvent);
+        }
+
+        clear_state (STATE_TCP_POLL_WRITE_CURRENT);
+    }
+}
+
+void ev_socket::disable_rd_notification ()
+{
+    if ( is_set_state (STATE_TCP_POLL_READ_CURRENT) ) {
+
+        if ( is_set_state (STATE_TCP_POLL_WRITE_CURRENT) == 0 ) {
+
+            epoll_ctl(m_epoll_ctx->m_epoll_id, EPOLL_CTL_DEL, m_fd, NULL);
+
+        } else {
+
+            struct epoll_event setEvent = {0};
+            setEvent.events = 0;
+            setEvent.data.ptr = this;
+            setEvent.events = EPOLLOUT;
+
+            epoll_ctl(m_epoll_ctx->m_epoll_id, EPOLL_CTL_MOD, m_fd, &setEvent);
+        }
+
+        clear_state (STATE_TCP_POLL_READ_CURRENT);
+    }
+}
+
+void ev_socket::enable_rd_notification () 
+{
+    if ( is_set_state (STATE_TCP_POLL_READ_CURRENT) == 0 ) {
+
+        struct epoll_event setEvent = {0};
+        setEvent.events = 0;
+        setEvent.data.ptr = this;
+
+        if ( is_set_state (STATE_TCP_POLL_WRITE_CURRENT) == 0) 
+        {
+            setEvent.events = EPOLLIN;
+            epoll_ctl(m_epoll_ctx->m_epoll_id, EPOLL_CTL_ADD, m_fd, &setEvent);
+        } 
+        else 
+        {
+            setEvent.events = EPOLLIN | EPOLLOUT;
+            epoll_ctl(m_epoll_ctx->m_epoll_id, EPOLL_CTL_MOD, m_fd, &setEvent);
+        }
+
+        set_state (STATE_TCP_POLL_READ_CURRENT);
+    }
+}
+
+void ev_socket::enable_wr_notification () 
+{
+    if ( is_set_state (STATE_TCP_POLL_WRITE_CURRENT) == 0 ) {
+
+        struct epoll_event setEvent = {0};
+        setEvent.events = 0;
+        setEvent.data.ptr = this;
+
+        if ( is_set_state (STATE_TCP_POLL_READ_CURRENT) == 0) 
+        {
+            setEvent.events = EPOLLOUT;
+            epoll_ctl(m_epoll_ctx->m_epoll_id, EPOLL_CTL_ADD, m_fd, &setEvent);
+        } 
+        else 
+        {
+            setEvent.events = EPOLLIN | EPOLLOUT;
+            epoll_ctl(m_epoll_ctx->m_epoll_id, EPOLL_CTL_MOD, m_fd, &setEvent);
+        }
+
+        set_state (STATE_TCP_POLL_WRITE_CURRENT);
+    }
+}
+
 void ev_socket::abort ()
 {
     if ( is_set_state (STATE_CONN_MARK_DELETE) == 0 ) {
@@ -825,8 +915,71 @@ void ev_socket::invoke_app_cb (int cbid)
     }
 }
 
+void ev_socket::close_socket ()
+{
+    if ( is_fd_closed () == false ) {
+
+        int isLinger = 0;
+        int lingerTime = 0;
+
+        if ( get_error_state() || is_set_state (STATE_TCP_TO_SEND_RST) ) {
+            isLinger = 1;
+        }
+
+        disable_rd_wr_notification ();     
+
+        tcp_close (isLinger, lingerTime);
+    }  
+}
+
+void ev_socket::close_connection ()
+{
+    if ( get_error_state() || is_set_state(STATE_TCP_TO_SEND_RST) )
+    {
+        close_socket ();
+    }
+    else
+    {
+        bool pendingSendReceiveCloseNotify 
+            = is_set_state (STATE_SSL_TO_SEND_SHUTDOWN) 
+            || is_set_state (STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN);
+
+        if ( is_set_state (STATE_SSL_CONN_ESTABLISHED)
+                && pendingSendReceiveCloseNotify ) {
+
+            ssl_shutdown ();
+        }
+
+        bool sentCloseNotifyOrNotRequired 
+            =   (is_set_state (STATE_SSL_ENABLED_CONN) == 0) 
+                || is_set_state (STATE_SSL_SENT_SHUTDOWN) 
+                || ( (is_set_state (STATE_SSL_TO_SEND_SHUTDOWN) == 0)
+                    && (is_set_state (STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN) == 0) );
+
+
+        bool wrShutdownDone 
+            = is_set_state (STATE_TCP_SENT_FIN)
+                || is_set_error_state (STATE_TCP_FIN_SEND_FAIL); 
+
+        if ( is_set_state (STATE_TCP_CONN_ESTABLISHED)
+                && (wrShutdownDone == false)
+                && sentCloseNotifyOrNotRequired ) {
+
+            tcp_write_shutdown ();
+
+            disable_wr_notification ();
+        }
+
+        if ( get_error_state () 
+                || ( is_set_state (STATE_TCP_REMOTE_CLOSED)  &&  wrShutdownDone) ) {
+
+            close_socket ();
+        }        
+    }
+}
+
 ////////////////////////////////////////////////////event processing//////////////////////////////////////////
-void ev_socket::epoll_process(epoll_ctx* epoll_ctxp)
+void ev_socket::epoll_process (epoll_ctx* epoll_ctxp)
 {
     int event_count = epoll_wait (epoll_ctxp->m_epoll_id
                         , epoll_ctxp->m_epoll_event_arr
@@ -855,12 +1008,12 @@ void ev_socket::epoll_process(epoll_ctx* epoll_ctxp)
         {
             ev_socket* ev_sock_ptr = epoll_ctxp->m_abort_list.front();
 
-            ev_sock_ptr->close ();
+            ev_sock_ptr->close_socket ();
 
             epoll_ctxp->m_abort_list.pop();
         }
 
-        //finish process
+        //free up process
         if ( not epoll_ctxp->m_finish_list.empty() )
         {
             ev_socket* ev_sock_ptr = epoll_ctxp->m_finish_list.front();
