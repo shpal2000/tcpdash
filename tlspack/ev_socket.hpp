@@ -93,6 +93,8 @@ public:
     int m_epoll_timeout;
     int m_max_epoll_events;
     struct epoll_event* m_epoll_event_arr;
+    std::queue<ev_socket*> m_abort_list;
+    std::queue<ev_socket*> m_finish_list;
 };
 
 class ev_socket
@@ -233,7 +235,6 @@ public:
     void disable_rd_wr_notification ();
     void abort ();
 
-
 private:
     /////////////////////////////////tcp platform functions////////////////////////
     int tcp_connect (epoll_ctx* epoll_ctxp
@@ -256,11 +257,9 @@ private:
     void ssl_shutdown ();
     
     /////////////////////////////////helper functions////////////////////////////
-    void do_tcp_accept ();
-    void do_ssl_connect (int isClient);
-    static void do_appcb (ev_socket* ev_sockp, int cbid);
-public:
-    void do_abort ();
+    void handle_tcp_accept ();
+    void do_ssl_handshake (int isClient);
+    void invoke_app_cb (int cbid);
 };
 
 #define STATE_TCP_PORT_ASSIGNED                             0x0000000000000001

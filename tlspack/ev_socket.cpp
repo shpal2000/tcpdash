@@ -379,6 +379,7 @@ void ev_socket::abort ()
 {
     if ( is_set_state (STATE_CONN_MARK_DELETE) == 0 ) {
         set_state (STATE_CONN_MARK_DELETE | STATE_TCP_TO_SEND_RST);
+        m_epoll_ctx->m_abort_list.push (this);
     }
 }
 
@@ -719,7 +720,7 @@ ev_socket* ev_socket::new_tcp_listen (epoll_ctx* epoll_ctxp
 }
 
 
-void ev_socket::do_tcp_accept ()
+void ev_socket::handle_tcp_accept ()
 {
     ev_socket* ev_sock_ptr = m_epoll_ctx->m_app->alloc_socket ();
 
@@ -729,16 +730,16 @@ void ev_socket::do_tcp_accept ()
         ev_sock_ptr->tcp_accept (this);
 
         if ( ev_sock_ptr->get_error_state() ) {
-            m_epoll_ctx->m_app->free_socket (ev_sock_ptr);
+            ev_sock_ptr->invoke_app_cb (CB_ID_ON_FINISH);
         } else {
             ev_sock_ptr->set_status (CONNAPP_STATE_CONNECTION_ESTABLISHED);
             ev_sock_ptr->enable_rd_wr_notification ();
-            ev_socket::do_appcb (ev_sock_ptr, CB_ID_ON_ESTABLISH);
+            ev_sock_ptr->invoke_app_cb (CB_ID_ON_ESTABLISH);
         }
     }
 }
 
-void ev_socket::do_ssl_connect(int isClient) 
+void ev_socket::do_ssl_handshake(int isClient) 
 {
     if (is_set_state (STATE_SSL_CONN_INIT) == 0) {
         set_state (STATE_SSL_CONN_INIT);
@@ -795,40 +796,32 @@ void ev_socket::do_ssl_connect(int isClient)
     }
 }
 
-void ev_socket::do_appcb (ev_socket* ev_sockp, int cbid)
+void ev_socket::invoke_app_cb (int cbid)
 {
-    epoll_ctx* epoll_ctxp = ev_sockp->get_epoll_ctx();
     switch (cbid)
     {
         case CB_ID_ON_ESTABLISH:
-            epoll_ctxp->m_app->on_establish (ev_sockp);
+            m_epoll_ctx->m_app->on_establish (this);
             break;
         case CB_ID_ON_WRITE:
-            epoll_ctxp->m_app->on_write (ev_sockp);
+            m_epoll_ctx->m_app->on_write (this);
             break;
         case CB_ID_ON_WSTATUS:
-            epoll_ctxp->m_app->on_wstatus (ev_sockp);
+            m_epoll_ctx->m_app->on_wstatus (this);
             break;
         case CB_ID_ON_READ:
-            epoll_ctxp->m_app->on_read (ev_sockp);
+            m_epoll_ctx->m_app->on_read (this);
             break;
         case CB_ID_ON_RSTATUS:
-            epoll_ctxp->m_app->on_rstatus (ev_sockp);
+            m_epoll_ctx->m_app->on_rstatus (this);
             break;
         case CB_ID_ON_FINISH:
-            epoll_ctxp->m_app->on_finish (ev_sockp);
-            ev_sockp->set_state (STATE_CONN_MARK_FINISH);
+            //??? why this guarding flag
+            if ( is_set_state (STATE_CONN_MARK_FINISH) == 0) {
+                m_epoll_ctx->m_finish_list.push (this);
+                set_state (STATE_CONN_MARK_FINISH);
+            }
             break;
-    }
-
-    if ( ev_sockp->is_set_state (STATE_CONN_MARK_DELETE) ) 
-    {
-        ev_sockp->do_abort ();
-    }
-
-    if ( ev_sockp->is_set_state (STATE_CONN_MARK_FINISH) ) 
-    {
-        epoll_ctxp->m_app->free_socket (ev_sockp);        
     }
 }
 
@@ -849,12 +842,31 @@ void ev_socket::epoll_process(epoll_ctx* epoll_ctxp)
 
             if ( ev_sock_ptr->is_set_state (STATE_TCP_LISTENING) )
             {
-                ev_sock_ptr->do_tcp_accept ();
+                ev_sock_ptr->handle_tcp_accept ();
             } 
             else
             {
 
             }
         }
+
+        //abort process
+        if ( not epoll_ctxp->m_abort_list.empty() )
+        {
+            ev_socket* ev_sock_ptr = epoll_ctxp->m_abort_list.front();
+
+            ev_sock_ptr->close ();
+
+            epoll_ctxp->m_abort_list.pop();
+        }
+
+        //finish process
+        if ( not epoll_ctxp->m_finish_list.empty() )
+        {
+            ev_socket* ev_sock_ptr = epoll_ctxp->m_finish_list.front();
+            epoll_ctxp->m_app->on_free (ev_sock_ptr);
+            epoll_ctxp->m_finish_list.pop();
+        }
+
     }
 }

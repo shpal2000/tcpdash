@@ -19,11 +19,6 @@ ev_socket* tlssrv_app::alloc_socket()
     return new tlssrv_socket();
 }
 
-void tlssrv_app::free_socket(ev_socket* ev_sock)
-{
-    delete ev_sock;
-}
-
 void tlssrv_app::on_establish (ev_socket* ev_sock)
 {
     tlssrv_socket* app_socket =  (tlssrv_socket*) ev_sock;
@@ -49,7 +44,7 @@ void tlssrv_app::on_rstatus (ev_socket* ev_sock)
 
 }
 
-void tlssrv_app::on_finish (ev_socket* ev_sock)
+void tlssrv_app::on_free (ev_socket* ev_sock)
 {
-
+    delete ev_sock;
 }
