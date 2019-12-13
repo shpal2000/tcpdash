@@ -932,7 +932,7 @@ void ev_socket::close_socket ()
     }  
 }
 
-void ev_socket::close_connection ()
+void ev_socket::do_close_connection ()
 {
     if ( get_error_state() || is_set_state(STATE_TCP_TO_SEND_RST) )
     {

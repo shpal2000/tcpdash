@@ -275,7 +275,7 @@ private:
     void do_ssl_handshake (int isClient);
     void invoke_app_cb (int cbid);
     void close_socket ();
-    void close_connection ();
+    void do_close_connection ();
 };
 
 #define STATE_TCP_PORT_ASSIGNED                             0x0000000000000001
