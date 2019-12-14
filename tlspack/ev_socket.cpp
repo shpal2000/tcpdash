@@ -853,6 +853,8 @@ void ev_socket::close_socket ()
         disable_rd_wr_notification ();     
 
         tcp_close (isLinger, lingerTime);
+
+        invoke_app_cb (CB_ID_ON_FINISH);
     }  
 }
 
@@ -1140,7 +1142,7 @@ void ev_socket::epoll_process (epoll_ctx* epoll_ctxp)
         {
             ev_socket* ev_sock_ptr = epoll_ctxp->m_abort_list.front();
 
-            ev_sock_ptr->close_socket ();
+            ev_sock_ptr->do_close_connection ();
 
             epoll_ctxp->m_abort_list.pop();
         }
