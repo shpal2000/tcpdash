@@ -403,5 +403,7 @@ private:
     void invoke_app_cb (int cbid);
     void close_socket ();
     void do_close_connection ();
+    void do_write_next_data ();
+    void do_read_next_data ();
 };
 

@@ -978,6 +978,11 @@ void ev_socket::do_close_connection ()
     }
 }
 
+void ev_socket::do_write_next_data ()
+{
+
+}
+
 ///////////////////////////////////event processing///////////////////////////////////
 void ev_socket::epoll_process (epoll_ctx* epoll_ctxp)
 {
@@ -1011,7 +1016,25 @@ void ev_socket::epoll_process (epoll_ctx* epoll_ctxp)
                 else if ( sockp->get_status() 
                             == CONNAPP_STATE_SSL_CONNECTION_IN_PROGRESS )
                 {
+                    bool doSslHandshake = false;
 
+                    if ( sockp->is_set_state(STATE_SSL_HANDSHAKE_WANT_WRITE)
+                        && (events & EPOLLOUT) ) 
+                    {
+                        doSslHandshake = true;
+                        sockp->clear_state (STATE_SSL_HANDSHAKE_WANT_WRITE);
+                    }
+
+                    if ( sockp->is_set_state(STATE_SSL_HANDSHAKE_WANT_READ)
+                        && (events & EPOLLIN) ) 
+                    {
+                        doSslHandshake = true;
+                        sockp->clear_state (STATE_SSL_HANDSHAKE_WANT_READ);
+                    }
+
+                    if (doSslHandshake) {
+                        sockp->do_ssl_handshake ();
+                    }
                 }
                 //handle read, write both ssl and non-ssl tcp
                 else if ( (sockp->get_status()
