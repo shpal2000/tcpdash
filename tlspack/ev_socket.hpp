@@ -239,7 +239,7 @@ private:
     int m_socket_errno;
 
     SSL* m_ssl;
-    int m_ssl_client;    
+    bool m_ssl_client;    
     int m_ssl_errno;
 
     int m_status;
@@ -317,16 +317,18 @@ public:
         m_ssl_errno = ssl_errno;
     };
 
-    void set_ssl_as_client (SSL* ssl)
+    void set_as_ssl_client (SSL* ssl)
     {
         m_ssl = ssl;
-        m_ssl_client = 1;
+        m_ssl_client = true;
+        do_ssl_handshake ();
     }
 
-    void set_ssl_as_server (SSL* ssl)
+    void set_as_ssl_server (SSL* ssl)
     {
         m_ssl = ssl;
-        m_ssl_client = 0;
+        m_ssl_client = false;
+        do_ssl_handshake ();
     }
 
     SSL* get_ssl () 
@@ -399,7 +401,7 @@ private:
     
     /////////////////////////////////helper functions///////////////////////////
     void handle_tcp_accept ();
-    void do_ssl_handshake (int isClient);
+    void do_ssl_handshake ();
     void invoke_app_cb (int cbid);
     void close_socket ();
     void do_close_connection ();

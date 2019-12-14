@@ -15,7 +15,7 @@ ev_socket::ev_socket()
     m_socket_errno = 0;
 
     m_ssl = nullptr;
-    m_ssl_client = 0;
+    m_ssl_client = true;
     m_ssl_errno = 0;
 
     m_status = CONNAPP_STATE_INIT;
@@ -829,7 +829,7 @@ void ev_socket::handle_tcp_accept ()
     }
 }
 
-void ev_socket::do_ssl_handshake(int isClient) 
+void ev_socket::do_ssl_handshake() 
 {
     if (is_set_state (STATE_SSL_CONN_INIT) == 0) {
         set_state (STATE_SSL_CONN_INIT);
@@ -841,7 +841,7 @@ void ev_socket::do_ssl_handshake(int isClient)
             set_error_state (STATE_SSL_SOCK_CONNECT_FAIL
                             | STATE_SSL_SOCK_FD_SET_ERROR);
         }
-        if (isClient) {
+        if (m_ssl_client) {
             SSL_set_connect_state (m_ssl);
         } else {
             SSL_set_accept_state (m_ssl);
@@ -855,7 +855,7 @@ void ev_socket::do_ssl_handshake(int isClient)
         int sslErrno = SSL_get_error (m_ssl, status);
         if (status == 1) {
             set_state (STATE_SSL_CONN_ESTABLISHED);
-            if (isClient) {
+            if (m_ssl_client) {
                 inc_stats (sslConnInitSuccess);
                 inc_stats (sslConnInitSuccessInSec);
             } else {
@@ -1023,6 +1023,7 @@ void ev_socket::epoll_process (epoll_ctx* epoll_ctxp)
                     {
                         doSslHandshake = true;
                         sockp->clear_state (STATE_SSL_HANDSHAKE_WANT_WRITE);
+                        sockp->do_ssl_handshake ();
                     }
 
                     if ( sockp->is_set_state(STATE_SSL_HANDSHAKE_WANT_READ)
@@ -1041,7 +1042,7 @@ void ev_socket::epoll_process (epoll_ctx* epoll_ctxp)
                             == CONNAPP_STATE_SSL_CONNECTION_ESTABLISHED) ||
                             ( (sockp->get_status()
                             == CONNAPP_STATE_CONNECTION_ESTABLISHED) && 
-                            (sockp->is_set_state(STATE_SSL_ENABLED_CONN) == 0)) )
+                            (sockp->is_set_state(STATE_SSL_ENABLED_CONN)== 0)) )
                 {
                     //handle read
                     if ( (events & EPOLLIN) 
