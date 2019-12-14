@@ -20,9 +20,9 @@ ev_socket::ev_socket()
 
     m_status = CONNAPP_STATE_INIT;
     
-    m_ipv6 = false;
-
     m_sockstats_arr = nullptr;
+
+    m_ipv6 = false;
 }
 
 ev_socket::~ev_socket()
@@ -30,10 +30,11 @@ ev_socket::~ev_socket()
 }
 
 //////////////////////////////// platform functions///////////////////////////////
-epoll_ctx* ev_socket::epoll_alloc(ev_app* app_ptr, int max_events, int epoll_timeout)
+epoll_ctx* ev_socket::epoll_alloc(ev_app* app_ptr
+                                    , int max_events
+                                    , int epoll_timeout)
 {
-    epoll_ctx* epoll_ctxp = new epoll_ctx(app_ptr, max_events, epoll_timeout);
-    return epoll_ctxp;
+    return new epoll_ctx(app_ptr, max_events, epoll_timeout);
 }
 
 void ev_socket::epoll_free(epoll_ctx* epoll_ctxp)
@@ -41,251 +42,34 @@ void ev_socket::epoll_free(epoll_ctx* epoll_ctxp)
     delete epoll_ctxp;
 }
 
-void ev_socket::tcp_verify_established ()
+ev_socket* ev_socket::new_tcp_connect (epoll_ctx* epoll_ctxp
+                                        , ev_sockaddr* localAddress
+                                        , ev_sockaddr* remoteAddress)
 {
-    int socketErr;
-    socklen_t socketErrBufLen = sizeof(int);
+    ev_socket* new_sock = epoll_ctxp->m_app->alloc_socket ();
 
-    int retGetsockopt = getsockopt(m_fd
-                                    , SOL_SOCKET
-                                    , SO_ERROR
-                                    , &socketErr
-                                    , &socketErrBufLen);
-    
-    if ((retGetsockopt|socketErr) == 0){
-        set_state (STATE_TCP_CONN_ESTABLISHED);
-        inc_stats (tcpConnInitSuccess);
-        inc_stats (tcpConnInitSuccessInSec);
-    }else {
-        set_error_state (STATE_TCP_SOCK_CONNECT_FAIL);
-        set_socket_errno (socketErr);
-        inc_stats (tcpConnInitFail);
-    }
-}
-
-void ev_socket::tcp_close (int isLinger=0, int lingerTime=0) {
-
-    if (isLinger) {
-        struct linger sl;
-        sl.l_onoff = 1;
-        sl.l_linger = lingerTime;
-
-        int lingerStatus 
-            = setsockopt(m_fd, SOL_SOCKET, SO_LINGER, &sl, sizeof(sl));
-        
-        if (lingerStatus < 0) {
-            inc_stats (socketLingerSetFail);
-            set_error_state (STATE_TCP_SOCK_LINGER_FAIL);
-        } else {
-            inc_stats (socketLingerSet);
-            set_state (STATE_TCP_SOCK_LINGER);
-        }
-    }
-
-    if ( close (m_fd) ) {
-        set_error_state (STATE_TCP_SOCK_FD_CLOSE_FAIL);
+    if (new_sock) {
+        new_sock->tcp_connect (epoll_ctxp, localAddress, remoteAddress);
     } else {
-        set_state (STATE_TCP_SOCK_FD_CLOSE);
+
     }
+
+    return new_sock;
 }
 
-void ev_socket::tcp_write_shutdown() {    
-    if (shutdown(m_fd, SHUT_WR)) {
-        set_error_state (STATE_TCP_FIN_SEND_FAIL);
+ev_socket* ev_socket::new_tcp_listen (epoll_ctx* epoll_ctxp
+                                        , ev_sockaddr* localAddress
+                                        , int lqlen)
+{
+    ev_socket* new_sock = epoll_ctxp->m_app->alloc_socket ();
+
+    if (new_sock) {
+        new_sock->tcp_listen (epoll_ctxp, localAddress, lqlen);
     } else {
-        set_state (STATE_TCP_SENT_FIN);
+
     }
-}
-
-int ev_socket::tcp_write (const char* dataBuffer, int dataLen)
-{
-    // int bytesSent = send(fd, dataBuffer, dataLen, MSG_NOSIGNAL);
-    int bytesSent = write(m_fd, dataBuffer, dataLen);
-
-    if (bytesSent <= 0){
-        set_error_state (STATE_TCP_SOCK_WRITE_FAIL);
-        inc_stats (tcpWriteFail);
-
-        if (bytesSent == 0) {
-            inc_stats (tcpWriteReturnsZero);
-        }
-    }
-
-    return bytesSent;
-}
-
-int ev_socket::tcp_read (char* dataBuffer, int dataLen)
-{
-    int bytesRead = read(m_fd, dataBuffer, dataLen);
-
-    if (bytesRead == 0) {
-        set_state (STATE_TCP_REMOTE_CLOSED);
-        int socketErr;
-        socklen_t socketErrBufLen = sizeof(int);
-
-        int retGetsockopt = getsockopt(m_fd
-                                        , SOL_SOCKET
-                                        , SO_ERROR
-                                        , &socketErr
-                                        , &socketErrBufLen);
-        if ((retGetsockopt|socketErr)) {
-            set_error_state (STATE_TCP_SOCK_READ_FAIL);
-        }
-    } else if (bytesRead < 0) {
-        if (errno == EAGAIN) {
-            //nothing to read; retry
-        } else {
-            set_error_state (STATE_TCP_SOCK_READ_FAIL);
-            inc_stats (tcpReadFail);
-        }
-    }
-
-    return bytesRead;
-}
-
-void ev_socket::tcp_accept (ev_socket* ev_sock_parent)
-{
-    set_state (STATE_TCP_CONN_ACCEPT);
-
-    m_epoll_ctx = ev_sock_parent->m_epoll_ctx;
-    std::memcpy (&m_local_addr
-                    , &ev_sock_parent->m_local_addr
-                    , sizeof (ev_sockaddr));
-    m_sockstats_arr = ev_sock_parent->m_sockstats_arr;
-
-    socklen_t addrLen = sizeof (ev_sockaddr);
-    m_fd = accept(ev_sock_parent->m_fd
-                    , (struct sockaddr *) &m_remote_addr
-                    , &addrLen);
     
-    if (m_fd < 0) {
-        inc_stats (tcpAcceptFail);
-        set_error_state (STATE_TCP_CONN_ACCEPT_FAIL);        
-    } else {
-        set_state (STATE_TCP_CONN_ESTABLISHED);
-
-        inc_stats (tcpAcceptSuccess);
-        inc_stats (tcpAcceptSuccessInSec);
-
-        int flags = fcntl(m_fd, F_GETFL, 0);
-        if (flags < 0) {
-            set_error_state (STATE_TCP_SOCK_F_GETFL_FAIL 
-                            | STATE_TCP_SOCK_O_NONBLOCK_FAIL);
-        } else {
-            int ret = fcntl(m_fd, F_SETFL, flags | O_NONBLOCK);
-            if (ret < 0) {
-                set_error_state (STATE_TCP_SOCK_F_SETFL_FAIL 
-                                | STATE_TCP_SOCK_O_NONBLOCK_FAIL);
-            } else {
-                set_state (STATE_TCP_CONN_ACCEPT_O_NONBLOCK);
-
-                //??? is it necessary
-                ret = setsockopt(m_fd, SOL_SOCKET
-                                , SO_REUSEADDR, &(int){ 1 }, sizeof(int));
-                if (ret < 0) {
-                    inc_stats (socketReuseSetFail);
-                    set_error_state (STATE_TCP_SOCK_REUSE_FAIL);
-                } else {
-                    inc_stats (socketReuseSet);
-                    set_state (STATE_TCP_SOCK_REUSE);
-                }
-            }
-        }
-    }
-
-    if ( get_error_state () ){
-        if (m_fd != -1){
-            tcp_close ();
-        }
-    }  
-}
-
-int ev_socket::ssl_read (char* dataBuffer, int dataLen) 
-{
-    int bytesSent = SSL_read(m_ssl, dataBuffer, dataLen);
-
-    if (bytesSent <= 0) {
-        int sslError = SSL_get_error(m_ssl, bytesSent);
-        switch (sslError) {
-            case SSL_ERROR_ZERO_RETURN:
-            case SSL_ERROR_SYSCALL:
-                set_state (STATE_TCP_REMOTE_CLOSED);
-                break;
-  
-            case SSL_ERROR_WANT_READ:
-            case SSL_ERROR_WANT_WRITE:
-                break;
-            
-            default:
-                set_error_state (STATE_SSL_SOCK_GENERAL_ERROR);
-                break;
-        }
-    }
-
-    return bytesSent;
-}
-
-int ev_socket::ssl_write (const char* dataBuffer, int dataLen) 
-{
-
-    int bytesSent = SSL_write(m_ssl, dataBuffer, dataLen);
-
-    if (bytesSent <= 0) {
-        int sslError = SSL_get_error(m_ssl, bytesSent);
-        switch (sslError) {
-            case SSL_ERROR_SYSCALL:
-                set_error_state (STATE_TCP_REMOTE_CLOSED_ERROR);
-                break;
-
-            case SSL_ERROR_ZERO_RETURN:
-            case SSL_ERROR_WANT_READ:
-            case SSL_ERROR_WANT_WRITE:
-                break;
-            
-            default:
-                set_error_state (STATE_SSL_SOCK_GENERAL_ERROR);
-                break;
-        }
-    }
-
-    return bytesSent;
-}
-
-void ev_socket::ssl_shutdown () 
-{
-
-    int status = SSL_shutdown(m_ssl);
-    int sslError = SSL_get_error(m_ssl, status);
-    
-    switch (status) {
-        case 1:
-            set_state (STATE_SSL_RECEIVED_SHUTDOWN);
-            clear_state (STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN);
-            set_state (STATE_SSL_SENT_SHUTDOWN);
-            clear_state (STATE_SSL_TO_SEND_SHUTDOWN);
-            break;
-
-        case 0:
-            set_state (STATE_SSL_SENT_SHUTDOWN);
-            clear_state (STATE_SSL_TO_SEND_SHUTDOWN);
-            break;
-
-        default:
-            switch (sslError) {
-                case SSL_ERROR_SYSCALL:
-                case SSL_ERROR_ZERO_RETURN:
-                case SSL_ERROR_WANT_READ:
-                case SSL_ERROR_WANT_WRITE:
-                    break;
-                
-                default:
-                    clear_state (STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN);
-                    clear_state (STATE_SSL_TO_SEND_SHUTDOWN);
-                    set_error_state (STATE_SSL_SOCK_GENERAL_ERROR);
-                    break;
-            }
-            break;
-    }
+    return new_sock;
 }
 
 void ev_socket::enable_rd_only_notification () 
@@ -779,36 +563,252 @@ int ev_socket::tcp_listen(epoll_ctx* epoll_ctxp
     return ret_status;
 }
 
-ev_socket* ev_socket::new_tcp_connect (epoll_ctx* epoll_ctxp
-                                        , ev_sockaddr* localAddress
-                                        , ev_sockaddr* remoteAddress)
+void ev_socket::tcp_verify_established ()
 {
-    ev_socket* new_sock = epoll_ctxp->m_app->alloc_socket ();
+    int socketErr;
+    socklen_t socketErrBufLen = sizeof(int);
 
-    if (new_sock) {
-        new_sock->tcp_connect (epoll_ctxp, localAddress, remoteAddress);
-    } else {
-
-    }
-
-    return new_sock;
-}
-
-ev_socket* ev_socket::new_tcp_listen (epoll_ctx* epoll_ctxp
-                                        , ev_sockaddr* localAddress
-                                        , int lqlen)
-{
-    ev_socket* new_sock = epoll_ctxp->m_app->alloc_socket ();
-
-    if (new_sock) {
-        new_sock->tcp_listen (epoll_ctxp, localAddress, lqlen);
-    } else {
-
-    }
+    int retGetsockopt = getsockopt(m_fd
+                                    , SOL_SOCKET
+                                    , SO_ERROR
+                                    , &socketErr
+                                    , &socketErrBufLen);
     
-    return new_sock;
+    if ((retGetsockopt|socketErr) == 0){
+        set_state (STATE_TCP_CONN_ESTABLISHED);
+        inc_stats (tcpConnInitSuccess);
+        inc_stats (tcpConnInitSuccessInSec);
+    }else {
+        set_error_state (STATE_TCP_SOCK_CONNECT_FAIL);
+        set_socket_errno (socketErr);
+        inc_stats (tcpConnInitFail);
+    }
 }
 
+void ev_socket::tcp_close (int isLinger=0, int lingerTime=0) {
+
+    if (isLinger) {
+        struct linger sl;
+        sl.l_onoff = 1;
+        sl.l_linger = lingerTime;
+
+        int lingerStatus 
+            = setsockopt(m_fd, SOL_SOCKET, SO_LINGER, &sl, sizeof(sl));
+        
+        if (lingerStatus < 0) {
+            inc_stats (socketLingerSetFail);
+            set_error_state (STATE_TCP_SOCK_LINGER_FAIL);
+        } else {
+            inc_stats (socketLingerSet);
+            set_state (STATE_TCP_SOCK_LINGER);
+        }
+    }
+
+    if ( close (m_fd) ) {
+        set_error_state (STATE_TCP_SOCK_FD_CLOSE_FAIL);
+    } else {
+        set_state (STATE_TCP_SOCK_FD_CLOSE);
+    }
+}
+
+void ev_socket::tcp_write_shutdown() {    
+    if (shutdown(m_fd, SHUT_WR)) {
+        set_error_state (STATE_TCP_FIN_SEND_FAIL);
+    } else {
+        set_state (STATE_TCP_SENT_FIN);
+    }
+}
+
+int ev_socket::tcp_write (const char* dataBuffer, int dataLen)
+{
+    // int bytesSent = send(fd, dataBuffer, dataLen, MSG_NOSIGNAL);
+    int bytesSent = write(m_fd, dataBuffer, dataLen);
+
+    if (bytesSent <= 0){
+        set_error_state (STATE_TCP_SOCK_WRITE_FAIL);
+        inc_stats (tcpWriteFail);
+
+        if (bytesSent == 0) {
+            inc_stats (tcpWriteReturnsZero);
+        }
+    }
+
+    return bytesSent;
+}
+
+int ev_socket::tcp_read (char* dataBuffer, int dataLen)
+{
+    int bytesRead = read(m_fd, dataBuffer, dataLen);
+
+    if (bytesRead == 0) {
+        set_state (STATE_TCP_REMOTE_CLOSED);
+        int socketErr;
+        socklen_t socketErrBufLen = sizeof(int);
+
+        int retGetsockopt = getsockopt(m_fd
+                                        , SOL_SOCKET
+                                        , SO_ERROR
+                                        , &socketErr
+                                        , &socketErrBufLen);
+        if ((retGetsockopt|socketErr)) {
+            set_error_state (STATE_TCP_SOCK_READ_FAIL);
+        }
+    } else if (bytesRead < 0) {
+        if (errno == EAGAIN) {
+            //nothing to read; retry
+        } else {
+            set_error_state (STATE_TCP_SOCK_READ_FAIL);
+            inc_stats (tcpReadFail);
+        }
+    }
+
+    return bytesRead;
+}
+
+void ev_socket::tcp_accept (ev_socket* ev_sock_parent)
+{
+    set_state (STATE_TCP_CONN_ACCEPT);
+
+    m_epoll_ctx = ev_sock_parent->m_epoll_ctx;
+    std::memcpy (&m_local_addr
+                    , &ev_sock_parent->m_local_addr
+                    , sizeof (ev_sockaddr));
+    m_sockstats_arr = ev_sock_parent->m_sockstats_arr;
+
+    socklen_t addrLen = sizeof (ev_sockaddr);
+    m_fd = accept(ev_sock_parent->m_fd
+                    , (struct sockaddr *) &m_remote_addr
+                    , &addrLen);
+    
+    if (m_fd < 0) {
+        inc_stats (tcpAcceptFail);
+        set_error_state (STATE_TCP_CONN_ACCEPT_FAIL);        
+    } else {
+        set_state (STATE_TCP_CONN_ESTABLISHED);
+
+        inc_stats (tcpAcceptSuccess);
+        inc_stats (tcpAcceptSuccessInSec);
+
+        int flags = fcntl(m_fd, F_GETFL, 0);
+        if (flags < 0) {
+            set_error_state (STATE_TCP_SOCK_F_GETFL_FAIL 
+                            | STATE_TCP_SOCK_O_NONBLOCK_FAIL);
+        } else {
+            int ret = fcntl(m_fd, F_SETFL, flags | O_NONBLOCK);
+            if (ret < 0) {
+                set_error_state (STATE_TCP_SOCK_F_SETFL_FAIL 
+                                | STATE_TCP_SOCK_O_NONBLOCK_FAIL);
+            } else {
+                set_state (STATE_TCP_CONN_ACCEPT_O_NONBLOCK);
+
+                //??? is it necessary
+                ret = setsockopt(m_fd, SOL_SOCKET
+                                , SO_REUSEADDR, &(int){ 1 }, sizeof(int));
+                if (ret < 0) {
+                    inc_stats (socketReuseSetFail);
+                    set_error_state (STATE_TCP_SOCK_REUSE_FAIL);
+                } else {
+                    inc_stats (socketReuseSet);
+                    set_state (STATE_TCP_SOCK_REUSE);
+                }
+            }
+        }
+    }
+
+    if ( get_error_state () ){
+        if (m_fd != -1){
+            tcp_close ();
+        }
+    }  
+}
+
+int ev_socket::ssl_read (char* dataBuffer, int dataLen) 
+{
+    int bytesSent = SSL_read(m_ssl, dataBuffer, dataLen);
+
+    if (bytesSent <= 0) {
+        int sslError = SSL_get_error(m_ssl, bytesSent);
+        switch (sslError) {
+            case SSL_ERROR_ZERO_RETURN:
+            case SSL_ERROR_SYSCALL:
+                set_state (STATE_TCP_REMOTE_CLOSED);
+                break;
+  
+            case SSL_ERROR_WANT_READ:
+            case SSL_ERROR_WANT_WRITE:
+                break;
+            
+            default:
+                set_error_state (STATE_SSL_SOCK_GENERAL_ERROR);
+                break;
+        }
+    }
+
+    return bytesSent;
+}
+
+int ev_socket::ssl_write (const char* dataBuffer, int dataLen) 
+{
+
+    int bytesSent = SSL_write(m_ssl, dataBuffer, dataLen);
+
+    if (bytesSent <= 0) {
+        int sslError = SSL_get_error(m_ssl, bytesSent);
+        switch (sslError) {
+            case SSL_ERROR_SYSCALL:
+                set_error_state (STATE_TCP_REMOTE_CLOSED_ERROR);
+                break;
+
+            case SSL_ERROR_ZERO_RETURN:
+            case SSL_ERROR_WANT_READ:
+            case SSL_ERROR_WANT_WRITE:
+                break;
+            
+            default:
+                set_error_state (STATE_SSL_SOCK_GENERAL_ERROR);
+                break;
+        }
+    }
+
+    return bytesSent;
+}
+
+void ev_socket::ssl_shutdown () 
+{
+
+    int status = SSL_shutdown(m_ssl);
+    int sslError = SSL_get_error(m_ssl, status);
+    
+    switch (status) {
+        case 1:
+            set_state (STATE_SSL_RECEIVED_SHUTDOWN);
+            clear_state (STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN);
+            set_state (STATE_SSL_SENT_SHUTDOWN);
+            clear_state (STATE_SSL_TO_SEND_SHUTDOWN);
+            break;
+
+        case 0:
+            set_state (STATE_SSL_SENT_SHUTDOWN);
+            clear_state (STATE_SSL_TO_SEND_SHUTDOWN);
+            break;
+
+        default:
+            switch (sslError) {
+                case SSL_ERROR_SYSCALL:
+                case SSL_ERROR_ZERO_RETURN:
+                case SSL_ERROR_WANT_READ:
+                case SSL_ERROR_WANT_WRITE:
+                    break;
+                
+                default:
+                    clear_state (STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN);
+                    clear_state (STATE_SSL_TO_SEND_SHUTDOWN);
+                    set_error_state (STATE_SSL_SOCK_GENERAL_ERROR);
+                    break;
+            }
+            break;
+    }
+}
 
 void ev_socket::handle_tcp_accept ()
 {
