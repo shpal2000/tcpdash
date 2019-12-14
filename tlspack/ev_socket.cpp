@@ -988,30 +988,88 @@ void ev_socket::epoll_process (epoll_ctx* epoll_ctxp)
     
     if (event_count > 0)
     {
-        for (int event_index = 0; event_index < event_count; event_index++)
+        for (int eindex = 0; eindex < event_count; eindex++)
         {
-            epoll_event* eventp = &(epoll_ctxp->m_epoll_event_arr[event_index]);
+            epoll_event* eventp = &(epoll_ctxp->m_epoll_event_arr[eindex]);
             ev_socket* sockp = (ev_socket*) eventp->data.ptr;
             uint32_t events = eventp->events;
-
+            //handle tcp accept
             if ( sockp->is_set_state (STATE_TCP_LISTENING) )
             {
                 sockp->handle_tcp_accept ();
             } 
             else
             {
-                if ( (sockp->get_status() == CONNAPP_STATE_CONNECTION_IN_PROGRESS)
-                                                            && (events & EPOLLOUT) ) 
+                //handle tcp connect
+                if ( (sockp->get_status() 
+                            == CONNAPP_STATE_CONNECTION_IN_PROGRESS)
+                            && (events & EPOLLOUT) )
                 {
-                    // sockp->handle_tcp_connect_complete ();
+                    sockp->handle_tcp_connect_complete ();
                 }
-                else if ( sockp->get_status() == CONNAPP_STATE_SSL_CONNECTION_IN_PROGRESS)
+                //handle ssl handshake
+                else if ( sockp->get_status() 
+                            == CONNAPP_STATE_SSL_CONNECTION_IN_PROGRESS )
                 {
 
                 }
-                else if ()
+                //handle read, write both ssl and non-ssl tcp
+                else if ( (sockp->get_status()
+                            == CONNAPP_STATE_SSL_CONNECTION_ESTABLISHED) ||
+                            ( (sockp->get_status()
+                            == CONNAPP_STATE_CONNECTION_ESTABLISHED) && 
+                            (sockp->is_set_state(STATE_SSL_ENABLED_CONN) == 0)) )
                 {
-                    
+                    //handle read
+                    if ( (events & EPOLLIN) 
+                            && (sockp->is_fd_closed() == false) )
+                    {
+                        if (sockp->is_set_state(STATE_TCP_REMOTE_CLOSED) == 0)
+                        {
+                            if (sockp->is_set_state(STATE_CONN_READ_PENDING) 
+                                == 0)
+                            {
+                                sockp->invoke_app_cb (CB_ID_ON_READ);
+                            }
+
+                            if (sockp->is_set_state(STATE_CONN_READ_PENDING)
+                                && (sockp->is_fd_closed() == false))
+                            {
+                                sockp->do_read_next_data ();
+                            }
+                        }
+                    }
+                    //handle write
+                    if ( (events & EPOLLOUT) 
+                            && (sockp->is_fd_closed() == false) )
+                    {
+                        if (sockp->is_set_state(STATE_CONN_WRITE_PENDING) 
+                            == 0)
+                        {
+                            if (sockp->is_set_state(STATE_NO_MORE_WRITE_DATA))
+                            {
+                                sockp->do_close_connection ();
+                            }
+                            else
+                            {
+                                sockp->invoke_app_cb (CB_ID_ON_WRITE);
+                            }
+                        }
+
+                        if (sockp->is_set_state(STATE_CONN_WRITE_PENDING)
+                            && (sockp->is_fd_closed() == false))
+                        {
+                            sockp->do_write_next_data ();
+                        }
+                    }
+
+                    if ( (sockp->is_fd_closed() == false)
+                            && sockp->is_set_state(STATE_TCP_REMOTE_CLOSED)
+                            && (sockp->is_set_state(STATE_TCP_SENT_FIN)
+                                ||(sockp->is_set_error_state(STATE_TCP_FIN_SEND_FAIL))) )
+                    {
+                        sockp->do_close_connection ();
+                    }
                 }
             }
         }
