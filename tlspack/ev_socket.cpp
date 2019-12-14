@@ -810,6 +810,69 @@ void ev_socket::ssl_shutdown ()
     }
 }
 
+void ev_socket::invoke_app_cb (int cbid)
+{
+    switch (cbid)
+    {
+        case CB_ID_ON_ESTABLISH:
+            m_epoll_ctx->m_app->on_establish (this);
+            break;
+        case CB_ID_ON_WRITE:
+            m_epoll_ctx->m_app->on_write (this);
+            break;
+        case CB_ID_ON_WSTATUS:
+            m_epoll_ctx->m_app->on_wstatus (this);
+            break;
+        case CB_ID_ON_READ:
+            m_epoll_ctx->m_app->on_read (this);
+            break;
+        case CB_ID_ON_RSTATUS:
+            m_epoll_ctx->m_app->on_rstatus (this);
+            break;
+        case CB_ID_ON_FINISH:
+            //??? why this guarding flag
+            if ( is_set_state (STATE_CONN_MARK_FINISH) == 0) {
+                m_epoll_ctx->m_finish_list.push (this);
+                set_state (STATE_CONN_MARK_FINISH);
+            }
+            break;
+    }
+}
+
+void ev_socket::close_socket ()
+{
+    if ( is_fd_closed () == false ) {
+
+        int isLinger = 0;
+        int lingerTime = 0;
+
+        if ( get_error_state() || is_set_state (STATE_TCP_TO_SEND_RST) ) {
+            isLinger = 1;
+        }
+
+        disable_rd_wr_notification ();     
+
+        tcp_close (isLinger, lingerTime);
+    }  
+}
+
+void ev_socket::tcp_connection_success ()
+{
+
+}
+
+void ev_socket::tcp_connection_success ()
+{
+    set_status (CONNAPP_STATE_CONNECTION_ESTABLISHED);
+    invoke_app_cb (CB_ID_ON_ESTABLISH);
+}
+
+void ev_socket::tcp_connection_fail ()
+{
+    set_status(CONNAPP_STATE_CONNECTION_ESTABLISH_FAILED);
+    do_close_connection ();
+}
+
 void ev_socket::handle_tcp_accept ()
 {
     ev_socket* ev_sock_ptr = m_epoll_ctx->m_app->alloc_socket ();
@@ -819,13 +882,29 @@ void ev_socket::handle_tcp_accept ()
     } else {
         ev_sock_ptr->tcp_accept (this);
 
-        if ( ev_sock_ptr->get_error_state() ) {
-            ev_sock_ptr->invoke_app_cb (CB_ID_ON_FINISH);
-        } else {
-            ev_sock_ptr->set_status (CONNAPP_STATE_CONNECTION_ESTABLISHED);
+        if ( ev_sock_ptr->get_error_state() ) 
+        {
+            ev_sock_ptr->tcp_connection_fail ();
+        } 
+        else 
+        {
             ev_sock_ptr->enable_rd_wr_notification ();
-            ev_sock_ptr->invoke_app_cb (CB_ID_ON_ESTABLISH);
+            ev_sock_ptr->tcp_connection_success ();
         }
+    }
+}
+
+void ev_socket::handle_tcp_connect_complete ()
+{
+    tcp_verify_established ();
+
+    if ( get_error_state() )
+    {
+        tcp_connection_fail ();
+    }
+    else
+    {
+        tcp_connection_success ();
     }
 }
 
@@ -886,51 +965,6 @@ void ev_socket::do_ssl_handshake()
     }
 }
 
-void ev_socket::invoke_app_cb (int cbid)
-{
-    switch (cbid)
-    {
-        case CB_ID_ON_ESTABLISH:
-            m_epoll_ctx->m_app->on_establish (this);
-            break;
-        case CB_ID_ON_WRITE:
-            m_epoll_ctx->m_app->on_write (this);
-            break;
-        case CB_ID_ON_WSTATUS:
-            m_epoll_ctx->m_app->on_wstatus (this);
-            break;
-        case CB_ID_ON_READ:
-            m_epoll_ctx->m_app->on_read (this);
-            break;
-        case CB_ID_ON_RSTATUS:
-            m_epoll_ctx->m_app->on_rstatus (this);
-            break;
-        case CB_ID_ON_FINISH:
-            //??? why this guarding flag
-            if ( is_set_state (STATE_CONN_MARK_FINISH) == 0) {
-                m_epoll_ctx->m_finish_list.push (this);
-                set_state (STATE_CONN_MARK_FINISH);
-            }
-            break;
-    }
-}
-
-void ev_socket::close_socket ()
-{
-    if ( is_fd_closed () == false ) {
-
-        int isLinger = 0;
-        int lingerTime = 0;
-
-        if ( get_error_state() || is_set_state (STATE_TCP_TO_SEND_RST) ) {
-            isLinger = 1;
-        }
-
-        disable_rd_wr_notification ();     
-
-        tcp_close (isLinger, lingerTime);
-    }  
-}
 
 void ev_socket::do_close_connection ()
 {
@@ -983,6 +1017,10 @@ void ev_socket::do_write_next_data ()
 
 }
 
+void ev_socket::do_read_next_data ()
+{
+
+}
 ///////////////////////////////////event processing///////////////////////////////////
 void ev_socket::epoll_process (epoll_ctx* epoll_ctxp)
 {
@@ -1023,7 +1061,6 @@ void ev_socket::epoll_process (epoll_ctx* epoll_ctxp)
                     {
                         doSslHandshake = true;
                         sockp->clear_state (STATE_SSL_HANDSHAKE_WANT_WRITE);
-                        sockp->do_ssl_handshake ();
                     }
 
                     if ( sockp->is_set_state(STATE_SSL_HANDSHAKE_WANT_READ)

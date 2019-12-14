@@ -317,23 +317,39 @@ public:
         m_ssl_errno = ssl_errno;
     };
 
-    void set_as_ssl_client (SSL* ssl)
+private:
+    void set_ssl (SSL* ssl)
     {
         m_ssl = ssl;
-        m_ssl_client = true;
+        set_status (CONNAPP_STATE_SSL_CONNECTION_IN_PROGRESS);
+        if (m_ssl_client) 
+        {
+            set_state (STATE_SSL_ENABLED_CONN | STATE_SSL_CONN_CLIENT);
+        } 
+        else 
+        {
+            set_state (STATE_SSL_ENABLED_CONN);
+        }
         do_ssl_handshake ();
     }
 
-    void set_as_ssl_server (SSL* ssl)
-    {
-        m_ssl = ssl;
-        m_ssl_client = false;
-        do_ssl_handshake ();
-    }
+public:
 
     SSL* get_ssl () 
     {
         return m_ssl;
+    }
+
+    void set_as_ssl_client (SSL* ssl)
+    {
+        m_ssl_client = true;
+        set_ssl (ssl);
+    }
+
+    void set_as_ssl_server (SSL* ssl)
+    {
+        m_ssl_client = false;
+        set_ssl (ssl);
     }
 
     epoll_ctx* get_epoll_ctx () {
@@ -379,7 +395,7 @@ public:
     void abort ();
 
 private:
-    /////////////////////////////////tcp platform functions////////////////////////
+    ////////////////////////////tcp ssl platform functions////////////////////
     int tcp_connect (epoll_ctx* epoll_ctxp
                     , ev_sockaddr* localAddress
                     , ev_sockaddr* remoteAddress);
@@ -399,11 +415,14 @@ private:
     int ssl_write (const char* dataBuffer, int dataLen);
     void ssl_shutdown ();
     
-    /////////////////////////////////helper functions///////////////////////////
-    void handle_tcp_accept ();
-    void do_ssl_handshake ();
+    ///////////////////////////////helper functions/////////////////////////
+    void tcp_connection_success ();
+    void tcp_connection_fail ();
     void invoke_app_cb (int cbid);
     void close_socket ();
+    void handle_tcp_accept ();
+    void handle_tcp_connect_complete ();
+    void do_ssl_handshake ();
     void do_close_connection ();
     void do_write_next_data ();
     void do_read_next_data ();
