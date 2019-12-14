@@ -13,3 +13,8 @@ ev_app::~ev_app()
         m_epoll_ctx = nullptr;
     }
 }
+
+void ev_app::run_iter ()
+{
+    ev_socket::epoll_process (m_epoll_ctx);
+}

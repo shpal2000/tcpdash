@@ -7,7 +7,7 @@ public:
     ~ev_app();
 
 
-    virtual int run_iter() = 0;
+    virtual void run_iter();
     
     virtual ev_socket* alloc_socket() = 0;
     virtual void on_establish (ev_socket* ev_sock) = 0;

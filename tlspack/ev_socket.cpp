@@ -978,7 +978,7 @@ void ev_socket::do_close_connection ()
     }
 }
 
-////////////////////////////////////////////////////event processing//////////////////////////////////////////
+///////////////////////////////////event processing///////////////////////////////////
 void ev_socket::epoll_process (epoll_ctx* epoll_ctxp)
 {
     int event_count = epoll_wait (epoll_ctxp->m_epoll_id
@@ -990,21 +990,34 @@ void ev_socket::epoll_process (epoll_ctx* epoll_ctxp)
     {
         for (int event_index = 0; event_index < event_count; event_index++)
         {
-            ev_socket* ev_sock_ptr 
-                = (ev_socket*) epoll_ctxp->m_epoll_event_arr[event_index].data.ptr;
+            epoll_event* eventp = &(epoll_ctxp->m_epoll_event_arr[event_index]);
+            ev_socket* sockp = (ev_socket*) eventp->data.ptr;
+            uint32_t events = eventp->events;
 
-            if ( ev_sock_ptr->is_set_state (STATE_TCP_LISTENING) )
+            if ( sockp->is_set_state (STATE_TCP_LISTENING) )
             {
-                ev_sock_ptr->handle_tcp_accept ();
+                sockp->handle_tcp_accept ();
             } 
             else
             {
+                if ( (sockp->get_status() == CONNAPP_STATE_CONNECTION_IN_PROGRESS)
+                                                            && (events & EPOLLOUT) ) 
+                {
+                    // sockp->handle_tcp_connect_complete ();
+                }
+                else if ( sockp->get_status() == CONNAPP_STATE_SSL_CONNECTION_IN_PROGRESS)
+                {
 
+                }
+                else if ()
+                {
+                    
+                }
             }
         }
 
         //abort process
-        if ( not epoll_ctxp->m_abort_list.empty() )
+        if ( epoll_ctxp->m_abort_list.empty() == false )
         {
             ev_socket* ev_sock_ptr = epoll_ctxp->m_abort_list.front();
 
@@ -1014,7 +1027,7 @@ void ev_socket::epoll_process (epoll_ctx* epoll_ctxp)
         }
 
         //free up process
-        if ( not epoll_ctxp->m_finish_list.empty() )
+        if ( epoll_ctxp->m_finish_list.empty() == false )
         {
             ev_socket* ev_sock_ptr = epoll_ctxp->m_finish_list.front();
             epoll_ctxp->m_app->on_free (ev_sock_ptr);

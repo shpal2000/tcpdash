@@ -6,7 +6,7 @@ public:
     tlssrv_app(/* args */);
     ~tlssrv_app();
 
-    int run_iter();
+    void run_iter();
     ev_socket* alloc_socket();
     void on_establish (ev_socket* ev_sock);
     void on_write (ev_socket* ev_sock);
