@@ -264,7 +264,7 @@ void ev_socket::read_next_data (char* readBuffer
     m_read_data_len_cur = readDataLen;
     m_read_bytes_len_cur = 0;
 
-    m_read_error = READ_ERROR_NONE;
+    m_read_status = READ_STATUS_NORMAL;
 
     if (partialRead) {
         set_state (STATE_CONN_PARTIAL_READ);
@@ -1078,13 +1078,13 @@ void ev_socket::do_read_next_data ()
         switch ( get_sys_errno() ) 
         {
             case ETIMEDOUT:
-                m_read_error = READ_ERROR_TCP_TIMEOUT; 
+                m_read_status = READ_STATUS_TCP_TIMEOUT; 
                 break;
             case ECONNRESET:
-                m_read_error = READ_ERROR_TCP_RESET;
+                m_read_status = READ_STATUS_TCP_RESET;
                 break;
             default:
-                m_read_error  = READ_ERROR_UNKNOWN;
+                m_read_status  = READ_STATUS_ERROR;
                 break;
         }
         do_close_connection ();
@@ -1095,6 +1095,7 @@ void ev_socket::do_read_next_data ()
             if ( is_set_state (STATE_TCP_REMOTE_CLOSED) ) 
             {
                 notifyReadStatus = true;
+                m_read_status = READ_STATUS_TCP_CLOSE;
                 disable_rd_notification ();
             } 
             else
@@ -1120,15 +1121,9 @@ void ev_socket::do_read_next_data ()
     if (notifyReadStatus) 
     {
         clear_state (STATE_CONN_READ_PENDING);
-        if (m_read_bytes_len_cur) 
-        {
-            m_epoll_ctx->m_app->on_read_bytes (this, m_read_bytes_len_cur);
-        }
-
-        if ( m_read_error || is_set_state (STATE_TCP_REMOTE_CLOSED) )
-        {
-            m_epoll_ctx->m_app->on_read_close (this, m_read_error);
-        }
+        m_epoll_ctx->m_app->on_rstatus (this
+                            , m_read_bytes_len_cur
+                            , m_read_status );
     }
 
 }

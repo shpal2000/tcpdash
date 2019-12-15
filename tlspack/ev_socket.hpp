@@ -85,10 +85,16 @@ class ev_app;
 #define CONNAPP_STATE_SSL_CONNECTION_ESTABLISH_FAILED    7
 #define CONNAPP_STATE_LISTEN                             1000
 
-#define READ_ERROR_NONE                                 0
-#define READ_ERROR_UNKNOWN                              -1
-#define READ_ERROR_TCP_TIMEOUT                          -2
-#define READ_ERROR_TCP_RESET                            -3
+#define READ_STATUS_NORMAL                               0
+#define READ_STATUS_TCP_RESET                            1
+#define READ_STATUS_TCP_TIMEOUT                          2
+#define READ_STATUS_ERROR                                3
+#define READ_STATUS_TCP_CLOSE                            4
+
+#define WRITE_STATUS_NORMAL                              0
+#define WRITE_STATUS_TCP_RESET                           1
+#define WRITE_STATUS_TCP_TIMEOUT                         2
+#define WRITE_STATUS_ERROR                               3
 
 #define inc_stats(__stat_name) \
 { \
@@ -248,7 +254,8 @@ private:
     ev_sockaddr m_local_addr;
     ev_sockaddr m_remote_addr;
 
-    int m_read_error;
+    int m_read_status;
+
     char* m_read_buffer;
     int m_read_buff_offset;
     int m_read_data_len;
@@ -256,6 +263,8 @@ private:
     int m_read_buff_offset_cur;
     int m_read_data_len_cur;
     int m_read_bytes_len_cur;
+
+    int m_write_status;
 
     char* m_write_buffer;
     int m_write_buff_offset;
