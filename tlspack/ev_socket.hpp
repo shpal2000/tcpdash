@@ -85,11 +85,10 @@ class ev_app;
 #define CONNAPP_STATE_SSL_CONNECTION_ESTABLISH_FAILED    7
 #define CONNAPP_STATE_LISTEN                             1000
 
-#define ON_CLOSE_ERROR_NONE                                 0
-#define ON_CLOSE_ERROR_UNKNOWN                              -1
-#define ON_CLOSE_ERROR_GENERAL                              -2
-#define ON_CLOSE_ERROR_TCP_TIMEOUT                          -3
-#define ON_CLOSE_ERROR_TCP_RESET                            -4
+#define READ_ERROR_NONE                                 0
+#define READ_ERROR_UNKNOWN                              -1
+#define READ_ERROR_TCP_TIMEOUT                          -2
+#define READ_ERROR_TCP_RESET                            -3
 
 #define inc_stats(__stat_name) \
 { \
@@ -249,6 +248,7 @@ private:
     ev_sockaddr m_local_addr;
     ev_sockaddr m_remote_addr;
 
+    int m_read_error;
     char* m_read_buffer;
     int m_read_buff_offset;
     int m_read_data_len;
@@ -446,7 +446,6 @@ private:
     ///////////////////////////////helper functions/////////////////////////
     void invoke_app_cb (int cbid);
     void close_socket ();
-    int map_close_error ();
     void tcp_connection_success ();
     void tcp_connection_fail ();
     void handle_tcp_accept ();

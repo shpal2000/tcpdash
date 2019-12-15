@@ -264,6 +264,8 @@ void ev_socket::read_next_data (char* readBuffer
     m_read_data_len_cur = readDataLen;
     m_read_bytes_len_cur = 0;
 
+    m_read_error = READ_ERROR_NONE;
+
     if (partialRead) {
         set_state (STATE_CONN_PARTIAL_READ);
     } else {
@@ -904,31 +906,6 @@ void ev_socket::close_socket ()
     }
 }
 
-int ev_socket::map_close_error ()
-{
-    int closeError  = ON_CLOSE_ERROR_UNKNOWN;
-
-    if ( get_error_state() ) 
-    {
-        switch ( get_sys_errno() ) 
-        {
-            case ETIMEDOUT:
-                closeError = ON_CLOSE_ERROR_TCP_TIMEOUT; 
-                break;
-
-            case ECONNRESET:
-                closeError = ON_CLOSE_ERROR_TCP_RESET;
-                break;
-
-            default:
-                closeError = ON_CLOSE_ERROR_GENERAL; 
-                break;
-        }
-    }
-
-    return closeError;
-}
-
 void ev_socket::tcp_connection_success ()
 {
     set_status (CONNAPP_STATE_CONNECTION_ESTABLISHED);
@@ -1094,25 +1071,39 @@ void ev_socket::do_read_next_data ()
     }
 
     bool notifyReadStatus = false;
-    int readStatus;
 
     if ( get_error_state() ) 
     {
         notifyReadStatus = true;
-        readStatus = map_close_error ();
+        switch ( get_sys_errno() ) 
+        {
+            case ETIMEDOUT:
+                m_read_error = READ_ERROR_TCP_TIMEOUT; 
+                break;
+            case ECONNRESET:
+                m_read_error = READ_ERROR_TCP_RESET;
+                break;
+            default:
+                m_read_error  = READ_ERROR_UNKNOWN;
+                break;
+        }
         do_close_connection ();
     } 
     else
     {
         if (bytesReceived <= 0) {
-            if ( is_set_state (STATE_TCP_REMOTE_CLOSED) ) {
-                disable_rd_notification ();
+            if ( is_set_state (STATE_TCP_REMOTE_CLOSED) ) 
+            {
                 notifyReadStatus = true;
-                readStatus = m_read_bytes_len_cur;
-            } else {
+                disable_rd_notification ();
+            } 
+            else
+            {
                 // ssl want read write; skip;
             }
-        } else {
+        }
+        else 
+        {
             //process read data
             m_read_bytes_len_cur += bytesReceived;
             m_read_buff_offset_cur += bytesReceived;
@@ -1122,7 +1113,6 @@ void ev_socket::do_read_next_data ()
                 || (m_read_bytes_len_cur == m_read_data_len) )
             {
                 notifyReadStatus = true;
-                readStatus = m_read_bytes_len_cur;
             }
         }
     }
@@ -1130,7 +1120,15 @@ void ev_socket::do_read_next_data ()
     if (notifyReadStatus) 
     {
         clear_state (STATE_CONN_READ_PENDING);
-        m_epoll_ctx->m_app->on_rstatus (this, readStatus);
+        if (m_read_bytes_len_cur) 
+        {
+            m_epoll_ctx->m_app->on_read_bytes (this, m_read_bytes_len_cur);
+        }
+
+        if ( m_read_error || is_set_state (STATE_TCP_REMOTE_CLOSED) )
+        {
+            m_epoll_ctx->m_app->on_read_close (this, m_read_error);
+        }
     }
 
 }
