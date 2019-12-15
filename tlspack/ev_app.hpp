@@ -12,9 +12,12 @@ public:
     virtual ev_socket* alloc_socket() = 0;
     virtual void on_establish (ev_socket* ev_sock) = 0;
     virtual void on_write (ev_socket* ev_sock) = 0;
-    virtual void on_wstatus (ev_socket* ev_sock) = 0;
+    virtual void on_wstatus (ev_socket* ev_sock, int bytes_written) = 0;
     virtual void on_read (ev_socket* ev_sock) = 0;
-    virtual void on_rstatus (ev_socket* ev_sock) = 0;
+    virtual void on_rstatus (ev_socket* ev_sock
+                                , int bytes_read
+                                , bool read_close
+                                , int read_close_status) = 0;
     virtual void on_free (ev_socket* ev_sock) = 0;
 
 

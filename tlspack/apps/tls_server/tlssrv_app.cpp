@@ -31,7 +31,7 @@ void tlssrv_app::on_write (ev_socket* ev_sock)
 
 }
 
-void tlssrv_app::on_wstatus (ev_socket* ev_sock)
+void tlssrv_app::on_wstatus (ev_socket* ev_sock, int bytes_written)
 {
 
 }
@@ -41,7 +41,7 @@ void tlssrv_app::on_read (ev_socket* ev_sock)
 
 }
 
-void tlssrv_app::on_rstatus (ev_socket* ev_sock)
+void tlssrv_app::on_rstatus (ev_socket* ev_sock, int bytes_read)
 {
 
 }

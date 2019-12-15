@@ -85,12 +85,11 @@ class ev_app;
 #define CONNAPP_STATE_SSL_CONNECTION_ESTABLISH_FAILED    7
 #define CONNAPP_STATE_LISTEN                             1000
 
-#define CB_ID_ON_ESTABLISH      1
-#define CB_ID_ON_WRITE          2
-#define CB_ID_ON_WSTATUS        3
-#define CB_ID_ON_READ           4
-#define CB_ID_ON_RSTATUS        5
-#define CB_ID_ON_FINISH         6
+#define ON_CLOSE_ERROR_NONE                                 0
+#define ON_CLOSE_ERROR_UNKNOWN                              -1
+#define ON_CLOSE_ERROR_GENERAL                              -2
+#define ON_CLOSE_ERROR_TCP_TIMEOUT                          -3
+#define ON_CLOSE_ERROR_TCP_RESET                            -4
 
 #define inc_stats(__stat_name) \
 { \
@@ -447,7 +446,7 @@ private:
     ///////////////////////////////helper functions/////////////////////////
     void invoke_app_cb (int cbid);
     void close_socket ();
-    int map_error ();
+    int map_close_error ();
     void tcp_connection_success ();
     void tcp_connection_fail ();
     void handle_tcp_accept ();

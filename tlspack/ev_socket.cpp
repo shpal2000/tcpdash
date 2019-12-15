@@ -897,39 +897,42 @@ void ev_socket::close_socket ()
 
         tcp_close (isLinger, lingerTime);
 
-        invoke_app_cb (CB_ID_ON_FINISH);
-    }  
+        if ( is_set_state (STATE_CONN_MARK_FINISH) == 0) {
+            m_epoll_ctx->m_finish_list.push (this);
+            set_state (STATE_CONN_MARK_FINISH);
+        }
+    }
 }
 
-int ev_socket::map_error ()
+int ev_socket::map_close_error ()
 {
-    int iovConnErr  = ON_CLOSE_ERROR_UNKNOWN;
+    int closeError  = ON_CLOSE_ERROR_UNKNOWN;
 
-    if ( GetCES (newConn) ) {
-
-        switch ( GetSysErrno (newConn) ) {
-
+    if ( get_error_state() ) 
+    {
+        switch ( get_sys_errno() ) 
+        {
             case ETIMEDOUT:
-                iovConnErr = ON_CLOSE_ERROR_TCP_TIMEOUT; 
+                closeError = ON_CLOSE_ERROR_TCP_TIMEOUT; 
                 break;
 
             case ECONNRESET:
-                iovConnErr = ON_CLOSE_ERROR_TCP_RESET;
+                closeError = ON_CLOSE_ERROR_TCP_RESET;
                 break;
 
             default:
-                iovConnErr = ON_CLOSE_ERROR_GENERAL; 
+                closeError = ON_CLOSE_ERROR_GENERAL; 
                 break;
         }
     }
 
-    return iovConnErr;   
+    return closeError;
 }
 
 void ev_socket::tcp_connection_success ()
 {
     set_status (CONNAPP_STATE_CONNECTION_ESTABLISHED);
-    invoke_app_cb (CB_ID_ON_ESTABLISH);
+    m_epoll_ctx->m_app->on_establish (this);
 }
 
 void ev_socket::tcp_connection_fail ()
@@ -1090,59 +1093,46 @@ void ev_socket::do_read_next_data ()
                         , m_read_data_len_cur);
     }
 
-    if ( get_error_state() ) {
-        int iovConnErr = MapConnectionError (newConn);
-        ClearCS1 (newConn, STATE_CONN_READ_PENDING);
-        CloseConnection(newConn);
-        (*newConn->cInfo.iovCtx->methods.OnReadStatus)(newConn, iovConnErr);
-        ProcessAbortConnections (newConn->cInfo.iovCtx);        
-    } else {
+    bool notifyReadStatus = false;
+    int readStatus;
+
+    if ( get_error_state() ) 
+    {
+        notifyReadStatus = true;
+        readStatus = map_close_error ();
+        do_close_connection ();
+    } 
+    else
+    {
         if (bytesReceived <= 0) {
             if ( is_set_state (STATE_TCP_REMOTE_CLOSED) ) {
-                ClearCS1 (newConn, STATE_CONN_READ_PENDING);
-                DisableReadNotification (newConn);
-                if ( get_error_state() ) {
-                    int iovConnErr = MapConnectionError (newConn);
-                    CloseConnection(newConn);
-                    (*newConn->cInfo.iovCtx->methods.OnReadStatus)(newConn, iovConnErr);
-                    ProcessAbortConnections (newConn->cInfo.iovCtx);
-                } else {
-                    (*newConn->cInfo.iovCtx->methods.OnReadStatus)(newConn
-                                                        , ON_CLOSE_ERROR_NONE);
-
-                    ProcessAbortConnections (newConn->cInfo.iovCtx);
-                }
+                disable_rd_notification ();
+                notifyReadStatus = true;
+                readStatus = m_read_bytes_len_cur;
             } else {
                 // ssl want read write; skip;
             }
         } else {
             //process read data
-            newConn->cInfo.readBytesLenCur += bytesReceived;
-            newConn->cInfo.readBuffOffsetCur += bytesReceived;
-            newConn->cInfo.readDataLenCur -= bytesReceived;
+            m_read_bytes_len_cur += bytesReceived;
+            m_read_buff_offset_cur += bytesReceived;
+            m_read_data_len_cur -= bytesReceived;
 
-            int notifyReadStatus;
-            if ( is_set_state (STATE_CONN_PARTIAL_READ) ){
-                notifyReadStatus = 1;
-            } else {
-                if (newConn->cInfo.readBytesLenCur 
-                        == newConn->cInfo.readDataLen) {
-                    notifyReadStatus = 1;
-                } else {
-                    notifyReadStatus = 0;
-                }                
-            }
-
-            if (notifyReadStatus) {
-                ClearCS1 (newConn, STATE_CONN_READ_PENDING);
-
-                (*newConn->cInfo.iovCtx->methods.OnReadStatus)(newConn
-                                        , newConn->cInfo.readBytesLenCur);
-
-                ProcessAbortConnections (newConn->cInfo.iovCtx);
+            if ( is_set_state (STATE_CONN_PARTIAL_READ) 
+                || (m_read_bytes_len_cur == m_read_data_len) )
+            {
+                notifyReadStatus = true;
+                readStatus = m_read_bytes_len_cur;
             }
         }
     }
+
+    if (notifyReadStatus) 
+    {
+        clear_state (STATE_CONN_READ_PENDING);
+        m_epoll_ctx->m_app->on_rstatus (this, readStatus);
+    }
+
 }
 
 void ev_socket::do_write_next_data ()
@@ -1219,7 +1209,7 @@ void ev_socket::epoll_process (epoll_ctx* epoll_ctxp)
                             if (sockp->is_set_state(STATE_CONN_READ_PENDING) 
                                 == 0)
                             {
-                                sockp->invoke_app_cb (CB_ID_ON_READ);
+                                epoll_ctxp->m_app->on_read (sockp);
                             }
 
                             if (sockp->is_set_state(STATE_CONN_READ_PENDING)
@@ -1242,7 +1232,7 @@ void ev_socket::epoll_process (epoll_ctx* epoll_ctxp)
                             }
                             else
                             {
-                                sockp->invoke_app_cb (CB_ID_ON_WRITE);
+                                epoll_ctxp->m_app->on_write (sockp);
                             }
                         }
 
