@@ -249,7 +249,24 @@ private:
     bool m_ipv6;
     ev_sockaddr m_local_addr;
     ev_sockaddr m_remote_addr;
-   
+
+    char* m_read_buffer;
+    int m_read_buff_offset;
+    int m_read_data_len;
+
+    int m_read_buff_offset_cur;
+    int m_read_data_len_cur;
+    int m_read_bytes_len_cur;
+
+    char* m_write_buffer;
+    int m_write_buff_offset;
+    int m_write_data_len;
+
+    int m_write_buff_offset_cur;
+    int m_write_data_len_cur;
+    int m_write_bytes_len_cur;
+
+
 public:
     ev_socket();
     virtual ~ev_socket();
@@ -392,7 +409,19 @@ public:
     void enable_wr_notification ();
     void enable_rd_notification ();
 
+    void read_next_data (char* readBuffer
+                            , int readBuffOffset
+                            , int readDataLen
+                            , bool partialRead);
+
+    void write_next_data (char* writeBuffer
+                            , int writeBuffOffset
+                            , int writeDataLen
+                            , bool partialWrite);
+    
     void abort ();
+
+
 
 private:
     ////////////////////////////tcp ssl platform functions////////////////////
@@ -416,15 +445,16 @@ private:
     void ssl_shutdown ();
     
     ///////////////////////////////helper functions/////////////////////////
-    void tcp_connection_success ();
-    void tcp_connection_fail ();
     void invoke_app_cb (int cbid);
     void close_socket ();
+    int map_error ();
+    void tcp_connection_success ();
+    void tcp_connection_fail ();
     void handle_tcp_accept ();
     void handle_tcp_connect_complete ();
     void do_ssl_handshake ();
     void do_close_connection ();
-    void do_write_next_data ();
     void do_read_next_data ();
+    void do_write_next_data ();
 };
 

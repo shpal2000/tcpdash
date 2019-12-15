@@ -249,6 +249,50 @@ void ev_socket::enable_wr_notification ()
     }
 }
 
+void ev_socket::read_next_data (char* readBuffer
+                                , int readBuffOffset
+                                , int readDataLen
+                                , bool partialRead) 
+{
+    set_state (STATE_CONN_READ_PENDING);
+
+    m_read_buffer = readBuffer;
+    m_read_buff_offset = readBuffOffset;
+    m_read_data_len = readDataLen;
+
+    m_read_buff_offset_cur = readBuffOffset;
+    m_read_data_len_cur = readDataLen;
+    m_read_bytes_len_cur = 0;
+
+    if (partialRead) {
+        set_state (STATE_CONN_PARTIAL_READ);
+    } else {
+        clear_state (STATE_CONN_PARTIAL_READ);
+    }    
+}
+
+void ev_socket::write_next_data (char* writeBuffer
+                                , int writeBuffOffset
+                                , int writeDataLen
+                                , bool partialWrite)
+{
+    set_state (STATE_CONN_WRITE_PENDING);
+
+    m_write_buffer = writeBuffer;
+    m_write_buff_offset = writeBuffOffset;
+    m_write_data_len = writeDataLen;
+
+    m_write_buff_offset_cur = writeBuffOffset;
+    m_write_data_len_cur = writeDataLen;
+    m_write_bytes_len_cur = 0;
+
+    if (partialWrite) {
+        set_state (STATE_CONN_PARTIAL_WRITE);
+    } else {
+        clear_state (STATE_CONN_PARTIAL_WRITE);
+    }
+}
+
 void ev_socket::abort ()
 {
     if ( is_set_state (STATE_CONN_MARK_DELETE) == 0 ) {
@@ -830,7 +874,6 @@ void ev_socket::invoke_app_cb (int cbid)
             m_epoll_ctx->m_app->on_rstatus (this);
             break;
         case CB_ID_ON_FINISH:
-            //??? why this guarding flag
             if ( is_set_state (STATE_CONN_MARK_FINISH) == 0) {
                 m_epoll_ctx->m_finish_list.push (this);
                 set_state (STATE_CONN_MARK_FINISH);
@@ -858,9 +901,29 @@ void ev_socket::close_socket ()
     }  
 }
 
-void ev_socket::tcp_connection_success ()
+int ev_socket::map_error ()
 {
+    int iovConnErr  = ON_CLOSE_ERROR_UNKNOWN;
 
+    if ( GetCES (newConn) ) {
+
+        switch ( GetSysErrno (newConn) ) {
+
+            case ETIMEDOUT:
+                iovConnErr = ON_CLOSE_ERROR_TCP_TIMEOUT; 
+                break;
+
+            case ECONNRESET:
+                iovConnErr = ON_CLOSE_ERROR_TCP_RESET;
+                break;
+
+            default:
+                iovConnErr = ON_CLOSE_ERROR_GENERAL; 
+                break;
+        }
+    }
+
+    return iovConnErr;   
 }
 
 void ev_socket::tcp_connection_success ()
@@ -990,7 +1053,7 @@ void ev_socket::do_close_connection ()
             =   (is_set_state (STATE_SSL_ENABLED_CONN) == 0) 
                 || is_set_state (STATE_SSL_SENT_SHUTDOWN) 
                 || ( (is_set_state (STATE_SSL_TO_SEND_SHUTDOWN) == 0)
-                    && (is_set_state (STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN) == 0) );
+                    && (is_set_state (STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN)==0) );
 
 
         bool wrShutdownDone 
@@ -1007,10 +1070,78 @@ void ev_socket::do_close_connection ()
         }
 
         if ( get_error_state () 
-                || ( is_set_state (STATE_TCP_REMOTE_CLOSED)  &&  wrShutdownDone) ) {
+            || ( is_set_state (STATE_TCP_REMOTE_CLOSED)  &&  wrShutdownDone) ) {
 
             close_socket ();
         }        
+    }
+}
+
+void ev_socket::do_read_next_data ()
+{
+    int bytesReceived;
+    if ( is_set_state (STATE_SSL_ENABLED_CONN) ) {
+        bytesReceived  
+            = ssl_read ( m_read_buffer + m_read_buff_offset_cur
+                        , m_read_data_len_cur);
+    } else {
+        bytesReceived  
+            = tcp_read ( m_read_buffer + m_read_buff_offset_cur
+                        , m_read_data_len_cur);
+    }
+
+    if ( get_error_state() ) {
+        int iovConnErr = MapConnectionError (newConn);
+        ClearCS1 (newConn, STATE_CONN_READ_PENDING);
+        CloseConnection(newConn);
+        (*newConn->cInfo.iovCtx->methods.OnReadStatus)(newConn, iovConnErr);
+        ProcessAbortConnections (newConn->cInfo.iovCtx);        
+    } else {
+        if (bytesReceived <= 0) {
+            if ( is_set_state (STATE_TCP_REMOTE_CLOSED) ) {
+                ClearCS1 (newConn, STATE_CONN_READ_PENDING);
+                DisableReadNotification (newConn);
+                if ( get_error_state() ) {
+                    int iovConnErr = MapConnectionError (newConn);
+                    CloseConnection(newConn);
+                    (*newConn->cInfo.iovCtx->methods.OnReadStatus)(newConn, iovConnErr);
+                    ProcessAbortConnections (newConn->cInfo.iovCtx);
+                } else {
+                    (*newConn->cInfo.iovCtx->methods.OnReadStatus)(newConn
+                                                        , ON_CLOSE_ERROR_NONE);
+
+                    ProcessAbortConnections (newConn->cInfo.iovCtx);
+                }
+            } else {
+                // ssl want read write; skip;
+            }
+        } else {
+            //process read data
+            newConn->cInfo.readBytesLenCur += bytesReceived;
+            newConn->cInfo.readBuffOffsetCur += bytesReceived;
+            newConn->cInfo.readDataLenCur -= bytesReceived;
+
+            int notifyReadStatus;
+            if ( is_set_state (STATE_CONN_PARTIAL_READ) ){
+                notifyReadStatus = 1;
+            } else {
+                if (newConn->cInfo.readBytesLenCur 
+                        == newConn->cInfo.readDataLen) {
+                    notifyReadStatus = 1;
+                } else {
+                    notifyReadStatus = 0;
+                }                
+            }
+
+            if (notifyReadStatus) {
+                ClearCS1 (newConn, STATE_CONN_READ_PENDING);
+
+                (*newConn->cInfo.iovCtx->methods.OnReadStatus)(newConn
+                                        , newConn->cInfo.readBytesLenCur);
+
+                ProcessAbortConnections (newConn->cInfo.iovCtx);
+            }
+        }
     }
 }
 
@@ -1019,11 +1150,7 @@ void ev_socket::do_write_next_data ()
 
 }
 
-void ev_socket::do_read_next_data ()
-{
-
-}
-///////////////////////////////////event processing///////////////////////////////////
+//////////////////////////event processing///////////////////////////////////
 void ev_socket::epoll_process (epoll_ctx* epoll_ctxp)
 {
     int event_count = epoll_wait (epoll_ctxp->m_epoll_id
