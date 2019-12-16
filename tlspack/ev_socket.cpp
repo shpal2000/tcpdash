@@ -1,7 +1,7 @@
 #include "ev_socket.hpp"
 #include "ev_app.hpp"
 
-ev_socket::ev_socket()
+void ev_socket::init ()
 {
     m_epoll_ctx = nullptr;
     m_fd = -1;
@@ -23,6 +23,11 @@ ev_socket::ev_socket()
     m_sockstats_arr = nullptr;
 
     m_ipv6 = false;
+}
+
+ev_socket::ev_socket()
+{
+    init ();
 }
 
 ev_socket::~ev_socket()
@@ -309,6 +314,8 @@ int ev_socket::tcp_connect (epoll_ctx* epoll_ctxp
                             , ev_sockaddr* localAddress
                             , ev_sockaddr* remoteAddress)
 {
+    init ();
+
     //socket stats
     inc_stats (tcpConnInit);
     inc_stats (tcpConnInitInSec);
@@ -480,6 +487,8 @@ int ev_socket::tcp_listen(epoll_ctx* epoll_ctxp
                             , ev_sockaddr* localAddress
                             , int listenQLen)
 {
+    init ();
+
     //stats
     inc_stats (tcpListenStart);
 
@@ -715,6 +724,8 @@ int ev_socket::tcp_read (char* dataBuffer, int dataLen)
 
 void ev_socket::tcp_accept (ev_socket* ev_sock_parent)
 {
+    init ();
+    
     set_state (STATE_TCP_CONN_ACCEPT);
 
     m_epoll_ctx = ev_sock_parent->m_epoll_ctx;
@@ -858,33 +869,6 @@ void ev_socket::ssl_shutdown ()
     }
 }
 
-void ev_socket::invoke_app_cb (int cbid)
-{
-    switch (cbid)
-    {
-        case CB_ID_ON_ESTABLISH:
-            m_epoll_ctx->m_app->on_establish (this);
-            break;
-        case CB_ID_ON_WRITE:
-            m_epoll_ctx->m_app->on_write (this);
-            break;
-        case CB_ID_ON_WSTATUS:
-            m_epoll_ctx->m_app->on_wstatus (this);
-            break;
-        case CB_ID_ON_READ:
-            m_epoll_ctx->m_app->on_read (this);
-            break;
-        case CB_ID_ON_RSTATUS:
-            m_epoll_ctx->m_app->on_rstatus (this);
-            break;
-        case CB_ID_ON_FINISH:
-            if ( is_set_state (STATE_CONN_MARK_FINISH) == 0) {
-                m_epoll_ctx->m_finish_list.push (this);
-                set_state (STATE_CONN_MARK_FINISH);
-            }
-            break;
-    }
-}
 
 void ev_socket::close_socket ()
 {

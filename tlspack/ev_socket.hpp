@@ -343,6 +343,7 @@ public:
     };
 
 private:
+    void init ();
     void set_ssl (SSL* ssl)
     {
         m_ssl = ssl;
@@ -453,7 +454,6 @@ private:
     void ssl_shutdown ();
     
     ///////////////////////////////helper functions/////////////////////////
-    void invoke_app_cb (int cbid);
     void close_socket ();
     void tcp_connection_success ();
     void tcp_connection_fail ();
