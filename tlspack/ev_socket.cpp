@@ -288,6 +288,8 @@ void ev_socket::write_next_data (char* writeBuffer
     m_write_data_len_cur = writeDataLen;
     m_write_bytes_len_cur = 0;
 
+    m_write_status = WRITE_STATUS_NORMAL;
+
     if (partialWrite) {
         set_state (STATE_CONN_PARTIAL_WRITE);
     } else {
@@ -1130,6 +1132,61 @@ void ev_socket::do_read_next_data ()
 
 void ev_socket::do_write_next_data ()
 {
+    int bytesSent;
+    if ( is_set_state (STATE_SSL_ENABLED_CONN) ) { 
+        bytesSent = ssl_write ( m_write_buffer + m_write_buff_offset_cur
+                                , m_write_data_len_cur );
+    } else {
+        bytesSent = tcp_write ( m_write_buffer + m_write_buff_offset_cur
+                                , m_write_data_len_cur );
+    }
+
+    bool notifyWriteStatus = false;
+    if ( get_error_state() )
+    {
+        notifyWriteStatus = true;
+        switch ( get_sys_errno() ) 
+        {
+            case ETIMEDOUT:
+                m_write_status = WRITE_STATUS_TCP_TIMEOUT; 
+                break;
+            case ECONNRESET:
+                m_write_status = WRITE_STATUS_TCP_RESET;
+                break;
+            default:
+                m_write_status  = WRITE_STATUS_ERROR;
+                break;
+        }
+        do_close_connection ();
+    }
+    else
+    {
+        if (bytesSent <= 0)
+        {
+            // ssl want read write; skip
+        }
+        else
+        {
+            //process written data
+            m_write_bytes_len_cur += bytesSent;
+            m_write_buff_offset_cur += bytesSent;
+            m_write_data_len_cur -= bytesSent;
+
+            if ( is_set_state (STATE_CONN_PARTIAL_WRITE) 
+                || (m_write_bytes_len_cur == m_write_data_len) )
+            {
+                notifyWriteStatus = true;
+            }
+        }
+    }
+
+    if (notifyWriteStatus) 
+    {
+        clear_state (STATE_CONN_WRITE_PENDING);
+        m_epoll_ctx->m_app->on_wstatus (this
+                            , m_write_bytes_len_cur
+                            , m_write_status );
+    }
 
 }
 
