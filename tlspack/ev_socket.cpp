@@ -49,11 +49,13 @@ void ev_socket::epoll_free(epoll_ctx* epoll_ctxp)
 
 ev_socket* ev_socket::new_tcp_connect (epoll_ctx* epoll_ctxp
                                         , ev_sockaddr* localAddress
-                                        , ev_sockaddr* remoteAddress)
+                                        , ev_sockaddr* remoteAddress
+                                        , std::vector<ev_sockstats*>* statsArr)
 {
     ev_socket* new_sock = epoll_ctxp->m_app->alloc_socket ();
 
     if (new_sock) {
+        new_sock->set_sockstats_arr (statsArr);
         new_sock->tcp_connect (epoll_ctxp, localAddress, remoteAddress);
     } else {
 
@@ -64,11 +66,13 @@ ev_socket* ev_socket::new_tcp_connect (epoll_ctx* epoll_ctxp
 
 ev_socket* ev_socket::new_tcp_listen (epoll_ctx* epoll_ctxp
                                         , ev_sockaddr* localAddress
-                                        , int lqlen)
+                                        , int lqlen
+                                        , std::vector<ev_sockstats*>* statsArr)
 {
     ev_socket* new_sock = epoll_ctxp->m_app->alloc_socket ();
 
     if (new_sock) {
+        new_sock->set_sockstats_arr (statsArr);
         new_sock->tcp_listen (epoll_ctxp, localAddress, lqlen);
     } else {
 
@@ -727,12 +731,11 @@ void ev_socket::tcp_accept (ev_socket* ev_sock_parent)
     init ();
     
     set_state (STATE_TCP_CONN_ACCEPT);
-
+    set_sockstats_arr ( ev_sock_parent->get_sockstats_arr() );
     m_epoll_ctx = ev_sock_parent->m_epoll_ctx;
     std::memcpy (&m_local_addr
                     , &ev_sock_parent->m_local_addr
                     , sizeof (ev_sockaddr));
-    m_sockstats_arr = ev_sock_parent->m_sockstats_arr;
 
     socklen_t addrLen = sizeof (ev_sockaddr);
     m_fd = accept(ev_sock_parent->m_fd

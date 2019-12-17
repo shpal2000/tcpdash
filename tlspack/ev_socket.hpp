@@ -400,11 +400,13 @@ public:
 
     static ev_socket* new_tcp_connect (epoll_ctx* epoll_ctxp
                                         , ev_sockaddr* localAddress
-                                        , ev_sockaddr* remoteAddress);
+                                        , ev_sockaddr* remoteAddress
+                                        , std::vector<ev_sockstats*>* statsArr);
 
     static ev_socket* new_tcp_listen (epoll_ctx* epoll_ctxp
                                         , ev_sockaddr* localAddress
-                                        , int listenQLen);
+                                        , int listenQLen
+                                        , std::vector<ev_sockstats*>* statsArr);
 
     void enable_rd_only_notification ();
     void enable_wr_only_notification ();
