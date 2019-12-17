@@ -23,27 +23,31 @@ ev_socket* tlssrv_app::alloc_socket()
 
 void tlssrv_app::on_establish (ev_socket* ev_sock)
 {
-    tlssrv_socket* app_socket =  (tlssrv_socket*) ev_sock;
+    ev_sock->get_ssl ();
 }
 
 void tlssrv_app::on_write (ev_socket* ev_sock)
 {
-
+    ev_sock->get_ssl ();
 }
 
 void tlssrv_app::on_wstatus (ev_socket* ev_sock, int bytes_written)
 {
-
+    if (bytes_written){
+        ev_sock->get_ssl ();
+    }
 }
 
 void tlssrv_app::on_read (ev_socket* ev_sock)
 {
-
+    ev_sock->get_ssl ();
 }
 
 void tlssrv_app::on_rstatus (ev_socket* ev_sock, int bytes_read)
 {
-
+    if (bytes_read) {
+        ev_sock->get_ssl ();
+    }
 }
 
 void tlssrv_app::on_free (ev_socket* ev_sock)
