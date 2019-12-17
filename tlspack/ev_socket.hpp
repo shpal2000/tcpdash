@@ -1,5 +1,10 @@
+#ifndef __EV_SOCKET__H
+#define __EV_SOCKET__H
+
 #include "platform.hpp"
+
 class ev_app;
+class ev_socket;
 
 #define STATE_TCP_PORT_ASSIGNED                         0x0000000000000001
 #define STATE_TCP_SOCK_CREATE                           0x0000000000000002
@@ -139,8 +144,9 @@ union ev_sockaddr
     struct sockaddr_in6 in_addr6;
 };
 
-struct ev_sockstats
+class ev_sockstats
 {
+public:
     uint64_t socketCreate;    
     uint64_t socketCreateFail;
     uint64_t socketListenFail;
@@ -445,7 +451,7 @@ private:
                     , int listenQLen);
 
     void tcp_verify_established ();
-    void tcp_close (int isLinger, int lingerTime);
+    void tcp_close (int isLinger=0, int lingerTime=0);
     void tcp_write_shutdown ();
     int tcp_write (const char* dataBuffer, int dataLen);
     int tcp_read (char* dataBuffer, int dataLen);
@@ -467,3 +473,4 @@ private:
     void do_write_next_data ();
 };
 
+#endif

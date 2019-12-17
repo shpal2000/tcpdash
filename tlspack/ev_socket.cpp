@@ -86,7 +86,7 @@ void ev_socket::enable_rd_only_notification ()
     if ( is_set_state (STATE_TCP_POLL_READ_CURRENT) == 0 
             || is_set_state (STATE_TCP_POLL_WRITE_CURRENT) ) {
 
-        struct epoll_event setEvent = {0};
+        struct epoll_event setEvent;
         setEvent.events = 0;
         setEvent.data.ptr = this;
         setEvent.events = EPOLLIN;
@@ -111,7 +111,7 @@ void ev_socket::enable_wr_only_notification ()
     if ( is_set_state (STATE_TCP_POLL_READ_CURRENT) 
             || is_set_state (STATE_TCP_POLL_WRITE_CURRENT) == 0 ) {
 
-        struct epoll_event setEvent = {0};
+        struct epoll_event setEvent;
         setEvent.events = 0;
         setEvent.data.ptr = this;
         setEvent.events = EPOLLOUT;
@@ -136,7 +136,7 @@ void ev_socket::enable_rd_wr_notification ()
     if ( is_set_state (STATE_TCP_POLL_READ_CURRENT) == 0 
             || is_set_state (STATE_TCP_POLL_WRITE_CURRENT) == 0 ) {
 
-        struct epoll_event setEvent = {0};
+        struct epoll_event setEvent;
         setEvent.events = 0;
         setEvent.data.ptr = this;
         setEvent.events = EPOLLIN | EPOLLOUT;
@@ -178,7 +178,7 @@ void ev_socket::disable_wr_notification ()
 
         } else {
 
-            struct epoll_event setEvent = {0};
+            struct epoll_event setEvent;
             setEvent.events = 0;
             setEvent.data.ptr = this;
             setEvent.events = EPOLLIN;
@@ -200,7 +200,7 @@ void ev_socket::disable_rd_notification ()
 
         } else {
 
-            struct epoll_event setEvent = {0};
+            struct epoll_event setEvent;
             setEvent.events = 0;
             setEvent.data.ptr = this;
             setEvent.events = EPOLLOUT;
@@ -216,7 +216,7 @@ void ev_socket::enable_rd_notification ()
 {
     if ( is_set_state (STATE_TCP_POLL_READ_CURRENT) == 0 ) {
 
-        struct epoll_event setEvent = {0};
+        struct epoll_event setEvent;
         setEvent.events = 0;
         setEvent.data.ptr = this;
 
@@ -239,7 +239,7 @@ void ev_socket::enable_wr_notification ()
 {
     if ( is_set_state (STATE_TCP_POLL_WRITE_CURRENT) == 0 ) {
 
-        struct epoll_event setEvent = {0};
+        struct epoll_event setEvent;
         setEvent.events = 0;
         setEvent.data.ptr = this;
 
@@ -349,10 +349,11 @@ int ev_socket::tcp_connect (epoll_ctx* epoll_ctxp
         inc_stats (socketCreate);
         set_state (STATE_TCP_SOCK_CREATE);
 
+        int so_op = 1;
         int so_reuse_status = setsockopt(m_fd
                                         , SOL_SOCKET
                                         , SO_REUSEADDR
-                                        , &(int){ 1 }
+                                        , &so_op
                                         , sizeof(int));
         if (so_reuse_status == -1)
         {
@@ -366,10 +367,11 @@ int ev_socket::tcp_connect (epoll_ctx* epoll_ctxp
         }
 
         //???
+        so_op = 1;
         int so_iptrans_status = setsockopt(m_fd
                                         , SOL_IP
                                         , IP_TRANSPARENT
-                                        , &(int){ 1 }
+                                        , &so_op
                                         , sizeof(int));
         if (so_iptrans_status == -1)
         {
@@ -517,10 +519,11 @@ int ev_socket::tcp_listen(epoll_ctx* epoll_ctxp
         inc_stats (socketCreate);
         set_state (STATE_TCP_SOCK_CREATE);
 
+        int so_op = 1;
         int so_reuse_status = setsockopt(m_fd
                                         , SOL_SOCKET
                                         , SO_REUSEADDR
-                                        , &(int){ 1 }
+                                        , &so_op
                                         , sizeof(int));
         if (so_reuse_status == -1)
         {
@@ -534,10 +537,11 @@ int ev_socket::tcp_listen(epoll_ctx* epoll_ctxp
         }
 
         //???
+        so_op = 1;
         int so_iptrans_status = setsockopt(m_fd
                                         , SOL_IP
                                         , IP_TRANSPARENT
-                                        , &(int){ 1 }
+                                        , &so_op
                                         , sizeof(int));
         if (so_iptrans_status == -1)
         {
@@ -646,7 +650,7 @@ void ev_socket::tcp_verify_established ()
     }
 }
 
-void ev_socket::tcp_close (int isLinger=0, int lingerTime=0) {
+void ev_socket::tcp_close (int isLinger, int lingerTime) {
 
     if (isLinger) {
         struct linger sl;
@@ -764,8 +768,9 @@ void ev_socket::tcp_accept (ev_socket* ev_sock_parent)
                 set_state (STATE_TCP_CONN_ACCEPT_O_NONBLOCK);
 
                 //??? is it necessary
+                int so_op = 1;
                 ret = setsockopt(m_fd, SOL_SOCKET
-                                , SO_REUSEADDR, &(int){ 1 }, sizeof(int));
+                                , SO_REUSEADDR, &so_op, sizeof(int));
                 if (ret < 0) {
                     inc_stats (socketReuseSetFail);
                     set_error_state (STATE_TCP_SOCK_REUSE_FAIL);
