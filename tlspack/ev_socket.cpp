@@ -1182,6 +1182,31 @@ void ev_socket::do_write_next_data ()
 
 }
 
+void ev_socket::set_sockaddr(ev_sockaddr* addr, char* str, int port) {
+
+    //check str for ipv6 ???
+    int is_ipv6 = 0;
+
+    memset(addr, 0, sizeof(ev_sockaddr));
+
+    if (is_ipv6) 
+    {
+        inet_pton(AF_INET6
+                , str
+                , &addr->in_addr6.sin6_addr);
+        addr->in_addr6.sin6_family = AF_INET6;
+        addr->in_addr6.sin6_port = htons(port);
+    }
+    else
+    {
+        inet_pton(AF_INET
+                , str
+                , &addr->in_addr.sin_addr);
+        addr->in_addr.sin_family = AF_INET;
+        addr->in_addr.sin_port = htons(port);
+    }
+}
+
 //////////////////////////event processing///////////////////////////////////
 void ev_socket::epoll_process (epoll_ctx* epoll_ctxp)
 {

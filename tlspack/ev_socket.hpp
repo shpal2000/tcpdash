@@ -101,12 +101,16 @@ class ev_socket;
 #define WRITE_STATUS_TCP_TIMEOUT                         2
 #define WRITE_STATUS_ERROR                               3
 
-#define inc_stats(__stat_name) \
-{ \
-    for (ev_sockstats* __stats_ptr : *this->m_sockstats_arr) { \
-        __stats_ptr->__stat_name++; \
-    } \
-}
+#define inc_stats(__stat_name) ;
+
+/*
+// #define inc_stats(__stat_name) \
+// { \
+//     for (ev_sockstats* __stats_ptr : *this->m_sockstats_arr) { \
+//         __stats_ptr->__stat_name++; \
+//     } \
+// }
+*/
 
 #define inc_stats2(__ev_sock,__stat_name) \
 { \
@@ -413,6 +417,8 @@ public:
                                         , ev_sockaddr* localAddress
                                         , int listenQLen
                                         , std::vector<ev_sockstats*>* statsArr);
+
+    static void set_sockaddr (ev_sockaddr* addr, char* str, int port);
 
     void enable_rd_only_notification ();
     void enable_wr_only_notification ();

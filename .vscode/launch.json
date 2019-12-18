@@ -8,7 +8,7 @@
             "name": "(gdb) Launch tlspack",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/tlspack/build/app_engine.exe",
+            "program": "${workspaceFolder}/tlspack/build/tlspack.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/tlspack",
