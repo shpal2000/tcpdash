@@ -6,7 +6,7 @@ tlssrv_app::tlssrv_app(/* args */)
     ev_sockaddr serverAddr;
     std::vector<ev_sockstats*> statsArr;
     statsArr.push_back ( new ev_sockstats() );
-    ev_socket::set_sockaddr (&serverAddr, "127.0.0.1", 6000);
+    ev_socket::set_sockaddr (&serverAddr, "10.0.0.4", 6000);
     ev_socket* server = new_tcp_listen (&serverAddr, 100, &statsArr);
     server->set_status (0);
 }

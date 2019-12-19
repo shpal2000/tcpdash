@@ -1182,7 +1182,7 @@ void ev_socket::do_write_next_data ()
 
 }
 
-void ev_socket::set_sockaddr(ev_sockaddr* addr, char* str, int port) {
+void ev_socket::set_sockaddr(ev_sockaddr* addr, const char* str, int port) {
 
     //check str for ipv6 ???
     int is_ipv6 = 0;

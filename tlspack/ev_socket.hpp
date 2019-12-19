@@ -418,7 +418,7 @@ public:
                                         , int listenQLen
                                         , std::vector<ev_sockstats*>* statsArr);
 
-    static void set_sockaddr (ev_sockaddr* addr, char* str, int port);
+    static void set_sockaddr (ev_sockaddr* addr, const char* str, int port);
 
     void enable_rd_only_notification ();
     void enable_wr_only_notification ();

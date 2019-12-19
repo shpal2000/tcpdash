@@ -4,7 +4,11 @@
 int main(int argc, char **argv) 
 {
     tlssrv_app* app = new tlssrv_app ();
-    app->run_iter ();
     printf ("%s\n", argv[argc*0]);
+    while (1)
+    {
+        app->run_iter ();
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
     return 0;
 }
