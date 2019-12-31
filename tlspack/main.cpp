@@ -66,38 +66,54 @@ int main(int argc, char **argv)
 {
     signal(SIGPIPE, SIG_IGN);
 
-    // char* mode = argv[1];
+    //sudo docker run tgen --rm -it -d tlspack.exe config try1
 
-    // if ( strcmp(mode, "start") == 0)
-    // {
-    //     char* cfg_file = argv[2];
-    //     std::ifstream cfg_file(cfg_file);
-    //     // launch containers
-    //     //
-    //     system ();
-    // } 
-    // else
-    // {
-    //     char* cfg_file = argv[1];
-    //     int container_index = atoi(argv[2]);
-    //     std::ifstream cfg_file(cfg_file);
+    //sudo docker run tgen --rm -it -d tlspack.exe 0 try1
+    //sudo docker run tgen --rm -it -d tlspack.exe 1 try1
+    //sudo docker run tgen --rm -it -d tlspack.exe 2 try1
+    //sudo docker run tgen --rm -it -d tlspack.exe 3 try1
+    //sudo docker run tgen --rm -it -d tlspack.exe 4 try1
 
+    char* mode = argv[1];
 
-    // }
+    if ( strcmp(mode, "config") == 0)
+    {
+        char* cfg_name = argv[2];
+        char cfg_dir [256];
+        char cfg_file [256];
+        sprintf (cfg_dir, "%s%s/", "/rundir/", cfg_name);
+        sprintf (cfg_file, "%s%s", cfg_dir, "config.json");
+        
+        std::ifstream cfg_stream(cfg_file);
+        json cfg_json = json::parse(cfg_stream);
+
+        // launch containers
+        // system ("ssh -i /rundir/.ssh/id_rsa -tt -o StrictHostKeyChecking=no shirish@104.211.35.20 sudo docker network connect eth0macvlan tgen_s");
+
+        while (1)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        }
+    } 
+    else
+    {
+        // char* cfg_file = argv[1];
+        // int container_index = atoi(argv[2]);
+        // std::ifstream cfg_file(cfg_file);
 
     
-    // json cfg_json = json::parse(cfg_file);
+        // // json cfg_json = json::parse(cfg_file);
 
-    // auto iface = cfg_json["server"]["iface"].get<std::string>();
+        // // auto iface = cfg_json["server"]["iface"].get<std::string>();
 
-    system ("ssh -i /rundir/.ssh/id_rsa -tt -o StrictHostKeyChecking=no shirish@104.211.35.20 sudo docker network connect eth0macvlan tgen_s");
-
-    tlssrv_app* app = new tlssrv_app ();
-    printf ("%s\n", argv[argc*0]);
-    while (1)
-    {
-        app->run_iter ();
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    
+        tlssrv_app* app = new tlssrv_app ();
+        printf ("%s\n", argv[argc*0]);
+        while (1)
+        {
+            app->run_iter ();
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        }
     }
 
     return 0;
