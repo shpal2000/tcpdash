@@ -1,8 +1,11 @@
 #include <stdio.h>
 #include <iostream>
+#include <fstream>
+#include <signal.h>
 #include "./apps/tls_server/tlssrv_app.hpp"
 
 #include <nlohmann/json.hpp>
+
 using json = nlohmann::json;
 
 auto cfg_str = R"({
@@ -61,9 +64,33 @@ auto cfg_str = R"({
 
 int main(int argc, char **argv) 
 {
-    json cfg_json = json::parse(cfg_str);
+    signal(SIGPIPE, SIG_IGN);
+
+    char* mode = argv[1];
+
+    if ( strcmp(mode, "start") == 0)
+    {
+        char* cfg_file = argv[2];
+        std::ifstream cfg_file(cfg_file);
+        // launch containers
+        //
+        system ();
+    } 
+    else
+    {
+        char* cfg_file = argv[1];
+        int container_index = atoi(argv[2]);
+        std::ifstream cfg_file(cfg_file);
+
+
+    }
+
+    
+    json cfg_json = json::parse(cfg_file);
 
     auto iface = cfg_json["server"]["iface"].get<std::string>();
+
+    system ("ssh -tt shirish@104.211.35.20 bash -c 'ls -l > ~/tmp/tmp.txt; cat ~/tmp/tmp.txt'");
 
     tlssrv_app* app = new tlssrv_app ();
     printf ("%s\n", argv[argc*0]);
@@ -72,5 +99,6 @@ int main(int argc, char **argv)
         app->run_iter ();
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
+
     return 0;
 }

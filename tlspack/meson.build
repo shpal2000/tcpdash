@@ -1,7 +1,7 @@
 project('tlspack', 'cpp',
   version : '1.0',
   default_options : ['warning_level=3'
-                      , 'cpp_std=c++14'])
+                      , 'cpp_std=c++17'])
 openssl = dependency('openssl')
 
 nlohmann_json_proj = subproject('nlohmann_json')

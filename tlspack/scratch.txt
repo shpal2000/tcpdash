@@ -1,0 +1,122 @@
+#-------------------------------------------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License. See https://go.microsoft.com/fwlink/?linkid=2090316 for license information.
+#-------------------------------------------------------------------------------------------------------------
+FROM ubuntu:bionic
+
+# Avoid warnings by switching to noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
+
+# This Dockerfile adds a non-root 'vscode' user with sudo access. However, for Linux,
+# this user's GID/UID must match your local user UID/GID to avoid permission issues
+# with bind mounts. Update USER_UID / USER_GID if yours is not 1000. See
+# https://aka.ms/vscode-remote/containers/non-root-user for details.
+ARG USERNAME=vscode
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+
+# Configure apt and install packages
+RUN apt-get update \
+    && apt-get -y install --no-install-recommends apt-utils dialog 2>&1 \
+    #
+    # Verify git, process tools, lsb-release (common in install instructions for CLIs) installed
+    && apt-get -y install git iproute2 procps lsb-release \
+    # Install C++ tools
+    && apt-get -y install build-essential cmake cppcheck valgrind \
+    #
+    && apt-get -y install libglib2.0 libjson-glib-1.0 \
+    #
+    && apt-get -y install iputils-ping netcat \
+    #
+    && apt-get -y install python3-pip meson curl \
+    && apt-get -y install vim \
+    && apt-get -y install libssl-dev \
+    && apt-get -y install libjson-glib-dev \
+    && apt-get -y install libglib2.0-dev \
+    && apt-get -y install sshpass \
+    && curl https://www.openssl.org/source/openssl-1.1.1d.tar.gz -o /root/openssl-1.1.1d.tar.gz \
+    && cd /root/ \
+    && tar -xzvf ./openssl-1.1.1d.tar.gz \
+    && cd openssl-1.1.1d \
+    && ./config --prefix=/usr/local/ssl --openssldir=/usr/local/ssl shared zlib \
+    && make \
+    && make install_sw \
+    && echo "/usr/local/ssl/lib" > /etc/ld.so.conf.d/openssl-1.1.1d.conf \
+    && ldconfig -v \
+    && mv /usr/bin/c_rehash /usr/bin/c_rehash.BEKUP \
+    && mv /usr/bin/openssl /usr/bin/openssl.BEKUP \
+    && cp /usr/local/ssl/bin/c_rehash /usr/bin/c_rehash \ 
+    && cp /usr/local/ssl/bin/openssl /usr/bin/openssl \
+    && mkdir /root/workspace \
+    #
+    # Create a non-root user to use if preferred - see https://aka.ms/vscode-remote/containers/non-root-user.
+    && groupadd --gid $USER_GID $USERNAME \
+    && useradd -s /bin/bash --uid $USER_UID --gid $USER_GID -m $USERNAME \
+    # [Optional] Add sudo support for the non-root user
+    && apt-get install -y sudo \
+    && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME\
+    && chmod 0440 /etc/sudoers.d/$USERNAME \
+    #
+    # Clean up
+    && apt-get autoremove -y \
+    && apt-get clean -y \
+    && rm -rf /var/lib/apt/lists/*
+
+# Switch back to dialog for any ad-hoc use of apt-get
+ENV DEBIAN_FRONTEND=
+
+
+------
+
+
+// For format details, see https://aka.ms/vscode-remote/devcontainer.json or the definition README at
+// https://github.com/microsoft/vscode-dev-containers/tree/master/containers/ubuntu-18.04-git
+{
+	"name": "tgen devkit",
+	"dockerFile": "Dockerfile",
+	// The optional 'runArgs' property can be used to specify additional runtime arguments.
+	"runArgs": [
+		// Uncomment the line if you will use a ptrace-based debugger like C++, Go, and Rust.
+		"--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined", "--network=eth0macvlan", "--privileged", "--volume=/home/shirish/rundir:/rundir"
+
+		// Uncomment the next line to use a non-root user. On Linux, this will prevent
+		// new files getting created as root, but you may need to update the USER_UID
+		// and USER_GID in .devcontainer/Dockerfile to match your user if not 1000.
+		// "-u", "vscode"
+	],
+
+	// Use 'settings' to set *default* container specific settings.json values on container create. 
+	// You can edit these settings after create using File > Preferences > Settings > Remote.
+	"settings": { 
+		"terminal.integrated.shell.linux": "/bin/bash"
+	},
+
+	// Uncomment the next line if you want to publish any ports.
+	// "appPort": [],
+
+	// Uncomment the next line to run commands after the container is created.
+	// "postCreateCommand": "uname -a",
+
+	"workspaceFolder": "/tgen_workspace",
+	"workspaceMount": "src=/home/shirish/tgen_workspace,dst=/tgen_workspace,type=bind",
+	
+	// Add the IDs of extensions you want installed when the container is created in the array below.
+	"extensions": [
+		"ms-vscode.cpptools",
+		"codezombiech.gitignore",
+		"donjayamanne.git-extension-pack",
+		"donjayamanne.githistory",
+		"eamodio.gitlens",
+		"ziyasal.vscode-open-in-github",
+		"alefragnani.project-manager"
+	]
+}
+
+-------
+
+
+sudo docker network create -d macvlan -o parent=eth0 eth0macvlan
+sudo docker network ls
+
+
+-------
