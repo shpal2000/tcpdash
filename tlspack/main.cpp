@@ -66,31 +66,31 @@ int main(int argc, char **argv)
 {
     signal(SIGPIPE, SIG_IGN);
 
-    char* mode = argv[1];
+    // char* mode = argv[1];
 
-    if ( strcmp(mode, "start") == 0)
-    {
-        char* cfg_file = argv[2];
-        std::ifstream cfg_file(cfg_file);
-        // launch containers
-        //
-        system ();
-    } 
-    else
-    {
-        char* cfg_file = argv[1];
-        int container_index = atoi(argv[2]);
-        std::ifstream cfg_file(cfg_file);
+    // if ( strcmp(mode, "start") == 0)
+    // {
+    //     char* cfg_file = argv[2];
+    //     std::ifstream cfg_file(cfg_file);
+    //     // launch containers
+    //     //
+    //     system ();
+    // } 
+    // else
+    // {
+    //     char* cfg_file = argv[1];
+    //     int container_index = atoi(argv[2]);
+    //     std::ifstream cfg_file(cfg_file);
 
 
-    }
+    // }
 
     
-    json cfg_json = json::parse(cfg_file);
+    // json cfg_json = json::parse(cfg_file);
 
-    auto iface = cfg_json["server"]["iface"].get<std::string>();
+    // auto iface = cfg_json["server"]["iface"].get<std::string>();
 
-    system ("ssh -tt shirish@104.211.35.20 bash -c 'ls -l > ~/tmp/tmp.txt; cat ~/tmp/tmp.txt'");
+    system ("ssh -i /rundir/.ssh/id_rsa -tt -o StrictHostKeyChecking=no shirish@104.211.35.20 sudo docker network connect eth0macvlan tgen_s");
 
     tlssrv_app* app = new tlssrv_app ();
     printf ("%s\n", argv[argc*0]);
