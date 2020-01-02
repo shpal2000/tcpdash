@@ -3,117 +3,110 @@
 #include <fstream>
 #include <signal.h>
 #include "./apps/tls_server/tlssrv_app.hpp"
-
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
 
-auto cfg_str = R"({
-    "server" : {
-        "iface" : "eth2",
-        "containers" : [
-            {
-                "app_type" : "tlssrv",
-                "subnets" : ["12.20.60.0/24"],
-                "max_act_sess" : 10000,
-                "max_err_sess" : 10000,
-                "srv_list" : [
-                    {
-                        "srv_ip" : "12.20.60.1",
-                        "srv_port" : 8443,
-                        "cs_data_len" : 10,
-                        "sc_data_len" : 20,
-                        "cs_start_tls_len" : 0,
-                        "sc_start_tls_len" : 0
-                    }
-                ]
-            }
-        ]
-    },
+#define MAX_CONFIG_DIR_PATH 256
+#define MAX_CONFIG_FILE_PATH 512
+#define MAX_SSH_CMD_LEN 1024
+#define RUN_DIR_PATH "/rundir/"
+#define TLSPACK_EXE "/tgen_workspace/tcpdash/tlspack/build/tlspack.exe"
+#define RUN_VOLUMES "--volume=/home/shirish/tgen_workspace:/tgen_workspace --volume=/home/shirish/rundir:/rundir"
+char ssh_cmd [MAX_SSH_CMD_LEN];
+char cfg_dir [MAX_CONFIG_DIR_PATH];
+char cfg_file [MAX_CONFIG_FILE_PATH];
 
-    "client" : {
-	    "iface" : "eth1",
-        "containers" : [
-            {
-                "app_type" : "tlsclnt",
-	            "subnets" : ["12.20.50.0/24"],
-                "conn_per_sec" : 85,
-                "max_act_sess" : 10000,
-                "max_err_sess" : 10000,
-                "max_total_sess" : 10,
-                "cs_grp_list" : [
-                    {
-                        "srv_ip"   : "12.20.60.1",
-                        "srv_port" : 8443,
 
-                        "clnt_ip_begin" : "12.20.50.1",
-                        "clnt_ip_end" : "12.20.50.100",
-                        "clnt_port_begin" : 10000,
-                        "clnt_port_end" : 19999,
-
-                        "cs_data_len" : 10,
-                        "sc_data_len" : 20,
-                        "cs_start_tls_len" : 0,
-                        "sc_start_tls_len" : 0
-                    }
-                ]
-            }
-        ]
-    }
-})";
 
 int main(int argc, char **argv) 
 {
-    signal(SIGPIPE, SIG_IGN);
-
-    //sudo docker run tgen --rm -it -d tlspack.exe config try1
-
-    //sudo docker run tgen --rm -it -d tlspack.exe 0 try1
-    //sudo docker run tgen --rm -it -d tlspack.exe 1 try1
-    //sudo docker run tgen --rm -it -d tlspack.exe 2 try1
-    //sudo docker run tgen --rm -it -d tlspack.exe 3 try1
-    //sudo docker run tgen --rm -it -d tlspack.exe 4 try1
-
     char* mode = argv[1];
+    char* cfg_name = argv[2];
+    sprintf (cfg_dir, "%s%s/", RUN_DIR_PATH, cfg_name);
+    sprintf (cfg_file, "%s%s", cfg_dir, "config.json");
+    std::ifstream cfg_stream(cfg_file);
+    json cfg_json = json::parse(cfg_stream);
+    auto ssh_host = cfg_json["host"].get<std::string>();
+    auto ssh_user = cfg_json["user"].get<std::string>();
 
-    if ( strcmp(mode, "config") == 0)
+    if (strcmp(mode, "run") == 0)
     {
-        char* cfg_name = argv[2];
-        char cfg_dir [256];
-        char cfg_file [256];
-        sprintf (cfg_dir, "%s%s/", "/rundir/", cfg_name);
-        sprintf (cfg_file, "%s%s", cfg_dir, "config.json");
-        
-        std::ifstream cfg_stream(cfg_file);
-        json cfg_json = json::parse(cfg_stream);
+        //launch server containers
+        auto c_list = cfg_json["server"]["containers"];
+        int c_index = 0;
+        for (auto it = c_list.begin(); it != c_list.end(); ++it)
+        {
+            sprintf (ssh_cmd,
+                    "ssh -i %s.ssh/id_rsa -tt -o StrictHostKeyChecking=no "
+                    "%s@%s "
+                    "sudo docker run --name tlspack_server_%d --rm -it -d %s tgen %s server %s %d tlspack_server_%d",
+                    RUN_DIR_PATH,
+                    ssh_user.c_str(), ssh_host.c_str(),
+                    c_index, RUN_VOLUMES, TLSPACK_EXE, cfg_name, c_index, c_index);
 
-        // launch containers
-        // system ("ssh -i /rundir/.ssh/id_rsa -tt -o StrictHostKeyChecking=no shirish@104.211.35.20 sudo docker network connect eth0macvlan tgen_s");
+            printf ("\n%s", ssh_cmd);
+            fflush (NULL);
+            system (ssh_cmd);
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+
+        //launch client containers
+        c_list = cfg_json["client"]["containers"];
+        c_index = 0;
+        for (auto it = c_list.begin(); it != c_list.end(); ++it)
+        {
+            sprintf (ssh_cmd,
+                    "ssh -i %s.ssh/id_rsa -tt -o StrictHostKeyChecking=no "
+                    "%s@%s "
+                    "sudo docker run --name tlspack_client_%d --rm -it -d %s tgen %s client %s %d tlspack_client_%d",
+                    RUN_DIR_PATH,
+                    ssh_user.c_str(), ssh_host.c_str(),
+                    c_index, RUN_VOLUMES, TLSPACK_EXE, cfg_name, c_index, c_index);
+                    
+            printf ("\n%s", ssh_cmd);
+            fflush (NULL);
+            system (ssh_cmd);
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+
+        while (1)
+        {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+         }
+    }
+    else
+    {   
+        int c_index = atoi (argv[3]);
+        char* c_name = argv[4];
+        auto iface = cfg_json[mode]["iface"].get<std::string>();
+
+        
+        signal(SIGPIPE, SIG_IGN);
+
+        sprintf (ssh_cmd,
+                "ssh -i %s.ssh/id_rsa -tt -o StrictHostKeyChecking=no "
+                "%s@%s "
+                "sudo docker network connect %s %s",
+                RUN_DIR_PATH,
+                ssh_user.c_str(), ssh_host.c_str(),
+                iface.c_str(), c_name);
+
+        system (ssh_cmd);
 
         while (1)
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            printf ("\n%s", ssh_cmd);
         }
-    } 
-    else
-    {
-        // char* cfg_file = argv[1];
-        // int container_index = atoi(argv[2]);
-        // std::ifstream cfg_file(cfg_file);
 
-    
-        // // json cfg_json = json::parse(cfg_file);
-
-        // // auto iface = cfg_json["server"]["iface"].get<std::string>();
-
-    
-        tlssrv_app* app = new tlssrv_app ();
-        printf ("%s\n", argv[argc*0]);
-        while (1)
-        {
-            app->run_iter ();
-            std::this_thread::sleep_for(std::chrono::milliseconds(200));
-        }
+        // tlssrv_app* app = new tlssrv_app ();
+        // printf ("%s\n", argv[argc*0]);
+        // while (1)
+        // {
+        //     app->run_iter ();
+        //     std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        // }
     }
 
     return 0;

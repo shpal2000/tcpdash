@@ -118,5 +118,7 @@ ENV DEBIAN_FRONTEND=
 sudo docker network create -d macvlan -o parent=eth0 eth0macvlan
 sudo docker network ls
 
+sudo docker run --name tlspack_master --rm -it -d --volume=/home/shirish/tgen_workspace:/tgen_workspace --volume=/home/shirish/rundir:/rundir tgen /tgen_workspace/tcpdash/tlspack/build/tlspack.exe run try1
+
 
 -------
