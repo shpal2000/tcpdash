@@ -134,22 +134,24 @@ int main(int argc, char **argv)
             }
         }
 
+        signal(SIGPIPE, SIG_IGN);
+
+        ev_app* app = nullptr;
+        auto container = cfg_json[mode]["containers"][c_index];
+        const char* app_type = container["app_type"].get<std::string>().c_str();
+        if ( strcmp("tlssrv", app_type) == 0 )
+        {
+            app = new tlssrv_app ();
+        }
         
-        // signal(SIGPIPE, SIG_IGN);
-
-        // while (1)
-        // {
-        //     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        //     printf ("\n%s", cmd_str);
-        // }
-
-        // tlssrv_app* app = new tlssrv_app ();
-        // printf ("%s\n", argv[argc*0]);
-        // while (1)
-        // {
-        //     app->run_iter ();
-        //     std::this_thread::sleep_for(std::chrono::milliseconds(200));
-        // }
+        if (app)
+        {
+            while (1)
+            {
+                app->run_iter ();
+                std::this_thread::sleep_for(std::chrono::microseconds(1));
+            }
+        }
     }
 
     return 0;
