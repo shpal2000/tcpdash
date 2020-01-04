@@ -3,7 +3,7 @@
 class tlssrv_app : public ev_app
 {
 public:
-    tlssrv_app(/* args */);
+    tlssrv_app(json cfg_json, int c_index);
     ~tlssrv_app();
 
     void run_iter();

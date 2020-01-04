@@ -1,14 +1,23 @@
 #include "tlssrv_app.hpp"
 #include "tlssrv_socket.hpp"
 
-tlssrv_app::tlssrv_app(/* args */)
+tlssrv_app::tlssrv_app(json cfg_json, int c_index)
 {
-    ev_sockaddr serverAddr;
     std::vector<ev_sockstats*> statsArr;
     statsArr.push_back ( new ev_sockstats() );
-    ev_socket::set_sockaddr (&serverAddr, "12.20.60.1", 8443);
-    ev_socket* server = new_tcp_listen (&serverAddr, 100, &statsArr);
-    server->set_status (0);
+
+    auto srv_list = cfg_json["server"]["containers"][c_index]["srv_list"];
+    for (auto it = srv_list.begin(); it != srv_list.end(); ++it)
+    {
+        auto srv_cfg = it.value ();
+        ev_sockaddr serverAddr;
+        ev_socket::set_sockaddr (&serverAddr
+                                , srv_cfg["srv_ip"].get<std::string>().c_str()
+                                , srv_cfg["srv_port"].get<int>());
+        ev_socket* server;
+        server = new_tcp_listen (&serverAddr, 100, &statsArr);
+        server->set_status (0);
+    }
 }
 
 tlssrv_app::~tlssrv_app()

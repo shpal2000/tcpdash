@@ -2,11 +2,13 @@
 #define __EV_APP__H
 
 #include "ev_socket.hpp"
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
 
 class ev_app
 {
 public:
-    ev_app(/* args */);
+    ev_app();
     virtual ~ev_app();
 
 

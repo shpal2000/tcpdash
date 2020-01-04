@@ -2,10 +2,8 @@
 #include <iostream>
 #include <fstream>
 #include <signal.h>
-#include "./apps/tls_server/tlssrv_app.hpp"
-#include <nlohmann/json.hpp>
 
-using json = nlohmann::json;
+#include "./apps/tls_server/tlssrv_app.hpp"
 
 #define MAX_CONFIG_DIR_PATH 256
 #define MAX_CONFIG_FILE_PATH 512
@@ -46,7 +44,10 @@ int main(int argc, char **argv)
         for (auto it = c_list.begin(); it != c_list.end(); ++it)
         {
             sprintf (cmd_str,
-                    "ssh -i %s.ssh/id_rsa -tt -o StrictHostKeyChecking=no "
+                    "ssh -i %s.ssh/id_rsa -tt "
+                    "-o LogLevel=quiet "
+                    "-o StrictHostKeyChecking=no "
+                    "-o UserKnownHostsFile=/dev/null "
                     "%s@%s "
                     "sudo docker run --name tlspack_server_%d --rm -it -d %s tgen %s server %s %d tlspack_server_%d",
                     RUN_DIR_PATH,
@@ -65,7 +66,10 @@ int main(int argc, char **argv)
         for (auto it = c_list.begin(); it != c_list.end(); ++it)
         {
             sprintf (cmd_str,
-                    "ssh -i %s.ssh/id_rsa -tt -o StrictHostKeyChecking=no "
+                    "ssh -i %s.ssh/id_rsa -tt "
+                    "-o LogLevel=quiet "
+                    "-o StrictHostKeyChecking=no "
+                    "-o UserKnownHostsFile=/dev/null "
                     "%s@%s "
                     "sudo docker run --name tlspack_client_%d --rm -it -d %s tgen %s client %s %d tlspack_client_%d",
                     RUN_DIR_PATH,
@@ -98,7 +102,10 @@ int main(int argc, char **argv)
         {
             auto macvlan = topology_json["macvlan"].get<std::string>();
             sprintf (cmd_str,
-                    "ssh -i %s.ssh/id_rsa -tt -o StrictHostKeyChecking=no "
+                    "ssh -i %s.ssh/id_rsa -tt "
+                    "-o LogLevel=quiet "
+                    "-o StrictHostKeyChecking=no "
+                    "-o UserKnownHostsFile=/dev/null "
                     "%s@%s "
                     "sudo docker network connect %s %s",
                     RUN_DIR_PATH,
@@ -141,7 +148,7 @@ int main(int argc, char **argv)
         const char* app_type = container["app_type"].get<std::string>().c_str();
         if ( strcmp("tlssrv", app_type) == 0 )
         {
-            app = new tlssrv_app ();
+            app = new tlssrv_app (cfg_json, c_index);
         }
         
         if (app)

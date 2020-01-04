@@ -1,6 +1,6 @@
 #include "ev_app.hpp"
 
-ev_app::ev_app(/* args */)
+ev_app::ev_app()
 {
     m_epoll_ctx = ev_socket::epoll_alloc (this, 1, 1);
 }
