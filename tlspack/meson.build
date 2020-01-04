@@ -11,7 +11,6 @@ executable('tlspack.exe'
             , sources : ['ev_socket.cpp'
                           , 'ev_app.cpp'
                           , './apps/tls_server/tlssrv_app.cpp'
-                          , './apps/tls_server/tlssrv_socket.cpp'
                           , 'main.cpp' ]
             , dependencies: [openssl, nlohmann_json_dep]
             , install : true)

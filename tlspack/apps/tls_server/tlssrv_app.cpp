@@ -1,5 +1,4 @@
 #include "tlssrv_app.hpp"
-#include "tlssrv_socket.hpp"
 
 tlssrv_app::tlssrv_app(json cfg_json, int c_index)
 {
@@ -38,6 +37,7 @@ ev_socket* tlssrv_app::alloc_socket()
 
 void tlssrv_app::on_establish (ev_socket* ev_sock)
 {
+    printf ("on_establish\n");
     ev_sock->get_ssl ();
 }
 
@@ -71,5 +71,16 @@ void tlssrv_app::on_rstatus (ev_socket* ev_sock
 
 void tlssrv_app::on_free (ev_socket* ev_sock)
 {
+    printf ("on_free\n");
     delete ev_sock;
+}
+
+
+//////////////////////////////tlssrv_socket////////////////////////////////////
+tlssrv_socket::tlssrv_socket(/* args */)
+{
+}
+
+tlssrv_socket::~tlssrv_socket()
+{
 }
