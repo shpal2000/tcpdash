@@ -1,6 +1,6 @@
-#include "tlssrv_app.hpp"
+#include "tls_server.hpp"
 
-tlssrv_app::tlssrv_app(json cfg_json, int c_index)
+tls_server_app::tls_server_app(json cfg_json, int c_index)
 {
     std::vector<ev_sockstats*> statsArr;
     statsArr.push_back ( new ev_sockstats() );
@@ -19,34 +19,34 @@ tlssrv_app::tlssrv_app(json cfg_json, int c_index)
     }
 }
 
-tlssrv_app::~tlssrv_app()
+tls_server_app::~tls_server_app()
 {
 }
 
-void tlssrv_app::run_iter()
+void tls_server_app::run_iter()
 {
     ev_app::run_iter ();
 
     //todo
 }
 
-ev_socket* tlssrv_app::alloc_socket()
+ev_socket* tls_server_app::alloc_socket()
 {
-    return new tlssrv_socket();
+    return new tls_server_socket();
 }
 
-void tlssrv_app::on_establish (ev_socket* ev_sock)
+void tls_server_app::on_establish (ev_socket* ev_sock)
 {
     printf ("on_establish\n");
     ev_sock->get_ssl ();
 }
 
-void tlssrv_app::on_write (ev_socket* ev_sock)
+void tls_server_app::on_write (ev_socket* ev_sock)
 {
     ev_sock->get_ssl ();
 }
 
-void tlssrv_app::on_wstatus (ev_socket* ev_sock
+void tls_server_app::on_wstatus (ev_socket* ev_sock
                             , int bytes_written
                             , int write_status)
 {
@@ -55,12 +55,12 @@ void tlssrv_app::on_wstatus (ev_socket* ev_sock
     }
 }
 
-void tlssrv_app::on_read (ev_socket* ev_sock)
+void tls_server_app::on_read (ev_socket* ev_sock)
 {
     ev_sock->get_ssl ();
 }
 
-void tlssrv_app::on_rstatus (ev_socket* ev_sock
+void tls_server_app::on_rstatus (ev_socket* ev_sock
                             , int bytes_read
                             , int read_status)
 {
@@ -69,18 +69,18 @@ void tlssrv_app::on_rstatus (ev_socket* ev_sock
     }
 }
 
-void tlssrv_app::on_free (ev_socket* ev_sock)
+void tls_server_app::on_free (ev_socket* ev_sock)
 {
     printf ("on_free\n");
     delete ev_sock;
 }
 
 
-//////////////////////////////tlssrv_socket////////////////////////////////////
-tlssrv_socket::tlssrv_socket(/* args */)
+//////////////////////////////tls_server_socket////////////////////////////////////
+tls_server_socket::tls_server_socket(/* args */)
 {
 }
 
-tlssrv_socket::~tlssrv_socket()
+tls_server_socket::~tls_server_socket()
 {
 }

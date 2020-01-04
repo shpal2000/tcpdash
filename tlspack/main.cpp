@@ -3,7 +3,8 @@
 #include <fstream>
 #include <signal.h>
 
-#include "./apps/tls_server/tlssrv_app.hpp"
+#include "./apps/tls_server/tls_server.hpp"
+#include "./apps/tls_client/tls_client.hpp"
 
 #define MAX_CONFIG_DIR_PATH 256
 #define MAX_CONFIG_FILE_PATH 512
@@ -14,8 +15,6 @@
 char cmd_str [MAX_CMD_LEN];
 char cfg_dir [MAX_CONFIG_DIR_PATH];
 char cfg_file [MAX_CONFIG_FILE_PATH];
-char topology_dir [MAX_CONFIG_DIR_PATH];
-char topology_file [MAX_CONFIG_FILE_PATH];
 char ssh_host_file [MAX_CONFIG_FILE_PATH];
 
 
@@ -85,22 +84,16 @@ int main(int argc, char **argv)
         while (1)
         {
             std::this_thread::sleep_for(std::chrono::seconds(1));
-         }
+        }
     }
     else
     {   
         int c_index = atoi (argv[3]);
         char* c_name = argv[4];
         auto topology = cfg_json[mode]["topology"].get<std::string>();
-        sprintf (topology_dir, "%s%s/", RUN_DIR_PATH, "topologies");
-        sprintf (topology_file, "%s%s", topology_dir, topology.c_str());
-        std::ifstream topology_stream(topology_file);
-        json topology_json = json::parse(topology_stream);
-        auto topology_type = topology_json["type"].get<std::string>();
-
-        if ( strcmp(topology_type.c_str(), "single-interface") == 0 )
+        if ( strcmp(topology.c_str(), "single-interface") == 0 )
         {
-            auto macvlan = topology_json["macvlan"].get<std::string>();
+            auto macvlan = cfg_json[mode]["macvlan"].get<std::string>();
             sprintf (cmd_str,
                     "ssh -i %s.ssh/id_rsa -tt "
                     "-o LogLevel=quiet "
@@ -113,7 +106,7 @@ int main(int argc, char **argv)
                     macvlan.c_str(), c_name);
             system (cmd_str);
 
-            auto iface = topology_json["iface"].get<std::string>();
+            auto iface = cfg_json[mode]["iface"].get<std::string>();
             sprintf (cmd_str,
                     "ip link set dev %s up",
                     iface.c_str());
@@ -146,9 +139,9 @@ int main(int argc, char **argv)
         ev_app* app = nullptr;
         auto container = cfg_json[mode]["containers"][c_index];
         const char* app_type = container["app_type"].get<std::string>().c_str();
-        if ( strcmp("tlssrv", app_type) == 0 )
+        if ( strcmp("tls_server", app_type) == 0 )
         {
-            app = new tlssrv_app (cfg_json, c_index);
+            app = new tls_server_app (cfg_json, c_index);
         }
         
         if (app)

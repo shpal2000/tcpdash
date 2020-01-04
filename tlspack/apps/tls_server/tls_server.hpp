@@ -1,19 +1,19 @@
 #include "ev_app.hpp"
 
-class tlssrv_socket : public ev_socket
+class tls_server_socket : public ev_socket
 {
 private:
     /* data */
 public:
-    tlssrv_socket(/* args */);
-    ~tlssrv_socket();
+    tls_server_socket(/* args */);
+    ~tls_server_socket();
 };
 
-class tlssrv_app : public ev_app
+class tls_server_app : public ev_app
 {
 public:
-    tlssrv_app(json cfg_json, int c_index);
-    ~tlssrv_app();
+    tls_server_app(json cfg_json, int c_index);
+    ~tls_server_app();
 
     void run_iter();
     ev_socket* alloc_socket();
