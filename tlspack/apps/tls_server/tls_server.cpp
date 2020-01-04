@@ -38,6 +38,7 @@ ev_socket* tls_server_app::alloc_socket()
 void tls_server_app::on_establish (ev_socket* ev_sock)
 {
     printf ("on_establish\n");
+    fflush (NULL);
     ev_sock->get_ssl ();
 }
 

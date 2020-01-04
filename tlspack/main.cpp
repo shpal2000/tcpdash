@@ -48,7 +48,8 @@ int main(int argc, char **argv)
                     "-o StrictHostKeyChecking=no "
                     "-o UserKnownHostsFile=/dev/null "
                     "%s@%s "
-                    "sudo docker run --name tlspack_server_%d --rm -it -d %s tgen %s server %s %d tlspack_server_%d",
+                    "sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged "
+                    "--name tlspack_server_%d --rm -it -d %s tgen %s server %s %d tlspack_server_%d",
                     RUN_DIR_PATH,
                     ssh_user.c_str(), ssh_host.c_str(),
                     c_index, RUN_VOLUMES, TLSPACK_EXE, cfg_name, c_index, c_index);
@@ -70,7 +71,8 @@ int main(int argc, char **argv)
                     "-o StrictHostKeyChecking=no "
                     "-o UserKnownHostsFile=/dev/null "
                     "%s@%s "
-                    "sudo docker run --name tlspack_client_%d --rm -it -d %s tgen %s client %s %d tlspack_client_%d",
+                    "sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged "
+                    "--name tlspack_client_%d --rm -it -d %s tgen %s client %s %d tlspack_client_%d",
                     RUN_DIR_PATH,
                     ssh_user.c_str(), ssh_host.c_str(),
                     c_index, RUN_VOLUMES, TLSPACK_EXE, cfg_name, c_index, c_index);
@@ -96,9 +98,7 @@ int main(int argc, char **argv)
             auto macvlan = cfg_json[mode]["macvlan"].get<std::string>();
             sprintf (cmd_str,
                     "ssh -i %s.ssh/id_rsa -tt "
-                    "-o LogLevel=quiet "
                     "-o StrictHostKeyChecking=no "
-                    "-o UserKnownHostsFile=/dev/null "
                     "%s@%s "
                     "sudo docker network connect %s %s",
                     RUN_DIR_PATH,
@@ -142,6 +142,10 @@ int main(int argc, char **argv)
         if ( strcmp("tls_server", app_type) == 0 )
         {
             app = new tls_server_app (cfg_json, c_index);
+        }
+        else if ( strcmp("tls_client", app_type) == 0 )
+        {
+            app = new tls_client_app (cfg_json, c_index);
         }
         
         if (app)
