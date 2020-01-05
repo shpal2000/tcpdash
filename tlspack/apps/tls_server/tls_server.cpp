@@ -6,7 +6,7 @@ tls_server_app::tls_server_app(json cfg_json, int c_index, int a_index)
     statsArr.push_back ( new ev_sockstats() );
 
     auto srv_list 
-        = cfg_json["server"]["containers"][c_index][a_index]["srv_list"];
+        = cfg_json["server"]["containers"][c_index]["apps"][a_index]["srv_list"];
     for (auto it = srv_list.begin(); it != srv_list.end(); ++it)
     {
         auto srv_cfg = it.value ();

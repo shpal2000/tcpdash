@@ -148,8 +148,6 @@ int main(int argc, char **argv)
 
         signal(SIGPIPE, SIG_IGN);
 
-        auto container = cfg_json[mode]["containers"][c_index];
-        
         std::vector<ev_app*> app_list;
         auto apps = cfg_json[mode]["containers"][c_index]["apps"];
         int a_index = -1;
