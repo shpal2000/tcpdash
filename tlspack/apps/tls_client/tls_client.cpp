@@ -43,41 +43,55 @@ ev_socket* tls_client_app::alloc_socket()
 void tls_client_app::on_establish (ev_socket* ev_sock)
 {
     printf ("on_establish\n");
-    fflush (NULL);
+
     ev_sock->get_ssl ();
 }
 
 void tls_client_app::on_write (ev_socket* ev_sock)
 {
-    ev_sock->get_ssl ();
+    printf ("on_write\n");
+
+    ev_sock->disable_wr_notification ();
 }
 
 void tls_client_app::on_wstatus (ev_socket* ev_sock
                             , int bytes_written
                             , int write_status)
 {
-    if (bytes_written && write_status){
-        ev_sock->get_ssl ();
-    }
+    printf ("on_wstatus\n");
 }
 
 void tls_client_app::on_read (ev_socket* ev_sock)
 {
-    ev_sock->get_ssl ();
+    printf ("on_read\n");
+
+    ev_sock->read_next_data (m_read_buffer, 0, MAX_READ_BUFFER_LEN, true);
+
 }
 
 void tls_client_app::on_rstatus (ev_socket* ev_sock
                             , int bytes_read
                             , int read_status)
 {
-    if (bytes_read && read_status) {
-        ev_sock->get_ssl ();
+    printf ("on_rstatus\n");
+
+    if (bytes_read == 0) 
+    {
+        if (read_status == READ_STATUS_TCP_CLOSE) 
+        {
+            ev_sock->write_close();
+        }
+        else
+        {
+            ev_sock->abort ();
+        }
     }
 }
 
 void tls_client_app::on_free (ev_socket* ev_sock)
 {
     printf ("on_free\n");
+    
     delete ev_sock;
 }
 

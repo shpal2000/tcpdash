@@ -306,6 +306,20 @@ void ev_socket::write_next_data (char* writeBuffer
     }
 }
 
+void ev_socket::write_close () {
+    
+    enable_wr_notification ();
+
+    if ( get_error_state() ) 
+    {
+        abort ();
+    } 
+    else 
+    {
+        set_state (STATE_NO_MORE_WRITE_DATA | STATE_TCP_TO_SEND_FIN);
+    }    
+}
+
 void ev_socket::abort ()
 {
     if ( is_set_state (STATE_CONN_MARK_DELETE) == 0 ) {

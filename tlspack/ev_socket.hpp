@@ -442,6 +442,7 @@ public:
                             , int writeDataLen
                             , bool partialWrite);
     
+    void write_close ();
     void abort ();
 
 

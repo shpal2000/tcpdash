@@ -1,5 +1,7 @@
 #include "ev_app.hpp"
 
+#define MAX_READ_BUFFER_LEN 100000
+
 class tls_client_socket : public ev_socket
 {
 private:
@@ -25,4 +27,5 @@ public:
     void on_free (ev_socket* ev_sock);
 
 private:
+    char m_read_buffer[MAX_READ_BUFFER_LEN];
 };
