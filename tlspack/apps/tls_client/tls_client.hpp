@@ -14,7 +14,7 @@ public:
 class tls_client_app : public ev_app
 {
 public:
-    tls_client_app(json cfg_json, int c_index);
+    tls_client_app(json cfg_json, int c_index, int a_index);
     ~tls_client_app();
 
     void run_iter();

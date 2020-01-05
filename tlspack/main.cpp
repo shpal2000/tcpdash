@@ -107,7 +107,9 @@ int main(int argc, char **argv)
                 auto macvlan = cfg_json[mode]["macvlan"].get<std::string>();
                 sprintf (cmd_str,
                         "ssh -i %s.ssh/id_rsa -tt "
+                        "-o LogLevel=quiet "
                         "-o StrictHostKeyChecking=no "
+                        "-o UserKnownHostsFile=/dev/null "
                         "%s@%s "
                         "sudo docker network connect %s %s",
                         RUN_DIR_PATH,
@@ -146,23 +148,41 @@ int main(int argc, char **argv)
 
         signal(SIGPIPE, SIG_IGN);
 
-        ev_app* app = nullptr;
         auto container = cfg_json[mode]["containers"][c_index];
-        const char* app_type = container["app_type"].get<std::string>().c_str();
-        if ( strcmp("tls_server", app_type) == 0 )
+        
+        std::vector<ev_app*> app_list;
+        auto apps = cfg_json[mode]["containers"][c_index]["apps"];
+        int a_index = -1;
+        for (auto it = apps.begin(); it != apps.end(); ++it)
         {
-            app = new tls_server_app (cfg_json, c_index);
-        }
-        else if ( strcmp("tls_client", app_type) == 0 )
-        {
-            app = new tls_client_app (cfg_json, c_index);
+            auto app = it.value();
+            const char* app_type = app["app_type"].get<std::string>().c_str();
+
+            ev_app* next_app = nullptr;
+            a_index++;
+            if ( strcmp("tls_server", app_type) == 0 )
+            {
+                next_app = new tls_server_app (cfg_json, c_index, a_index);
+            }
+            else if ( strcmp("tls_client", app_type) == 0 )
+            {
+                next_app = new tls_client_app (cfg_json, c_index, a_index);
+            }
+
+            if (next_app)
+            {
+                app_list.push_back (next_app);
+            }           
         }
         
-        if (app)
+        if ( not app_list.empty() )
         {
             while (1)
             {
-                app->run_iter ();
+                for (ev_app* app_ptr : app_list)
+                {
+                    app_ptr->run_iter ();
+                }
                 std::this_thread::sleep_for(std::chrono::microseconds(1));
             }
         }

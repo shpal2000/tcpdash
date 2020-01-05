@@ -13,7 +13,7 @@ public:
 class tls_server_app : public ev_app
 {
 public:
-    tls_server_app(json cfg_json, int c_index);
+    tls_server_app(json cfg_json, int c_index, int a_index);
     ~tls_server_app();
 
     void run_iter();

@@ -1,11 +1,12 @@
 #include "tls_client.hpp"
 
-tls_client_app::tls_client_app(json cfg_json, int c_index)
+tls_client_app::tls_client_app(json cfg_json, int c_index, int a_index)
 {
     std::vector<ev_sockstats*> statsArr;
     statsArr.push_back ( new ev_sockstats() );
 
-    auto cs_grp_list = cfg_json["client"]["containers"][c_index]["cs_grp_list"];
+    auto cs_grp_list 
+        = cfg_json["client"]["containers"][c_index][a_index]["cs_grp_list"];
     for (auto it = cs_grp_list.begin(); it != cs_grp_list.end(); ++it)
     {
         auto cs_grp = it.value ();
