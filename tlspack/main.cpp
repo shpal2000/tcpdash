@@ -49,7 +49,7 @@ int main(int argc, char **argv)
                     "-o UserKnownHostsFile=/dev/null "
                     "%s@%s "
                     "sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged "
-                    "--name tlspack_server_%d --rm -it -d %s tgen %s server %s %d tlspack_server_%d",
+                    "--name tlspack_server_%d --rm -it -d %s tgen %s server %s %d tlspack_server_%d config_topology",
                     RUN_DIR_PATH,
                     ssh_user.c_str(), ssh_host.c_str(),
                     c_index, RUN_VOLUMES, TLSPACK_EXE, cfg_name, c_index, c_index);
@@ -72,7 +72,7 @@ int main(int argc, char **argv)
                     "-o UserKnownHostsFile=/dev/null "
                     "%s@%s "
                     "sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged "
-                    "--name tlspack_client_%d --rm -it -d %s tgen %s client %s %d tlspack_client_%d",
+                    "--name tlspack_client_%d --rm -it -d %s tgen %s client %s %d tlspack_client_%d config_topology",
                     RUN_DIR_PATH,
                     ssh_user.c_str(), ssh_host.c_str(),
                     c_index, RUN_VOLUMES, TLSPACK_EXE, cfg_name, c_index, c_index);
@@ -92,45 +92,55 @@ int main(int argc, char **argv)
     {   
         int c_index = atoi (argv[3]);
         char* c_name = argv[4];
-        auto topology = cfg_json[mode]["topology"].get<std::string>();
-        if ( strcmp(topology.c_str(), "single-interface") == 0 )
+        
+        const char* toplogy_falg = "skip_topology";
+        if (argc > 5)
         {
-            auto macvlan = cfg_json[mode]["macvlan"].get<std::string>();
-            sprintf (cmd_str,
-                    "ssh -i %s.ssh/id_rsa -tt "
-                    "-o StrictHostKeyChecking=no "
-                    "%s@%s "
-                    "sudo docker network connect %s %s",
-                    RUN_DIR_PATH,
-                    ssh_user.c_str(), ssh_host.c_str(),
-                    macvlan.c_str(), c_name);
-            system (cmd_str);
-
-            auto iface = cfg_json[mode]["iface"].get<std::string>();
-            sprintf (cmd_str,
-                    "ip link set dev %s up",
-                    iface.c_str());
-            system (cmd_str);
-
-            sprintf (cmd_str,
-                    "ip route add default dev %s table 200",
-                    iface.c_str());
-            system (cmd_str);
-
-
-            auto subnets = cfg_json[mode]["containers"][c_index]["subnets"];
-            for (auto it = subnets.begin(); it != subnets.end(); ++it)
+            toplogy_falg = argv[5];
+        }
+        
+        if ( strcmp(toplogy_falg, "config_topology") == 0 )
+        {
+            auto topology = cfg_json[mode]["topology"].get<std::string>();
+            if ( strcmp(topology.c_str(), "single-interface") == 0 )
             {
-                auto subnet = it.value().get<std::string>();
+                auto macvlan = cfg_json[mode]["macvlan"].get<std::string>();
                 sprintf (cmd_str,
-                        "ip -4 route add local %s dev lo",
-                        subnet.c_str());
+                        "ssh -i %s.ssh/id_rsa -tt "
+                        "-o StrictHostKeyChecking=no "
+                        "%s@%s "
+                        "sudo docker network connect %s %s",
+                        RUN_DIR_PATH,
+                        ssh_user.c_str(), ssh_host.c_str(),
+                        macvlan.c_str(), c_name);
+                system (cmd_str);
+
+                auto iface = cfg_json[mode]["iface"].get<std::string>();
+                sprintf (cmd_str,
+                        "ip link set dev %s up",
+                        iface.c_str());
                 system (cmd_str);
 
                 sprintf (cmd_str,
-                        "ip rule add from %s table 200",
-                        subnet.c_str());
+                        "ip route add default dev %s table 200",
+                        iface.c_str());
                 system (cmd_str);
+
+
+                auto subnets = cfg_json[mode]["containers"][c_index]["subnets"];
+                for (auto it = subnets.begin(); it != subnets.end(); ++it)
+                {
+                    auto subnet = it.value().get<std::string>();
+                    sprintf (cmd_str,
+                            "ip -4 route add local %s dev lo",
+                            subnet.c_str());
+                    system (cmd_str);
+
+                    sprintf (cmd_str,
+                            "ip rule add from %s table 200",
+                            subnet.c_str());
+                    system (cmd_str);
+                }
             }
         }
 

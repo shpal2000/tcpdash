@@ -13,9 +13,8 @@ tls_server_app::tls_server_app(json cfg_json, int c_index)
         ev_socket::set_sockaddr (&serverAddr
                                 , srv_cfg["srv_ip"].get<std::string>().c_str()
                                 , srv_cfg["srv_port"].get<int>());
-        ev_socket* server;
-        server = new_tcp_listen (&serverAddr, 100, &statsArr);
-        server->set_status (0);
+        
+        new_tcp_listen (&serverAddr, 100, &statsArr);
     }
 }
 

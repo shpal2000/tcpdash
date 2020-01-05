@@ -20,9 +20,7 @@ tls_client_app::tls_client_app(json cfg_json, int c_index)
                             , cs_grp["clnt_ip_begin"].get<std::string>().c_str()
                             , cs_grp["clnt_port_begin"].get<int>());
 
-        ev_socket* client;
-        client = new_tcp_connect (&clientAddr, &serverAddr, &statsArr);
-        client->set_status (0);
+        new_tcp_connect (&clientAddr, &serverAddr, &statsArr);
     }
 }
 

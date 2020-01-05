@@ -121,4 +121,11 @@ sudo docker network ls
 sudo docker run --name tlspack_master --rm -it -d --volume=/home/shirish/tgen_workspace:/tgen_workspace --volume=/home/shirish/rundir:/rundir tgen /tgen_workspace/tcpdash/tlspack/build/tlspack.exe run try1
 
 
+sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged --name tlspack_dev_server --rm -it --volume=/home/shirish/tgen_workspace:/tgen_workspace --volume=/home/shirish/rundir:/rundir tgen /bin/bash 
+
+sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged --name tlspack_dev_client --rm -it --volume=/home/shirish/tgen_workspace:/tgen_workspace --volume=/home/shirish/rundir:/rundir tgen /bin/bash 
+
+/tgen_workspace/tcpdash/tlspack/build/tlspack.exe server try1 0 tlspack_dev_server config_topology
+
+/tgen_workspace/tcpdash/tlspack/build/tlspack.exe client try1 0 tlspack_dev_client config_topology
 -------
