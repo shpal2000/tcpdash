@@ -2,6 +2,13 @@
 
 #define MAX_READ_BUFFER_LEN 100000
 
+class tls_client_stats : public ev_sockstats
+{
+public:
+    uint64_t tls_client_stats_1;
+    uint64_t tls_client_stats_100;
+};
+
 class tls_client_socket : public ev_socket
 {
 private:

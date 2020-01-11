@@ -2,20 +2,42 @@
 
 tls_server_app::tls_server_app(json cfg_json, int c_index, int a_index)
 {
-    std::vector<ev_sockstats*> statsArr;
-    statsArr.push_back ( new ev_sockstats() );
+    const char* app_stats_label = cfg_json["server"]
+                                ["containers"]
+                                [c_index]
+                                ["apps"]
+                                [a_index]
+                                ["stats_label"].get<std::string>().c_str();
 
-    auto srv_list 
-        = cfg_json["server"]["containers"][c_index]["apps"][a_index]["srv_list"];
+    tls_server_stats* app_stats = new tls_server_stats();
+    m_stats_map.insert (app_stats_label, app_stats);
+
+    auto srv_list =
+        cfg_json["server"]["containers"][c_index]["apps"][a_index]["srv_list"];
+
     for (auto it = srv_list.begin(); it != srv_list.end(); ++it)
     {
         auto srv_cfg = it.value ();
+
+        const char* srv_stats_label = srv_cfg["stats_label"]
+                                    .get<std::string>()
+                                    .c_str();
+
+        tls_server_stats* srv_stats = new tls_server_stats();
+        m_stats_map.insert ( srv_stats_label, srv_stats );
+
+        std::vector<ev_sockstats*> *srv_stats_arr 
+                        = new std::vector<ev_sockstats*> ();
+
+        srv_stats_arr->push_back (app_stats);
+        srv_stats_arr->push_back (srv_stats);
+
         ev_sockaddr serverAddr;
         ev_socket::set_sockaddr (&serverAddr
                                 , srv_cfg["srv_ip"].get<std::string>().c_str()
                                 , srv_cfg["srv_port"].get<int>());
-        
-        new_tcp_listen (&serverAddr, 100, &statsArr);
+    
+        new_tcp_listen (&serverAddr, 100, srv_stats_arr);
     }
 }
 

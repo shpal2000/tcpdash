@@ -1,6 +1,14 @@
 #include "ev_app.hpp"
 
 #define MAX_READ_BUFFER_LEN 100000
+
+class tls_server_stats : public ev_sockstats
+{
+public:
+    uint64_t tls_server_stats_1;
+    uint64_t tls_server_stats_100;
+};
+
 class tls_server_socket : public ev_socket
 {
 private:
@@ -27,4 +35,5 @@ public:
 
 private:
     char m_read_buffer[MAX_READ_BUFFER_LEN];
+    std::map<char*, ev_sockstats*> m_stats_map;
 };
