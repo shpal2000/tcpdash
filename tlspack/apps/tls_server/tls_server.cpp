@@ -1,6 +1,10 @@
 #include "tls_server.hpp"
 
-tls_server_app::tls_server_app(json cfg_json, int c_index, int a_index)
+tls_server_app::tls_server_app(json cfg_json
+                                , int c_index
+                                , int a_index
+                                , tls_server_stats* all_app_stats
+                                , ev_sockstats* all_ev_app_stats)
 {
     const char* app_stats_label = cfg_json["server"]
                                 ["containers"]
@@ -10,7 +14,7 @@ tls_server_app::tls_server_app(json cfg_json, int c_index, int a_index)
                                 ["stats_label"].get<std::string>().c_str();
 
     tls_server_stats* app_stats = new tls_server_stats();
-    m_stats_map.insert (app_stats_label, app_stats);
+    m_stats_map.insert ( ev_stats_map::value_type(app_stats_label, app_stats) );
 
     auto srv_list =
         cfg_json["server"]["containers"][c_index]["apps"][a_index]["srv_list"];
@@ -19,25 +23,39 @@ tls_server_app::tls_server_app(json cfg_json, int c_index, int a_index)
     {
         auto srv_cfg = it.value ();
 
-        const char* srv_stats_label = srv_cfg["stats_label"]
-                                    .get<std::string>()
-                                    .c_str();
+        const char* srv_stats_label 
+            = srv_cfg["stats_label"].get<std::string>().c_str();
 
         tls_server_stats* srv_stats = new tls_server_stats();
-        m_stats_map.insert ( srv_stats_label, srv_stats );
+        m_stats_map.insert(ev_stats_map::value_type(srv_stats_label, srv_stats));
 
         std::vector<ev_sockstats*> *srv_stats_arr 
-                        = new std::vector<ev_sockstats*> ();
+            = new std::vector<ev_sockstats*> ();
 
-        srv_stats_arr->push_back (app_stats);
         srv_stats_arr->push_back (srv_stats);
+        srv_stats_arr->push_back (app_stats);
+        srv_stats_arr->push_back (all_app_stats);
+        srv_stats_arr->push_back (all_ev_app_stats);
 
         ev_sockaddr serverAddr;
         ev_socket::set_sockaddr (&serverAddr
                                 , srv_cfg["srv_ip"].get<std::string>().c_str()
                                 , srv_cfg["srv_port"].get<int>());
     
-        new_tcp_listen (&serverAddr, 100, srv_stats_arr);
+        tls_server_socket* srv_socket 
+            = (tls_server_socket*) new_tcp_listen (&serverAddr
+                                                    , 100
+                                                    , srv_stats_arr);
+        if (srv_socket) 
+        {
+            srv_socket->m_stats_arr.push_back (srv_stats);
+            srv_socket->m_stats_arr.push_back (app_stats);
+            srv_socket->m_stats_arr.push_back (all_app_stats);
+        }
+        else
+        {
+            //todo error handling
+        }
     }
 }
 

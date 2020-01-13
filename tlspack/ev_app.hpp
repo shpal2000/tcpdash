@@ -5,6 +5,7 @@
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
+typedef std::map<const char*, ev_sockstats*> ev_stats_map;
 class ev_app
 {
 public:

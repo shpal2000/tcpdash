@@ -148,6 +148,9 @@ int main(int argc, char **argv)
 
         signal(SIGPIPE, SIG_IGN);
 
+        ev_sockstats all_ev_sockstats;
+        tls_server_stats all_tls_server_stats;
+
         std::vector<ev_app*> app_list;
         auto apps = cfg_json[mode]["containers"][c_index]["apps"];
         int a_index = -1;
@@ -160,7 +163,11 @@ int main(int argc, char **argv)
             a_index++;
             if ( strcmp("tls_server", app_type) == 0 )
             {
-                next_app = new tls_server_app (cfg_json, c_index, a_index);
+                next_app = new tls_server_app (cfg_json
+                                                , c_index
+                                                , a_index
+                                                , &all_tls_server_stats
+                                                , &all_ev_sockstats);
             }
             else if ( strcmp("tls_client", app_type) == 0 )
             {

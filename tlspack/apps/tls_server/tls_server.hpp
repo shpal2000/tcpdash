@@ -11,17 +11,24 @@ public:
 
 class tls_server_socket : public ev_socket
 {
-private:
-    /* data */
 public:
     tls_server_socket(/* args */);
     ~tls_server_socket();
+
+private:
+    std::vector<tls_server_stats*> m_stats_arr;
+    friend class tls_server_app;
 };
 
 class tls_server_app : public ev_app
 {
 public:
-    tls_server_app(json cfg_json, int c_index, int a_index);
+    tls_server_app(json cfg_json
+                    , int c_index
+                    , int a_index
+                    , tls_server_stats* all_app_stats
+                    , ev_sockstats* all_ev_app_stats);
+
     ~tls_server_app();
 
     void run_iter();
@@ -35,5 +42,5 @@ public:
 
 private:
     char m_read_buffer[MAX_READ_BUFFER_LEN];
-    std::map<char*, ev_sockstats*> m_stats_map;
+    ev_stats_map m_stats_map;
 };
