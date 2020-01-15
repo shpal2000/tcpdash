@@ -6,16 +6,6 @@ tls_server_app::tls_server_app(json cfg_json
                                 , tls_server_stats* all_app_stats
                                 , ev_sockstats* all_ev_app_stats)
 {
-    const char* app_stats_label = cfg_json["server"]
-                                ["containers"]
-                                [c_index]
-                                ["apps"]
-                                [a_index]
-                                ["stats_label"].get<std::string>().c_str();
-
-    tls_server_stats* app_stats = new tls_server_stats();
-    m_stats_map.insert ( ev_stats_map::value_type(app_stats_label, app_stats) );
-
     auto srv_list =
         cfg_json["server"]["containers"][c_index]["apps"][a_index]["srv_list"];
 
@@ -33,7 +23,7 @@ tls_server_app::tls_server_app(json cfg_json
             = new std::vector<ev_sockstats*> ();
 
         srv_stats_arr->push_back (srv_stats);
-        srv_stats_arr->push_back (app_stats);
+        srv_stats_arr->push_back (&m_stats);
         srv_stats_arr->push_back (all_app_stats);
         srv_stats_arr->push_back (all_ev_app_stats);
 
@@ -48,9 +38,6 @@ tls_server_app::tls_server_app(json cfg_json
                                                     , srv_stats_arr);
         if (srv_socket) 
         {
-            srv_socket->m_stats_arr.push_back (srv_stats);
-            srv_socket->m_stats_arr.push_back (app_stats);
-            srv_socket->m_stats_arr.push_back (all_app_stats);
         }
         else
         {
@@ -79,6 +66,8 @@ void tls_server_app::on_establish (ev_socket* ev_sock)
 {
     printf ("on_establish\n");
     
+    inc_tls_server_stats (tls_server_stats_1);
+
     ev_sock->disable_wr_notification ();
 }
 

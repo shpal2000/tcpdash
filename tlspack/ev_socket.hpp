@@ -101,21 +101,17 @@ class ev_socket;
 #define WRITE_STATUS_TCP_TIMEOUT                         2
 #define WRITE_STATUS_ERROR                               3
 
-#define inc_stats(__stat_name) ;
-
-/*
-// #define inc_stats(__stat_name) \
-// { \
-//     for (ev_sockstats* __stats_ptr : *this->m_sockstats_arr) { \
-//         __stats_ptr->__stat_name++; \
-//     } \
-// }
-*/
-
-#define inc_stats2(__ev_sock,__stat_name) \
+#define inc_stats(__stat_name) \
 { \
-    for (ev_sockstats* __stats_ptr : *__ev_sock->get_sockstats_arr()) { \
-        __stats_ptr->__stat_name++; \
+    for (uint i=0; i < this->m_sockstats_arr->size(); i++) { \
+        (*(this->m_sockstats_arr))[i]->__stat_name++; \
+    } \
+}
+
+#define inc_app_stats(__sock_ptr,__stat_class,__stat_name) \
+{ \
+    for (uint i=0; i < __sock_ptr->get_sockstats_arr()->size()-1; i++) { \
+        ((__stat_class*)((*(__sock_ptr->get_sockstats_arr()))[i]))->__stat_name++; \
     } \
 }
 

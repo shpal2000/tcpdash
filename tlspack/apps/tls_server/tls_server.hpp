@@ -16,7 +16,6 @@ public:
     ~tls_server_socket();
 
 private:
-    std::vector<tls_server_stats*> m_stats_arr;
     friend class tls_server_app;
 };
 
@@ -42,5 +41,11 @@ public:
 
 private:
     char m_read_buffer[MAX_READ_BUFFER_LEN];
+    tls_server_stats m_stats;
     ev_stats_map m_stats_map;
 };
+
+#define inc_tls_server_stats(__stat_name) \
+{ \
+    inc_app_stats(ev_sock,tls_server_stats,__stat_name); \
+}
