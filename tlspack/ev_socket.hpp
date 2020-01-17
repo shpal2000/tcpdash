@@ -144,9 +144,8 @@ union ev_sockaddr
     struct sockaddr_in6 in_addr6;
 };
 
-class ev_sockstats
+struct ev_sockstats_data
 {
-public:
     uint64_t socketCreate;    
     uint64_t socketCreateFail;
     uint64_t socketListenFail;
@@ -206,6 +205,11 @@ public:
     uint64_t appSessStructNotAvail;
     uint64_t tcpInitServerFail;
     uint64_t tcpGetSockNameFail;
+};
+
+struct ev_sockstats : ev_sockstats_data
+{
+    ev_sockstats () : ev_sockstats_data () {}
 };
 
 class epoll_ctx 

@@ -1,27 +1,59 @@
 #include "tls_client.hpp"
 
-tls_client_app::tls_client_app(json cfg_json, int c_index, int a_index)
+tls_client_app::tls_client_app(json cfg_json
+                    , int c_index
+                    , int a_index
+                    , tls_client_stats* all_app_stats
+                    , ev_sockstats* all_ev_app_stats)
 {
-    std::vector<ev_sockstats*> statsArr;
-    statsArr.push_back ( new ev_sockstats() );
+    auto cs_grp_list = cfg_json["client"]
+                                ["containers"]
+                                [c_index]
+                                ["apps"]
+                                [a_index]
+                                ["cs_grp_list"];
 
-    auto cs_grp_list 
-        = cfg_json["client"]["containers"][c_index]["apps"][a_index]["cs_grp_list"];
     for (auto it = cs_grp_list.begin(); it != cs_grp_list.end(); ++it)
     {
-        auto cs_grp = it.value ();
+        auto cs_grp_cfg = it.value ();
+
+        const char* cs_grp_stats_label 
+            = cs_grp_cfg["stats_label"].get<std::string>().c_str();
+
+        tls_client_stats* cs_grp_stats = new tls_client_stats();
+
+        m_stats_map.insert(ev_stats_map::value_type(cs_grp_stats_label
+                            , cs_grp_stats));
+
+        std::vector<ev_sockstats*> *cs_grp_stats_arr 
+            = new std::vector<ev_sockstats*> ();
+
+        cs_grp_stats_arr->push_back (cs_grp_stats);
+        cs_grp_stats_arr->push_back (&m_stats);
+        cs_grp_stats_arr->push_back (all_app_stats);
+        cs_grp_stats_arr->push_back (all_ev_app_stats);
 
         ev_sockaddr serverAddr;
         ev_socket::set_sockaddr (&serverAddr
-                                , cs_grp["srv_ip"].get<std::string>().c_str()
-                                , cs_grp["srv_port"].get<int>());
+                            , cs_grp_cfg["srv_ip"].get<std::string>().c_str()
+                            , cs_grp_cfg["srv_port"].get<int>());
 
         ev_sockaddr clientAddr;
         ev_socket::set_sockaddr (&clientAddr
-                            , cs_grp["clnt_ip_begin"].get<std::string>().c_str()
-                            , cs_grp["clnt_port_begin"].get<int>());
+                        , cs_grp_cfg["clnt_ip_begin"].get<std::string>().c_str()
+                        , cs_grp_cfg["clnt_port_begin"].get<int>());
 
-        new_tcp_connect (&clientAddr, &serverAddr, &statsArr);
+        tls_client_socket* client_socket
+            = (tls_client_socket*) new_tcp_connect (&clientAddr
+                                                    , &serverAddr
+                                                    , cs_grp_stats_arr);
+        if (client_socket) 
+        {
+        }
+        else
+        {
+            //todo error handling
+        }
     }
 }
 

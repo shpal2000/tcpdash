@@ -8,22 +8,36 @@
 
 #define MAX_CONFIG_DIR_PATH 256
 #define MAX_CONFIG_FILE_PATH 512
-#define MAX_CMD_LEN 1024
+#define MAX_EXE_FILE_PATH 512
+#define MAX_VOLUME_STRING 512
+#define MAX_CMD_LEN 2048
+#define MAX_CMD_LEN 2048
+#define MAX_RESULT_DIR_PATH 2048
 #define RUN_DIR_PATH "/rundir/"
-#define TLSPACK_EXE "/tgen_workspace/tcpdash/tlspack/build/tlspack.exe"
-#define RUN_VOLUMES "--volume=/home/shirish/tgen_workspace:/tgen_workspace --volume=/home/shirish/rundir:/rundir"
 char cmd_str [MAX_CMD_LEN];
 char cfg_dir [MAX_CONFIG_DIR_PATH];
 char cfg_file [MAX_CONFIG_FILE_PATH];
 char ssh_host_file [MAX_CONFIG_FILE_PATH];
+char tlspack_exe_file [MAX_EXE_FILE_PATH];
+char volume_string [MAX_VOLUME_STRING];
+char result_dir [MAX_RESULT_DIR_PATH];
 
-
+static void system_cmd (const char* label, const char* cmd_str)
+{
+    printf ("%s ---- %s\n\n", label, cmd_str);
+    fflush (NULL);
+    system (cmd_str);
+}
 
 int main(int argc, char **argv) 
 {
     char* mode = argv[1];
     char* cfg_name = argv[2];
-    sprintf (cfg_dir, "%s%s/", RUN_DIR_PATH, cfg_name);
+    char* run_tag = argv[3];
+
+    sprintf (result_dir, "%sresults/%s/%s/", RUN_DIR_PATH, cfg_name, run_tag);
+
+    sprintf (cfg_dir, "%sloads/%s/", RUN_DIR_PATH, cfg_name);
     sprintf (cfg_file, "%s%s", cfg_dir, "config.json");
     std::ifstream cfg_stream(cfg_file);
     json cfg_json = json::parse(cfg_stream);
@@ -37,26 +51,50 @@ int main(int argc, char **argv)
 
     if (strcmp(mode, "run") == 0)
     {
+        char* host_run_dir = argv[4];
+
+        sprintf (tlspack_exe_file, "%sbin/tlspack.exe", RUN_DIR_PATH);
+        sprintf (volume_string, "--volume=%s:%s", host_run_dir, RUN_DIR_PATH);
+
+        //remove result dir
+        sprintf (cmd_str, "rm -rf %s", result_dir); 
+        system_cmd ("remove result dir if exist", cmd_str);
+
+        //create result dir
+        sprintf (cmd_str, "mkdir %s", result_dir); 
+        system_cmd ("create result dir", cmd_str);
+
+        //create result server dir
+        sprintf (cmd_str, "mkdir %sserver", result_dir); 
+        system_cmd ("create server result dir", cmd_str);
+
+        //create result client dir
+        sprintf (cmd_str, "mkdir %sclient", result_dir); 
+        system_cmd ("create client result dir", cmd_str);
+
         //launch server containers
         auto c_list = cfg_json["server"]["containers"];
         int c_index = 0;
         for (auto it = c_list.begin(); it != c_list.end(); ++it)
         {
             sprintf (cmd_str,
+                    "mkdir %sserver/container_%d",
+                    result_dir, c_index);
+            system_cmd ("create server container dir", cmd_str);
+
+            sprintf (cmd_str,
                     "ssh -i %s.ssh/id_rsa -tt "
-                    "-o LogLevel=quiet "
+                    // "-o LogLevel=quiet "
                     "-o StrictHostKeyChecking=no "
                     "-o UserKnownHostsFile=/dev/null "
                     "%s@%s "
                     "sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged "
-                    "--name tlspack_server_%d --rm -it -d %s tgen %s server %s %d tlspack_server_%d config_topology",
+                    "--name tlspack_server_%d -it -d %s tgen %s server %s %s %d tlspack_server_%d config_topology",
                     RUN_DIR_PATH,
                     ssh_user.c_str(), ssh_host.c_str(),
-                    c_index, RUN_VOLUMES, TLSPACK_EXE, cfg_name, c_index, c_index);
+                    c_index, volume_string, tlspack_exe_file, cfg_name, run_tag, c_index, c_index);
+            system_cmd ("srv container start", cmd_str);
 
-            printf ("\n%s", cmd_str);
-            fflush (NULL);
-            system (cmd_str);
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
 
@@ -66,20 +104,23 @@ int main(int argc, char **argv)
         for (auto it = c_list.begin(); it != c_list.end(); ++it)
         {
             sprintf (cmd_str,
+                    "mkdir %sclient/container_%d",
+                    result_dir, c_index);
+            system_cmd ("create client container dir", cmd_str);
+
+            sprintf (cmd_str,
                     "ssh -i %s.ssh/id_rsa -tt "
-                    "-o LogLevel=quiet "
+                    // "-o LogLevel=quiet "
                     "-o StrictHostKeyChecking=no "
                     "-o UserKnownHostsFile=/dev/null "
                     "%s@%s "
                     "sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged "
-                    "--name tlspack_client_%d --rm -it -d %s tgen %s client %s %d tlspack_client_%d config_topology",
+                    "--name tlspack_client_%d -it -d %s tgen %s client %s %s %d tlspack_client_%d config_topology",
                     RUN_DIR_PATH,
                     ssh_user.c_str(), ssh_host.c_str(),
-                    c_index, RUN_VOLUMES, TLSPACK_EXE, cfg_name, c_index, c_index);
-                    
-            printf ("\n%s", cmd_str);
-            fflush (NULL);
-            system (cmd_str);
+                    c_index, volume_string, tlspack_exe_file, cfg_name, run_tag, c_index, c_index);
+            system_cmd ("clnt container start", cmd_str);
+
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
 
@@ -90,13 +131,13 @@ int main(int argc, char **argv)
     }
     else
     {   
-        int c_index = atoi (argv[3]);
-        char* c_name = argv[4];
-        
+        int c_index = atoi (argv[4]);
+        char* c_name = argv[5];
+
         const char* toplogy_falg = "skip_topology";
-        if (argc > 5)
+        if (argc > 6)
         {
-            toplogy_falg = argv[5];
+            toplogy_falg = argv[6];
         }
         
         if ( strcmp(toplogy_falg, "config_topology") == 0 )
@@ -107,7 +148,7 @@ int main(int argc, char **argv)
                 auto macvlan = cfg_json[mode]["macvlan"].get<std::string>();
                 sprintf (cmd_str,
                         "ssh -i %s.ssh/id_rsa -tt "
-                        "-o LogLevel=quiet "
+                        // "-o LogLevel=quiet "
                         "-o StrictHostKeyChecking=no "
                         "-o UserKnownHostsFile=/dev/null "
                         "%s@%s "
@@ -115,18 +156,18 @@ int main(int argc, char **argv)
                         RUN_DIR_PATH,
                         ssh_user.c_str(), ssh_host.c_str(),
                         macvlan.c_str(), c_name);
-                system (cmd_str);
+                system_cmd ("connect docker network", cmd_str);
 
                 auto iface = cfg_json[mode]["iface"].get<std::string>();
                 sprintf (cmd_str,
                         "ip link set dev %s up",
                         iface.c_str());
-                system (cmd_str);
+                system_cmd ("dev up", cmd_str);
 
                 sprintf (cmd_str,
                         "ip route add default dev %s table 200",
                         iface.c_str());
-                system (cmd_str);
+                system_cmd ("dev default gw", cmd_str);
 
 
                 auto subnets = cfg_json[mode]["containers"][c_index]["subnets"];
@@ -136,20 +177,20 @@ int main(int argc, char **argv)
                     sprintf (cmd_str,
                             "ip -4 route add local %s dev lo",
                             subnet.c_str());
-                    system (cmd_str);
+                    system_cmd ("ip configure", cmd_str);
 
                     sprintf (cmd_str,
                             "ip rule add from %s table 200",
                             subnet.c_str());
-                    system (cmd_str);
+                    system_cmd ("ip source routing", cmd_str);
                 }
             }
         }
 
         signal(SIGPIPE, SIG_IGN);
-
-        ev_sockstats all_ev_sockstats;
-        tls_server_stats all_tls_server_stats;
+        ev_sockstats* all_ev_sockstats = new ev_sockstats();
+        tls_server_stats* all_tls_server_stats = new tls_server_stats();
+        tls_client_stats* all_tls_client_stats = new tls_client_stats ();
 
         std::vector<ev_app*> app_list;
         auto apps = cfg_json[mode]["containers"][c_index]["apps"];
@@ -161,23 +202,38 @@ int main(int argc, char **argv)
 
             ev_app* next_app = nullptr;
             a_index++;
+
+            sprintf (cmd_str,
+                    "mkdir %s%s/container_%d/app_%d",
+                    result_dir, mode, c_index, a_index);
+            system_cmd ("create app dir", cmd_str);
+
             if ( strcmp("tls_server", app_type) == 0 )
             {
                 next_app = new tls_server_app (cfg_json
                                                 , c_index
                                                 , a_index
-                                                , &all_tls_server_stats
-                                                , &all_ev_sockstats);
+                                                , all_tls_server_stats
+                                                , all_ev_sockstats);
             }
             else if ( strcmp("tls_client", app_type) == 0 )
             {
-                next_app = new tls_client_app (cfg_json, c_index, a_index);
+                next_app = new tls_client_app (cfg_json
+                                                , c_index
+                                                , a_index
+                                                , all_tls_client_stats
+                                                , all_ev_sockstats);
             }
 
             if (next_app)
             {
                 app_list.push_back (next_app);
-            }           
+            }
+            else
+            {
+                printf ("unknown app\n");
+                exit (-1);
+            }
         }
         
         if ( not app_list.empty() )

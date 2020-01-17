@@ -6,8 +6,12 @@ tls_server_app::tls_server_app(json cfg_json
                                 , tls_server_stats* all_app_stats
                                 , ev_sockstats* all_ev_app_stats)
 {
-    auto srv_list =
-        cfg_json["server"]["containers"][c_index]["apps"][a_index]["srv_list"];
+    auto srv_list = cfg_json["server"]
+                            ["containers"]
+                            [c_index]
+                            ["apps"]
+                            [a_index]
+                            ["srv_list"];
 
     for (auto it = srv_list.begin(); it != srv_list.end(); ++it)
     {
@@ -17,9 +21,11 @@ tls_server_app::tls_server_app(json cfg_json
             = srv_cfg["stats_label"].get<std::string>().c_str();
 
         tls_server_stats* srv_stats = new tls_server_stats();
-        m_stats_map.insert(ev_stats_map::value_type(srv_stats_label, srv_stats));
 
-        std::vector<ev_sockstats*> *srv_stats_arr 
+        m_stats_map.insert(ev_stats_map::value_type(srv_stats_label
+                            , srv_stats));
+
+        std::vector<ev_sockstats*> *srv_stats_arr
             = new std::vector<ev_sockstats*> ();
 
         srv_stats_arr->push_back (srv_stats);

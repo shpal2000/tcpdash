@@ -2,11 +2,15 @@
 
 #define MAX_READ_BUFFER_LEN 100000
 
-class tls_server_stats : public ev_sockstats
+struct tls_server_stats_data : ev_sockstats
 {
-public:
     uint64_t tls_server_stats_1;
     uint64_t tls_server_stats_100;
+};
+
+struct tls_server_stats : tls_server_stats_data
+{
+    tls_server_stats () : tls_server_stats_data () {}
 };
 
 class tls_server_socket : public ev_socket

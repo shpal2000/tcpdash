@@ -55,6 +55,7 @@ ev_socket* ev_socket::new_tcp_connect (epoll_ctx* epoll_ctxp
     ev_socket* new_sock = epoll_ctxp->m_app->alloc_socket ();
 
     if (new_sock) {
+        new_sock->init ();
         new_sock->set_sockstats_arr (statsArr);
         new_sock->tcp_connect (epoll_ctxp, localAddress, remoteAddress);
     } else {
@@ -332,8 +333,6 @@ int ev_socket::tcp_connect (epoll_ctx* epoll_ctxp
                             , ev_sockaddr* localAddress
                             , ev_sockaddr* remoteAddress)
 {
-    init ();
-
     //socket stats
     inc_stats (tcpConnInit);
     inc_stats (tcpConnInitInSec);
@@ -507,8 +506,6 @@ int ev_socket::tcp_listen(epoll_ctx* epoll_ctxp
                             , ev_sockaddr* localAddress
                             , int listenQLen)
 {
-    init ();
-
     //stats
     inc_stats (tcpListenStart);
 
@@ -746,10 +743,7 @@ int ev_socket::tcp_read (char* dataBuffer, int dataLen)
 
 void ev_socket::tcp_accept (ev_socket* ev_sock_parent)
 {
-    init ();
-    
     set_state (STATE_TCP_CONN_ACCEPT);
-    set_sockstats_arr ( ev_sock_parent->get_sockstats_arr() );
     m_epoll_ctx = ev_sock_parent->m_epoll_ctx;
     std::memcpy (&m_local_addr
                     , &ev_sock_parent->m_local_addr
@@ -933,6 +927,8 @@ void ev_socket::handle_tcp_accept ()
     if (ev_sock_ptr == nullptr) {
         inc_stats (tcpConnStructNotAvail);
     } else {
+        ev_sock_ptr->init ();
+        ev_sock_ptr->set_sockstats_arr ( get_sockstats_arr() );
         ev_sock_ptr->tcp_accept (this);
 
         if ( ev_sock_ptr->get_error_state() ) 

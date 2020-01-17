@@ -115,8 +115,12 @@ ENV DEBIAN_FRONTEND=
 -------
 
 
-sudo docker network create -d macvlan -o parent=eth0 eth0macvlan
+
+ifconfig ens196 up && docker network create -d macvlan -o parent=ens196 ens196macvlan
+ifconfig ens160 up && docker network create -d macvlan -o parent=ens160 ens160macvlan
+
 sudo docker network ls
+
 
 sudo docker run --name tlspack_master --rm -it -d --volume=/home/shirish/tgen_workspace:/tgen_workspace --volume=/home/shirish/rundir:/rundir tgen /tgen_workspace/tcpdash/tlspack/build/tlspack.exe run try1
 
@@ -129,3 +133,16 @@ sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network
 
 /tgen_workspace/tcpdash/tlspack/build/tlspack.exe client try1 0 tlspack_dev_client config_topology
 -------
+
+
+sudo docker run --name tlspack_master --rm -it -d --volume=/root/rundir:/rundir tgen /rundir/bin/tlspack.exe run try1 test2 /root/rundir
+
+
+sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged --name tlspack_dev_server --rm -itd --volume=/root/tcpdash:/tcpdash --volume=/root/rundir/:/rundir/ tgen /bin/bash 
+
+/tcpdash/tlspack/build/tlspack.exe server try1 test2 0  tlspack_dev_server config_topology
+
+
+sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged --name tlspack_dev_client --rm -itd --volume=/root/tcpdash:/tcpdash --volume=/root/rundir:/rundir tgen /bin/bash 
+
+/tcpdash/tlspack/build/tlspack.exe client try1 test2 0 tlspack_dev_client config_topology

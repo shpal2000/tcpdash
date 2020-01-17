@@ -2,11 +2,15 @@
 
 #define MAX_READ_BUFFER_LEN 100000
 
-class tls_client_stats : public ev_sockstats
+struct tls_client_stats_data : ev_sockstats
 {
-public:
     uint64_t tls_client_stats_1;
     uint64_t tls_client_stats_100;
+};
+
+struct tls_client_stats : tls_client_stats_data
+{
+    tls_client_stats () : tls_client_stats_data () {}
 };
 
 class tls_client_socket : public ev_socket
@@ -21,7 +25,12 @@ public:
 class tls_client_app : public ev_app
 {
 public:
-    tls_client_app(json cfg_json, int c_index, int a_index);
+    tls_client_app(json cfg_json
+                    , int c_index
+                    , int a_index
+                    , tls_client_stats* all_app_stats
+                    , ev_sockstats* all_ev_app_stats);
+
     ~tls_client_app();
 
     void run_iter();
@@ -35,4 +44,6 @@ public:
 
 private:
     char m_read_buffer[MAX_READ_BUFFER_LEN];
+    tls_client_stats m_stats;
+    ev_stats_map m_stats_map;
 };
