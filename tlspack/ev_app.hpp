@@ -2,10 +2,10 @@
 #define __EV_APP__H
 
 #include "ev_socket.hpp"
-#include <nlohmann/json.hpp>
-using json = nlohmann::json;
 
-typedef std::map<const char*, ev_sockstats*> ev_stats_map;
+#define MAX_APP_TYPE_NAME 1024
+
+typedef std::map<std::string, ev_sockstats*> ev_stats_map;
 class ev_app
 {
 public:
@@ -14,7 +14,7 @@ public:
 
 
     virtual void run_iter();
-    
+
     virtual ev_socket* alloc_socket() = 0;
     virtual void on_establish (ev_socket* ev_sock) = 0;
     virtual void on_write (ev_socket* ev_sock) = 0;
@@ -42,8 +42,23 @@ public:
         return ev_socket::new_tcp_listen (m_epoll_ctx, laddr, lqlen, statsArr);
     }
 
+    ev_sockstats* get_stats (const char* stats_label="")
+    {
+        return m_stats_map[stats_label];
+    };
+
+    void set_stats (ev_sockstats* stats, const char* stats_label="")
+    {
+        m_stats_map.insert(ev_stats_map::value_type(stats_label, stats));
+    }
+
+    const char* get_app_type () {return m_app_type;};
+    void set_app_type (const char* app_type) {strcpy (m_app_type, app_type);};
+
 private:
     epoll_ctx* m_epoll_ctx;
+    char m_app_type[MAX_APP_TYPE_NAME];
+    ev_stats_map m_stats_map;
 };
 
 #endif

@@ -13,6 +13,10 @@ tls_server_app::tls_server_app(json cfg_json
                             [a_index]
                             ["srv_list"];
 
+    set_app_type ("tls_server");
+    tls_server_stats* app_stats = new tls_server_stats();
+    set_stats (app_stats);
+
     for (auto it = srv_list.begin(); it != srv_list.end(); ++it)
     {
         auto srv_cfg = it.value ();
@@ -21,15 +25,13 @@ tls_server_app::tls_server_app(json cfg_json
             = srv_cfg["stats_label"].get<std::string>().c_str();
 
         tls_server_stats* srv_stats = new tls_server_stats();
-
-        m_stats_map.insert(ev_stats_map::value_type(srv_stats_label
-                            , srv_stats));
+        set_stats (srv_stats, srv_stats_label);
 
         std::vector<ev_sockstats*> *srv_stats_arr
             = new std::vector<ev_sockstats*> ();
 
         srv_stats_arr->push_back (srv_stats);
-        srv_stats_arr->push_back (&m_stats);
+        srv_stats_arr->push_back (app_stats);
         srv_stats_arr->push_back (all_app_stats);
         srv_stats_arr->push_back (all_ev_app_stats);
 

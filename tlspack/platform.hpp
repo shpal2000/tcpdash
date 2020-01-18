@@ -19,4 +19,11 @@
 #include <chrono>
 #include <map>
 
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
+
+template<typename P, typename C>
+inline bool isclass(const C*) {
+   return std::is_base_of<P, C>::value;
+}
 #endif

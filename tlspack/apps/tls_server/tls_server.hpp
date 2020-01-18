@@ -6,6 +6,13 @@ struct tls_server_stats_data : ev_sockstats
 {
     uint64_t tls_server_stats_1;
     uint64_t tls_server_stats_100;
+
+    virtual void dump_json (json &j)
+    {
+        ev_sockstats::dump_json (j);
+        j["tls_server_stats_1"] = tls_server_stats_1;
+        j["tls_server_stats_100"] = tls_server_stats_100;
+    }
 };
 
 struct tls_server_stats : tls_server_stats_data
@@ -45,8 +52,6 @@ public:
 
 private:
     char m_read_buffer[MAX_READ_BUFFER_LEN];
-    tls_server_stats m_stats;
-    ev_stats_map m_stats_map;
 };
 
 #define inc_tls_server_stats(__stat_name) \

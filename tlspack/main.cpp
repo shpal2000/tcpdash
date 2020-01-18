@@ -13,6 +13,7 @@
 #define MAX_CMD_LEN 2048
 #define MAX_CMD_LEN 2048
 #define MAX_RESULT_DIR_PATH 2048
+#define MAX_FILE_PATH_LEN 2048
 #define RUN_DIR_PATH "/rundir/"
 char cmd_str [MAX_CMD_LEN];
 char cfg_dir [MAX_CONFIG_DIR_PATH];
@@ -21,12 +22,22 @@ char ssh_host_file [MAX_CONFIG_FILE_PATH];
 char tlspack_exe_file [MAX_EXE_FILE_PATH];
 char volume_string [MAX_VOLUME_STRING];
 char result_dir [MAX_RESULT_DIR_PATH];
+char stats_file [MAX_FILE_PATH_LEN];
 
 static void system_cmd (const char* label, const char* cmd_str)
 {
     printf ("%s ---- %s\n\n", label, cmd_str);
     fflush (NULL);
     system (cmd_str);
+}
+
+static void dump_stats (const char* stats_file, ev_sockstats* stats) 
+{
+    json j;
+    stats->dump_json(j);
+
+    std::ofstream stats_stream(stats_file);
+    stats_stream << j << std::endl;
 }
 
 int main(int argc, char **argv) 
@@ -188,9 +199,9 @@ int main(int argc, char **argv)
         }
 
         signal(SIGPIPE, SIG_IGN);
-        ev_sockstats* all_ev_sockstats = new ev_sockstats();
-        tls_server_stats* all_tls_server_stats = new tls_server_stats();
-        tls_client_stats* all_tls_client_stats = new tls_client_stats ();
+        ev_sockstats* ev_sockstats_container = new ev_sockstats();
+        tls_server_stats* tls_server_stats_container = nullptr;
+        tls_client_stats* tls_client_stats_container = nullptr;
 
         std::vector<ev_app*> app_list;
         auto apps = cfg_json[mode]["containers"][c_index]["apps"];
@@ -210,19 +221,28 @@ int main(int argc, char **argv)
 
             if ( strcmp("tls_server", app_type) == 0 )
             {
+                if (tls_server_stats_container == nullptr)
+                {
+                    tls_server_stats_container = new tls_server_stats ();
+                }
+
                 next_app = new tls_server_app (cfg_json
                                                 , c_index
                                                 , a_index
-                                                , all_tls_server_stats
-                                                , all_ev_sockstats);
+                                                , tls_server_stats_container
+                                                , ev_sockstats_container);
             }
             else if ( strcmp("tls_client", app_type) == 0 )
             {
+                if (tls_client_stats_container == nullptr)
+                {
+                    tls_client_stats_container = new tls_client_stats ();
+                }
                 next_app = new tls_client_app (cfg_json
                                                 , c_index
                                                 , a_index
-                                                , all_tls_client_stats
-                                                , all_ev_sockstats);
+                                                , tls_client_stats_container
+                                                , ev_sockstats_container);
             }
 
             if (next_app)
@@ -238,6 +258,7 @@ int main(int argc, char **argv)
         
         if ( not app_list.empty() )
         {
+            uint64_t mu_ticks = 0;
             while (1)
             {
                 for (ev_app* app_ptr : app_list)
@@ -245,6 +266,54 @@ int main(int argc, char **argv)
                     app_ptr->run_iter ();
                 }
                 std::this_thread::sleep_for(std::chrono::microseconds(1));
+
+                mu_ticks++;
+                if (mu_ticks == 1000)
+                {
+                    mu_ticks = 0;
+
+                    sprintf (stats_file,
+                            "%s%s/container_%d/"
+                            "ev_sockstats_container.json",
+                            result_dir, mode, c_index);
+
+                    dump_stats (stats_file, ev_sockstats_container);
+
+                    if (tls_server_stats_container)
+                    {
+                        
+                        sprintf (stats_file,
+                                "%s%s/container_%d/"
+                                "tls_server_stats_container.json",
+                                result_dir, mode, c_index);
+
+                        dump_stats (stats_file, tls_server_stats_container);
+                    }
+
+                    if (tls_client_stats_container)
+                    {
+                        
+                        sprintf (stats_file,
+                                "%s%s/container_%d/"
+                                "tls_client_stats_container.json",
+                                result_dir, mode, c_index);
+
+                        dump_stats (stats_file, tls_client_stats_container);
+                    }
+
+                    a_index = -1;
+                    for (ev_app* app_ptr : app_list)
+                    {
+                        a_index++;
+                        sprintf (stats_file,
+                                "%s%s/container_%d/app_%d/"
+                                "%s_stats_app.json",
+                                result_dir, mode, c_index, a_index,
+                                app_ptr->get_app_type() );
+
+                        dump_stats ( stats_file, app_ptr->get_stats() );
+                    }
+                }
             }
         }
     }

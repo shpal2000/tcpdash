@@ -13,6 +13,10 @@ tls_client_app::tls_client_app(json cfg_json
                                 [a_index]
                                 ["cs_grp_list"];
 
+    set_app_type ("tls_client");
+    tls_client_stats* app_stats = new tls_client_stats();
+    set_stats (app_stats);
+
     for (auto it = cs_grp_list.begin(); it != cs_grp_list.end(); ++it)
     {
         auto cs_grp_cfg = it.value ();
@@ -21,15 +25,13 @@ tls_client_app::tls_client_app(json cfg_json
             = cs_grp_cfg["stats_label"].get<std::string>().c_str();
 
         tls_client_stats* cs_grp_stats = new tls_client_stats();
-
-        m_stats_map.insert(ev_stats_map::value_type(cs_grp_stats_label
-                            , cs_grp_stats));
+        set_stats (cs_grp_stats, cs_grp_stats_label);
 
         std::vector<ev_sockstats*> *cs_grp_stats_arr 
             = new std::vector<ev_sockstats*> ();
 
         cs_grp_stats_arr->push_back (cs_grp_stats);
-        cs_grp_stats_arr->push_back (&m_stats);
+        cs_grp_stats_arr->push_back (app_stats);
         cs_grp_stats_arr->push_back (all_app_stats);
         cs_grp_stats_arr->push_back (all_ev_app_stats);
 

@@ -110,8 +110,12 @@ class ev_socket;
 
 #define inc_app_stats(__sock_ptr,__stat_class,__stat_name) \
 { \
-    for (uint i=0; i < __sock_ptr->get_sockstats_arr()->size()-1; i++) { \
-        ((__stat_class*)((*(__sock_ptr->get_sockstats_arr()))[i]))->__stat_name++; \
+    for (uint i=0; i < __sock_ptr->get_sockstats_arr()->size(); i++) { \
+        ev_sockstats* __stats_ptr = (*(__sock_ptr->get_sockstats_arr()))[i]; \
+        if (isclass<__stat_class>(__stats_ptr)) \
+        { \
+            ((__stat_class*)(__stats_ptr))->__stat_name++; \
+        } \
     } \
 }
 
@@ -210,6 +214,68 @@ struct ev_sockstats_data
 struct ev_sockstats : ev_sockstats_data
 {
     ev_sockstats () : ev_sockstats_data () {}
+    virtual void dump_json (json &j)
+    {
+        j["socketCreate"] = socketCreate;    
+        j["socketCreateFail"] = socketCreateFail;
+        j["socketListenFail"] = socketListenFail;
+        j["socketReuseSet"] = socketReuseSet;
+        j["socketReuseSetFail"] = socketReuseSetFail;
+        j["socketIpTransparentSet"] = socketIpTransparentSet;
+        j["socketIpTransparentSetFail"] = socketIpTransparentSetFail;
+        j["socketLingerSet"] = socketLingerSet;
+        j["socketLingerSetFail"] = socketLingerSetFail;
+        j["socketBindIpv4"] = socketBindIpv4;    
+        j["socketBindIpv4Fail"] = socketBindIpv4Fail;
+        j["socketBindIpv6"] = socketBindIpv6;    
+        j["socketBindIpv6Fail"] = socketBindIpv6Fail;
+
+        j["socketConnectEstablishFail"] = socketConnectEstablishFail;    
+        j["socketConnectEstablishFail2"] = socketConnectEstablishFail2;    
+
+        j["tcpConnInit"] = tcpConnInit;
+        j["tcpConnInitInSec"] = tcpConnInitInSec;
+        j["tcpConnInitRate"] = tcpConnInitRate;
+        j["tcpConnInitSuccess"] = tcpConnInitSuccess;
+        j["tcpConnInitSuccessInSec"] = tcpConnInitSuccessInSec;
+        j["tcpConnInitSuccessRate"] = tcpConnInitSuccessRate;
+        j["tcpConnInitFail"] = tcpConnInitFail;
+        j["tcpConnInitFailImmediateEaddrNotAvail"] = tcpConnInitFailImmediateEaddrNotAvail;
+        j["tcpConnInitFailImmediateOther"] = tcpConnInitFailImmediateOther;
+        j["tcpConnInitProgress"] = tcpConnInitProgress;
+        j["tcpWriteFail"] = tcpWriteFail;
+        j["tcpWriteReturnsZero"] = tcpWriteReturnsZero;
+        j["tcpReadFail"] = tcpReadFail;
+
+        j["tcpListenStart"] = tcpListenStart;
+        j["tcpListenStop"] = tcpListenStop;
+        j["tcpListenStartFail"] = tcpListenStartFail;
+        j["tcpAcceptFail"] = tcpAcceptFail;
+        j["tcpAcceptSuccess"] = tcpAcceptSuccess;
+        j["tcpAcceptSuccessInSec"] = tcpAcceptSuccessInSec;
+        j["tcpAcceptSuccessRate"] = tcpAcceptSuccessRate;
+
+        j["tcpLocalPortAssignFail"] = tcpLocalPortAssignFail;
+        j["tcpPollRegUnregFail"] = tcpPollRegUnregFail;
+
+        j["sslConnInit"] = sslConnInit;
+        j["sslConnInitInSec"] = sslConnInitInSec;
+        j["sslConnInitRate"] = sslConnInitRate;
+        j["sslConnInitSuccess"] = sslConnInitSuccess;
+        j["sslConnInitSuccessInSec"] = sslConnInitSuccessInSec;
+        j["sslConnInitSuccessRate"] = sslConnInitSuccessRate;
+        j["sslConnInitFail"] = sslConnInitFail;
+        j["sslConnInitProgress"] = sslConnInitProgress;
+        j["sslAcceptSuccess"] = sslAcceptSuccess; 
+        j["sslAcceptSuccessInSec"] = sslAcceptSuccessInSec;
+        j["sslAcceptSuccessRate"] = sslAcceptSuccessRate; 
+
+        j["tcpConnStructNotAvail"] = tcpConnStructNotAvail;
+        j["tcpListenStructNotAvail"] = tcpListenStructNotAvail;
+        j["appSessStructNotAvail"] = appSessStructNotAvail;
+        j["tcpInitServerFail"] = tcpInitServerFail;
+        j["tcpGetSockNameFail"] = tcpGetSockNameFail;
+    }
 };
 
 class epoll_ctx 
