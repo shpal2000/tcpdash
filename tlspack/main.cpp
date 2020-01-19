@@ -165,7 +165,7 @@ static void start_zones (json cfg_json
                 "-o UserKnownHostsFile=/dev/null "
                 "%s@%s "
                 "sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged "
-                "--name %s -it -d %s tgen %s zone %s %s %d %s config_topology",
+                "--name %s -it -d %s tgen %s zone %s %s %d %s config_zone",
                 RUN_DIR_PATH,
                 ssh_user.c_str(), ssh_host.c_str(),
                 zone_cname, volume_string, tlspack_exe_file, cfg_name, run_tag, z_index, zone_cname);
@@ -342,18 +342,13 @@ int main(int argc, char **argv)
         
         sprintf (result_dir, "%sresults/%s/%s/", RUN_DIR_PATH, cfg_name, run_tag);
 
-        while (1)
-        {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-        }
-
-        const char* toplogy_falg = "skip_topology";
+        const char* config_zone_falg = "skip_config_zone";
         if (argc > 6)
         {
-            toplogy_falg = argv[6];
+            config_zone_falg = argv[6];
         }
         
-        if ( strcmp(toplogy_falg, "config_topology") == 0 )
+        if ( strcmp(config_zone_falg, "config_zone") == 0 )
         {
             config_zone (cfg_json, cfg_name, c_index);
         }
@@ -428,7 +423,7 @@ int main(int argc, char **argv)
                 std::this_thread::sleep_for(std::chrono::microseconds(1));
 
                 mu_ticks++;
-                if (mu_ticks == 1000)
+                if (mu_ticks == 0)
                 {
                     mu_ticks = 0;
 

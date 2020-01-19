@@ -1,0 +1,186 @@
+{
+    "zones" : [
+        {
+            "zone_label" : "zone1",
+            "zone_type" : "single-interface",
+            "iface" : "eth1",
+            "macvlan" : "eth0macvlan",
+            "subnets" : ["12.20.60.0/24"],
+            "app_list" : [
+                {
+                    "app_type" : "tls_server",
+                    "app_label" : "tls_server_1",
+                    "srv_list" : [
+                        {
+                            "srv_label" : "12.20.60.1",
+                            "srv_ip" : "12.20.60.1",
+                            "srv_port" : 8443,
+                            "cs_data_len" : 10,
+                            "sc_data_len" : 20,
+                            "cs_start_tls_len" : 0,
+                            "sc_start_tls_len" : 0
+                        },
+                        {
+                            "srv_label" : "12.20.60.2",
+                            "srv_ip" : "12.20.60.2",
+                            "srv_port" : 8443,
+                            "cs_data_len" : 10,
+                            "sc_data_len" : 20,
+                            "cs_start_tls_len" : 0,
+                            "sc_start_tls_len" : 0
+                        }
+                    ]
+                },
+                {
+                    "app_type" : "tls_client",
+                    "app_label" : "tls_client_1",
+                    "conn_per_sec" : 85,
+                    "max_act_sess" : 10000,
+                    "max_err_sess" : 10000,
+                    "max_total_sess" : 10,
+                    "cs_grp_list" : [
+                        {
+                            "cs_grp_label" : "cs_grp_1",
+                            "srv_ip"   : "12.20.50.1",
+                            "srv_port" : 8443,
+
+                            "clnt_ip_begin" : "12.20.60.3",
+                            "clnt_ip_end" : "12.20.60.100",
+                            "clnt_port_begin" : 10000,
+                            "clnt_port_end" : 19999,
+
+                            "cs_data_len" : 10,
+                            "sc_data_len" : 20,
+                            "cs_start_tls_len" : 0,
+                            "sc_start_tls_len" : 0
+                        },
+                        {
+                            "cs_grp_label" : "cs_grp_2",
+                            "srv_ip"   : "12.20.50.2",
+                            "srv_port" : 8443,
+
+                            "clnt_ip_begin" : "12.20.60.101",
+                            "clnt_ip_end" : "12.20.60.200",
+                            "clnt_port_begin" : 10000,
+                            "clnt_port_end" : 19999,
+
+                            "cs_data_len" : 10,
+                            "sc_data_len" : 20,
+                            "cs_start_tls_len" : 0,
+                            "sc_start_tls_len" : 0
+                        }
+                    ]
+                }
+            ]       
+        },
+
+        {
+            "zone_label" : "proc2",
+            "zone_type" : "single-interface",
+            "iface" : "eth1",
+            "macvlan" : "eth0macvlan",
+            "subnets" : ["12.20.50.0/24"],
+            "app_list" : [
+                {
+                    "app_type" : "tls_server",
+                    "app_label" : "tls_server_2",
+                    "srv_list" : [
+                        {
+                            "srv_label" : "12.20.50.1",
+                            "srv_ip" : "12.20.50.1",
+                            "srv_port" : 8443,
+                            "cs_data_len" : 10,
+                            "sc_data_len" : 20,
+                            "cs_start_tls_len" : 0,
+                            "sc_start_tls_len" : 0
+                        },
+                        {
+                            "srv_label" : "12.20.50.2",
+                            "srv_ip" : "12.20.50.2",
+                            "srv_port" : 8443,
+                            "cs_data_len" : 10,
+                            "sc_data_len" : 20,
+                            "cs_start_tls_len" : 0,
+                            "sc_start_tls_len" : 0
+                        }
+                    ]
+                },
+                {
+                    "app_type" : "tls_client",
+                    "app_label" : "tls_client_2",
+                    "conn_per_sec" : 85,
+                    "max_act_sess" : 10000,
+                    "max_err_sess" : 10000,
+                    "max_total_sess" : 10,
+                    "cs_grp_list" : [
+                        {
+                            "cs_grp_label" : "cs_grp_3",
+                            "srv_ip"   : "12.20.60.1",
+                            "srv_port" : 8443,
+
+                            "clnt_ip_begin" : "12.20.50.3",
+                            "clnt_ip_end" : "12.20.50.100",
+                            "clnt_port_begin" : 10000,
+                            "clnt_port_end" : 19999,
+
+                            "cs_data_len" : 10,
+                            "sc_data_len" : 20,
+                            "cs_start_tls_len" : 0,
+                            "sc_start_tls_len" : 0
+                        },
+                        {
+                            "cs_grp_label" : "cs_grp_4",
+                            "srv_ip"   : "12.20.60.2",
+                            "srv_port" : 8443,
+
+                            "clnt_ip_begin" : "12.20.50.101",
+                            "clnt_ip_end" : "12.20.50.200",
+                            "clnt_port_begin" : 10000,
+                            "clnt_port_end" : 19999,
+
+                            "cs_data_len" : 10,
+                            "sc_data_len" : 20,
+                            "cs_start_tls_len" : 0,
+                            "sc_start_tls_len" : 0
+                        }
+                    ]
+                }
+            ]       
+        }
+    ],
+
+    "sequence" : [
+        
+        {
+           "app_name" : "tls_server_1",
+           "when" : {
+               "condition" : "time",
+               "tick" : "0" 
+            }
+        },
+
+        {
+            "app_name" : "tls_server_2",
+            "when" : {
+                "condition" : "time",
+                "tick" : "0" 
+             }
+        },
+
+        {
+            "app_name" : "tls_client_1",
+            "when" : {
+                "condition" : "after",
+                "app_list" : ["tls_server_2"] 
+             }
+        },
+
+        {
+            "app_name" : "tls_client_2",
+            "when" : {
+                "condition" : "true",
+                "exp" : "tls_client_1.active_session >= 1000" 
+             }
+        }
+    ]
+}
