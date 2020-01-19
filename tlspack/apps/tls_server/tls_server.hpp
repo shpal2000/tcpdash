@@ -33,14 +33,13 @@ private:
 class tls_server_app : public ev_app
 {
 public:
-    tls_server_app(json cfg_json
-                    , int c_index
-                    , int a_index
+    tls_server_app(json app_json
                     , tls_server_stats* all_app_stats
                     , ev_sockstats* all_ev_app_stats);
 
     ~tls_server_app();
 
+    void start();
     void run_iter();
     ev_socket* alloc_socket();
     void on_establish (ev_socket* ev_sock);

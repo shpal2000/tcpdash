@@ -1,39 +1,42 @@
 #include "tls_server.hpp"
 
-tls_server_app::tls_server_app(json cfg_json
-                                , int c_index
-                                , int a_index
-                                , tls_server_stats* all_app_stats
-                                , ev_sockstats* all_ev_app_stats)
+tls_server_app::tls_server_app(json app_json
+                                , tls_server_stats* zone_app_stats
+                                , ev_sockstats* zone_sock_stats)
 {
-    auto srv_list = cfg_json["server"]
-                            ["containers"]
-                            [c_index]
-                            ["apps"]
-                            [a_index]
-                            ["srv_list"];
-
     set_app_type ("tls_server");
-    tls_server_stats* app_stats = new tls_server_stats();
-    set_stats (app_stats);
+    set_app_stats ( new tls_server_stats() );
+
+    set_app_json (app_json);
+    set_zone_app_stats (zone_app_stats);
+    set_zone_sock_stats (zone_sock_stats);
+}
+
+tls_server_app::~tls_server_app()
+{
+}
+
+void tls_server_app::start ()
+{
+    auto srv_list = get_app_json()["srv_list"];
 
     for (auto it = srv_list.begin(); it != srv_list.end(); ++it)
     {
         auto srv_cfg = it.value ();
 
-        const char* srv_stats_label 
-            = srv_cfg["stats_label"].get<std::string>().c_str();
+        const char* srv_label 
+            = srv_cfg["srv_label"].get<std::string>().c_str();
 
         tls_server_stats* srv_stats = new tls_server_stats();
-        set_stats (srv_stats, srv_stats_label);
+        set_app_stats (srv_stats, srv_label);
 
         std::vector<ev_sockstats*> *srv_stats_arr
             = new std::vector<ev_sockstats*> ();
 
         srv_stats_arr->push_back (srv_stats);
-        srv_stats_arr->push_back (app_stats);
-        srv_stats_arr->push_back (all_app_stats);
-        srv_stats_arr->push_back (all_ev_app_stats);
+        srv_stats_arr->push_back (get_app_stats());
+        srv_stats_arr->push_back (get_zone_app_stats());
+        srv_stats_arr->push_back (get_zone_sock_stats());
 
         ev_sockaddr serverAddr;
         ev_socket::set_sockaddr (&serverAddr
@@ -51,11 +54,7 @@ tls_server_app::tls_server_app(json cfg_json
         {
             //todo error handling
         }
-    }
-}
-
-tls_server_app::~tls_server_app()
-{
+    }    
 }
 
 void tls_server_app::run_iter()

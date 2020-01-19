@@ -12,9 +12,9 @@ public:
     ev_app();
     virtual ~ev_app();
 
-
     virtual void run_iter();
 
+    virtual void start() = 0;
     virtual ev_socket* alloc_socket() = 0;
     virtual void on_establish (ev_socket* ev_sock) = 0;
     virtual void on_write (ev_socket* ev_sock) = 0;
@@ -42,12 +42,12 @@ public:
         return ev_socket::new_tcp_listen (m_epoll_ctx, laddr, lqlen, statsArr);
     }
 
-    ev_sockstats* get_stats (const char* stats_label="")
+    ev_sockstats* get_app_stats (const char* stats_label="")
     {
         return m_stats_map[stats_label];
     };
 
-    void set_stats (ev_sockstats* stats, const char* stats_label="")
+    void set_app_stats (ev_sockstats* stats, const char* stats_label="")
     {
         m_stats_map.insert(ev_stats_map::value_type(stats_label, stats));
     }
@@ -55,10 +55,28 @@ public:
     const char* get_app_type () {return m_app_type;};
     void set_app_type (const char* app_type) {strcpy (m_app_type, app_type);};
 
+    json get_app_json () {return m_app_json;}
+    void set_app_json (json app_json)  {m_app_json = app_json;};
+
+    ev_sockstats* get_zone_app_stats () {return m_zone_app_stats;}
+    void set_zone_app_stats (ev_sockstats* app_stats) 
+    {
+        m_zone_app_stats = app_stats;
+    };
+
+    ev_sockstats* get_zone_sock_stats () {return m_zone_sock_stats;}
+    void set_zone_sock_stats (ev_sockstats* sock_stats) 
+    {
+        m_zone_sock_stats = sock_stats;
+    };
+
 private:
     epoll_ctx* m_epoll_ctx;
-    char m_app_type[MAX_APP_TYPE_NAME];
     ev_stats_map m_stats_map;
+    char m_app_type[MAX_APP_TYPE_NAME];
+    json m_app_json;
+    ev_sockstats* m_zone_app_stats;
+    ev_sockstats* m_zone_sock_stats;
 };
 
 #endif

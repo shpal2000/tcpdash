@@ -28,6 +28,9 @@ char curr_dir_file [MAX_FILE_PATH_LEN];
 char registry_dir [MAX_REGISTRY_DIR_PATH];
 char zone_cname [MAX_ZONE_CNAME];
 
+ev_sockstats* zone_ev_sockstats = nullptr;
+tls_server_stats* zone_tls_server_stats = nullptr;
+tls_client_stats* zone_tls_client_stats = nullptr;
 
 static void system_cmd (const char* label, const char* cmd_str)
 {
@@ -288,6 +291,67 @@ static void config_zone (json cfg_json
     }
 }
 
+static std::vector<ev_app*>* create_app_list (json cfg_json, int z_index)
+{
+    std::vector<ev_app*> *app_list = nullptr;
+
+    auto a_list = cfg_json["zones"][z_index]["app_list"];
+    int a_index = -1;
+    for (auto a_it = a_list.begin(); a_it != a_list.end(); ++a_it)
+    {
+        if (zone_ev_sockstats == nullptr)
+        {
+            zone_ev_sockstats = new ev_sockstats();
+        }
+
+        a_index++;
+        auto app_json = a_it.value ();
+        const char* app_type = app_json["app_type"].get<std::string>().c_str();
+
+        ev_app* next_app = nullptr;
+        if ( strcmp("tls_server", app_type) == 0 )
+        {
+            if (zone_tls_server_stats == nullptr)
+            {
+                zone_tls_server_stats = new tls_server_stats ();
+            }
+
+            next_app = new tls_server_app (app_json
+                                            , zone_tls_server_stats
+                                            , zone_ev_sockstats);
+
+        }
+        else if ( strcmp("tls_client", app_type) == 0 )
+        {
+            if (zone_tls_client_stats == nullptr)
+            {
+                zone_tls_client_stats = new tls_client_stats ();
+            }
+            
+            next_app = new tls_client_app (app_json
+                                            , zone_tls_client_stats
+                                            , zone_ev_sockstats);
+        }
+
+        if (next_app)
+        {
+            if (app_list == nullptr)
+            {
+                app_list = new std::vector<ev_app*>;
+            }
+
+            app_list->push_back (next_app);
+        }
+        else
+        {
+            printf ("unknown app_type %s\n", app_type);
+            exit (-1);
+        }
+    }
+
+    return app_list;
+}
+
 int main(int argc, char **argv) 
 {
     char* mode = argv[1];
@@ -337,138 +401,86 @@ int main(int argc, char **argv)
     else //zone
     {   
         char* run_tag = argv[3];
-        int c_index = atoi (argv[4]);
-        char* c_name = argv[5];
+        int z_index = atoi (argv[4]);
+        char* zone_cname = argv[5];
         
         sprintf (result_dir, "%sresults/%s/%s/", RUN_DIR_PATH, cfg_name, run_tag);
 
-        const char* config_zone_falg = "skip_config_zone";
+        const char* config_zone_flag = "skip_config_zone";
         if (argc > 6)
         {
-            config_zone_falg = argv[6];
+            config_zone_flag = argv[6];
         }
         
-        if ( strcmp(config_zone_falg, "config_zone") == 0 )
+        if ( strcmp(config_zone_flag, "config_zone") == 0 )
         {
-            config_zone (cfg_json, cfg_name, c_index);
+            config_zone (cfg_json, cfg_name, z_index);
         }
 
         signal(SIGPIPE, SIG_IGN);
-        ev_sockstats* ev_sockstats_container = new ev_sockstats();
-        tls_server_stats* tls_server_stats_container = nullptr;
-        tls_client_stats* tls_client_stats_container = nullptr;
 
-        std::vector<ev_app*> app_list;
-        auto apps = cfg_json[mode]["containers"][c_index]["apps"];
-        int a_index = -1;
-        for (auto it = apps.begin(); it != apps.end(); ++it)
-        {
-            auto app = it.value();
-            const char* app_type = app["app_type"].get<std::string>().c_str();
+        std::vector<ev_app*> *app_list = create_app_list (cfg_json, z_index);
 
-            ev_app* next_app = nullptr;
-            a_index++;
-
-            sprintf (cmd_str,
-                    "mkdir %s%s/container_%d/app_%d",
-                    result_dir, mode, c_index, a_index);
-            system_cmd ("create app dir", cmd_str);
-
-            if ( strcmp("tls_server", app_type) == 0 )
-            {
-                if (tls_server_stats_container == nullptr)
-                {
-                    tls_server_stats_container = new tls_server_stats ();
-                }
-
-                next_app = new tls_server_app (cfg_json
-                                                , c_index
-                                                , a_index
-                                                , tls_server_stats_container
-                                                , ev_sockstats_container);
-            }
-            else if ( strcmp("tls_client", app_type) == 0 )
-            {
-                if (tls_client_stats_container == nullptr)
-                {
-                    tls_client_stats_container = new tls_client_stats ();
-                }
-                next_app = new tls_client_app (cfg_json
-                                                , c_index
-                                                , a_index
-                                                , tls_client_stats_container
-                                                , ev_sockstats_container);
-            }
-
-            if (next_app)
-            {
-                app_list.push_back (next_app);
-            }
-            else
-            {
-                printf ("unknown app\n");
-                exit (-1);
-            }
-        }
-        
-        if ( not app_list.empty() )
+        if ( app_list )
         {
             uint64_t mu_ticks = 0;
+
             while (1)
             {
-                for (ev_app* app_ptr : app_list)
+                for (ev_app* app_ptr : *app_list)
                 {
                     app_ptr->run_iter ();
                 }
+
                 std::this_thread::sleep_for(std::chrono::microseconds(1));
 
-                mu_ticks++;
-                if (mu_ticks == 0)
-                {
-                    mu_ticks = 0;
+                // mu_ticks++;
+                // if (mu_ticks == 0)
+                // {
+                //     mu_ticks = 0;
 
-                    sprintf (curr_dir_file,
-                            "%s%s/container_%d/"
-                            "ev_sockstats_container.json",
-                            result_dir, mode, c_index);
+                //     sprintf (curr_dir_file,
+                //             "%s%s/container_%d/"
+                //             "ev_sockstats_container.json",
+                //             result_dir, mode, c_index);
 
-                    dump_stats (curr_dir_file, ev_sockstats_container);
+                //     dump_stats (curr_dir_file, ev_sockstats_container);
 
-                    if (tls_server_stats_container)
-                    {
+                //     if (tls_server_stats_container)
+                //     {
                         
-                        sprintf (curr_dir_file,
-                                "%s%s/container_%d/"
-                                "tls_server_stats_container.json",
-                                result_dir, mode, c_index);
+                //         sprintf (curr_dir_file,
+                //                 "%s%s/container_%d/"
+                //                 "tls_server_stats_container.json",
+                //                 result_dir, mode, c_index);
 
-                        dump_stats (curr_dir_file, tls_server_stats_container);
-                    }
+                //         dump_stats (curr_dir_file, tls_server_stats_container);
+                //     }
 
-                    if (tls_client_stats_container)
-                    {
+                //     if (tls_client_stats_container)
+                //     {
                         
-                        sprintf (curr_dir_file,
-                                "%s%s/container_%d/"
-                                "tls_client_stats_container.json",
-                                result_dir, mode, c_index);
+                //         sprintf (curr_dir_file,
+                //                 "%s%s/container_%d/"
+                //                 "tls_client_stats_container.json",
+                //                 result_dir, mode, c_index);
 
-                        dump_stats (curr_dir_file, tls_client_stats_container);
-                    }
+                //         dump_stats (curr_dir_file, tls_client_stats_container);
+                //     }
 
-                    a_index = -1;
-                    for (ev_app* app_ptr : app_list)
-                    {
-                        a_index++;
-                        sprintf (curr_dir_file,
-                                "%s%s/container_%d/app_%d/"
-                                "%s_stats_app.json",
-                                result_dir, mode, c_index, a_index,
-                                app_ptr->get_app_type() );
+                //     a_index = -1;
+                //     for (ev_app* app_ptr : app_list)
+                //     {
+                //         a_index++;
+                //         sprintf (curr_dir_file,
+                //                 "%s%s/container_%d/app_%d/"
+                //                 "%s_stats_app.json",
+                //                 result_dir, mode, c_index, a_index,
+                //                 app_ptr->get_app_type() );
 
-                        dump_stats ( curr_dir_file, app_ptr->get_stats() );
-                    }
-                }
+                //         dump_stats ( curr_dir_file, app_ptr->get_app_stats() );
+                //     }
+                // }
             }
         }
     }

@@ -32,14 +32,13 @@ public:
 class tls_client_app : public ev_app
 {
 public:
-    tls_client_app(json cfg_json
-                    , int c_index
-                    , int a_index
+    tls_client_app(json app_json
                     , tls_client_stats* all_app_stats
                     , ev_sockstats* all_ev_app_stats);
 
     ~tls_client_app();
 
+    void start();
     void run_iter();
     ev_socket* alloc_socket();
     void on_establish (ev_socket* ev_sock);
