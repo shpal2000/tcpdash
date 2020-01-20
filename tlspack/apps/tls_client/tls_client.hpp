@@ -38,8 +38,10 @@ public:
 
     ~tls_client_app();
 
-    void start();
     void run_iter();
+    
+    void start();
+    bool is_server() {return false;};
     ev_socket* alloc_socket();
     void on_establish (ev_socket* ev_sock);
     void on_write (ev_socket* ev_sock);

@@ -15,6 +15,7 @@ public:
     virtual void run_iter();
 
     virtual void start() = 0;
+    virtual bool is_server() = 0;
     virtual ev_socket* alloc_socket() = 0;
     virtual void on_establish (ev_socket* ev_sock) = 0;
     virtual void on_write (ev_socket* ev_sock) = 0;

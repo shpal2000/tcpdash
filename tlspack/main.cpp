@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
+#include<sstream>
 #include <signal.h>
 
 #include "./apps/tls_server/tls_server.hpp"
@@ -71,18 +72,10 @@ static void create_registry_entry (json cfg_json
     auto z_list = cfg_json["zones"];
     for (auto z_it = z_list.begin(); z_it != z_list.end(); ++z_it)
     {
-        auto zone = z_it.value ();
-        auto a_list = zone["app_list"];
-
-        for (auto a_it = a_list.begin(); a_it != a_list.end(); ++a_it)
-        {
-            auto app = a_it.value ();
-            auto app_label = app["app_label"].get<std::string>();
-            
-            sprintf (curr_dir_file, "%s%s", registry_dir, app_label.c_str());
-            std::ofstream o_progress_file(curr_dir_file);
-            o_progress_file << "0";
-        }
+        auto zone_label = z_it.value()["zone_label"].get<std::string>();
+        sprintf (curr_dir_file, "%s%s", registry_dir, zone_label.c_str());
+        std::ofstream f(curr_dir_file);
+        f << "0";
     }
 
     sprintf (curr_dir_file, "%smaster", registry_dir);
@@ -352,6 +345,64 @@ static std::vector<ev_app*>* create_app_list (json cfg_json, int z_index)
     return app_list;
 }
 
+static bool all_servers_running (json cfg_json)
+{
+    bool ret = true;
+    auto z_list = cfg_json["zones"];
+    for (auto z_it = z_list.begin(); z_it != z_list.end(); ++z_it)
+    {
+        auto zone_label = z_it.value()["zone_label"].get<std::string>();
+        sprintf (curr_dir_file, "%s%s", registry_dir, zone_label.c_str());
+        std::ifstream f(curr_dir_file);
+        std::ostringstream ss;
+        std::string str;
+        ss << f.rdbuf();
+        str = ss.str();
+        if (atoi(str.c_str()) < 1)
+        {
+            ret = false;
+            break;
+        }
+    }
+    return ret;
+}
+
+static void start_zone_servers (json cfg_json
+                                , int z_index
+                                , std::vector<ev_app*> *app_list)
+{
+    for (ev_app* app_ptr : *app_list)
+    {
+        if (app_ptr->is_server())
+        {
+            app_ptr->start ();
+        }
+    }
+
+    auto zone_label = cfg_json["zones"][z_index]["zone_label"].get<std::string>();
+    sprintf (curr_dir_file, "%s%s", registry_dir, zone_label.c_str());
+    std::ofstream f(curr_dir_file);
+    f << "1";
+}
+
+static void start_zone_clients (json cfg_json
+                                , int z_index
+                                , std::vector<ev_app*> *app_list)
+{
+    for (ev_app* app_ptr : *app_list)
+    {
+        if (not app_ptr->is_server())
+        {
+            app_ptr->start ();
+        }
+    }
+
+    auto zone_label = cfg_json["zones"][z_index]["zone_label"].get<std::string>();
+    sprintf (curr_dir_file, "%s%s", registry_dir, zone_label.c_str());
+    std::ofstream f(curr_dir_file);
+    f << "2";
+}
+
 int main(int argc, char **argv) 
 {
     char* mode = argv[1];
@@ -423,6 +474,15 @@ int main(int argc, char **argv)
 
         if ( app_list )
         {
+            start_zone_servers (cfg_json, z_index, app_list);
+
+            while (not all_servers_running (cfg_json))
+            {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+
+            start_zone_clients (cfg_json, z_index, app_list);
+
             uint64_t mu_ticks = 0;
 
             while (1)
@@ -487,3 +547,5 @@ int main(int argc, char **argv)
 
     return 0;
 }
+
+
