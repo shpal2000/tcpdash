@@ -114,6 +114,47 @@ static void create_result_entry (json cfg_json
         sprintf (curr_dir_file, "%s%s", result_dir, zone_label.c_str());
         sprintf (cmd_str, "mkdir %s", curr_dir_file);
         system_cmd ("create zone dir", cmd_str);
+
+        auto a_list = zone["app_list"];
+        for (auto a_it = a_list.begin(); a_it != a_list.end(); ++a_it)
+        {
+            auto app = a_it.value ();
+            auto app_label = app["app_label"].get<std::string>();
+            
+            sprintf (curr_dir_file, "%s%s/%s"
+                        , result_dir, zone_label.c_str(), app_label.c_str());
+            sprintf (cmd_str, "mkdir %s", curr_dir_file);
+            system_cmd ("create app dir", cmd_str);
+
+            auto srv_list = app["srv_list"];
+            for (auto s_it = srv_list.begin(); s_it != srv_list.end(); ++s_it)
+            {
+                auto srv = s_it.value ();
+                auto srv_label = srv["srv_label"].get<std::string>();
+                sprintf (curr_dir_file,
+                        "%s%s/"
+                        "%s/%s",
+                        result_dir, zone_label.c_str(), 
+                        app_label.c_str(), srv_label.c_str());
+                sprintf (cmd_str, "mkdir %s", curr_dir_file);
+                system_cmd ("create srv dir", cmd_str);
+            }
+
+            auto cs_grp_list = app["cs_grp_list"];
+            for (auto cs_it = cs_grp_list.begin(); 
+                    cs_it != cs_grp_list.end(); ++cs_it)
+            {
+                auto cs_grp = cs_it.value ();
+                auto cs_grp_label = cs_grp["cs_grp_label"].get<std::string>();
+                sprintf (curr_dir_file,
+                        "%s%s/"
+                        "%s/%s",
+                        result_dir, zone_label.c_str(), 
+                        app_label.c_str(), cs_grp_label.c_str());
+                sprintf (cmd_str, "mkdir %s", curr_dir_file);
+                system_cmd ("create cs_grp dir", cmd_str);
+            }
+        }
     }
 }
 
@@ -494,7 +535,7 @@ int main(int argc, char **argv)
 
                     sprintf (curr_dir_file,
                             "%s%s/"
-                            "zone_ev_sockstats.json",
+                            "ev_sockstats.json",
                             result_dir, zone_label.c_str());
                     dump_stats (curr_dir_file, zone_ev_sockstats);
 
@@ -502,7 +543,7 @@ int main(int argc, char **argv)
                     {
                         sprintf (curr_dir_file,
                                 "%s%s/"
-                                "zone_tls_server_stats.json",
+                                "tls_server_stats.json",
                                 result_dir, zone_label.c_str());
                         dump_stats (curr_dir_file, zone_tls_server_stats);
                     }
@@ -511,7 +552,7 @@ int main(int argc, char **argv)
                     {
                         sprintf (curr_dir_file,
                                 "%s%s/"
-                                "zone_tls_client_stats.json",
+                                "tls_client_stats.json",
                                 result_dir, zone_label.c_str());
                         dump_stats (curr_dir_file, zone_tls_client_stats);
                     }
@@ -519,11 +560,26 @@ int main(int argc, char **argv)
                     for (ev_app* app_ptr : *app_list)
                     {
                         sprintf (curr_dir_file,
-                                "%s%s/"
-                                "%s_%s_stats.json",
-                                result_dir, zone_label.c_str(),
-                                app_ptr->get_app_label(), app_ptr->get_app_type());
+                            "%s%s/"
+                            "%s/%s_stats.json",
+                            result_dir, zone_label.c_str(),
+                            app_ptr->get_app_label(), app_ptr->get_app_type());
                         dump_stats (curr_dir_file, app_ptr->get_app_stats());
+
+                        ev_stats_map* app_stats_map 
+                            = app_ptr->get_app_stats_map ();
+                        for (auto it=app_stats_map->begin(); 
+                                it!=app_stats_map->end(); ++it)
+                        {
+                            sprintf (curr_dir_file,
+                            "%s%s/"
+                            "%s/%s/"
+                            "%s_stats.json",
+                            result_dir, zone_label.c_str(),
+                            app_ptr->get_app_label(), it->first.c_str(),
+                            app_ptr->get_app_type());
+                            dump_stats (curr_dir_file, it->second);  
+                        }
                     }
                 }
             }

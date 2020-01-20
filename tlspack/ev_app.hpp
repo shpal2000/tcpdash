@@ -43,6 +43,11 @@ public:
         return ev_socket::new_tcp_listen (m_epoll_ctx, laddr, lqlen, statsArr);
     }
 
+    ev_stats_map* get_app_stats_map ()
+    {
+        return &m_stats_map;
+    } 
+    
     ev_sockstats* get_app_stats (const char* stats_label="")
     {
         return m_stats_map[stats_label];
