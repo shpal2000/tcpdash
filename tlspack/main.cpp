@@ -3,6 +3,7 @@
 #include <fstream>
 #include<sstream>
 #include <signal.h>
+#include <chrono>
 
 #include "./apps/tls_server/tls_server.hpp"
 #include "./apps/tls_client/tls_client.hpp"
@@ -113,20 +114,6 @@ static void create_result_entry (json cfg_json
         sprintf (curr_dir_file, "%s%s", result_dir, zone_label.c_str());
         sprintf (cmd_str, "mkdir %s", curr_dir_file);
         system_cmd ("create zone dir", cmd_str);
-
-        auto a_list = zone["app_list"];
-
-        for (auto a_it = a_list.begin(); a_it != a_list.end(); ++a_it)
-        {
-            auto app = a_it.value ();
-            auto app_label = app["app_label"].get<std::string>();
-            
-            sprintf (curr_dir_file, "%s%s/%s"
-                        , result_dir, zone_label.c_str(), app_label.c_str());
-
-            sprintf (cmd_str, "mkdir %s", curr_dir_file);
-            system_cmd ("create app dir", cmd_str);
-        }
     }
 }
 
@@ -454,6 +441,9 @@ int main(int argc, char **argv)
         char* run_tag = argv[3];
         int z_index = atoi (argv[4]);
         char* zone_cname = argv[5];
+
+        auto zone_label 
+            = cfg_json["zones"][z_index]["zone_label"].get<std::string>();
         
         sprintf (result_dir, "%sresults/%s/%s/", RUN_DIR_PATH, cfg_name, run_tag);
 
@@ -483,8 +473,8 @@ int main(int argc, char **argv)
 
             start_zone_clients (cfg_json, z_index, app_list);
 
-            uint64_t mu_ticks = 0;
-
+            std::chrono::time_point<std::chrono::system_clock> start, end;
+            start = std::chrono::system_clock::now();
             while (1)
             {
                 for (ev_app* app_ptr : *app_list)
@@ -493,58 +483,57 @@ int main(int argc, char **argv)
                 }
 
                 std::this_thread::sleep_for(std::chrono::microseconds(1));
+                end = std::chrono::system_clock::now();
+                auto ms_elapsed 
+                    = std::chrono::duration_cast<std::chrono::milliseconds>
+                    (end-start);
 
-                // mu_ticks++;
-                // if (mu_ticks == 0)
-                // {
-                //     mu_ticks = 0;
+                if (ms_elapsed.count() >= 5000)
+                {
+                    start = end;
 
-                //     sprintf (curr_dir_file,
-                //             "%s%s/container_%d/"
-                //             "ev_sockstats_container.json",
-                //             result_dir, mode, c_index);
+                    sprintf (curr_dir_file,
+                            "%s%s/"
+                            "zone_ev_sockstats.json",
+                            result_dir, zone_label.c_str());
+                    dump_stats (curr_dir_file, zone_ev_sockstats);
 
-                //     dump_stats (curr_dir_file, ev_sockstats_container);
+                    if (zone_tls_server_stats)
+                    {
+                        sprintf (curr_dir_file,
+                                "%s%s/"
+                                "zone_tls_server_stats.json",
+                                result_dir, zone_label.c_str());
+                        dump_stats (curr_dir_file, zone_tls_server_stats);
+                    }
 
-                //     if (tls_server_stats_container)
-                //     {
-                        
-                //         sprintf (curr_dir_file,
-                //                 "%s%s/container_%d/"
-                //                 "tls_server_stats_container.json",
-                //                 result_dir, mode, c_index);
+                    if (zone_tls_client_stats)
+                    {
+                        sprintf (curr_dir_file,
+                                "%s%s/"
+                                "zone_tls_client_stats.json",
+                                result_dir, zone_label.c_str());
+                        dump_stats (curr_dir_file, zone_tls_client_stats);
+                    }
 
-                //         dump_stats (curr_dir_file, tls_server_stats_container);
-                //     }
-
-                //     if (tls_client_stats_container)
-                //     {
-                        
-                //         sprintf (curr_dir_file,
-                //                 "%s%s/container_%d/"
-                //                 "tls_client_stats_container.json",
-                //                 result_dir, mode, c_index);
-
-                //         dump_stats (curr_dir_file, tls_client_stats_container);
-                //     }
-
-                //     a_index = -1;
-                //     for (ev_app* app_ptr : app_list)
-                //     {
-                //         a_index++;
-                //         sprintf (curr_dir_file,
-                //                 "%s%s/container_%d/app_%d/"
-                //                 "%s_stats_app.json",
-                //                 result_dir, mode, c_index, a_index,
-                //                 app_ptr->get_app_type() );
-
-                //         dump_stats ( curr_dir_file, app_ptr->get_app_stats() );
-                //     }
-                // }
+                    for (ev_app* app_ptr : *app_list)
+                    {
+                        sprintf (curr_dir_file,
+                                "%s%s/"
+                                "%s_%s_stats.json",
+                                result_dir, zone_label.c_str(),
+                                app_ptr->get_app_label(), app_ptr->get_app_type());
+                        dump_stats (curr_dir_file, app_ptr->get_app_stats());
+                    }
+                }
             }
         }
+        else
+        {
+            printf ("no apps!\n");
+            exit (-1);
+        }
     }
-
     return 0;
 }
 

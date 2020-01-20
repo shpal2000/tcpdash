@@ -56,6 +56,10 @@ public:
     const char* get_app_type () {return m_app_type;};
     void set_app_type (const char* app_type) {strcpy (m_app_type, app_type);};
 
+    const char* get_app_label () {return m_app_label;};
+    void set_app_label (const char* app_label) {strcpy (m_app_label, app_label);};
+
+
     json get_app_json () {return m_app_json;}
     void set_app_json (json app_json)  {m_app_json = app_json;};
 
@@ -75,6 +79,7 @@ private:
     epoll_ctx* m_epoll_ctx;
     ev_stats_map m_stats_map;
     char m_app_type[MAX_APP_TYPE_NAME];
+    char m_app_label[MAX_APP_TYPE_NAME];
     json m_app_json;
     ev_sockstats* m_zone_app_stats;
     ev_sockstats* m_zone_sock_stats;

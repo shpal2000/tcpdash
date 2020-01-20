@@ -5,6 +5,7 @@ tls_client_app::tls_client_app(json app_json
                     , ev_sockstats* zone_sock_stats)
 {
     set_app_type ("tls_client");
+    set_app_label (app_json["app_label"].get<std::string>().c_str());
     set_app_stats ( new tls_client_stats() );
 
     set_app_json (app_json);
