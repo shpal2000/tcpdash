@@ -29,6 +29,7 @@ public:
     ~tls_client_socket();
 };
 
+class 
 class tls_client_app : public ev_app
 {
 public:
@@ -52,4 +53,11 @@ public:
 
 private:
     char m_read_buffer[MAX_READ_BUFFER_LEN];
+    uint32_t m_cps;
+    uint32_t m_max_act_sess;
+    uint32_t m_max_err_sess;
+    uint64_t m_max_sess;
+
+
+
 };

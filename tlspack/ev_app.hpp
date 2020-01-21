@@ -6,6 +6,22 @@
 #define MAX_APP_TYPE_NAME 1024
 
 typedef std::map<std::string, ev_sockstats*> ev_stats_map;
+
+class ev_ap_cs_grp
+{
+public:
+    std::string m_label;
+
+    std::string m_srv_ip;
+    int m_srv_port;
+    ev_sockaddr m_srv_addr;
+
+    std::string m_clnt_ip_begin;
+    std::string m_clnt_ip_end;
+    int m_clnt_port_begin;
+    int m_clnt_port_end;
+};
+
 class ev_app
 {
 public:

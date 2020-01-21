@@ -15,6 +15,7 @@
 #include <openssl/err.h>
 #include <queue>
 #include <cstring>
+#include <string>
 #include <thread>
 #include <chrono>
 #include <map>

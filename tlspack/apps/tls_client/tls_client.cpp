@@ -11,6 +11,11 @@ tls_client_app::tls_client_app(json app_json
     set_app_json (app_json);
     set_zone_app_stats (zone_app_stats);
     set_zone_sock_stats (zone_sock_stats);
+
+    m_cps = app_json["conn_per_sec"].get<uint32_t>();
+    m_max_act_sess = app_json["conn_per_sec"].get<uint32_t>();
+    m_max_err_sess = app_json["conn_per_sec"].get<uint32_t>();
+    m_max_sess = app_json["conn_per_sec"].get<uint64_t>();
 }
 
 tls_client_app::~tls_client_app()

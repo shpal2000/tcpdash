@@ -148,6 +148,29 @@ union ev_sockaddr
     struct sockaddr_in6 in_addr6;
 };
 
+struct ev_sockaddrx : ev_sockaddr
+{
+    std::queue<u_short> m_port_queue;
+
+    ev_sockaddrx(u_short start_port, u_short end_port)
+    {
+        while (start_port <= end_port)
+        {
+            m_port_queue.push(htons(start_port++));
+        }
+    }
+
+    bool grab_port() 
+    {
+        
+    };
+
+    void return_port() 
+    {
+
+    };
+}
+
 struct ev_sockstats_data
 {
     uint64_t socketCreate;    
@@ -484,8 +507,6 @@ public:
                                         , int listenQLen
                                         , std::vector<ev_sockstats*>* statsArr);
 
-    static void set_sockaddr (ev_sockaddr* addr, const char* str, int port);
-
     void enable_rd_only_notification ();
     void enable_wr_only_notification ();
 
@@ -544,6 +565,13 @@ private:
     void do_close_connection ();
     void do_read_next_data ();
     void do_write_next_data ();
+
+    ///////////////////////////////utility functions/////////////////////////
+public:
+    static void sockaddr_to_str (ev_sockaddr* addr, char* str);
+    static void get_nextip_str (char* str, int skip, char* n_str);
+    static void set_sockaddr (ev_sockaddr* addr, const char* str, int port);
+
 };
 
 #endif
