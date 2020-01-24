@@ -13,6 +13,8 @@ struct tls_server_stats_data : ev_sockstats
         j["tls_server_stats_1"] = tls_server_stats_1;
         j["tls_server_stats_100"] = tls_server_stats_100;
     }
+
+    virtual ~tls_server_stats_data() {};
 };
 
 struct tls_server_stats : tls_server_stats_data

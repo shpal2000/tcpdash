@@ -61,7 +61,6 @@ static bool is_registry_entry_exit (/*json cfg_json
 }
 
 static void create_registry_entry (json cfg_json
-                                    , char* cfg_name
                                     , char* run_tag)
 {
     //create registry dir
@@ -94,9 +93,7 @@ static void remove_registry_entry (/*json cfg_json
     system_cmd ("delete registry dir", cmd_str);
 }
 
-static void create_result_entry (json cfg_json
-                                    , char* cfg_name
-                                    , char* run_tag)
+static void create_result_entry (json cfg_json)
 {
     //remove result dir
     sprintf (cmd_str, "rm -rf %s", result_dir); 
@@ -215,10 +212,10 @@ static void start_zones (json cfg_json
                     "-o UserKnownHostsFile=/dev/null "
                     "%s@%s "
                     "sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged "
-                    "--name %s -it -d %s tgen %s zone %s %s %d %s config_zone",
+                    "--name %s -it -d %s tgen %s zone %s %s %d config_zone",
                     RUN_DIR_PATH,
                     ssh_user.c_str(), ssh_host.c_str(),
-                    zone_cname, volume_string, tlspack_exe_file, cfg_name, run_tag, z_index, zone_cname);
+                    zone_cname, volume_string, tlspack_exe_file, cfg_name, run_tag, z_index);
         }
         
         system_cmd ("zone start", cmd_str);
@@ -439,7 +436,7 @@ static void update_registry_state (const char* registry_file, int state)
     f << state_str; 
 }
 
-int main(int argc, char **argv) 
+int main(int /*argc*/, char **argv) 
 {
     char* mode = argv[1];
     char* cfg_name = argv[2];
@@ -456,10 +453,7 @@ int main(int argc, char **argv)
         char* run_tag = argv[3];
         char* host_run_dir = argv[4];
         int is_debug = atoi (argv[5]);
-        char* host_src_dir = "";
-        if (is_debug) {
-            host_src_dir = argv[6];
-        }
+        char* host_src_dir = argv[6];
         
         sprintf (result_dir, "%sresults/%s/%s/", RUN_DIR_PATH, cfg_name, run_tag);
 
@@ -469,9 +463,9 @@ int main(int argc, char **argv)
             exit (-1);
         }
 
-        create_registry_entry (cfg_json, cfg_name, run_tag);
+        create_registry_entry (cfg_json, run_tag);
 
-        create_result_entry (cfg_json, cfg_name, run_tag);
+        create_result_entry (cfg_json);
 
         start_zones (cfg_json, cfg_name, run_tag, host_run_dir
                                         , is_debug, host_src_dir);
@@ -495,8 +489,7 @@ int main(int argc, char **argv)
     {   
         char* run_tag = argv[3];
         int z_index = atoi (argv[4]);
-        char* zone_cname = argv[5];
-        char* config_zone_flag = argv[6];
+        char* config_zone_flag = argv[5];
         
         auto zone_label 
             = cfg_json["zones"][z_index]["zone_label"].get<std::string>();
