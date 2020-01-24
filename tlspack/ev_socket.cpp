@@ -3,6 +3,7 @@
 
 void ev_socket::init ()
 {
+    m_portq = nullptr;
     m_epoll_ctx = nullptr;
     m_fd = -1;
     m_saved_lport = 0;
@@ -32,6 +33,9 @@ ev_socket::ev_socket()
 
 ev_socket::~ev_socket()
 {
+    if (m_portq) {
+        m_portq->return_port (get_sockaddr_port (&m_local_addr));
+    }
 }
 
 //////////////////////////////// platform functions///////////////////////////////
@@ -50,7 +54,8 @@ void ev_socket::epoll_free(epoll_ctx* epoll_ctxp)
 ev_socket* ev_socket::new_tcp_connect (epoll_ctx* epoll_ctxp
                                         , ev_sockaddr* localAddress
                                         , ev_sockaddr* remoteAddress
-                                        , std::vector<ev_sockstats*>* statsArr)
+                                        , std::vector<ev_sockstats*>* statsArr
+                                        , ev_portq* portq)
 {
     ev_socket* new_sock = epoll_ctxp->m_app->alloc_socket ();
 
@@ -58,6 +63,9 @@ ev_socket* ev_socket::new_tcp_connect (epoll_ctx* epoll_ctxp
         new_sock->init ();
         new_sock->set_sockstats_arr (statsArr);
         new_sock->tcp_connect (epoll_ctxp, localAddress, remoteAddress);
+        if (portq) {
+            new_sock->set_portq (portq);
+        }
     } else {
 
     }
@@ -342,8 +350,9 @@ int ev_socket::tcp_connect (epoll_ctx* epoll_ctxp
     std::memcpy (&m_local_addr, localAddress, sizeof (ev_sockaddr));
     std::memcpy (&m_remote_addr, remoteAddress, sizeof (ev_sockaddr));
 
-    //socket if ipv6 
-    CHECK_IPV6(&m_local_addr, &m_ipv6);
+    //socket if ipv6
+    struct sockaddr* uaddr = (struct sockaddr*) (localAddress);
+    m_ipv6 = (uaddr->sa_family == AF_INET6);
 
     //create socket
     if (m_ipv6){
@@ -514,7 +523,8 @@ int ev_socket::tcp_listen(epoll_ctx* epoll_ctxp
     std::memcpy (&m_local_addr, localAddress, sizeof (ev_sockaddr));
 
     //socket if ipv6 
-    CHECK_IPV6(&m_local_addr, &m_ipv6);
+    struct sockaddr* uaddr = (struct sockaddr*) (localAddress);
+    m_ipv6 = (uaddr->sa_family == AF_INET6);
 
     //create socket
     if (m_ipv6){
@@ -1190,31 +1200,6 @@ void ev_socket::do_write_next_data ()
                             , m_write_status );
     }
 
-}
-
-void ev_socket::set_sockaddr(ev_sockaddr* addr, const char* str, int port) {
-
-    //check str for ipv6 ???
-    int is_ipv6 = 0;
-
-    memset(addr, 0, sizeof(ev_sockaddr));
-
-    if (is_ipv6) 
-    {
-        inet_pton(AF_INET6
-                , str
-                , &addr->in_addr6.sin6_addr);
-        addr->in_addr6.sin6_family = AF_INET6;
-        addr->in_addr6.sin6_port = htons(port);
-    }
-    else
-    {
-        inet_pton(AF_INET
-                , str
-                , &addr->in_addr.sin_addr);
-        addr->in_addr.sin_family = AF_INET;
-        addr->in_addr.sin_port = htons(port);
-    }
 }
 
 //////////////////////////event processing///////////////////////////////////

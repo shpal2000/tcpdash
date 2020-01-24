@@ -4,7 +4,7 @@
             "zone_label" : "zone1",
             "zone_type" : "single-interface",
             "iface" : "eth1",
-            "macvlan" : "eth0macvlan",
+            "macvlan" : "eth192macvlan",
             "subnets" : ["12.20.60.0/24"],
             "app_list" : [
                 {
@@ -35,9 +35,7 @@
                     "app_type" : "tls_client",
                     "app_label" : "tls_client_1",
                     "conn_per_sec" : 85,
-                    "max_act_sess" : 10000,
-                    "max_err_sess" : 10000,
-                    "max_total_sess" : 10,
+                    "total_conn_count" : 10000,
                     "cs_grp_list" : [
                         {
                             "cs_grp_label" : "cs_grp_1",
@@ -46,8 +44,8 @@
 
                             "clnt_ip_begin" : "12.20.60.3",
                             "clnt_ip_end" : "12.20.60.100",
-                            "clnt_port_begin" : 10000,
-                            "clnt_port_end" : 19999,
+                            "clnt_port_begin" : 5000,
+                            "clnt_port_end" : 65000,
 
                             "cs_data_len" : 10,
                             "sc_data_len" : 20,
@@ -61,8 +59,8 @@
 
                             "clnt_ip_begin" : "12.20.60.101",
                             "clnt_ip_end" : "12.20.60.200",
-                            "clnt_port_begin" : 10000,
-                            "clnt_port_end" : 19999,
+                            "clnt_port_begin" : 5000,
+                            "clnt_port_end" : 65000,
 
                             "cs_data_len" : 10,
                             "sc_data_len" : 20,
@@ -75,10 +73,10 @@
         },
 
         {
-            "zone_label" : "proc2",
+            "zone_label" : "zone2",
             "zone_type" : "single-interface",
             "iface" : "eth1",
-            "macvlan" : "eth0macvlan",
+            "macvlan" : "eth160macvlan",
             "subnets" : ["12.20.50.0/24"],
             "app_list" : [
                 {
@@ -109,9 +107,7 @@
                     "app_type" : "tls_client",
                     "app_label" : "tls_client_2",
                     "conn_per_sec" : 85,
-                    "max_act_sess" : 10000,
-                    "max_err_sess" : 10000,
-                    "max_total_sess" : 10,
+                    "total_conn_count" : 10000,
                     "cs_grp_list" : [
                         {
                             "cs_grp_label" : "cs_grp_3",
@@ -120,8 +116,8 @@
 
                             "clnt_ip_begin" : "12.20.50.3",
                             "clnt_ip_end" : "12.20.50.100",
-                            "clnt_port_begin" : 10000,
-                            "clnt_port_end" : 19999,
+                            "clnt_port_begin" : 5000,
+                            "clnt_port_end" : 65000,
 
                             "cs_data_len" : 10,
                             "sc_data_len" : 20,
@@ -135,8 +131,8 @@
 
                             "clnt_ip_begin" : "12.20.50.101",
                             "clnt_ip_end" : "12.20.50.200",
-                            "clnt_port_begin" : 10000,
-                            "clnt_port_end" : 19999,
+                            "clnt_port_begin" : 5000,
+                            "clnt_port_end" : 65000,
 
                             "cs_data_len" : 10,
                             "sc_data_len" : 20,

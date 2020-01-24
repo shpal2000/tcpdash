@@ -11,12 +11,13 @@
 #define MAX_CONFIG_DIR_PATH 256
 #define MAX_CONFIG_FILE_PATH 512
 #define MAX_EXE_FILE_PATH 512
-#define MAX_VOLUME_STRING 512
+#define MAX_VOLUME_STRING 1024
 #define MAX_CMD_LEN 2048
 #define MAX_CMD_LEN 2048
 #define MAX_RESULT_DIR_PATH 2048
 #define MAX_FILE_PATH_LEN 2048
 #define RUN_DIR_PATH "/rundir/"
+#define SRC_DIR_PATH "/tcpdash/"
 #define MAX_REGISTRY_DIR_PATH 2048
 #define MAX_ZONE_CNAME 64
 char cmd_str [MAX_CMD_LEN];
@@ -27,6 +28,7 @@ char tlspack_exe_file [MAX_EXE_FILE_PATH];
 char volume_string [MAX_VOLUME_STRING];
 char result_dir [MAX_RESULT_DIR_PATH];
 char curr_dir_file [MAX_FILE_PATH_LEN];
+char zone_file [MAX_FILE_PATH_LEN];
 char registry_dir [MAX_REGISTRY_DIR_PATH];
 char zone_cname [MAX_ZONE_CNAME];
 
@@ -161,18 +163,16 @@ static void create_result_entry (json cfg_json
 static void start_zones (json cfg_json
                             , char* cfg_name
                             , char* run_tag
-                            , char* host_run_dir)
+                            , char* host_run_dir
+                            , int is_debug
+                            , char* host_src_dir)
 {
-    sprintf (tlspack_exe_file, "%sbin/tlspack.exe", RUN_DIR_PATH);
-
     sprintf (ssh_host_file, "%s.ssh/host", RUN_DIR_PATH);
     std::ifstream ssh_host_stream(ssh_host_file);
     json ssh_host_json = json::parse(ssh_host_stream);
     auto ssh_host = ssh_host_json["host"].get<std::string>();
     auto ssh_user = ssh_host_json["user"].get<std::string>();
     auto ssh_pass = ssh_host_json["pass"].get<std::string>();
-
-    sprintf (volume_string, "--volume=%s:%s", host_run_dir, RUN_DIR_PATH);
 
     //launch containers
     auto z_list = cfg_json["zones"];
@@ -182,18 +182,45 @@ static void start_zones (json cfg_json
         z_index++;
         sprintf (zone_cname, "%s_%d", cfg_name, z_index+1);
 
-        sprintf (cmd_str,
-                "ssh -i %s.ssh/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
-                "sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged "
-                "--name %s -it -d %s tgen %s zone %s %s %d %s config_zone",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str(),
-                zone_cname, volume_string, tlspack_exe_file, cfg_name, run_tag, z_index, zone_cname);
-                
+        if (is_debug)
+        {
+            sprintf (volume_string,
+                        "--volume=%s:%s "
+                        "--volume=%s:%s", 
+                        host_run_dir, RUN_DIR_PATH,
+                        host_src_dir, SRC_DIR_PATH);
+
+            sprintf (cmd_str,
+                    "ssh -i %s.ssh/id_rsa -tt "
+                    // "-o LogLevel=quiet "
+                    "-o StrictHostKeyChecking=no "
+                    "-o UserKnownHostsFile=/dev/null "
+                    "%s@%s "
+                    "sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged "
+                    "--name %s -it -d %s tgen /bin/bash",
+                    RUN_DIR_PATH,
+                    ssh_user.c_str(), ssh_host.c_str(),
+                    zone_cname, volume_string);
+        }
+        else
+        {
+            sprintf (tlspack_exe_file, "%sbin/tlspack.exe", RUN_DIR_PATH);
+
+            sprintf (volume_string, "--volume=%s:%s", host_run_dir, RUN_DIR_PATH);
+
+            sprintf (cmd_str,
+                    "ssh -i %s.ssh/id_rsa -tt "
+                    // "-o LogLevel=quiet "
+                    "-o StrictHostKeyChecking=no "
+                    "-o UserKnownHostsFile=/dev/null "
+                    "%s@%s "
+                    "sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged "
+                    "--name %s -it -d %s tgen %s zone %s %s %d %s config_zone",
+                    RUN_DIR_PATH,
+                    ssh_user.c_str(), ssh_host.c_str(),
+                    zone_cname, volume_string, tlspack_exe_file, cfg_name, run_tag, z_index, zone_cname);
+        }
+        
         system_cmd ("zone start", cmd_str);
 
         std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -328,6 +355,12 @@ static std::vector<ev_app*>* create_app_list (json cfg_json, int z_index)
         a_index++;
         auto app_json = a_it.value ();
         const char* app_type = app_json["app_type"].get<std::string>().c_str();
+        const char* app_label = app_json["app_label"].get<std::string>().c_str();
+        int app_enabe = app_json["enable"].get<int>();
+
+        if (app_enabe ==0){
+            continue;
+        }
 
         ev_app* next_app = nullptr;
         if ( strcmp("tls_server", app_type) == 0 )
@@ -356,6 +389,9 @@ static std::vector<ev_app*>* create_app_list (json cfg_json, int z_index)
 
         if (next_app)
         {
+            next_app->set_app_type (app_type);
+            next_app->set_app_label (app_label);
+
             if (app_list == nullptr)
             {
                 app_list = new std::vector<ev_app*>;
@@ -373,7 +409,7 @@ static std::vector<ev_app*>* create_app_list (json cfg_json, int z_index)
     return app_list;
 }
 
-static bool all_servers_running (json cfg_json)
+static bool all_zones_initialized (json cfg_json)
 {
     bool ret = true;
     auto z_list = cfg_json["zones"];
@@ -395,40 +431,12 @@ static bool all_servers_running (json cfg_json)
     return ret;
 }
 
-static void start_zone_servers (json cfg_json
-                                , int z_index
-                                , std::vector<ev_app*> *app_list)
+static void update_registry_state (const char* registry_file, int state)
 {
-    for (ev_app* app_ptr : *app_list)
-    {
-        if (app_ptr->is_server())
-        {
-            app_ptr->start ();
-        }
-    }
-
-    auto zone_label = cfg_json["zones"][z_index]["zone_label"].get<std::string>();
-    sprintf (curr_dir_file, "%s%s", registry_dir, zone_label.c_str());
-    std::ofstream f(curr_dir_file);
-    f << "1";
-}
-
-static void start_zone_clients (json cfg_json
-                                , int z_index
-                                , std::vector<ev_app*> *app_list)
-{
-    for (ev_app* app_ptr : *app_list)
-    {
-        if (not app_ptr->is_server())
-        {
-            app_ptr->start ();
-        }
-    }
-
-    auto zone_label = cfg_json["zones"][z_index]["zone_label"].get<std::string>();
-    sprintf (curr_dir_file, "%s%s", registry_dir, zone_label.c_str());
-    std::ofstream f(curr_dir_file);
-    f << "2";
+    char state_str [128];
+    sprintf (state_str, "%d", state);
+    std::ofstream f(registry_file);
+    f << state_str; 
 }
 
 int main(int argc, char **argv) 
@@ -447,6 +455,11 @@ int main(int argc, char **argv)
     {
         char* run_tag = argv[3];
         char* host_run_dir = argv[4];
+        int is_debug = atoi (argv[5]);
+        char* host_src_dir = "";
+        if (is_debug) {
+            host_src_dir = argv[6];
+        }
         
         sprintf (result_dir, "%sresults/%s/%s/", RUN_DIR_PATH, cfg_name, run_tag);
 
@@ -460,7 +473,8 @@ int main(int argc, char **argv)
 
         create_result_entry (cfg_json, cfg_name, run_tag);
 
-        start_zones (cfg_json, cfg_name, run_tag, host_run_dir);
+        start_zones (cfg_json, cfg_name, run_tag, host_run_dir
+                                        , is_debug, host_src_dir);
 
         while (1)
         {
@@ -482,17 +496,13 @@ int main(int argc, char **argv)
         char* run_tag = argv[3];
         int z_index = atoi (argv[4]);
         char* zone_cname = argv[5];
-
+        char* config_zone_flag = argv[6];
+        
         auto zone_label 
             = cfg_json["zones"][z_index]["zone_label"].get<std::string>();
-        
-        sprintf (result_dir, "%sresults/%s/%s/", RUN_DIR_PATH, cfg_name, run_tag);
+        sprintf (zone_file, "%s%s", registry_dir, zone_label.c_str());
 
-        const char* config_zone_flag = "skip_config_zone";
-        if (argc > 6)
-        {
-            config_zone_flag = argv[6];
-        }
+        sprintf (result_dir, "%sresults/%s/%s/", RUN_DIR_PATH, cfg_name, run_tag);
         
         if ( strcmp(config_zone_flag, "config_zone") == 0 )
         {
@@ -502,36 +512,52 @@ int main(int argc, char **argv)
         signal(SIGPIPE, SIG_IGN);
 
         std::vector<ev_app*> *app_list = create_app_list (cfg_json, z_index);
+        update_registry_state (zone_file, 1);
 
         if ( app_list )
         {
-            start_zone_servers (cfg_json, z_index, app_list);
 
-            while (not all_servers_running (cfg_json))
+            while (not all_zones_initialized (cfg_json))
             {
                 std::this_thread::sleep_for(std::chrono::seconds(1));
             }
 
-            start_zone_clients (cfg_json, z_index, app_list);
+            update_registry_state (zone_file, 2);
 
             std::chrono::time_point<std::chrono::system_clock> start, end;
             start = std::chrono::system_clock::now();
+            int tick_5sec = 0;
+            bool is_tick_sec = false;
             while (1)
             {
-                for (ev_app* app_ptr : *app_list)
-                {
-                    app_ptr->run_iter ();
-                }
-
                 std::this_thread::sleep_for(std::chrono::microseconds(1));
                 end = std::chrono::system_clock::now();
                 auto ms_elapsed 
                     = std::chrono::duration_cast<std::chrono::milliseconds>
                     (end-start);
 
-                if (ms_elapsed.count() >= 5000)
+                if (ms_elapsed.count() >= 1000)
                 {
                     start = end;
+                    is_tick_sec = true;
+                    tick_5sec++;
+                }
+
+                for (ev_app* app_ptr : *app_list)
+                {
+                    app_ptr->run_iter (is_tick_sec);
+                }
+
+                if (is_tick_sec) 
+                {
+                    zone_ev_sockstats->tick_sec ();
+
+                    is_tick_sec = false;
+                }
+
+                if (tick_5sec == 5)
+                {
+                    tick_5sec = 0;
 
                     sprintf (curr_dir_file,
                             "%s%s/"

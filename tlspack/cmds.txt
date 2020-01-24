@@ -1,10 +1,15 @@
-traffic_start(){
-    sudo docker run --name "$1_0" --rm -it -d --volume=/root/rundir:/rundir tgen /rundir/bin/tlspack.exe start "$1" "$2" /root/rundir
+traffic_start()
+{
+    sudo docker run --name "$1_0" -it -d --volume=/root/rundir:/rundir tgen /rundir/bin/tlspack.exe start "$1" "$2" /root/rundir 0
 }
-
-traffic_stop(){
+traffic_start_debug()
+{
+    sudo docker run --name "$1_0" -it -d --volume=/root/rundir:/rundir tgen /rundir/bin/tlspack.exe start "$1" "$2" /root/rundir 1 /root/tcpdash
+}
+traffic_stop()
+{
     sudo docker run --rm -it --volume=/root/rundir:/rundir tgen /rundir/bin/tlspack.exe stop "$1"
 }
-
-traffic_stats(){
+traffic_stats()
+{
 }

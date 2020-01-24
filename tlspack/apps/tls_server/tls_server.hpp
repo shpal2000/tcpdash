@@ -39,10 +39,8 @@ public:
 
     ~tls_server_app();
 
-    void run_iter();
+    void run_iter(bool tick_sec);
 
-    void start();
-    bool is_server() {return true;};
     ev_socket* alloc_socket();
     void on_establish (ev_socket* ev_sock);
     void on_write (ev_socket* ev_sock);

@@ -29,7 +29,6 @@ public:
     ~tls_client_socket();
 };
 
-class 
 class tls_client_app : public ev_app
 {
 public:
@@ -39,10 +38,8 @@ public:
 
     ~tls_client_app();
 
-    void run_iter();
+    void run_iter(bool tick_sec);
     
-    void start();
-    bool is_server() {return false;};
     ev_socket* alloc_socket();
     void on_establish (ev_socket* ev_sock);
     void on_write (ev_socket* ev_sock);
@@ -53,11 +50,7 @@ public:
 
 private:
     char m_read_buffer[MAX_READ_BUFFER_LEN];
-    uint32_t m_cps;
-    uint32_t m_max_act_sess;
-    uint32_t m_max_err_sess;
-    uint64_t m_max_sess;
-
-
-
+    std::vector<ev_app_cs_grp*> m_cs_groups;
+    int m_cs_group_index;
+    int m_cs_group_count;
 };

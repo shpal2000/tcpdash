@@ -140,7 +140,7 @@ sudo docker run --name tlspack_master --rm -it -d --volume=/root/rundir:/rundir 
 
 sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged --name tlspack_dev_server --rm -itd --volume=/root/tcpdash:/tcpdash --volume=/root/rundir/:/rundir/ tgen /bin/bash 
 
-/tcpdash/tlspack/build/tlspack.exe server try1 test2 0  tlspack_dev_server config_topology
+/tcpdash/tlspack/build/tlspack.exe try2 run5 0  tlspack_dev_server config_zone
 
 
 sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged --name tlspack_dev_client --rm -itd --volume=/root/tcpdash:/tcpdash --volume=/root/rundir:/rundir tgen /bin/bash 

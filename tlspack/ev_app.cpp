@@ -14,7 +14,7 @@ ev_app::~ev_app()
     }
 }
 
-void ev_app::run_iter ()
+void ev_app::run_iter (bool)
 {
     ev_socket::epoll_process (m_epoll_ctx);
 }

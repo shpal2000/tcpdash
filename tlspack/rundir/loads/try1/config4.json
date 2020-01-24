@@ -1,0 +1,303 @@
+{
+    "zones" : [
+        {
+            "zone_label" : "zone1",
+            "zone_type" : "single-interface",
+            "iface" : "eth1",
+            "macvlan" : "ens192macvlan",
+            "subnets" : ["12.20.61.0/24"],
+            "app_list" : [
+                {
+                    "app_type" : "tls_server",
+                    "app_label" : "tls_server_1",
+                    "enable" : 1,
+                    "srv_list" : [
+                        {
+                            "srv_label" : "12.20.61.1",
+                            "srv_ip" : "12.20.61.1",
+                            "srv_port" : 8443,
+                            "cs_data_len" : 10,
+                            "sc_data_len" : 20,
+                            "cs_start_tls_len" : 0,
+                            "sc_start_tls_len" : 0
+                        }
+                    ]
+                }
+            ]   
+        },
+
+        {
+            "zone_label" : "zone2",
+            "zone_type" : "single-interface",
+            "iface" : "eth1",
+            "macvlan" : "ens192macvlan",
+            "subnets" : ["12.20.62.0/24"],
+            "app_list" : [
+                {
+                    "app_type" : "tls_server",
+                    "app_label" : "tls_server_2",
+                    "enable" : 1,
+                    "srv_list" : [
+                        {
+                            "srv_label" : "12.20.62.1",
+                            "srv_ip" : "12.20.62.1",
+                            "srv_port" : 8443,
+                            "cs_data_len" : 10,
+                            "sc_data_len" : 20,
+                            "cs_start_tls_len" : 0,
+                            "sc_start_tls_len" : 0
+                        }
+                    ]
+                }
+            ]   
+        },
+
+        {
+            "zone_label" : "zone3",
+            "zone_type" : "single-interface",
+            "iface" : "eth1",
+            "macvlan" : "ens192macvlan",
+            "subnets" : ["12.20.63.0/24"],
+            "app_list" : [
+                {
+                    "app_type" : "tls_server",
+                    "app_label" : "tls_server_3",
+                    "enable" : 1,
+                    "srv_list" : [
+                        {
+                            "srv_label" : "12.20.63.1",
+                            "srv_ip" : "12.20.63.1",
+                            "srv_port" : 8443,
+                            "cs_data_len" : 10,
+                            "sc_data_len" : 20,
+                            "cs_start_tls_len" : 0,
+                            "sc_start_tls_len" : 0
+                        }
+                    ]
+                }
+            ]   
+        },
+
+        {
+            "zone_label" : "zone4",
+            "zone_type" : "single-interface",
+            "iface" : "eth1",
+            "macvlan" : "ens192macvlan",
+            "subnets" : ["12.20.64.0/24"],
+            "app_list" : [
+                {
+                    "app_type" : "tls_server",
+                    "app_label" : "tls_server_4",
+                    "enable" : 1,
+                    "srv_list" : [
+                        {
+                            "srv_label" : "12.20.64.1",
+                            "srv_ip" : "12.20.64.1",
+                            "srv_port" : 8443,
+                            "cs_data_len" : 10,
+                            "sc_data_len" : 20,
+                            "cs_start_tls_len" : 0,
+                            "sc_start_tls_len" : 0
+                        }
+                    ]
+                }
+            ]   
+        },
+
+        {
+            "zone_label" : "zone5",
+            "zone_type" : "single-interface",
+            "iface" : "eth1",
+            "macvlan" : "ens192macvlan",
+            "subnets" : ["12.20.65.0/24"],
+            "app_list" : [
+                {
+                    "app_type" : "tls_server",
+                    "app_label" : "tls_server_5",
+                    "enable" : 1,
+                    "srv_list" : [
+                        {
+                            "srv_label" : "12.20.65.1",
+                            "srv_ip" : "12.20.65.1",
+                            "srv_port" : 8443,
+                            "cs_data_len" : 10,
+                            "sc_data_len" : 20,
+                            "cs_start_tls_len" : 0,
+                            "sc_start_tls_len" : 0
+                        }
+                    ]
+                }
+            ]   
+        },
+
+        {
+            "zone_label" : "zone21",
+            "zone_type" : "single-interface",
+            "iface" : "eth1",
+            "macvlan" : "ens160macvlan",
+            "subnets" : ["12.20.51.0/24"],
+            "app_list" : [
+                {
+                    "app_type" : "tls_client",
+                    "app_label" : "tls_client_1",
+                    "enable" : 1,
+                    "conn_per_sec" : 4000,
+                    "total_conn_count" : 0,
+                    "cs_grp_list" : [
+                        {
+                            "cs_grp_label" : "cs_grp_1",
+                            "srv_ip"   : "12.20.61.1",
+                            "srv_port" : 8443,
+
+                            "clnt_ip_begin" : "12.20.51.1",
+                            "clnt_ip_end" : "12.20.51.200",
+                            "clnt_port_begin" : 5000,
+                            "clnt_port_end" : 65000,
+
+                            "cs_data_len" : 10,
+                            "sc_data_len" : 20,
+                            "cs_start_tls_len" : 0,
+                            "sc_start_tls_len" : 0
+                        }
+                    ]
+                }
+            ]       
+        },
+
+        {
+            "zone_label" : "zone22",
+            "zone_type" : "single-interface",
+            "iface" : "eth1",
+            "macvlan" : "ens160macvlan",
+            "subnets" : ["12.20.52.0/24"],
+            "app_list" : [
+                {
+                    "app_type" : "tls_client",
+                    "app_label" : "tls_client_2",
+                    "enable" : 1,
+                    "conn_per_sec" : 4000,
+                    "total_conn_count" : 0,
+                    "cs_grp_list" : [
+                        {
+                            "cs_grp_label" : "cs_grp_1",
+                            "srv_ip"   : "12.20.62.1",
+                            "srv_port" : 8443,
+
+                            "clnt_ip_begin" : "12.20.52.1",
+                            "clnt_ip_end" : "12.20.52.200",
+                            "clnt_port_begin" : 5000,
+                            "clnt_port_end" : 65000,
+
+                            "cs_data_len" : 10,
+                            "sc_data_len" : 20,
+                            "cs_start_tls_len" : 0,
+                            "sc_start_tls_len" : 0
+                        }
+                    ]
+                }
+            ]       
+        },
+
+        {
+            "zone_label" : "zone23",
+            "zone_type" : "single-interface",
+            "iface" : "eth1",
+            "macvlan" : "ens160macvlan",
+            "subnets" : ["12.20.53.0/24"],
+            "app_list" : [
+                {
+                    "app_type" : "tls_client",
+                    "app_label" : "tls_client_3",
+                    "enable" : 1,
+                    "conn_per_sec" : 4000,
+                    "total_conn_count" : 0,
+                    "cs_grp_list" : [
+                        {
+                            "cs_grp_label" : "cs_grp_1",
+                            "srv_ip"   : "12.20.63.1",
+                            "srv_port" : 8443,
+
+                            "clnt_ip_begin" : "12.20.53.1",
+                            "clnt_ip_end" : "12.20.53.200",
+                            "clnt_port_begin" : 5000,
+                            "clnt_port_end" : 65000,
+
+                            "cs_data_len" : 10,
+                            "sc_data_len" : 20,
+                            "cs_start_tls_len" : 0,
+                            "sc_start_tls_len" : 0
+                        }
+                    ]
+                }
+            ]       
+        },
+
+        {
+            "zone_label" : "zone24",
+            "zone_type" : "single-interface",
+            "iface" : "eth1",
+            "macvlan" : "ens160macvlan",
+            "subnets" : ["12.20.54.0/24"],
+            "app_list" : [
+                {
+                    "app_type" : "tls_client",
+                    "app_label" : "tls_client_4",
+                    "enable" : 1,
+                    "conn_per_sec" : 4000,
+                    "total_conn_count" : 0,
+                    "cs_grp_list" : [
+                        {
+                            "cs_grp_label" : "cs_grp_1",
+                            "srv_ip"   : "12.20.64.1",
+                            "srv_port" : 8443,
+
+                            "clnt_ip_begin" : "12.20.54.1",
+                            "clnt_ip_end" : "12.20.54.200",
+                            "clnt_port_begin" : 5000,
+                            "clnt_port_end" : 65000,
+
+                            "cs_data_len" : 10,
+                            "sc_data_len" : 20,
+                            "cs_start_tls_len" : 0,
+                            "sc_start_tls_len" : 0
+                        }
+                    ]
+                }
+            ]       
+        },
+
+        {
+            "zone_label" : "zone25",
+            "zone_type" : "single-interface",
+            "iface" : "eth1",
+            "macvlan" : "ens160macvlan",
+            "subnets" : ["12.20.55.0/24"],
+            "app_list" : [
+                {
+                    "app_type" : "tls_client",
+                    "app_label" : "tls_client_5",
+                    "enable" : 1,
+                    "conn_per_sec" : 4000,
+                    "total_conn_count" : 0,
+                    "cs_grp_list" : [
+                        {
+                            "cs_grp_label" : "cs_grp_1",
+                            "srv_ip"   : "12.20.65.1",
+                            "srv_port" : 8443,
+
+                            "clnt_ip_begin" : "12.20.55.1",
+                            "clnt_ip_end" : "12.20.55.200",
+                            "clnt_port_begin" : 5000,
+                            "clnt_port_end" : 65000,
+
+                            "cs_data_len" : 10,
+                            "sc_data_len" : 20,
+                            "cs_start_tls_len" : 0,
+                            "sc_start_tls_len" : 0
+                        }
+                    ]
+                }
+            ]       
+        }
+    ]
+}

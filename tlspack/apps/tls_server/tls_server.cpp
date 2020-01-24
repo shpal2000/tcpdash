@@ -4,23 +4,9 @@ tls_server_app::tls_server_app(json app_json
                                 , tls_server_stats* zone_app_stats
                                 , ev_sockstats* zone_sock_stats)
 {
-    set_app_type ("tls_server");
-    set_app_label (app_json["app_label"].get<std::string>().c_str());
-    set_app_stats ( new tls_server_stats() );
+    m_app_stats = new tls_server_stats();
 
-    set_app_json (app_json);
-    set_zone_app_stats (zone_app_stats);
-    set_zone_sock_stats (zone_sock_stats);
-}
-
-tls_server_app::~tls_server_app()
-{
-}
-
-void tls_server_app::start ()
-{
-    auto srv_list = get_app_json()["srv_list"];
-
+    auto srv_list = app_json["srv_list"];
     for (auto it = srv_list.begin(); it != srv_list.end(); ++it)
     {
         auto srv_cfg = it.value ();
@@ -35,14 +21,14 @@ void tls_server_app::start ()
             = new std::vector<ev_sockstats*> ();
 
         srv_stats_arr->push_back (srv_stats);
-        srv_stats_arr->push_back (get_app_stats());
-        srv_stats_arr->push_back (get_zone_app_stats());
-        srv_stats_arr->push_back (get_zone_sock_stats());
+        srv_stats_arr->push_back (m_app_stats);
+        srv_stats_arr->push_back (zone_app_stats);
+        srv_stats_arr->push_back (zone_sock_stats);
 
         ev_sockaddr serverAddr;
         ev_socket::set_sockaddr (&serverAddr
                                 , srv_cfg["srv_ip"].get<std::string>().c_str()
-                                , srv_cfg["srv_port"].get<int>());
+                                , htons (srv_cfg["srv_port"].get<u_short>()) );
     
         tls_server_socket* srv_socket 
             = (tls_server_socket*) new_tcp_listen (&serverAddr
@@ -58,11 +44,18 @@ void tls_server_app::start ()
     }    
 }
 
-void tls_server_app::run_iter()
+tls_server_app::~tls_server_app()
 {
-    ev_app::run_iter ();
+}
 
-    //todo
+void tls_server_app::run_iter(bool tick_sec)
+{
+    ev_app::run_iter (tick_sec);
+
+    if (tick_sec)
+    {
+        m_app_stats->tick_sec();
+    }
 }
 
 ev_socket* tls_server_app::alloc_socket()
@@ -72,7 +65,7 @@ ev_socket* tls_server_app::alloc_socket()
 
 void tls_server_app::on_establish (ev_socket* ev_sock)
 {
-    printf ("on_establish\n");
+    // printf ("on_establish\n");
     
     inc_tls_server_stats (tls_server_stats_1);
 
@@ -81,7 +74,7 @@ void tls_server_app::on_establish (ev_socket* ev_sock)
 
 void tls_server_app::on_write (ev_socket* ev_sock)
 {
-    printf ("on_write\n");
+    // printf ("on_write\n");
 
     ev_sock->get_ssl ();
 }
@@ -90,7 +83,7 @@ void tls_server_app::on_wstatus (ev_socket* ev_sock
                             , int bytes_written
                             , int write_status)
 {
-    printf ("on_wstatus\n");
+    // printf ("on_wstatus\n");
 
     if (bytes_written && write_status){
         ev_sock->get_ssl ();
@@ -99,7 +92,7 @@ void tls_server_app::on_wstatus (ev_socket* ev_sock
 
 void tls_server_app::on_read (ev_socket* ev_sock)
 {
-    printf ("on_read\n");
+    // printf ("on_read\n");
 
     ev_sock->read_next_data (m_read_buffer, 0, MAX_READ_BUFFER_LEN, true);
 }
@@ -108,7 +101,7 @@ void tls_server_app::on_rstatus (ev_socket* ev_sock
                             , int bytes_read
                             , int read_status)
 {
-    printf ("on_rstatus\n");
+    // printf ("on_rstatus\n");
 
     if (bytes_read == 0) 
     {
@@ -125,7 +118,7 @@ void tls_server_app::on_rstatus (ev_socket* ev_sock
 
 void tls_server_app::on_free (ev_socket* ev_sock)
 {
-    printf ("on_free\n");
+    // printf ("on_free\n");
 
     delete ev_sock;
 }

@@ -6,6 +6,40 @@
 class ev_app;
 class ev_socket;
 
+union ev_sockaddr 
+{
+    struct sockaddr_in in_addr;
+    struct sockaddr_in6 in_addr6;
+};
+
+struct ev_portq
+{
+    std::queue<u_short> m_queue;
+    ev_portq(u_short start_port, u_short end_port)
+    {
+        while (start_port <= end_port)
+        {
+            m_queue.push(htons(start_port++));
+        }
+    };
+
+    u_short get_port ()
+    {
+        u_short ret = 0;
+        if ( not m_queue.empty () )
+        {
+            ret = m_queue.front ();
+            m_queue.pop ();
+        }
+        return ret;
+    };
+
+    void return_port (u_short port) 
+    {
+        m_queue.push (port);
+    }
+};
+
 #define STATE_TCP_PORT_ASSIGNED                         0x0000000000000001
 #define STATE_TCP_SOCK_CREATE                           0x0000000000000002
 #define STATE_TCP_SOCK_REUSE                            0x0000000000000004
@@ -117,58 +151,6 @@ class ev_socket;
             ((__stat_class*)(__stats_ptr))->__stat_name++; \
         } \
     } \
-}
-
-#define CHECK_IPV6(__addr,__is_ipv6) \
-{ \
-    struct sockaddr* __uaddr = (struct sockaddr*) __addr; \
-    if (__uaddr->sa_family == AF_INET6) { \
-        *(__is_ipv6) = true; \
-    } else { \
-        *(__is_ipv6) = false; \
-    } \
-}
-
-#define SET_SOCK_PORT(__addr,__sockport) \
-{ \
-    struct sockaddr* __uaddr = (struct sockaddr*) (__addr); \
-    if (__uaddr->sa_family == AF_INET6) { \
-        struct sockaddr_in6* __addr_in6 = (struct sockaddr_in6*) __addr; \
-        __addr_in6->sin6_port = __sockport; \
-    } else { \
-        struct sockaddr_in* __addr_in = (struct sockaddr_in*) (__addr); \
-        __addr_in->sin_port = __sockport; \
-    } \
-}
-
-
-union ev_sockaddr 
-{
-    struct sockaddr_in in_addr;
-    struct sockaddr_in6 in_addr6;
-};
-
-struct ev_sockaddrx : ev_sockaddr
-{
-    std::queue<u_short> m_port_queue;
-
-    ev_sockaddrx(u_short start_port, u_short end_port)
-    {
-        while (start_port <= end_port)
-        {
-            m_port_queue.push(htons(start_port++));
-        }
-    }
-
-    bool grab_port() 
-    {
-        
-    };
-
-    void return_port() 
-    {
-
-    };
 }
 
 struct ev_sockstats_data
@@ -299,6 +281,27 @@ struct ev_sockstats : ev_sockstats_data
         j["tcpInitServerFail"] = tcpInitServerFail;
         j["tcpGetSockNameFail"] = tcpGetSockNameFail;
     }
+
+    virtual void tick_sec ()
+    {
+        tcpConnInitRate = tcpConnInitInSec;
+        tcpConnInitInSec = 0;
+
+        tcpConnInitSuccessRate = tcpConnInitSuccessInSec;
+        tcpConnInitSuccessInSec = 0;
+
+        tcpAcceptSuccessRate = tcpAcceptSuccessInSec;
+        tcpAcceptSuccessInSec = 0;
+
+        sslConnInitRate = sslConnInitInSec;
+        sslConnInitInSec = 0;
+
+        sslConnInitSuccessRate = sslConnInitSuccessInSec;
+        sslConnInitSuccessInSec = 0;
+
+        sslAcceptSuccessRate = sslAcceptSuccessInSec;
+        sslAcceptSuccessInSec = 0;
+    }
 };
 
 class epoll_ctx 
@@ -330,6 +333,7 @@ public:
 class ev_socket
 {
 private:
+    ev_portq* m_portq;
     epoll_ctx* m_epoll_ctx;
     int m_fd;
     uint16_t m_saved_lport;
@@ -377,6 +381,16 @@ private:
 public:
     ev_socket();
     virtual ~ev_socket();
+
+    void set_portq (ev_portq* portq)
+    {
+        m_portq = portq;
+    }
+
+    ev_portq* get_portq ()
+    {
+        return m_portq;
+    }
 
     void set_status (int status)
     {
@@ -500,7 +514,8 @@ public:
     static ev_socket* new_tcp_connect (epoll_ctx* epoll_ctxp
                                         , ev_sockaddr* localAddress
                                         , ev_sockaddr* remoteAddress
-                                        , std::vector<ev_sockstats*>* statsArr);
+                                        , std::vector<ev_sockstats*>* statsArr
+                                        , ev_portq* portq);
 
     static ev_socket* new_tcp_listen (epoll_ctx* epoll_ctxp
                                         , ev_sockaddr* localAddress
@@ -568,10 +583,130 @@ private:
 
     ///////////////////////////////utility functions/////////////////////////
 public:
-    static void sockaddr_to_str (ev_sockaddr* addr, char* str);
-    static void get_nextip_str (char* str, int skip, char* n_str);
-    static void set_sockaddr (ev_sockaddr* addr, const char* str, int port);
+    static void sockaddr_to_ip_str (ev_sockaddr* addr, char* str)
+    {
+        struct sockaddr* uaddr = (struct sockaddr*) addr;
 
+        if (uaddr->sa_family == AF_INET6) {
+                inet_ntop(AF_INET6
+                    , &( ((struct sockaddr_in6*)addr)->sin6_addr )
+                    , str
+                    , INET6_ADDRSTRLEN);
+        }else{
+                inet_ntop(AF_INET
+                    , &( ((struct sockaddr_in*)addr)->sin_addr )
+                    , str
+                    , INET_ADDRSTRLEN);
+        }
+    };
+
+    static void get_nextip_str (char* str, int skip, char* n_str)
+    {
+        //check str for ipv6 ???
+        bool is_ipv6 = false;
+
+        if (is_ipv6) 
+        {
+            strcpy (n_str, str);
+        } 
+        else 
+        {
+            int d1, d2, d3, d4;
+            sscanf (str, "%d.%d.%d.%d", &d1, &d2, &d3, &d4);
+            while (skip) {
+                skip--;
+                d4++;
+                if (d4 >= 255) {
+                    d4 = 0;
+                    d3++;
+                    if (d3 >= 255) {
+                        d3 = 0;
+                        d2++;
+                        if (d2 >= 255) {
+                            d2 = 0;
+                            d1++;
+                        }
+                    }
+                } 
+            }
+            sprintf (n_str, "%d.%d.%d.%d", d1, d2, d3, d4);
+        }
+    };
+
+    static void set_sockaddr (ev_sockaddr* addr
+                                , const char* str
+                                , u_short port)
+    {
+        //check str for ipv6 ???
+        bool is_ipv6 = false;
+
+        memset((addr), 0, sizeof(ev_sockaddr));
+
+        if (is_ipv6)
+        {
+            addr->in_addr6.sin6_family = AF_INET6;
+            inet_pton(AF_INET6
+                , str
+                , &addr->in_addr6.sin6_addr);
+            addr->in_addr6.sin6_port = port;
+        } 
+        else 
+        {
+            addr->in_addr.sin_family = AF_INET;
+            inet_pton(AF_INET
+                    , str
+                    , &addr->in_addr.sin_addr);
+            addr->in_addr.sin_port = port;
+        }
+    }
+
+    static void set_sockaddr_port (ev_sockaddr* addr, int port)
+    {
+        struct sockaddr* uaddr = (struct sockaddr*) (addr);
+        if (uaddr->sa_family == AF_INET6)
+        {
+            struct sockaddr_in6* addr_in6 = (struct sockaddr_in6*)(addr);
+            addr_in6->sin6_port = port;
+        } 
+        else
+        {
+            struct sockaddr_in* addr_in = (struct sockaddr_in*) (addr);
+            addr_in->sin_port = port;
+        }
+    }
+
+    static u_short get_sockaddr_port (ev_sockaddr* addr)
+    {
+        u_short port;
+        struct sockaddr* uaddr = (struct sockaddr*) (addr);
+        if (uaddr->sa_family == AF_INET6)
+        {
+            struct sockaddr_in6* addr_in6 = (struct sockaddr_in6*) addr;
+            port = addr_in6->sin6_port;
+        } 
+        else
+        {
+            struct sockaddr_in* addr_in = (struct sockaddr_in*) (addr);
+            port = addr_in->sin_port;
+        }
+        return port;
+    }
+};
+
+struct ev_sockaddrx
+{
+    ev_sockaddr m_addr;
+    ev_portq* m_portq;
+
+    ev_sockaddrx(ev_portq* portq)
+    {
+        m_portq = portq;
+    }
+
+    ev_sockaddrx(u_short start_port, u_short end_port)
+        : ev_sockaddrx ( new ev_portq (start_port, end_port) )
+    {
+    }
 };
 
 #endif
