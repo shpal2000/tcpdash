@@ -232,7 +232,6 @@ static void start_zones (json cfg_json
                     "--name %s -it -d %s tgen %s zone %s %s %d config_zone",
                     RUN_DIR_PATH,
                     ssh_user.c_str(), ssh_host.c_str(),
-                    //zone_cpuMap[z_index],
                     zone_cname, volume_string, tlspack_exe_file, cfg_name, run_tag, z_index);
         }
         

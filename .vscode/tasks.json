@@ -11,7 +11,7 @@
             "group": "build",
             "problemMatcher" : {
                  "base" : "$gcc",
-                 "fileLocation" : ["relative", "${workspaceFolder}/tlspack/build"]
+                 "fileLocation" : ["", "${workspaceFolder}/tlspack/build"]
             },
 
             "options": {

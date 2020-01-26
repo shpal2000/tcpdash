@@ -155,9 +155,9 @@ void tls_client_app::on_write (ev_socket* ev_sock)
     }
 }
 
-void tls_client_app::on_wstatus (ev_socket* ev_sock
-                            , int bytes_written
-                            , int write_status)
+void tls_client_app::on_wstatus (ev_socket* /*ev_sock*/
+                            , int /*bytes_written*/
+                            , int /*write_status*/)
 {
     // printf ("on_wstatus\n");
     tls_client_socket* app_sock = (tls_client_socket*) ev_sock;
