@@ -219,6 +219,8 @@ struct ev_sockstats_data
 struct ev_sockstats : ev_sockstats_data
 {
     ev_sockstats () : ev_sockstats_data () {}
+    virtual ~ev_sockstats () {};
+
     virtual void dump_json (json &j)
     {
         j["socketCreate"] = socketCreate;    
@@ -377,10 +379,14 @@ private:
     int m_write_data_len_cur;
     int m_write_bytes_len_cur;
 
+    ev_socket* m_parent;
+
 
 public:
     ev_socket();
     virtual ~ev_socket();
+
+    ev_socket* get_parent () {return m_parent;};
 
     void set_portq (ev_portq* portq)
     {

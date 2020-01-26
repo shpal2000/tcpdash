@@ -24,6 +24,7 @@ void ev_socket::init ()
     m_sockstats_arr = nullptr;
 
     m_ipv6 = false;
+    m_parent = nullptr;
 }
 
 ev_socket::ev_socket()
@@ -755,6 +756,7 @@ void ev_socket::tcp_accept (ev_socket* ev_sock_parent)
 {
     set_state (STATE_TCP_CONN_ACCEPT);
     m_epoll_ctx = ev_sock_parent->m_epoll_ctx;
+    m_parent = ev_sock_parent;
     std::memcpy (&m_local_addr
                     , &ev_sock_parent->m_local_addr
                     , sizeof (ev_sockaddr));
@@ -993,6 +995,7 @@ void ev_socket::do_ssl_handshake()
         int sslErrno = SSL_get_error (m_ssl, status);
         if (status == 1) {
             set_state (STATE_SSL_CONN_ESTABLISHED);
+            set_status (CONNAPP_STATE_SSL_CONNECTION_ESTABLISHED);
             if (m_ssl_client) {
                 inc_stats (sslConnInitSuccess);
                 inc_stats (sslConnInitSuccessInSec);
@@ -1014,12 +1017,16 @@ void ev_socket::do_ssl_handshake()
                     break;
                 default:
                     set_error_state_ssl (STATE_SSL_SOCK_CONNECT_FAIL, sslErrno);
+                    set_status (CONNAPP_STATE_SSL_CONNECTION_ESTABLISH_FAILED);
                     inc_stats (sslConnInitFail);
+                    do_close_connection ();
                     break;  
             }  
         } else {
             set_error_state_ssl (STATE_SSL_SOCK_CONNECT_FAIL, sslErrno);
+            set_status (CONNAPP_STATE_SSL_CONNECTION_ESTABLISH_FAILED);
             inc_stats (sslConnInitFail);
+            do_close_connection ();
         }               
     }
 }

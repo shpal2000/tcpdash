@@ -76,6 +76,23 @@ public:
     };
 };
 
+class ev_app_srv_grp
+{
+public:
+
+    ev_sockaddr m_srvr_addr;
+    std::vector<ev_sockstats*> *m_stats_arr;
+
+    ev_app_srv_grp (const char* srv_ip
+                    , u_short srv_port
+                    , std::vector<ev_sockstats*> *stats_arr)
+    {
+        ev_socket::set_sockaddr (&m_srvr_addr, srv_ip, htons(srv_port));
+        m_stats_arr = stats_arr;   
+    }
+
+};
+
 class ev_app
 {
 public:

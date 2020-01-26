@@ -13,6 +13,11 @@
 #include <netdb.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/x509.h>
+#include <openssl/pem.h>
+#include <iostream>
+#include <fstream>
+#include<sstream>
 #include <queue>
 #include <cstring>
 #include <string>
