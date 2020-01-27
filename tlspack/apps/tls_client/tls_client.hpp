@@ -78,6 +78,13 @@ public:
         }
     };
 
+    void on_establish ();
+    void on_write ();
+    void on_wstatus (int bytes_written, int write_status);
+    void on_read ();
+    void on_rstatus (int bytes_read, int read_status);
+    void on_free ();
+
 public:
     tls_client_cs_grp* m_cs_grp;
     SSL* m_ssl;
@@ -98,12 +105,7 @@ public:
     void run_iter(bool tick_sec);
     
     ev_socket* alloc_socket();
-    void on_establish (ev_socket* ev_sock);
-    void on_write (ev_socket* ev_sock);
-    void on_wstatus (ev_socket* ev_sock, int bytes_written, int write_status);
-    void on_read (ev_socket* ev_sock);
-    void on_rstatus (ev_socket* ev_sock, int bytes_read, int read_status);
-    void on_free (ev_socket* ev_sock);
+    void free_socket(ev_socket* ev_sock);
 
 private:
     char m_read_buffer[MAX_READ_BUFFER_LEN];

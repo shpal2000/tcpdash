@@ -336,8 +336,7 @@ static void config_zone (json cfg_json
         system_cmd ("dev txqueuelen", cmd_str);
 
         sprintf (cmd_str,
-                "sysctl -w net.core.netdev_max_backlog=300000",
-                iface.c_str());
+                "sysctl -w net.core.netdev_max_backlog=300000");
         system_cmd ("dev txqueuelen", cmd_str);
 
         auto subnets = cfg_json["zones"][z_index]["subnets"];

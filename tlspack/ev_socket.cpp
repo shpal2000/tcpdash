@@ -923,7 +923,8 @@ void ev_socket::close_socket ()
 void ev_socket::tcp_connection_success ()
 {
     set_status (CONNAPP_STATE_CONNECTION_ESTABLISHED);
-    m_epoll_ctx->m_app->on_establish (this);
+    // m_epoll_ctx->m_app->on_establish (this);
+    on_establish ();
 }
 
 void ev_socket::tcp_connection_fail ()
@@ -1142,9 +1143,11 @@ void ev_socket::do_read_next_data ()
     if (notifyReadStatus) 
     {
         clear_state (STATE_CONN_READ_PENDING);
-        m_epoll_ctx->m_app->on_rstatus (this
-                            , m_read_bytes_len_cur
-                            , m_read_status );
+        // m_epoll_ctx->m_app->on_rstatus (this
+        //                     , m_read_bytes_len_cur
+        //                     , m_read_status );
+
+        on_rstatus (m_read_bytes_len_cur, m_read_status);
     }
 
 }
@@ -1202,9 +1205,11 @@ void ev_socket::do_write_next_data ()
     if (notifyWriteStatus) 
     {
         clear_state (STATE_CONN_WRITE_PENDING);
-        m_epoll_ctx->m_app->on_wstatus (this
-                            , m_write_bytes_len_cur
-                            , m_write_status );
+        // m_epoll_ctx->m_app->on_wstatus (this
+        //                     , m_write_bytes_len_cur
+        //                     , m_write_status );
+
+        on_wstatus (m_write_bytes_len_cur, m_write_status);
     }
 
 }
@@ -1278,7 +1283,8 @@ void ev_socket::epoll_process (epoll_ctx* epoll_ctxp)
                             if (sockp->is_set_state(STATE_CONN_READ_PENDING) 
                                 == 0)
                             {
-                                epoll_ctxp->m_app->on_read (sockp);
+                                // epoll_ctxp->m_app->on_read (sockp);
+                                sockp->on_read();
                             }
 
                             if (sockp->is_set_state(STATE_CONN_READ_PENDING)
@@ -1301,7 +1307,8 @@ void ev_socket::epoll_process (epoll_ctx* epoll_ctxp)
                             }
                             else
                             {
-                                epoll_ctxp->m_app->on_write (sockp);
+                                // epoll_ctxp->m_app->on_write (sockp);
+                                sockp->on_write();
                             }
                         }
 
@@ -1337,7 +1344,8 @@ void ev_socket::epoll_process (epoll_ctx* epoll_ctxp)
         if ( epoll_ctxp->m_finish_list.empty() == false )
         {
             ev_socket* ev_sock_ptr = epoll_ctxp->m_finish_list.front();
-            epoll_ctxp->m_app->on_free (ev_sock_ptr);
+            // epoll_ctxp->m_app->on_free (ev_sock_ptr);
+            epoll_ctxp->m_app->free_socket (ev_sock_ptr);
             epoll_ctxp->m_finish_list.pop();
         }
 

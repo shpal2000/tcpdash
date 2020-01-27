@@ -102,17 +102,7 @@ public:
     virtual void run_iter(bool tick_sec);
 
     virtual ev_socket* alloc_socket() = 0;
-    virtual void on_establish (ev_socket* ev_sock) = 0;
-    virtual void on_write (ev_socket* ev_sock) = 0;
-    virtual void on_wstatus (ev_socket* ev_sock
-                            , int bytes_written
-                            , int write_status) = 0;
-    virtual void on_read (ev_socket* ev_sock) = 0;
-    virtual void on_rstatus (ev_socket* ev_sock
-                            , int bytes_read
-                            , int read_status) = 0;
-    virtual void on_free (ev_socket* ev_sock) = 0;
-
+    virtual void free_socket(ev_socket* ev_sock) = 0;
 
     ev_socket* new_tcp_connect (ev_sockaddr* laddr
                                 , ev_sockaddr* raddr

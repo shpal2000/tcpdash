@@ -386,6 +386,15 @@ public:
     ev_socket();
     virtual ~ev_socket();
 
+    virtual void on_establish () = 0;
+    virtual void on_write () = 0;
+    virtual void on_wstatus (int bytes_written
+                            , int write_status) = 0;
+    virtual void on_read () = 0;
+    virtual void on_rstatus (int bytes_read
+                            , int read_status) = 0;
+    virtual void on_free () = 0;
+
     ev_socket* get_parent () {return m_parent;};
 
     void set_portq (ev_portq* portq)
