@@ -102,6 +102,7 @@ void tls_client_app::run_iter(bool tick_sec)
             if (client_socket) 
             {
                 m_client_curr_conn_count++;
+                client_socket->m_app = this;
                 client_socket->m_cs_grp = cs_grp;
             }
             else
@@ -123,7 +124,6 @@ ev_socket* tls_client_app::alloc_socket()
 
 void tls_client_app::free_socket(ev_socket* ev_sock)
 {
-    ev_sock->on_free ();
     delete ev_sock;
 }
 
@@ -151,7 +151,7 @@ void tls_client_socket::on_write ()
             next_chunk = 1200;
         }
 
-        write_next_data (m_write_buffer, 0, next_chunk, true);
+        write_next_data (m_app->m_write_buffer, 0, next_chunk, true);
     } else {
         disable_wr_notification ();
     }
@@ -163,8 +163,8 @@ void tls_client_socket::on_wstatus (int bytes_written, int write_status)
     if (write_status == WRITE_STATUS_NORMAL) {
         m_bytes_written += bytes_written;
         if (m_bytes_written == m_cs_grp->m_cs_data_len) {
-            // write_close ();
-            abort ();
+            write_close ();
+            // abort ();
         }
     } else {
         abort ();
@@ -174,9 +174,7 @@ void tls_client_socket::on_wstatus (int bytes_written, int write_status)
 void tls_client_socket::on_read ()
 {
     // printf ("on_read\n");
-    if (m_bytes_read < m_cs_grp->m_sc_data_len) {
-        read_next_data (m_read_buffer, 0, MAX_READ_BUFFER_LEN, true);
-    }
+    read_next_data (m_app->m_read_buffer, 0, MAX_READ_BUFFER_LEN, true);
 }
 
 void tls_client_socket::on_rstatus (int bytes_read, int read_status)
@@ -192,8 +190,11 @@ void tls_client_socket::on_rstatus (int bytes_read, int read_status)
     }
 }
 
-void tls_client_socket::on_free ()
+void tls_client_socket::on_finish ()
 {
     // printf ("on_free\n");
-    delete ev_sock;
+        if (m_ssl) {
+            SSL_free (m_ssl);
+            m_ssl = nullptr;
+        }
 }

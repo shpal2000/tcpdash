@@ -51,32 +51,6 @@ struct tls_server_stats : tls_server_stats_data
 {
     tls_server_stats () : tls_server_stats_data () {}
 };
-
-class tls_server_socket : public ev_socket
-{
-public:
-    tls_server_socket()
-    {
-        m_bytes_written = 0;
-        m_bytes_read = 0;
-        m_ssl = nullptr;    
-    };
-
-    ~tls_server_socket()
-    {
-        if (m_ssl) {
-            SSL_free (m_ssl);
-            m_ssl = nullptr;
-        }
-    };
-
-public:
-    tls_server_srv_grp* m_srv_grp;
-    SSL* m_ssl;
-    int m_bytes_written;
-    int m_bytes_read;
-};
-
 class tls_server_app : public ev_app
 {
 public:
@@ -89,17 +63,43 @@ public:
     void run_iter(bool tick_sec);
 
     ev_socket* alloc_socket();
-    void on_establish (ev_socket* ev_sock);
-    void on_write (ev_socket* ev_sock);
-    void on_wstatus (ev_socket* ev_sock, int bytes_written, int write_status);
-    void on_read (ev_socket* ev_sock);
-    void on_rstatus (ev_socket* ev_sock, int bytes_read, int read_status);
-    void on_free (ev_socket* ev_sock);
+    void free_socket(ev_socket* ev_sock);
 
-private:
+public:
     char m_read_buffer[MAX_READ_BUFFER_LEN];
     char m_write_buffer[MAX_WRITE_BUFFER_LEN];
     std::vector<tls_server_srv_grp*> m_srv_groups;
+};
+
+class tls_server_socket : public ev_socket
+{
+public:
+    tls_server_socket()
+    {
+        m_bytes_written = 0;
+        m_bytes_read = 0;
+        m_ssl = nullptr;    
+    };
+
+    virtual ~tls_server_socket()
+    {
+
+    };
+
+    void on_establish ();
+    void on_write ();
+    void on_wstatus (int bytes_written, int write_status);
+    void on_read ();
+    void on_rstatus (int bytes_read, int read_status);
+    void on_finish ();
+
+public:
+    tls_server_srv_grp* m_srv_grp;
+    tls_server_app* m_app;
+    tls_server_socket* m_lsock;
+    SSL* m_ssl;
+    int m_bytes_written;
+    int m_bytes_read;
 };
 
 #define inc_tls_server_stats(__stat_name) \

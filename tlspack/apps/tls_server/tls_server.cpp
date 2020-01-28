@@ -101,6 +101,7 @@ tls_server_app::tls_server_app(json app_json
                                                     , srv_grp->m_stats_arr);
         if (srv_socket) 
         {
+            srv_socket->m_app = this;
             srv_socket->m_srv_grp = srv_grp;
         }
         else
@@ -129,88 +130,83 @@ ev_socket* tls_server_app::alloc_socket()
     return new tls_server_socket();
 }
 
-void tls_server_app::on_establish (ev_socket* ev_sock)
+void tls_server_app::free_socket(ev_socket* ev_sock)
+{
+    delete ev_sock;
+}
+
+void tls_server_socket::on_establish ()
 {
     // printf ("on_establish\n");
-    tls_server_socket* app_sock = (tls_server_socket*) ev_sock;
-    app_sock->m_srv_grp = ((tls_server_socket*) ev_sock->get_parent())->m_srv_grp;
+    m_lsock = (tls_server_socket*) get_parent();
+    m_app = m_lsock->m_app;
+    m_srv_grp = m_lsock->m_srv_grp;
 
-    app_sock->m_ssl = SSL_new (app_sock->m_srv_grp->m_ssl_ctx);
+    m_ssl = SSL_new (m_srv_grp->m_ssl_ctx);
 
-    if (app_sock->m_ssl){
-        app_sock->set_as_ssl_server (app_sock->m_ssl);
+    if (m_ssl){
+        set_as_ssl_server (m_ssl);
     } else {
         //stats
-        app_sock->abort ();
+        abort ();
     }
 }
 
-void tls_server_app::on_write (ev_socket* ev_sock)
+void tls_server_socket::on_write ()
 {
     // printf ("on_write\n");
-    tls_server_socket* app_sock = (tls_server_socket*) ev_sock;
-
-    if (app_sock->m_bytes_written < app_sock->m_srv_grp->m_cs_data_len) {
+    if (m_bytes_written < m_srv_grp->m_sc_data_len) {
         int next_chunk 
-            = app_sock->m_srv_grp->m_cs_data_len - app_sock->m_bytes_written;
+            = m_srv_grp->m_sc_data_len - m_bytes_written;
 
         if ( next_chunk > 1200){
             next_chunk = 1200;
         }
 
-        app_sock->write_next_data (m_write_buffer, 0, next_chunk, true);
+        write_next_data (m_app->m_write_buffer, 0, next_chunk, true);
     } else {
-        app_sock->disable_wr_notification ();
+        disable_wr_notification ();
     }
 }
 
-void tls_server_app::on_wstatus (ev_socket* ev_sock
-                            , int bytes_written
-                            , int write_status)
+void tls_server_socket::on_wstatus (int bytes_written, int write_status)
 {
     // printf ("on_wstatus\n");
-    tls_server_socket* app_sock = (tls_server_socket*) ev_sock;
-
     if (write_status == WRITE_STATUS_NORMAL) {
-        app_sock->m_bytes_written += bytes_written;
-        if (app_sock->m_bytes_written == app_sock->m_srv_grp->m_cs_data_len) {
-            app_sock->abort ();
-            // app_sock->write_close ();
+        m_bytes_written += bytes_written;
+        if (m_bytes_written == m_srv_grp->m_sc_data_len) {
+            // abort ();
+            write_close ();
         }
     } else {
-        app_sock->abort ();
+        abort ();
     }
 }
 
-void tls_server_app::on_read (ev_socket* ev_sock)
+void tls_server_socket::on_read ()
 {
     // printf ("on_read\n");
-    tls_server_socket* app_sock = (tls_server_socket*) ev_sock;
-
-    if (app_sock->m_bytes_read < app_sock->m_srv_grp->m_sc_data_len) {
-        app_sock->read_next_data (m_read_buffer, 0, MAX_READ_BUFFER_LEN, true);
-    }
+    read_next_data (m_app->m_read_buffer, 0, MAX_READ_BUFFER_LEN, true);
 }
 
-void tls_server_app::on_rstatus (ev_socket* ev_sock
-                            , int bytes_read
-                            , int read_status)
+void tls_server_socket::on_rstatus (int bytes_read, int read_status)
 {
     // printf ("on_rstatus\n");
-    tls_server_socket* app_sock = (tls_server_socket*) ev_sock;
-
     if (bytes_read == 0) 
     {
         if (read_status != READ_STATUS_TCP_CLOSE) {
-            app_sock->abort ();
+            abort ();
         }
     } else {
-        app_sock->m_bytes_read += bytes_read;
+        m_bytes_read += bytes_read;
     }
 }
 
-void tls_server_app::on_free (ev_socket* ev_sock)
+void tls_server_socket::on_finish ()
 {
     // printf ("on_free\n");
-    delete ev_sock;
+    if (m_ssl) {
+        SSL_free (m_ssl);
+        m_ssl = nullptr;
+    }
 }
