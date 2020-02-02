@@ -14,6 +14,11 @@ tls_server_app::tls_server_app(json app_json
 
         const char* srv_label 
             = srv_cfg["srv_label"].get<std::string>().c_str();
+        
+        int srv_enable = srv_cfg["enable"].get<int>();
+        if (srv_enable == 0) {
+            continue;
+        }
 
         tls_server_stats* srv_stats = new tls_server_stats();
         set_app_stats (srv_stats, srv_label);
@@ -34,23 +39,58 @@ tls_server_app::tls_server_app(json app_json
                         , srv_cfg["cs_data_len"].get<int>()
                         , srv_cfg["sc_data_len"].get<int>()
                         , srv_cfg["cs_start_tls_len"].get<int>()
-                        , srv_cfg["sc_start_tls_len"].get<int>());
+                        , srv_cfg["sc_start_tls_len"].get<int>()
+                        , srv_cfg["srv_cert"].get<std::string>().c_str()
+                        , srv_cfg["srv_key"].get<std::string>().c_str()
+                        , srv_cfg["cipher"].get<std::string>().c_str()
+                        , srv_cfg["tls_version"].get<std::string>().c_str()
+                        , srv_cfg["close_type"].get<std::string>().c_str());
 
-        next_srv_grp->m_ssl_ctx = SSL_CTX_new(SSLv23_server_method());
+        next_srv_grp->m_ssl_ctx = SSL_CTX_new(TLS_server_method());
 
-        SSL_CTX_set_verify(next_srv_grp->m_ssl_ctx, SSL_VERIFY_NONE, 0);
+        int status;
+        if (next_srv_grp->m_version == sslv3) {
+            status = SSL_CTX_set_min_proto_version (next_srv_grp->m_ssl_ctx, SSL3_VERSION);
+            status = SSL_CTX_set_max_proto_version (next_srv_grp->m_ssl_ctx, SSL3_VERSION);
+        } else if (next_srv_grp->m_version == tls1) {
+            status = SSL_CTX_set_min_proto_version (next_srv_grp->m_ssl_ctx, TLS1_VERSION);
+            status = SSL_CTX_set_max_proto_version (next_srv_grp->m_ssl_ctx, TLS1_VERSION);
+        } else if (next_srv_grp->m_version == tls1_1) {
+            status = SSL_CTX_set_min_proto_version (next_srv_grp->m_ssl_ctx, TLS1_1_VERSION);
+            status = SSL_CTX_set_max_proto_version (next_srv_grp->m_ssl_ctx, TLS1_1_VERSION);
+        } else if (next_srv_grp->m_version == tls1_2) {
+            status = SSL_CTX_set_min_proto_version (next_srv_grp->m_ssl_ctx, TLS1_2_VERSION);
+            status = SSL_CTX_set_max_proto_version (next_srv_grp->m_ssl_ctx, TLS1_2_VERSION);
+        } else if (next_srv_grp->m_version == tls1_3) {
+            status = SSL_CTX_set_min_proto_version (next_srv_grp->m_ssl_ctx, TLS1_3_VERSION);
+            SSL_CTX_set_max_proto_version (next_srv_grp->m_ssl_ctx, TLS1_3_VERSION);
+        } else {
+            status = SSL_CTX_set_min_proto_version (next_srv_grp->m_ssl_ctx, SSL3_VERSION);
+            status = SSL_CTX_set_max_proto_version (next_srv_grp->m_ssl_ctx, TLS1_3_VERSION);       
+        }
 
-        SSL_CTX_set_options(next_srv_grp->m_ssl_ctx
-                                                , SSL_OP_NO_SSLv2 
-                                                | SSL_OP_NO_SSLv3 
-                                                | SSL_OP_NO_COMPRESSION);
+        if (next_srv_grp->m_version == tls1_3) {
+            SSL_CTX_set_ciphersuites (next_srv_grp->m_ssl_ctx
+                                        , next_srv_grp->m_cipher.c_str());
+        } 
+        else
+        {
+            SSL_CTX_set_cipher_list (next_srv_grp->m_ssl_ctx
+                                        , next_srv_grp->m_cipher.c_str());
+        }
 
-        SSL_CTX_set_mode(next_srv_grp->m_ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
+        SSL_CTX_set_mode(next_srv_grp->m_ssl_ctx
+                                , SSL_MODE_ENABLE_PARTIAL_WRITE);
 
         SSL_CTX_set_session_cache_mode(next_srv_grp->m_ssl_ctx
                                                 , SSL_SESS_CACHE_OFF);
 
-        std::ifstream f("/rundir/certs/server.cert");
+        SSL_CTX_set1_curves_list(next_srv_grp->m_ssl_ctx
+                                            , "P-521:P-384:P-256");
+
+        SSL_CTX_set_ecdh_auto(next_srv_grp->m_ssl_ctx, 1);
+
+        std::ifstream f(next_srv_grp->m_srv_cert);
         std::ostringstream ss;
         std::string str;
         ss << f.rdbuf();
@@ -61,34 +101,22 @@ tls_server_app::tls_server_app(json app_json
         X509 *cert = NULL;
         bio = BIO_new_mem_buf((char *)str.c_str(), -1);
         cert = PEM_read_bio_X509(bio, NULL, 0, NULL);
-
         SSL_CTX_use_certificate (next_srv_grp->m_ssl_ctx, cert);
 
-        std::ifstream f2("/rundir/certs/server.key");
+        std::ifstream f2(next_srv_grp->m_srv_key);
         std::ostringstream ss2;
         std::string str2;
         ss2 << f2.rdbuf();
         str2 = ss2.str();
-
         kbio = BIO_new_mem_buf(str2.c_str(), -1);
-
         RSA *rsa = NULL;
         rsa = PEM_read_bio_RSAPrivateKey(kbio, NULL, 0, NULL);
-
         SSL_CTX_use_RSAPrivateKey(next_srv_grp->m_ssl_ctx, rsa);
 
         BIO_free(bio);
         BIO_free(kbio);
         RSA_free(rsa);
         X509_free(cert);
-        
-        // SSL_CTX_use_certificate_file(next_srv_grp->m_ssl_ctx
-        //                     , "/rundir/certs/server.cert"
-        //                     , SSL_FILETYPE_PEM);
-
-        // SSL_CTX_use_PrivateKey_file(next_srv_grp->m_ssl_ctx
-        //                     , "/rundir/certs/server.key"
-        //                     , SSL_FILETYPE_PEM);
 
         m_srv_groups.push_back (next_srv_grp);
     }

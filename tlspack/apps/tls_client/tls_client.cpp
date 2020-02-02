@@ -5,6 +5,7 @@ tls_client_app::tls_client_app(json app_json
                     , ev_sockstats* zone_sock_stats)
 {
     m_app_stats = new tls_client_stats();
+
     m_client_cps = app_json["conn_per_sec"].get<uint32_t>();
     m_client_total_conn_count = app_json["total_conn_count"].get<uint64_t>();
     m_client_curr_conn_count = 0;
@@ -18,6 +19,11 @@ tls_client_app::tls_client_app(json app_json
 
         const char* cs_grp_label 
             = cs_grp_cfg["cs_grp_label"].get<std::string>().c_str();
+
+        int cs_grp_enable = cs_grp_cfg["enable"].get<int>();
+        if (cs_grp_enable == 0) {
+            continue;
+        }
 
         tls_client_stats* cs_grp_stats = new tls_client_stats();
         set_app_stats (cs_grp_stats, cs_grp_label);
@@ -41,21 +47,54 @@ tls_client_app::tls_client_app(json app_json
                         , cs_grp_cfg["cs_data_len"].get<int>()
                         , cs_grp_cfg["sc_data_len"].get<int>()
                         , cs_grp_cfg["cs_start_tls_len"].get<int>()
-                        , cs_grp_cfg["sc_start_tls_len"].get<int>());
+                        , cs_grp_cfg["sc_start_tls_len"].get<int>()
+                        , cs_grp_cfg["cipher"].get<std::string>().c_str()
+                        , cs_grp_cfg["tls_version"].get<std::string>().c_str()
+                        , cs_grp_cfg["close_type"].get<std::string>().c_str());
 
-        next_cs_grp->m_ssl_ctx = SSL_CTX_new(SSLv23_client_method());
+        next_cs_grp->m_ssl_ctx = SSL_CTX_new(TLS_client_method());
+
+        int status;
+        if (next_cs_grp->m_version == sslv3) {
+            status = SSL_CTX_set_min_proto_version (next_cs_grp->m_ssl_ctx, SSL3_VERSION);
+            status = SSL_CTX_set_max_proto_version (next_cs_grp->m_ssl_ctx, SSL3_VERSION);
+        } else if (next_cs_grp->m_version == tls1) {
+            status = SSL_CTX_set_min_proto_version (next_cs_grp->m_ssl_ctx, TLS1_VERSION);
+            status = SSL_CTX_set_max_proto_version (next_cs_grp->m_ssl_ctx, TLS1_VERSION);
+        } else if (next_cs_grp->m_version == tls1_1) {
+            status = SSL_CTX_set_min_proto_version (next_cs_grp->m_ssl_ctx, TLS1_1_VERSION);
+            status = SSL_CTX_set_max_proto_version (next_cs_grp->m_ssl_ctx, TLS1_1_VERSION);
+        } else if (next_cs_grp->m_version == tls1_2) {
+            status = SSL_CTX_set_min_proto_version (next_cs_grp->m_ssl_ctx, TLS1_2_VERSION);
+            status = SSL_CTX_set_max_proto_version (next_cs_grp->m_ssl_ctx, TLS1_2_VERSION);
+        } else if (next_cs_grp->m_version == tls1_3) {
+            status = SSL_CTX_set_min_proto_version (next_cs_grp->m_ssl_ctx, TLS1_3_VERSION);
+            SSL_CTX_set_max_proto_version (next_cs_grp->m_ssl_ctx, TLS1_3_VERSION);
+        } else {
+            status = SSL_CTX_set_min_proto_version (next_cs_grp->m_ssl_ctx, SSL3_VERSION);
+            status = SSL_CTX_set_max_proto_version (next_cs_grp->m_ssl_ctx, TLS1_3_VERSION);       
+        }
+
+        if (next_cs_grp->m_version == tls1_3) {
+            SSL_CTX_set_ciphersuites (next_cs_grp->m_ssl_ctx
+                                        , next_cs_grp->m_cipher.c_str());
+        } 
+        else
+        {
+            SSL_CTX_set_cipher_list (next_cs_grp->m_ssl_ctx
+                                        , next_cs_grp->m_cipher.c_str());
+        }
+
 
         SSL_CTX_set_verify(next_cs_grp->m_ssl_ctx, SSL_VERIFY_NONE, 0);
-
-        SSL_CTX_set_options(next_cs_grp->m_ssl_ctx
-                                                , SSL_OP_NO_SSLv2 
-                                                | SSL_OP_NO_SSLv3 
-                                                | SSL_OP_NO_COMPRESSION);
 
         SSL_CTX_set_mode(next_cs_grp->m_ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
 
         SSL_CTX_set_session_cache_mode(next_cs_grp->m_ssl_ctx
-                                                , SSL_SESS_CACHE_OFF); 
+                                            , SSL_SESS_CACHE_OFF);
+        
+        SSL_CTX_set1_curves_list(next_cs_grp->m_ssl_ctx
+                                            , "P-521:P-384:P-256");
 
         m_cs_groups.push_back (next_cs_grp);
 
@@ -134,6 +173,7 @@ void tls_client_socket::on_establish ()
     m_ssl = SSL_new (m_cs_grp->m_ssl_ctx);
     if (m_ssl){
         set_as_ssl_client (m_ssl);
+        SSL_set_tlsext_host_name (m_ssl, "www.google.com");
     } else {
         //stats
         abort ();

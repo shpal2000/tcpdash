@@ -1,3 +1,6 @@
+#ifndef __TLS_SERVER_H__
+#define __TLS_SERVER_H__
+
 #include "ev_app.hpp"
 
 #define MAX_READ_BUFFER_LEN 100000
@@ -12,7 +15,12 @@ public:
                     , int cs_data_len
                     , int sc_data_len
                     , int cs_start_tls_len
-                    , int sc_start_tls_len) 
+                    , int sc_start_tls_len
+                    , const char* srv_cert
+                    , const char* srv_key
+                    , const char* cipher
+                    , const char* tls_version
+                    , const char* close_type) 
                     
                     : ev_app_srv_grp (srv_ip
                         , srv_port
@@ -22,12 +30,46 @@ public:
         m_sc_data_len = sc_data_len;
         m_cs_start_tls_len = cs_start_tls_len;
         m_sc_start_tls_len = sc_start_tls_len;
+
+        m_srv_cert = srv_cert;
+        m_srv_key = srv_key;
+        m_cipher = cipher;
+        
+        if (strcmp(close_type, "fin") == 0) {
+            m_close = close_fin;
+        } else if (strcmp(close_type, "reset") == 0) {
+            m_close = close_reset;
+        }else {
+            m_close = close_fin;
+        }
+
+        if (strcmp(tls_version, "sslv3") == 0){
+            m_version = sslv3;
+        } else if (strcmp(tls_version, "tls1") == 0){
+            m_version = tls1;
+        } else if (strcmp(tls_version, "tls1_1") == 0){
+            m_version = tls1_1;
+        } else if (strcmp(tls_version, "tls1_2") == 0){
+            m_version = tls1_2;
+        } else if (strcmp(tls_version, "tls1_3") == 0){
+            m_version = tls1_3;
+        } else if (strcmp(tls_version, "tls_all") == 0){
+            m_version = tls_all;
+        } else {
+            m_version = tls_all;
+        }
     }
 
     int m_cs_data_len;
     int m_sc_data_len;
     int m_cs_start_tls_len;
     int m_sc_start_tls_len;
+
+    std::string m_srv_cert;
+    std::string m_srv_key;
+    std::string m_cipher;
+    enum_close_type m_close;
+    enum_tls_version m_version;
 
     SSL_CTX* m_ssl_ctx;
 };
@@ -69,6 +111,7 @@ public:
     char m_read_buffer[MAX_READ_BUFFER_LEN];
     char m_write_buffer[MAX_WRITE_BUFFER_LEN];
     std::vector<tls_server_srv_grp*> m_srv_groups;
+    int m_emulation_id;
 };
 
 class tls_server_socket : public ev_socket
@@ -106,3 +149,5 @@ public:
 { \
     inc_app_stats(ev_sock,tls_server_stats,__stat_name); \
 }
+
+#endif

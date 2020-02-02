@@ -36,23 +36,6 @@ ev_sockstats* zone_ev_sockstats = nullptr;
 tls_server_stats* zone_tls_server_stats = nullptr;
 tls_client_stats* zone_tls_client_stats = nullptr;
 
-typedef std::map<int, std::string> cpu_map;
-
-cpu_map zone_cpuMap = {
-    {0, "0,1"},
-    {1, "2,3"},
-    {2, "4,5"},
-    {3, "6,7"},
-    {4, "8,9"},
-    {5, "10,11"},
-    {6, "12,13"},
-    {7, "14,15"},
-    {8, "16,17"},
-    {9, "18,19"},
-    {10, "20,21"},
-    {11, "22,23"},
-};
-
 static void system_cmd (const char* label, const char* cmd_str)
 {
     printf ("%s ---- %s\n\n", label, cmd_str);
@@ -91,6 +74,26 @@ static void create_registry_entry (json cfg_json
     auto z_list = cfg_json["zones"];
     for (auto z_it = z_list.begin(); z_it != z_list.end(); ++z_it)
     {
+        int zone_enabe = z_it.value()["enable"].get<int>();
+        if (zone_enabe == 0) {
+            continue;
+        }
+
+        bool is_app_enable = false;
+        auto a_list = z_it.value()["app_list"];
+        for (auto a_it = a_list.begin(); a_it != a_list.end(); ++a_it) {
+            auto app_json = a_it.value ();
+            int app_enable = app_json["enable"].get<int>();
+            if (app_enable) {
+                is_app_enable = true;
+                break;
+            }
+        }
+
+        if (not is_app_enable) {
+            continue;
+        }
+
         auto zone_label = z_it.value()["zone_label"].get<std::string>();
         sprintf (curr_dir_file, "%s%s", registry_dir, zone_label.c_str());
         std::ofstream f(curr_dir_file);
@@ -125,6 +128,11 @@ static void create_result_entry (json cfg_json)
     for (auto z_it = z_list.begin(); z_it != z_list.end(); ++z_it)
     {
         auto zone = z_it.value ();
+        int zone_enabe = zone["enable"].get<int>();
+        if (zone_enabe == 0) {
+            continue;
+        }
+
         auto zone_label = zone ["zone_label"].get<std::string>();
         
         sprintf (curr_dir_file, "%s%s", result_dir, zone_label.c_str());
@@ -136,7 +144,12 @@ static void create_result_entry (json cfg_json)
         {
             auto app = a_it.value ();
             auto app_label = app["app_label"].get<std::string>();
-            
+            int app_enable = app["enable"].get<int>();
+
+            if (app_enable ==0){
+                continue;
+            }
+
             sprintf (curr_dir_file, "%s%s/%s"
                         , result_dir, zone_label.c_str(), app_label.c_str());
             sprintf (cmd_str, "mkdir %s", curr_dir_file);
@@ -147,6 +160,12 @@ static void create_result_entry (json cfg_json)
             {
                 auto srv = s_it.value ();
                 auto srv_label = srv["srv_label"].get<std::string>();
+                int srv_enable = srv["enable"].get<int>();
+
+                if (srv_enable == 0) {
+                    continue;
+                }
+
                 sprintf (curr_dir_file,
                         "%s%s/"
                         "%s/%s",
@@ -162,6 +181,12 @@ static void create_result_entry (json cfg_json)
             {
                 auto cs_grp = cs_it.value ();
                 auto cs_grp_label = cs_grp["cs_grp_label"].get<std::string>();
+                int cs_grp_enable = cs_grp["enable"].get<int>();
+
+                if (cs_grp_enable == 0) {
+                    continue;
+                }
+
                 sprintf (curr_dir_file,
                         "%s%s/"
                         "%s/%s",
@@ -194,9 +219,15 @@ static void start_zones (json cfg_json
     for (auto z_it = z_list.begin(); z_it != z_list.end(); ++z_it)
     {
         z_index++;
-        sprintf (zone_cname, "%s_%d", cfg_name, z_index+1);
+        int zone_enabe = z_it.value()["enable"].get<int>();
+        if (zone_enabe == 0) {
+            continue;
+        }
 
-        if (is_debug)
+        auto zone_label = z_it.value()["zone_label"].get<std::string>();
+        sprintf (zone_cname, "%s-%s", cfg_name, zone_label.c_str());
+
+        if (is_debug == 1)
         {
             sprintf (volume_string,
                         "--volume=%s:%s "
@@ -220,7 +251,17 @@ static void start_zones (json cfg_json
         {
             sprintf (tlspack_exe_file, "%sbin/tlspack.exe", RUN_DIR_PATH);
 
-            sprintf (volume_string, "--volume=%s:%s", host_run_dir, RUN_DIR_PATH);
+            if (is_debug == 2) {
+                sprintf (volume_string,
+                            "--volume=%s:%s "
+                            "--volume=%s:%s", 
+                            host_run_dir, RUN_DIR_PATH,
+                            host_src_dir, SRC_DIR_PATH);
+            } else {
+                sprintf (volume_string
+                            , "--volume=%s:%s"
+                            , host_run_dir, RUN_DIR_PATH);
+            }
 
             sprintf (cmd_str,
                     "ssh -i %s.ssh/id_rsa -tt "
@@ -228,11 +269,13 @@ static void start_zones (json cfg_json
                     "-o StrictHostKeyChecking=no "
                     "-o UserKnownHostsFile=/dev/null "
                     "%s@%s "
-                    "sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged "
-                    "--name %s -it -d %s tgen %s zone %s %s %d config_zone",
+                    "sudo docker run --env LD_LIBRARY_PATH='/root/openssl-1.1.1d/local/lib/' --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged "
+                    "--name %s -it -d %s tgen %s zone %s "
+                    "%s %d config_zone %d",
                     RUN_DIR_PATH,
                     ssh_user.c_str(), ssh_host.c_str(),
-                    zone_cname, volume_string, tlspack_exe_file, cfg_name, run_tag, z_index);
+                    zone_cname, volume_string, tlspack_exe_file, cfg_name,
+                    run_tag, z_index, is_debug);
         }
         
         system_cmd ("zone start", cmd_str);
@@ -253,28 +296,26 @@ static void stop_zones (json cfg_json
 
     auto z_list = cfg_json["zones"];
     int z_index = -1;
+    std::string c_list = "";
     for (auto z_it = z_list.begin(); z_it != z_list.end(); ++z_it)
     {
         z_index++;
-        sprintf (zone_cname, "%s_%d", cfg_name, z_index+1);
+        int zone_enabe = z_it.value()["enable"].get<int>();
+        if (zone_enabe == 0) {
+            continue;
+        }
 
-        sprintf (cmd_str,
-                "ssh -i %s.ssh/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
-                "sudo docker rm -f %s",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str(),
-                zone_cname);
-                
-        system_cmd ("zone stop", cmd_str);
+        auto zone_label = z_it.value()["zone_label"].get<std::string>();
+        sprintf (zone_cname, "%s-%s", cfg_name, zone_label.c_str());
 
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        c_list.append (" ");
+        c_list.append (zone_cname);
     }
 
-    sprintf (zone_cname, "%s_0", cfg_name);
+    sprintf (zone_cname, "%s-root", cfg_name);
+    c_list.append (" ");
+    c_list.append (zone_cname);
+
     sprintf (cmd_str,
                 "ssh -i %s.ssh/id_rsa -tt "
                 // "-o LogLevel=quiet "
@@ -284,8 +325,8 @@ static void stop_zones (json cfg_json
                 "sudo docker rm -f %s",
                 RUN_DIR_PATH,
                 ssh_user.c_str(), ssh_host.c_str(),
-                zone_cname);
-    system_cmd ("zone0 stop", cmd_str);
+                c_list.c_str ());
+    system_cmd ("zone stop", cmd_str);
 
     remove_registry_entry ();
 }
@@ -294,7 +335,9 @@ static void config_zone (json cfg_json
                             , char* cfg_name
                             , int z_index)
 {
-    sprintf (zone_cname, "%s_%d", cfg_name, z_index+1);
+    auto zone_label 
+        = cfg_json["zones"][z_index]["zone_label"].get<std::string>();
+    sprintf (zone_cname, "%s-%s", cfg_name, zone_label.c_str());
 
     sprintf (ssh_host_file, "%s.ssh/host", RUN_DIR_PATH);
     std::ifstream ssh_host_stream(ssh_host_file);
@@ -374,9 +417,9 @@ static std::vector<ev_app*>* create_app_list (json cfg_json, int z_index)
         auto app_json = a_it.value ();
         const char* app_type = app_json["app_type"].get<std::string>().c_str();
         const char* app_label = app_json["app_label"].get<std::string>().c_str();
-        int app_enabe = app_json["enable"].get<int>();
+        int app_enable = app_json["enable"].get<int>();
 
-        if (app_enabe ==0){
+        if (app_enable ==0){
             continue;
         }
 
@@ -433,6 +476,11 @@ static bool all_zones_initialized (json cfg_json)
     auto z_list = cfg_json["zones"];
     for (auto z_it = z_list.begin(); z_it != z_list.end(); ++z_it)
     {
+        int zone_enabe = z_it.value()["enable"].get<int>();
+        if (zone_enabe == 0) {
+            continue;
+        }
+        
         auto zone_label = z_it.value()["zone_label"].get<std::string>();
         sprintf (curr_dir_file, "%s%s", registry_dir, zone_label.c_str());
         std::ifstream f(curr_dir_file);
@@ -516,6 +564,8 @@ int main(int /*argc*/, char **argv)
             = cfg_json["zones"][z_index]["zone_label"].get<std::string>();
         sprintf (zone_file, "%s%s", registry_dir, zone_label.c_str());
 
+        sprintf (zone_cname, "%s-%s", cfg_name, zone_label.c_str());
+
         sprintf (result_dir, "%sresults/%s/%s/", RUN_DIR_PATH, cfg_name, run_tag);
         
         if ( strcmp(config_zone_flag, "config_zone") == 0 )
@@ -524,6 +574,17 @@ int main(int /*argc*/, char **argv)
         }
 
         signal(SIGPIPE, SIG_IGN);
+
+        OpenSSL_add_ssl_algorithms ();
+        SSL_load_error_strings ();
+
+        auto iface = cfg_json["zones"][z_index]["iface"].get<std::string>();
+        sprintf (cmd_str,
+            "tcpdump -i %s -n -c 1000 -w /rundir/bin/%s.pcap&",
+                iface.c_str(), zone_cname);
+        system_cmd ("tcpdump start", cmd_str);
+
+        std::this_thread::sleep_for(std::chrono::seconds(3));
 
         std::vector<ev_app*> *app_list = create_app_list (cfg_json, z_index);
         update_registry_state (zone_file, 1);
