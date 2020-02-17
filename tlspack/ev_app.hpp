@@ -107,20 +107,27 @@ public:
     ev_socket* new_tcp_connect (ev_sockaddr* laddr
                                 , ev_sockaddr* raddr
                                 , std::vector<ev_sockstats*>* statsArr
-                                , ev_portq* portq)
+                                , ev_portq* portq
+                                , ev_socket_opt* ev_sock_opt)
     {
         return ev_socket::new_tcp_connect (m_epoll_ctx
                                             , laddr
                                             , raddr
                                             , statsArr
-                                            , portq);
+                                            , portq
+                                            , ev_sock_opt);
     }
 
     ev_socket* new_tcp_listen (ev_sockaddr* laddr
                                 , int lqlen
-                                , std::vector<ev_sockstats*>* statsArr)
+                                , std::vector<ev_sockstats*>* statsArr
+                                , ev_socket_opt* ev_sock_opt )
     {
-        return ev_socket::new_tcp_listen (m_epoll_ctx, laddr, lqlen, statsArr);
+        return ev_socket::new_tcp_listen (m_epoll_ctx
+                                            , laddr
+                                            , lqlen
+                                            , statsArr
+                                            , ev_sock_opt);
     }
 
     ev_stats_map* get_app_stats_map ()
@@ -158,12 +165,17 @@ public:
         } else if ((m_client_total_conn_count == 0) 
                     || (m_client_curr_conn_count < m_client_total_conn_count)) {
 
-            if ((m_app_stats->tcpConnInit-m_app_stats->tcpConnInitSuccess)<= 1){
+            uint32_t tcp_pending = m_app_stats->tcpConnInit -
+                                (m_app_stats->tcpConnInitSuccess
+                                + m_app_stats->tcpConnInitFail);
+
+            if (tcp_pending <= m_client_max_pending_conn_count ) {
                 auto t = std::chrono::steady_clock::now();
                 auto span = std::chrono::duration_cast<std::chrono::nanoseconds>
                                                 (t - m_conn_init_time).count();
                 uint64_t c = (m_client_cps * span) / 1000000000;
-                if (c > m_client_curr_conn_count) {
+                if (c > m_client_curr_conn_count && 
+                    m_app_stats->tcpActiveConns < m_client_max_active_conn_count) {
                     n = 1;
                 }
             }
@@ -182,9 +194,12 @@ private:
     int m_last_new_conn_count;
 
 protected:
+    ev_socket_opt m_sock_opt;
     uint32_t m_client_cps;
     uint64_t m_client_curr_conn_count;
     uint64_t m_client_total_conn_count;
+    uint32_t m_client_max_active_conn_count;
+    uint32_t m_client_max_pending_conn_count;
     ev_sockstats* m_app_stats;
 };
 

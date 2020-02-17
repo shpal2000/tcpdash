@@ -20,7 +20,8 @@ public:
                     , const char* srv_key
                     , const char* cipher
                     , const char* tls_version
-                    , const char* close_type) 
+                    , const char* close_type
+                    , const char* close_notify) 
                     
                     : ev_app_srv_grp (srv_ip
                         , srv_port
@@ -41,6 +42,16 @@ public:
             m_close = close_reset;
         }else {
             m_close = close_fin;
+        }
+
+        if (strcmp(close_notify, "send") == 0) {
+            m_close_notify = close_notify_send;
+        } else if (strcmp(close_notify, "send_recv") == 0) {
+            m_close_notify = close_notify_send_recv;
+        } else if (strcmp(close_notify, "no_send") == 0)  {
+            m_close_notify = close_notify_no_send;
+        } else {
+            m_close_notify = close_notify_send_recv;
         }
 
         if (strcmp(tls_version, "sslv3") == 0){
@@ -68,7 +79,9 @@ public:
     std::string m_srv_cert;
     std::string m_srv_key;
     std::string m_cipher;
+    std::string m_cipher2;
     enum_close_type m_close;
+    enum_close_notify m_close_notify;
     enum_tls_version m_version;
 
     SSL_CTX* m_ssl_ctx;

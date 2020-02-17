@@ -7,6 +7,10 @@ tls_server_app::tls_server_app(json app_json
 {
     m_app_stats = new tls_server_stats();
 
+
+    m_sock_opt.rcv_buff_len = app_json["tcp_rcv_buff"].get<uint32_t>();
+    m_sock_opt.snd_buff_len = app_json["tcp_snd_buff"].get<uint32_t>();
+
     auto srv_list = app_json["srv_list"];
     for (auto it = srv_list.begin(); it != srv_list.end(); ++it)
     {
@@ -44,7 +48,8 @@ tls_server_app::tls_server_app(json app_json
                         , srv_cfg["srv_key"].get<std::string>().c_str()
                         , srv_cfg["cipher"].get<std::string>().c_str()
                         , srv_cfg["tls_version"].get<std::string>().c_str()
-                        , srv_cfg["close_type"].get<std::string>().c_str());
+                        , srv_cfg["close_type"].get<std::string>().c_str()
+                        , srv_cfg["close_notify"].get<std::string>().c_str());
 
         next_srv_grp->m_ssl_ctx = SSL_CTX_new(TLS_server_method());
 
@@ -65,16 +70,22 @@ tls_server_app::tls_server_app(json app_json
             status = SSL_CTX_set_min_proto_version (next_srv_grp->m_ssl_ctx, TLS1_3_VERSION);
             SSL_CTX_set_max_proto_version (next_srv_grp->m_ssl_ctx, TLS1_3_VERSION);
         } else {
-            status = SSL_CTX_set_min_proto_version (next_srv_grp->m_ssl_ctx, SSL3_VERSION);
-            status = SSL_CTX_set_max_proto_version (next_srv_grp->m_ssl_ctx, TLS1_3_VERSION);       
+            status = SSL_CTX_set_min_proto_version (next_srv_grp->m_ssl_ctx
+                                                    , SSL3_VERSION);
+            status = SSL_CTX_set_max_proto_version (next_srv_grp->m_ssl_ctx
+                                                    , TLS1_3_VERSION);       
         }
 
-        if (next_srv_grp->m_version == tls1_3) {
+        if (next_srv_grp->m_version == tls_all) {
+            next_srv_grp->m_cipher2 = srv_cfg["cipher2"].get<std::string>().c_str();
+            SSL_CTX_set_ciphersuites (next_srv_grp->m_ssl_ctx
+                                        , next_srv_grp->m_cipher2.c_str());
+            SSL_CTX_set_cipher_list (next_srv_grp->m_ssl_ctx
+                                        , next_srv_grp->m_cipher.c_str());
+        } else if (next_srv_grp->m_version == tls1_3) {
             SSL_CTX_set_ciphersuites (next_srv_grp->m_ssl_ctx
                                         , next_srv_grp->m_cipher.c_str());
-        } 
-        else
-        {
+        } else {
             SSL_CTX_set_cipher_list (next_srv_grp->m_ssl_ctx
                                         , next_srv_grp->m_cipher.c_str());
         }
@@ -85,10 +96,10 @@ tls_server_app::tls_server_app(json app_json
         SSL_CTX_set_session_cache_mode(next_srv_grp->m_ssl_ctx
                                                 , SSL_SESS_CACHE_OFF);
 
-        SSL_CTX_set1_curves_list(next_srv_grp->m_ssl_ctx
+        status = SSL_CTX_set1_groups_list(next_srv_grp->m_ssl_ctx
                                             , "P-521:P-384:P-256");
 
-        SSL_CTX_set_ecdh_auto(next_srv_grp->m_ssl_ctx, 1);
+        SSL_CTX_set_dh_auto(next_srv_grp->m_ssl_ctx, 1);
 
         std::ifstream f(next_srv_grp->m_srv_cert);
         std::ostringstream ss;
@@ -109,13 +120,13 @@ tls_server_app::tls_server_app(json app_json
         ss2 << f2.rdbuf();
         str2 = ss2.str();
         kbio = BIO_new_mem_buf(str2.c_str(), -1);
-        RSA *rsa = NULL;
-        rsa = PEM_read_bio_RSAPrivateKey(kbio, NULL, 0, NULL);
-        SSL_CTX_use_RSAPrivateKey(next_srv_grp->m_ssl_ctx, rsa);
+        EVP_PKEY *key = NULL;
+        key = PEM_read_bio_PrivateKey(kbio, NULL, 0, NULL);
+        SSL_CTX_use_PrivateKey(next_srv_grp->m_ssl_ctx, key);
 
         BIO_free(bio);
         BIO_free(kbio);
-        RSA_free(rsa);
+        EVP_PKEY_free(key);
         X509_free(cert);
 
         m_srv_groups.push_back (next_srv_grp);
@@ -126,7 +137,8 @@ tls_server_app::tls_server_app(json app_json
         tls_server_socket* srv_socket 
             = (tls_server_socket*) new_tcp_listen (&srv_grp->m_srvr_addr
                                                     , 10000
-                                                    , srv_grp->m_stats_arr);
+                                                    , srv_grp->m_stats_arr
+                                                    , &m_sock_opt);
         if (srv_socket) 
         {
             srv_socket->m_app = this;
@@ -187,8 +199,8 @@ void tls_server_socket::on_write ()
         int next_chunk 
             = m_srv_grp->m_sc_data_len - m_bytes_written;
 
-        if ( next_chunk > 1200){
-            next_chunk = 1200;
+        if ( next_chunk > 100000){
+            next_chunk = 100000 ;
         }
 
         write_next_data (m_app->m_write_buffer, 0, next_chunk, true);
@@ -203,8 +215,22 @@ void tls_server_socket::on_wstatus (int bytes_written, int write_status)
     if (write_status == WRITE_STATUS_NORMAL) {
         m_bytes_written += bytes_written;
         if (m_bytes_written == m_srv_grp->m_sc_data_len) {
-            // abort ();
-            write_close ();
+            if (m_srv_grp->m_close == close_reset){
+                abort ();
+            } else {
+                switch (m_srv_grp->m_close_notify)
+                {
+                    case close_notify_no_send:
+                        write_close ();
+                        break;
+                    case close_notify_send:
+                        write_close (SSL_SEND_CLOSE_NOTIFY);
+                        break;
+                    case close_notify_send_recv:
+                        write_close (SSL_SEND_RECEIVE_CLOSE_NOTIFY);
+                        break;
+                }
+            }
         }
     } else {
         abort ();

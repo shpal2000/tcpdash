@@ -56,14 +56,18 @@ ev_socket* ev_socket::new_tcp_connect (epoll_ctx* epoll_ctxp
                                         , ev_sockaddr* localAddress
                                         , ev_sockaddr* remoteAddress
                                         , std::vector<ev_sockstats*>* statsArr
-                                        , ev_portq* portq)
+                                        , ev_portq* portq
+                                        , ev_socket_opt* ev_sock_opt)
 {
     ev_socket* new_sock = epoll_ctxp->m_app->alloc_socket ();
 
     if (new_sock) {
         new_sock->init ();
         new_sock->set_sockstats_arr (statsArr);
-        new_sock->tcp_connect (epoll_ctxp, localAddress, remoteAddress);
+        new_sock->set_socket_opt (ev_sock_opt);
+        new_sock->tcp_connect (epoll_ctxp
+                                , localAddress
+                                , remoteAddress);
         if (portq) {
             new_sock->set_portq (portq);
         }
@@ -77,12 +81,14 @@ ev_socket* ev_socket::new_tcp_connect (epoll_ctx* epoll_ctxp
 ev_socket* ev_socket::new_tcp_listen (epoll_ctx* epoll_ctxp
                                         , ev_sockaddr* localAddress
                                         , int lqlen
-                                        , std::vector<ev_sockstats*>* statsArr)
+                                        , std::vector<ev_sockstats*>* statsArr
+                                        , ev_socket_opt* ev_sock_opt)
 {
     ev_socket* new_sock = epoll_ctxp->m_app->alloc_socket ();
 
     if (new_sock) {
         new_sock->set_sockstats_arr (statsArr);
+        new_sock->set_socket_opt (ev_sock_opt);
         new_sock->tcp_listen (epoll_ctxp, localAddress, lqlen);
     } else {
 
@@ -316,7 +322,7 @@ void ev_socket::write_next_data (char* writeBuffer
     }
 }
 
-void ev_socket::write_close () {
+void ev_socket::write_close (int send_close_notify) {
     
     enable_wr_notification ();
 
@@ -327,6 +333,12 @@ void ev_socket::write_close () {
     else 
     {
         set_state (STATE_NO_MORE_WRITE_DATA | STATE_TCP_TO_SEND_FIN);
+
+        if (send_close_notify == SSL_SEND_CLOSE_NOTIFY) {
+            set_state (STATE_SSL_TO_SEND_SHUTDOWN);
+        } else if (send_close_notify == SSL_SEND_RECEIVE_CLOSE_NOTIFY) {
+            set_state (STATE_SSL_TO_SEND_RECEIVE_SHUTDOWN);
+        }
     }    
 }
 
@@ -371,6 +383,32 @@ int ev_socket::tcp_connect (epoll_ctx* epoll_ctxp
     {
         inc_stats (socketCreate);
         set_state (STATE_TCP_SOCK_CREATE);
+
+        int so_status = 0;
+        if (m_sock_opt->rcv_buff_len) {
+            so_status = setsockopt(m_fd
+                                    , SOL_SOCKET
+                                    , SO_RCVBUFFORCE
+                                    , &m_sock_opt->rcv_buff_len
+                                    , sizeof(int));
+            if (so_status == -1) {
+                inc_stats (socketRcvBufForceFail);
+                set_error_state (STATE_TCP_RCVBUFFORCE_FAIL);
+            }
+        }
+
+        if (m_sock_opt->snd_buff_len) {
+            so_status = setsockopt(m_fd
+                            , SOL_SOCKET
+                            , SO_SNDBUFFORCE
+                            , &m_sock_opt->snd_buff_len
+                            , sizeof(int));
+
+            if (so_status == -1) {
+                inc_stats (socketSndBufForceFail);
+                set_error_state (STATE_TCP_SNDBUFFORCE_FAIL);
+            }
+        }
 
         int so_op = 1;
         int so_reuse_status = setsockopt(m_fd
@@ -541,6 +579,32 @@ int ev_socket::tcp_listen(epoll_ctx* epoll_ctxp
         inc_stats (socketCreate);
         set_state (STATE_TCP_SOCK_CREATE);
 
+        int so_status = 0;
+        if (m_sock_opt->rcv_buff_len) {
+            so_status = setsockopt(m_fd
+                                    , SOL_SOCKET
+                                    , SO_RCVBUFFORCE
+                                    , &m_sock_opt->rcv_buff_len
+                                    , sizeof(int));
+            if (so_status == -1) {
+                inc_stats (socketRcvBufForceFail);
+                set_error_state (STATE_TCP_RCVBUFFORCE_FAIL);
+            }
+        }
+
+        if (m_sock_opt->snd_buff_len) {
+            so_status = setsockopt(m_fd
+                            , SOL_SOCKET
+                            , SO_SNDBUFFORCE
+                            , &m_sock_opt->snd_buff_len
+                            , sizeof(int));
+
+            if (so_status == -1) {
+                inc_stats (socketSndBufForceFail);
+                set_error_state (STATE_TCP_SNDBUFFORCE_FAIL);
+            }
+        }
+
         int so_op = 1;
         int so_reuse_status = setsockopt(m_fd
                                         , SOL_SOCKET
@@ -665,6 +729,7 @@ void ev_socket::tcp_verify_established ()
         set_state (STATE_TCP_CONN_ESTABLISHED);
         inc_stats (tcpConnInitSuccess);
         inc_stats (tcpConnInitSuccessInSec);
+        inc_stats (tcpActiveConns);
     }else {
         set_error_state (STATE_TCP_SOCK_CONNECT_FAIL);
         set_socket_errno (socketErr);
@@ -695,6 +760,10 @@ void ev_socket::tcp_close (int isLinger, int lingerTime) {
         set_error_state (STATE_TCP_SOCK_FD_CLOSE_FAIL);
     } else {
         set_state (STATE_TCP_SOCK_FD_CLOSE);
+    }
+
+    if (is_set_state (STATE_TCP_CONN_ESTABLISHED)) {
+        dec_stats (tcpActiveConns);
     }
 }
 
@@ -771,9 +840,9 @@ void ev_socket::tcp_accept (ev_socket* ev_sock_parent)
         set_error_state (STATE_TCP_CONN_ACCEPT_FAIL);        
     } else {
         set_state (STATE_TCP_CONN_ESTABLISHED);
-
         inc_stats (tcpAcceptSuccess);
         inc_stats (tcpAcceptSuccessInSec);
+        inc_stats (tcpActiveConns);
 
         int flags = fcntl(m_fd, F_GETFL, 0);
         if (flags < 0) {
@@ -788,6 +857,9 @@ void ev_socket::tcp_accept (ev_socket* ev_sock_parent)
                 set_state (STATE_TCP_CONN_ACCEPT_O_NONBLOCK);
 
                 //??? is it necessary
+                // int recv_size = 1024 * 128;
+                // setsockopt(m_fd, SOL_SOCKET, SO_RCVBUF, &recv_size, sizeof(int));
+
                 int so_op = 1;
                 ret = setsockopt(m_fd, SOL_SOCKET
                                 , SO_REUSEADDR, &so_op, sizeof(int));
@@ -843,10 +915,10 @@ int ev_socket::ssl_write (const char* dataBuffer, int dataLen)
         int sslError = SSL_get_error(m_ssl, bytesSent);
         switch (sslError) {
             case SSL_ERROR_SYSCALL:
+            case SSL_ERROR_ZERO_RETURN:
                 set_error_state (STATE_TCP_REMOTE_CLOSED_ERROR);
                 break;
 
-            case SSL_ERROR_ZERO_RETURN:
             case SSL_ERROR_WANT_READ:
             case SSL_ERROR_WANT_WRITE:
                 break;
@@ -881,8 +953,8 @@ void ev_socket::ssl_shutdown ()
 
         default:
             switch (sslError) {
-                case SSL_ERROR_SYSCALL:
-                case SSL_ERROR_ZERO_RETURN:
+                // case SSL_ERROR_SYSCALL:
+                // case SSL_ERROR_ZERO_RETURN:
                 case SSL_ERROR_WANT_READ:
                 case SSL_ERROR_WANT_WRITE:
                     break;
@@ -941,6 +1013,7 @@ void ev_socket::handle_tcp_accept ()
     } else {
         ev_sock_ptr->init ();
         ev_sock_ptr->set_sockstats_arr ( get_sockstats_arr() );
+        ev_sock_ptr->set_socket_opt ( get_socket_opt() );
         ev_sock_ptr->tcp_accept (this);
 
         if ( ev_sock_ptr->get_error_state() ) 

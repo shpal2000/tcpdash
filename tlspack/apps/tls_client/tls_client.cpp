@@ -6,8 +6,16 @@ tls_client_app::tls_client_app(json app_json
 {
     m_app_stats = new tls_client_stats();
 
+
+    m_sock_opt.rcv_buff_len = app_json["tcp_rcv_buff"].get<uint32_t>();
+    m_sock_opt.snd_buff_len = app_json["tcp_snd_buff"].get<uint32_t>();
+
     m_client_cps = app_json["conn_per_sec"].get<uint32_t>();
     m_client_total_conn_count = app_json["total_conn_count"].get<uint64_t>();
+    m_client_max_active_conn_count 
+                        = app_json["max_active_conn_count"].get<uint32_t>();
+    m_client_max_pending_conn_count 
+                        = app_json["max_pending_conn_count"].get<uint32_t>();
     m_client_curr_conn_count = 0;
 
     auto cs_grp_list = app_json["cs_grp_list"];
@@ -50,7 +58,8 @@ tls_client_app::tls_client_app(json app_json
                         , cs_grp_cfg["sc_start_tls_len"].get<int>()
                         , cs_grp_cfg["cipher"].get<std::string>().c_str()
                         , cs_grp_cfg["tls_version"].get<std::string>().c_str()
-                        , cs_grp_cfg["close_type"].get<std::string>().c_str());
+                        , cs_grp_cfg["close_type"].get<std::string>().c_str()
+                        , cs_grp_cfg["close_notify"].get<std::string>().c_str());
 
         next_cs_grp->m_ssl_ctx = SSL_CTX_new(TLS_client_method());
 
@@ -75,12 +84,16 @@ tls_client_app::tls_client_app(json app_json
             status = SSL_CTX_set_max_proto_version (next_cs_grp->m_ssl_ctx, TLS1_3_VERSION);       
         }
 
-        if (next_cs_grp->m_version == tls1_3) {
+        if (next_cs_grp->m_version == tls_all) {
+            next_cs_grp->m_cipher2 = cs_grp_cfg["cipher2"].get<std::string>().c_str();
+            SSL_CTX_set_ciphersuites (next_cs_grp->m_ssl_ctx
+                                        , next_cs_grp->m_cipher2.c_str());
+            SSL_CTX_set_cipher_list (next_cs_grp->m_ssl_ctx
+                                        , next_cs_grp->m_cipher.c_str());
+        } else if (next_cs_grp->m_version == tls1_3) {
             SSL_CTX_set_ciphersuites (next_cs_grp->m_ssl_ctx
                                         , next_cs_grp->m_cipher.c_str());
-        } 
-        else
-        {
+        } else {
             SSL_CTX_set_cipher_list (next_cs_grp->m_ssl_ctx
                                         , next_cs_grp->m_cipher.c_str());
         }
@@ -93,8 +106,10 @@ tls_client_app::tls_client_app(json app_json
         SSL_CTX_set_session_cache_mode(next_cs_grp->m_ssl_ctx
                                             , SSL_SESS_CACHE_OFF);
         
-        SSL_CTX_set1_curves_list(next_cs_grp->m_ssl_ctx
+        status = SSL_CTX_set1_groups_list(next_cs_grp->m_ssl_ctx
                                             , "P-521:P-384:P-256");
+
+        SSL_CTX_set_dh_auto(next_cs_grp->m_ssl_ctx, 1);
 
         m_cs_groups.push_back (next_cs_grp);
 
@@ -137,7 +152,8 @@ void tls_client_app::run_iter(bool tick_sec)
                                     new_tcp_connect (&client_addr->m_addr
                                                 , cs_grp->get_server_addr()
                                                 , cs_grp->m_stats_arr
-                                                , client_addr->m_portq);
+                                                , client_addr->m_portq
+                                                , &m_sock_opt);
             if (client_socket) 
             {
                 m_client_curr_conn_count++;
@@ -187,8 +203,8 @@ void tls_client_socket::on_write ()
         int next_chunk 
             = m_cs_grp->m_cs_data_len - m_bytes_written;
 
-        if ( next_chunk > 1200){
-            next_chunk = 1200;
+        if ( next_chunk > 100000){
+            next_chunk = 100000;
         }
 
         write_next_data (m_app->m_write_buffer, 0, next_chunk, true);
@@ -203,8 +219,22 @@ void tls_client_socket::on_wstatus (int bytes_written, int write_status)
     if (write_status == WRITE_STATUS_NORMAL) {
         m_bytes_written += bytes_written;
         if (m_bytes_written == m_cs_grp->m_cs_data_len) {
-            write_close ();
-            // abort ();
+            if (m_cs_grp->m_close == close_reset){
+                abort ();
+            } else {
+                switch (m_cs_grp->m_close_notify)
+                {
+                    case close_notify_no_send:
+                        write_close ();
+                        break;
+                    case close_notify_send:
+                        write_close (SSL_SEND_CLOSE_NOTIFY);
+                        break;
+                    case close_notify_send_recv:
+                        write_close (SSL_SEND_RECEIVE_CLOSE_NOTIFY);
+                        break;
+                }
+            }
         }
     } else {
         abort ();

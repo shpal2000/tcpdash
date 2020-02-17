@@ -40,6 +40,11 @@ struct ev_portq
     }
 };
 
+struct ev_socket_opt {
+    int snd_buff_len;
+    int rcv_buff_len;
+};
+
 #define STATE_TCP_PORT_ASSIGNED                         0x0000000000000001
 #define STATE_TCP_SOCK_CREATE                           0x0000000000000002
 #define STATE_TCP_SOCK_REUSE                            0x0000000000000004
@@ -112,6 +117,8 @@ struct ev_portq
 #define STATE_TCP_GETSOCKNAME_FAIL                      0x0000000001000000
 #define STATE_TCP_CONNECTION_EXPIRE                     0x0000000002000000
 #define STATE_TCP_TRANSPARENT_IP_FAIL                   0x0000000004000000
+#define STATE_TCP_RCVBUFFORCE_FAIL                      0x0000000008000000
+#define STATE_TCP_SNDBUFFORCE_FAIL                      0x0000000010000000
 
 
 #define CONNAPP_STATE_INIT                               0
@@ -135,10 +142,21 @@ struct ev_portq
 #define WRITE_STATUS_TCP_TIMEOUT                         2
 #define WRITE_STATUS_ERROR                               3
 
+#define SSL_NOSEND_CLOSE_NOTIFY                         0
+#define SSL_SEND_CLOSE_NOTIFY                           1
+#define SSL_SEND_RECEIVE_CLOSE_NOTIFY                   2
+
 #define inc_stats(__stat_name) \
 { \
     for (uint i=0; i < this->m_sockstats_arr->size(); i++) { \
         (*(this->m_sockstats_arr))[i]->__stat_name++; \
+    } \
+}
+
+#define dec_stats(__stat_name) \
+{ \
+    for (uint i=0; i < this->m_sockstats_arr->size(); i++) { \
+        (*(this->m_sockstats_arr))[i]->__stat_name--; \
     } \
 }
 
@@ -149,6 +167,17 @@ struct ev_portq
         if (isclass<__stat_class>(__stats_ptr)) \
         { \
             ((__stat_class*)(__stats_ptr))->__stat_name++; \
+        } \
+    } \
+}
+
+#define dec_app_stats(__sock_ptr,__stat_class,__stat_name) \
+{ \
+    for (uint i=0; i < __sock_ptr->get_sockstats_arr()->size(); i++) { \
+        ev_sockstats* __stats_ptr = (*(__sock_ptr->get_sockstats_arr()))[i]; \
+        if (isclass<__stat_class>(__stats_ptr)) \
+        { \
+            ((__stat_class*)(__stats_ptr))->__stat_name--; \
         } \
     } \
 }
@@ -168,6 +197,9 @@ struct ev_sockstats_data
     uint64_t socketBindIpv4Fail;
     uint64_t socketBindIpv6;    
     uint64_t socketBindIpv6Fail;
+
+    uint64_t socketRcvBufForceFail;
+    uint64_t socketSndBufForceFail;
 
     uint64_t socketConnectEstablishFail;    
     uint64_t socketConnectEstablishFail2;    
@@ -214,6 +246,8 @@ struct ev_sockstats_data
     uint64_t appSessStructNotAvail;
     uint64_t tcpInitServerFail;
     uint64_t tcpGetSockNameFail;
+
+    uint64_t tcpActiveConns;
 };
 
 struct ev_sockstats : ev_sockstats_data
@@ -282,6 +316,8 @@ struct ev_sockstats : ev_sockstats_data
         j["appSessStructNotAvail"] = appSessStructNotAvail;
         j["tcpInitServerFail"] = tcpInitServerFail;
         j["tcpGetSockNameFail"] = tcpGetSockNameFail;
+
+        j["tcpActiveConns"] = tcpActiveConns;        
     }
 
     virtual void tick_sec ()
@@ -381,6 +417,8 @@ private:
 
     ev_socket* m_parent;
 
+    ev_socket_opt* m_sock_opt;
+
 
 public:
     ev_socket();
@@ -458,6 +496,17 @@ public:
         m_socket_errno = sock_errno;
     }
 
+    void set_socket_opt (ev_socket_opt* ev_sock_opt)
+    {
+        m_sock_opt = ev_sock_opt;
+    }
+
+    ev_socket_opt* get_socket_opt ()
+    {
+        return m_sock_opt;
+    }
+
+
     bool is_fd_closed ()
     {
         return ( is_set_state (STATE_TCP_SOCK_FD_CLOSE) 
@@ -530,12 +579,14 @@ public:
                                         , ev_sockaddr* localAddress
                                         , ev_sockaddr* remoteAddress
                                         , std::vector<ev_sockstats*>* statsArr
-                                        , ev_portq* portq);
+                                        , ev_portq* portq
+                                        , ev_socket_opt* ev_sock_opt);
 
     static ev_socket* new_tcp_listen (epoll_ctx* epoll_ctxp
                                         , ev_sockaddr* localAddress
                                         , int listenQLen
-                                        , std::vector<ev_sockstats*>* statsArr);
+                                        , std::vector<ev_sockstats*>* statsArr
+                                        , ev_socket_opt* ev_sock_opt);
 
     void enable_rd_only_notification ();
     void enable_wr_only_notification ();
@@ -559,7 +610,7 @@ public:
                             , int writeDataLen
                             , bool partialWrite);
     
-    void write_close ();
+    void write_close (int send_close_notify=0);
     void abort ();
 
 

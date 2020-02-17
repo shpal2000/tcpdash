@@ -584,7 +584,7 @@ int main(int /*argc*/, char **argv)
                 iface.c_str(), zone_cname);
         system_cmd ("tcpdump start", cmd_str);
 
-        std::this_thread::sleep_for(std::chrono::seconds(3));
+        std::this_thread::sleep_for(std::chrono::seconds(8));
 
         std::vector<ev_app*> *app_list = create_app_list (cfg_json, z_index);
         update_registry_state (zone_file, 1);
