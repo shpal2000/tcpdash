@@ -4,10 +4,22 @@
 #include "ev_socket.hpp"
 
 #define MAX_APP_TYPE_NAME 1024
+#define MAX_CHUNK_SIZES_ARRAY_LEN 30
 
 typedef std::map<std::string, ev_sockstats*> ev_stats_map;
 
-class ev_app_cs_grp
+class ev_app_conn_grp
+{
+public:
+    ev_socket_opt m_sock_opt;
+
+    ev_app_conn_grp (json jcfg) {
+        m_sock_opt.rcv_buff_len = jcfg["tcp_rcv_buff"].get<uint32_t>();
+        m_sock_opt.snd_buff_len = jcfg["tcp_snd_buff"].get<uint32_t>();
+    }
+};
+
+class ev_app_cs_grp : public ev_app_conn_grp
 {
 public:
 
@@ -17,15 +29,19 @@ public:
 
     ev_sockaddr m_srvr_addr;
     std::vector<ev_sockstats*> *m_stats_arr;
+    
 
-    ev_app_cs_grp (const char* srv_ip
-                    , u_short srv_port
-                    , const char* ip_begin
-                    , const char* ip_end
-                    , u_short port_begin
-                    , u_short port_end
-                    , std::vector<ev_sockstats*> *stats_arr)
+    ev_app_cs_grp (json jcfg, std::vector<ev_sockstats*> *stats_arr)
+                                                : ev_app_conn_grp (jcfg)
     {
+
+        const char* srv_ip = jcfg["srv_ip"].get<std::string>().c_str();
+        u_short srv_port = jcfg["srv_port"].get<u_short>();
+        const char* ip_begin = jcfg["clnt_ip_begin"].get<std::string>().c_str();
+        const char* ip_end = jcfg["clnt_ip_end"].get<std::string>().c_str();
+        u_short port_begin = jcfg["clnt_port_begin"].get<u_short>();
+        u_short port_end = jcfg["clnt_port_end"].get<u_short>();
+
         m_clnt_addr_index = 0;
         m_clnt_addr_count = 0;
 
@@ -76,21 +92,21 @@ public:
     };
 };
 
-class ev_app_srv_grp
+class ev_app_srv_grp : public ev_app_conn_grp
 {
 public:
 
     ev_sockaddr m_srvr_addr;
     std::vector<ev_sockstats*> *m_stats_arr;
 
-    ev_app_srv_grp (const char* srv_ip
-                    , u_short srv_port
-                    , std::vector<ev_sockstats*> *stats_arr)
+    ev_app_srv_grp (json jcfg, std::vector<ev_sockstats*> *stats_arr)
+                                                : ev_app_conn_grp (jcfg)
     {
+        const char* srv_ip = jcfg["srv_ip"].get<std::string>().c_str();
+        u_short srv_port = jcfg["srv_port"].get<u_short>();
         ev_socket::set_sockaddr (&m_srvr_addr, srv_ip, htons(srv_port));
-        m_stats_arr = stats_arr;   
+        m_stats_arr = stats_arr;
     }
-
 };
 
 class ev_app
@@ -184,6 +200,39 @@ public:
         return n;
     }
 
+    void client_config_init (json jcfg) 
+    {
+        m_client_cps = jcfg["conn_per_sec"].get<uint32_t>();
+
+        m_client_total_conn_count 
+            = jcfg["total_conn_count"].get<uint64_t>();
+
+        m_client_max_active_conn_count 
+            = jcfg["max_active_conn_count"].get<uint32_t>();
+
+        m_client_max_pending_conn_count 
+            = jcfg["max_pending_conn_count"].get<uint32_t>();
+    
+        m_client_curr_conn_count = 0;
+    }
+
+    void server_config_init (json jcfg)
+    {
+        
+    }
+
+    int get_next_chunk_size () 
+    {
+        if (m_next_chunk_index == MAX_CHUNK_SIZES_ARRAY_LEN) {
+            m_next_chunk_index = 0;
+            m_next_chunk_shift++;
+            if (m_next_chunk_shift == 10){
+                m_next_chunk_shift = 0;
+            }
+        }
+        return m_chunk_sizes[m_next_chunk_index] + m_next_chunk_shift;
+    }
+
 private:
     epoll_ctx* m_epoll_ctx;
     ev_stats_map m_stats_map;
@@ -192,9 +241,16 @@ private:
     std::chrono::steady_clock::time_point m_last_new_conn_time;
     std::chrono::steady_clock::time_point m_conn_init_time;
     int m_last_new_conn_count;
+    int m_chunk_sizes [MAX_CHUNK_SIZES_ARRAY_LEN] = { 
+        1, 2, 256, 257, 512, 513, 801, 1023, 1024, 1256, 
+        1513, 1800, 2512, 3801, 4006, 5023, 5024, 6023, 7024, 7001, 
+        8256, 9800, 10000, 11000, 12000, 13000, 14000, 15000, 16383, 16384  
+    };
+    int m_next_chunk_index;
+    int m_next_chunk_shift;
+
 
 protected:
-    ev_socket_opt m_sock_opt;
     uint32_t m_client_cps;
     uint64_t m_client_curr_conn_count;
     uint64_t m_client_total_conn_count;

@@ -5,11 +5,9 @@ tls_server_app::tls_server_app(json app_json
                                 , tls_server_stats* zone_app_stats
                                 , ev_sockstats* zone_sock_stats)
 {
+    server_config_init (app_json);
+
     m_app_stats = new tls_server_stats();
-
-
-    m_sock_opt.rcv_buff_len = app_json["tcp_rcv_buff"].get<uint32_t>();
-    m_sock_opt.snd_buff_len = app_json["tcp_snd_buff"].get<uint32_t>();
 
     auto srv_list = app_json["srv_list"];
     for (auto it = srv_list.begin(); it != srv_list.end(); ++it)
@@ -37,19 +35,7 @@ tls_server_app::tls_server_app(json app_json
 
 
         tls_server_srv_grp* next_srv_grp
-            = new tls_server_srv_grp (srv_cfg["srv_ip"].get<std::string>().c_str()
-                        , srv_cfg["srv_port"].get<u_short>()
-                        , srv_stats_arr
-                        , srv_cfg["cs_data_len"].get<int>()
-                        , srv_cfg["sc_data_len"].get<int>()
-                        , srv_cfg["cs_start_tls_len"].get<int>()
-                        , srv_cfg["sc_start_tls_len"].get<int>()
-                        , srv_cfg["srv_cert"].get<std::string>().c_str()
-                        , srv_cfg["srv_key"].get<std::string>().c_str()
-                        , srv_cfg["cipher"].get<std::string>().c_str()
-                        , srv_cfg["tls_version"].get<std::string>().c_str()
-                        , srv_cfg["close_type"].get<std::string>().c_str()
-                        , srv_cfg["close_notify"].get<std::string>().c_str());
+            = new tls_server_srv_grp (srv_cfg, srv_stats_arr);
 
         next_srv_grp->m_ssl_ctx = SSL_CTX_new(TLS_server_method());
 
@@ -138,7 +124,7 @@ tls_server_app::tls_server_app(json app_json
             = (tls_server_socket*) new_tcp_listen (&srv_grp->m_srvr_addr
                                                     , 10000
                                                     , srv_grp->m_stats_arr
-                                                    , &m_sock_opt);
+                                                    , &srv_grp->m_sock_opt);
         if (srv_socket) 
         {
             srv_socket->m_app = this;
@@ -199,8 +185,13 @@ void tls_server_socket::on_write ()
         int next_chunk 
             = m_srv_grp->m_sc_data_len - m_bytes_written;
 
-        if ( next_chunk > 100000){
-            next_chunk = 100000 ;
+        int next_chunk_target = m_srv_grp->m_write_chunk;
+        if (next_chunk_target == 0) {
+            next_chunk_target = m_app->get_next_chunk_size ();
+        }
+
+        if ( next_chunk > next_chunk_target){
+            next_chunk = next_chunk_target;
         }
 
         write_next_data (m_app->m_write_buffer, 0, next_chunk, true);

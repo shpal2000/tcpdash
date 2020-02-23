@@ -4,19 +4,9 @@ tls_client_app::tls_client_app(json app_json
                     , tls_client_stats* zone_app_stats
                     , ev_sockstats* zone_sock_stats)
 {
+    client_config_init (app_json);
+
     m_app_stats = new tls_client_stats();
-
-
-    m_sock_opt.rcv_buff_len = app_json["tcp_rcv_buff"].get<uint32_t>();
-    m_sock_opt.snd_buff_len = app_json["tcp_snd_buff"].get<uint32_t>();
-
-    m_client_cps = app_json["conn_per_sec"].get<uint32_t>();
-    m_client_total_conn_count = app_json["total_conn_count"].get<uint64_t>();
-    m_client_max_active_conn_count 
-                        = app_json["max_active_conn_count"].get<uint32_t>();
-    m_client_max_pending_conn_count 
-                        = app_json["max_pending_conn_count"].get<uint32_t>();
-    m_client_curr_conn_count = 0;
 
     auto cs_grp_list = app_json["cs_grp_list"];
     m_cs_group_count = 0;
@@ -45,21 +35,7 @@ tls_client_app::tls_client_app(json app_json
         cs_grp_stats_arr->push_back (zone_sock_stats);
 
         tls_client_cs_grp* next_cs_grp 
-            = new tls_client_cs_grp (cs_grp_cfg["srv_ip"].get<std::string>().c_str()
-                        , cs_grp_cfg["srv_port"].get<u_short>()
-                        , cs_grp_cfg["clnt_ip_begin"].get<std::string>().c_str()
-                        , cs_grp_cfg["clnt_ip_end"].get<std::string>().c_str()
-                        , cs_grp_cfg["clnt_port_begin"].get<u_short>()
-                        , cs_grp_cfg["clnt_port_end"].get<u_short>()
-                        , cs_grp_stats_arr
-                        , cs_grp_cfg["cs_data_len"].get<int>()
-                        , cs_grp_cfg["sc_data_len"].get<int>()
-                        , cs_grp_cfg["cs_start_tls_len"].get<int>()
-                        , cs_grp_cfg["sc_start_tls_len"].get<int>()
-                        , cs_grp_cfg["cipher"].get<std::string>().c_str()
-                        , cs_grp_cfg["tls_version"].get<std::string>().c_str()
-                        , cs_grp_cfg["close_type"].get<std::string>().c_str()
-                        , cs_grp_cfg["close_notify"].get<std::string>().c_str());
+            = new tls_client_cs_grp (cs_grp_cfg, cs_grp_stats_arr);
 
         next_cs_grp->m_ssl_ctx = SSL_CTX_new(TLS_client_method());
 
@@ -153,7 +129,7 @@ void tls_client_app::run_iter(bool tick_sec)
                                                 , cs_grp->get_server_addr()
                                                 , cs_grp->m_stats_arr
                                                 , client_addr->m_portq
-                                                , &m_sock_opt);
+                                                , &cs_grp->m_sock_opt);
             if (client_socket) 
             {
                 m_client_curr_conn_count++;
@@ -203,8 +179,13 @@ void tls_client_socket::on_write ()
         int next_chunk 
             = m_cs_grp->m_cs_data_len - m_bytes_written;
 
-        if ( next_chunk > 100000){
-            next_chunk = 100000;
+        int next_chunk_target = m_cs_grp->m_write_chunk;
+        if (next_chunk_target == 0) {
+            next_chunk_target = m_app->get_next_chunk_size ();
+        }
+
+        if ( next_chunk > next_chunk_target){
+            next_chunk = next_chunk_target;
         }
 
         write_next_data (m_app->m_write_buffer, 0, next_chunk, true);

@@ -3,6 +3,8 @@
 ev_app::ev_app()
 {
     m_epoll_ctx = ev_socket::epoll_alloc (this, 1, 1);
+    m_next_chunk_index = 0;
+    m_next_chunk_shift = 0;
 }
 
 ev_app::~ev_app()

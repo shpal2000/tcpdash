@@ -373,10 +373,10 @@ static void config_zone (json cfg_json
                 iface.c_str());
         system_cmd ("dev default gw", cmd_str);
 
-        sprintf (cmd_str,
-                "ifconfig %s txqueuelen 300000",
-                iface.c_str());
-        system_cmd ("dev txqueuelen", cmd_str);
+        // sprintf (cmd_str,
+        //         "ifconfig %s txqueuelen 300000",
+        //         iface.c_str());
+        // system_cmd ("dev txqueuelen", cmd_str);
 
         auto subnets = cfg_json["zones"][z_index]["subnets"];
         for (auto it = subnets.begin(); it != subnets.end(); ++it)
@@ -579,9 +579,10 @@ int main(int /*argc*/, char **argv)
         SSL_load_error_strings ();
 
         auto iface = cfg_json["zones"][z_index]["iface"].get<std::string>();
+        auto tcpdump_s = cfg_json["zones"][z_index]["tcpdump"].get<std::string>();
         sprintf (cmd_str,
-            "tcpdump -i %s -n -c 1000 -w /rundir/bin/%s.pcap&",
-                iface.c_str(), zone_cname);
+            "tcpdump -i %s -n %s -w /rundir/bin/%s.pcap&",
+                iface.c_str(), tcpdump_s.c_str(), zone_cname);
         system_cmd ("tcpdump start", cmd_str);
 
         std::this_thread::sleep_for(std::chrono::seconds(8));
