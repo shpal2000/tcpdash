@@ -25,6 +25,8 @@ void ev_socket::init ()
 
     m_ipv6 = false;
     m_parent = nullptr;
+    m_next = nullptr;
+    m_prev = nullptr;
 }
 
 ev_socket::ev_socket()
@@ -65,6 +67,7 @@ ev_socket* ev_socket::new_tcp_connect (epoll_ctx* epoll_ctxp
         new_sock->init ();
         new_sock->set_sockstats_arr (statsArr);
         new_sock->set_socket_opt (ev_sock_opt);
+        epoll_ctxp->m_app->add_to_active_list (new_sock);
         new_sock->tcp_connect (epoll_ctxp
                                 , localAddress
                                 , remoteAddress);
@@ -89,6 +92,7 @@ ev_socket* ev_socket::new_tcp_listen (epoll_ctx* epoll_ctxp
     if (new_sock) {
         new_sock->set_sockstats_arr (statsArr);
         new_sock->set_socket_opt (ev_sock_opt);
+        epoll_ctxp->m_app->add_to_active_list (new_sock);
         new_sock->tcp_listen (epoll_ctxp, localAddress, lqlen);
     } else {
 
@@ -844,33 +848,19 @@ void ev_socket::tcp_accept (ev_socket* ev_sock_parent)
         inc_stats (tcpAcceptSuccessInSec);
         inc_stats (tcpActiveConns);
 
-        int flags = fcntl(m_fd, F_GETFL, 0);
-        if (flags < 0) {
-            set_error_state (STATE_TCP_SOCK_F_GETFL_FAIL 
-                            | STATE_TCP_SOCK_O_NONBLOCK_FAIL);
+        //??? is it necessary
+        // int recv_size = 1024 * 128;
+        // setsockopt(m_fd, SOL_SOCKET, SO_RCVBUF, &recv_size, sizeof(int));
+
+        int so_op = 1;
+        int ret = setsockopt(m_fd, SOL_SOCKET
+                        , SO_REUSEADDR, &so_op, sizeof(int));
+        if (ret < 0) {
+            inc_stats (socketReuseSetFail);
+            set_error_state (STATE_TCP_SOCK_REUSE_FAIL);
         } else {
-            int ret = fcntl(m_fd, F_SETFL, flags | O_NONBLOCK);
-            if (ret < 0) {
-                set_error_state (STATE_TCP_SOCK_F_SETFL_FAIL 
-                                | STATE_TCP_SOCK_O_NONBLOCK_FAIL);
-            } else {
-                set_state (STATE_TCP_CONN_ACCEPT_O_NONBLOCK);
-
-                //??? is it necessary
-                // int recv_size = 1024 * 128;
-                // setsockopt(m_fd, SOL_SOCKET, SO_RCVBUF, &recv_size, sizeof(int));
-
-                int so_op = 1;
-                ret = setsockopt(m_fd, SOL_SOCKET
-                                , SO_REUSEADDR, &so_op, sizeof(int));
-                if (ret < 0) {
-                    inc_stats (socketReuseSetFail);
-                    set_error_state (STATE_TCP_SOCK_REUSE_FAIL);
-                } else {
-                    inc_stats (socketReuseSet);
-                    set_state (STATE_TCP_SOCK_REUSE);
-                }
-            }
+            inc_stats (socketReuseSet);
+            set_state (STATE_TCP_SOCK_REUSE);
         }
     }
 
@@ -1014,6 +1004,7 @@ void ev_socket::handle_tcp_accept ()
         ev_sock_ptr->init ();
         ev_sock_ptr->set_sockstats_arr ( get_sockstats_arr() );
         ev_sock_ptr->set_socket_opt ( get_socket_opt() );
+        m_epoll_ctx->m_app->add_to_active_list (ev_sock_ptr);
         ev_sock_ptr->tcp_accept (this);
 
         if ( ev_sock_ptr->get_error_state() ) 
@@ -1407,6 +1398,7 @@ void ev_socket::epoll_process (epoll_ctx* epoll_ctxp)
         {
             ev_socket* ev_sock_ptr = epoll_ctxp->m_finish_list.front();
             ev_sock_ptr->on_finish ();
+            epoll_ctxp->m_app->remove_from_active_list (ev_sock_ptr);
             epoll_ctxp->m_app->free_socket (ev_sock_ptr);
             epoll_ctxp->m_finish_list.pop();
         }

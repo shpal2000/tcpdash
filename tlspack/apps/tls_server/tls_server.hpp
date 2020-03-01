@@ -1,7 +1,7 @@
 #ifndef __TLS_SERVER_H__
 #define __TLS_SERVER_H__
 
-#include "ev_app.hpp"
+#include "app.hpp"
 
 #define MAX_READ_BUFFER_LEN 100000
 #define MAX_WRITE_BUFFER_LEN 100000
@@ -84,14 +84,15 @@ public:
     SSL_CTX* m_ssl_ctx;
 };
 
-struct tls_server_stats_data : ev_sockstats
+struct tls_server_stats_data : app_stats
 {
     uint64_t tls_server_stats_1;
     uint64_t tls_server_stats_100;
 
     virtual void dump_json (json &j)
     {
-        ev_sockstats::dump_json (j);
+        app_stats::dump_json (j);
+        
         j["tls_server_stats_1"] = tls_server_stats_1;
         j["tls_server_stats_100"] = tls_server_stats_100;
     }
@@ -103,7 +104,7 @@ struct tls_server_stats : tls_server_stats_data
 {
     tls_server_stats () : tls_server_stats_data () {}
 };
-class tls_server_app : public ev_app
+class tls_server_app : public app
 {
 public:
     tls_server_app(json app_json

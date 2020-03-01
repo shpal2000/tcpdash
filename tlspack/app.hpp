@@ -1,12 +1,57 @@
-#ifndef __EV_APP__H
-#define __EV_APP__H
+#ifndef __TLSPACK_APP__H
+#define __TLSPACK_APP__H
 
-#include "ev_socket.hpp"
+#include "ev_app.hpp"
+
+#include <stdint.h>
+#include <errno.h>
+#include <unistd.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#include <openssl/x509.h>
+#include <openssl/pem.h>
+#include <iostream>
+#include <fstream>
+#include<sstream>
+#include <queue>
+#include <cstring>
+#include <string>
+#include <thread>
+#include <chrono>
+#include <map>
+#include <random>
+#include <inttypes.h>
+
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
+
+enum enum_close_type { close_fin=1, close_reset };
+
+enum enum_close_notify { close_notify_no_send=1
+                           , close_notify_send
+                           ,  close_notify_send_recv};
+                           
+enum enum_tls_version { sslv3=0, tls1, tls1_1, tls1_2, tls1_3, tls_all};
+
 
 #define MAX_APP_TYPE_NAME 1024
 #define MAX_CHUNK_SIZES_ARRAY_LEN 30
 
-typedef std::map<std::string, ev_sockstats*> ev_stats_map;
+struct app_stats : public ev_sockstats
+{
+    static void dump_json_ev_sockstats (json& j, ev_sockstats* stats)
+    {
+
+    }
+
+    virtual void dump_json (json& j)
+    {
+        dump_json_ev_sockstats (j, this);
+    };
+
+};
+
+typedef std::map<std::string, app_stats*> ev_stats_map;
 
 class ev_app_conn_grp
 {
@@ -109,41 +154,21 @@ public:
     }
 };
 
-class ev_app
+class app : public ev_app
 {
 public:
-    ev_app();
-    virtual ~ev_app();
-
-    virtual void run_iter(bool tick_sec);
-
-    virtual ev_socket* alloc_socket() = 0;
-    virtual void free_socket(ev_socket* ev_sock) = 0;
-
-    ev_socket* new_tcp_connect (ev_sockaddr* laddr
-                                , ev_sockaddr* raddr
-                                , std::vector<ev_sockstats*>* statsArr
-                                , ev_portq* portq
-                                , ev_socket_opt* ev_sock_opt)
+    app()
     {
-        return ev_socket::new_tcp_connect (m_epoll_ctx
-                                            , laddr
-                                            , raddr
-                                            , statsArr
-                                            , portq
-                                            , ev_sock_opt);
+        m_next_chunk_index = 0;
+        m_next_chunk_shift = 0;
+    }
+    virtual ~app()
+    {
     }
 
-    ev_socket* new_tcp_listen (ev_sockaddr* laddr
-                                , int lqlen
-                                , std::vector<ev_sockstats*>* statsArr
-                                , ev_socket_opt* ev_sock_opt )
+    virtual void run_iter(bool tick_sec)
     {
-        return ev_socket::new_tcp_listen (m_epoll_ctx
-                                            , laddr
-                                            , lqlen
-                                            , statsArr
-                                            , ev_sock_opt);
+        ev_app::run_iter (tick_sec);
     }
 
     ev_stats_map* get_app_stats_map ()
@@ -151,7 +176,7 @@ public:
         return &m_stats_map;
     } 
     
-    ev_sockstats* get_app_stats (const char* stats_label="")
+    app_stats* get_app_stats (const char* stats_label="")
     {
         if (strcmp(stats_label, "") == 0)
             return m_app_stats;
@@ -159,7 +184,7 @@ public:
         return m_stats_map[stats_label];
     };
 
-    void set_app_stats (ev_sockstats* stats, const char* stats_label)
+    void set_app_stats (app_stats* stats, const char* stats_label)
     {
         m_stats_map.insert(ev_stats_map::value_type(stats_label, stats));
     }
@@ -234,7 +259,6 @@ public:
     }
 
 private:
-    epoll_ctx* m_epoll_ctx;
     ev_stats_map m_stats_map;
     char m_app_type[MAX_APP_TYPE_NAME];
     char m_app_label[MAX_APP_TYPE_NAME];
@@ -249,14 +273,13 @@ private:
     int m_next_chunk_index;
     int m_next_chunk_shift;
 
-
 protected:
     uint32_t m_client_cps;
     uint64_t m_client_curr_conn_count;
     uint64_t m_client_total_conn_count;
     uint32_t m_client_max_active_conn_count;
     uint32_t m_client_max_pending_conn_count;
-    ev_sockstats* m_app_stats;
+    app_stats* m_app_stats;
 };
 
 #endif
