@@ -1,4 +1,4 @@
-#include "ev_app.hpp"
+#include "app.hpp"
 
 #define MAX_READ_BUFFER_LEN 100000
 #define MAX_WRITE_BUFFER_LEN 100000
@@ -6,42 +6,40 @@
 class tls_client_cs_grp : public ev_app_cs_grp 
 {
 public:
-    tls_client_cs_grp (const char* srv_ip
-                    , u_short srv_port
-                    , const char* ip_begin
-                    , const char* ip_end
-                    , u_short port_begin
-                    , u_short port_end
-                    , std::vector<ev_sockstats*> *stats_arr
-                    , int cs_data_len
-                    , int sc_data_len
-                    , int cs_start_tls_len
-                    , int sc_start_tls_len
-                    , const char* cipher
-                    , const char* tls_version
-                    , const char* close_type) 
-                    
-                    : ev_app_cs_grp (srv_ip
-                        , srv_port
-                        , ip_begin
-                        , ip_end
-                        , port_begin
-                        , port_end
-                        , stats_arr) 
+    tls_client_cs_grp (json jcfg, std::vector<ev_sockstats*> *stats_arr) 
+                                        : ev_app_cs_grp (jcfg, stats_arr) 
     {
-        m_cs_data_len = cs_data_len;
-        m_sc_data_len = sc_data_len;
-        m_cs_start_tls_len = cs_start_tls_len;
-        m_sc_start_tls_len = sc_start_tls_len;
+        m_cs_data_len = jcfg["cs_data_len"].get<int>();
+        m_sc_data_len = jcfg["sc_data_len"].get<int>();
+        m_cs_start_tls_len = jcfg["cs_start_tls_len"].get<int>();
+        m_sc_start_tls_len = jcfg["sc_start_tls_len"].get<int>();
+        m_cipher = jcfg["cipher"].get<std::string>().c_str();
 
-        m_cipher = cipher;
-        
+        const char* tls_version = jcfg["tls_version"].get<std::string>().c_str();
+
+        const char* close_type = jcfg["close_type"].get<std::string>().c_str();
+
+        const char* close_notify = jcfg["close_notify"].get<std::string>().c_str();
+
+        m_write_chunk = jcfg["write_chunk"].get<int>();
+
         if (strcmp(close_type, "fin") == 0) {
             m_close = close_fin;
         } else if (strcmp(close_type, "reset") == 0) {
             m_close = close_reset;
         }else {
             m_close = close_fin;
+        }
+
+
+        if (strcmp(close_notify, "send") == 0) {
+            m_close_notify = close_notify_send;
+        } else if (strcmp(close_notify, "send_recv") == 0) {
+            m_close_notify = close_notify_send_recv;
+        } else if (strcmp(close_notify, "no_send") == 0)  {
+            m_close_notify = close_notify_no_send;
+        } else {
+            m_close_notify = close_notify_send_recv;
         }
 
         if (strcmp(tls_version, "sslv3") == 0){
@@ -66,21 +64,26 @@ public:
     int m_cs_start_tls_len;
     int m_sc_start_tls_len;
 
+    int m_write_chunk;
+    
     std::string m_cipher;
+    std::string m_cipher2;
     enum_close_type m_close;
+    enum_close_notify m_close_notify;
     enum_tls_version m_version;
 
     SSL_CTX* m_ssl_ctx;
 };
 
-struct tls_client_stats_data : ev_sockstats
+struct tls_client_stats_data : app_stats
 {
     uint64_t tls_client_stats_1;
     uint64_t tls_client_stats_100;
 
     virtual void dump_json (json &j)
     {
-        ev_sockstats::dump_json (j);
+        app_stats::dump_json (j);
+        
         j["tls_client_stats_1"] = tls_client_stats_1;
         j["tls_client_stats_100"] = tls_client_stats_100;
     }
@@ -93,7 +96,7 @@ struct tls_client_stats : tls_client_stats_data
     tls_client_stats () : tls_client_stats_data () {}
 };
 
-class tls_client_app : public ev_app
+class tls_client_app : public app
 {
 public:
     tls_client_app(json app_json

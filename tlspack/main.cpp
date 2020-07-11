@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
-#include<sstream>
+#include <sstream>
 #include <signal.h>
 #include <chrono>
 
@@ -32,7 +32,7 @@ char zone_file [MAX_FILE_PATH_LEN];
 char registry_dir [MAX_REGISTRY_DIR_PATH];
 char zone_cname [MAX_ZONE_CNAME];
 
-ev_sockstats* zone_ev_sockstats = nullptr;
+app_stats* zone_ev_sockstats = nullptr;
 tls_server_stats* zone_tls_server_stats = nullptr;
 tls_client_stats* zone_tls_client_stats = nullptr;
 
@@ -43,9 +43,10 @@ static void system_cmd (const char* label, const char* cmd_str)
     system (cmd_str);
 }
 
-static void dump_stats (const char* stats_file, ev_sockstats* stats) 
+static void dump_stats (const char* stats_file, app_stats* stats) 
 {
     json j;
+    
     stats->dump_json(j);
 
     std::ofstream stats_stream(stats_file);
@@ -373,10 +374,10 @@ static void config_zone (json cfg_json
                 iface.c_str());
         system_cmd ("dev default gw", cmd_str);
 
-        sprintf (cmd_str,
-                "ifconfig %s txqueuelen 300000",
-                iface.c_str());
-        system_cmd ("dev txqueuelen", cmd_str);
+        // sprintf (cmd_str,
+        //         "ifconfig %s txqueuelen 300000",
+        //         iface.c_str());
+        // system_cmd ("dev txqueuelen", cmd_str);
 
         auto subnets = cfg_json["zones"][z_index]["subnets"];
         for (auto it = subnets.begin(); it != subnets.end(); ++it)
@@ -400,9 +401,9 @@ static void config_zone (json cfg_json
     }
 }
 
-static std::vector<ev_app*>* create_app_list (json cfg_json, int z_index)
+static std::vector<app*>* create_app_list (json cfg_json, int z_index)
 {
-    std::vector<ev_app*> *app_list = nullptr;
+    std::vector<app*> *app_list = nullptr;
 
     auto a_list = cfg_json["zones"][z_index]["app_list"];
     int a_index = -1;
@@ -410,7 +411,7 @@ static std::vector<ev_app*>* create_app_list (json cfg_json, int z_index)
     {
         if (zone_ev_sockstats == nullptr)
         {
-            zone_ev_sockstats = new ev_sockstats();
+            zone_ev_sockstats = new app_stats();
         }
 
         a_index++;
@@ -423,7 +424,7 @@ static std::vector<ev_app*>* create_app_list (json cfg_json, int z_index)
             continue;
         }
 
-        ev_app* next_app = nullptr;
+        app* next_app = nullptr;
         if ( strcmp("tls_server", app_type) == 0 )
         {
             if (zone_tls_server_stats == nullptr)
@@ -455,7 +456,7 @@ static std::vector<ev_app*>* create_app_list (json cfg_json, int z_index)
 
             if (app_list == nullptr)
             {
-                app_list = new std::vector<ev_app*>;
+                app_list = new std::vector<app*>;
             }
 
             app_list->push_back (next_app);
@@ -579,14 +580,15 @@ int main(int /*argc*/, char **argv)
         SSL_load_error_strings ();
 
         auto iface = cfg_json["zones"][z_index]["iface"].get<std::string>();
+        auto tcpdump_s = cfg_json["zones"][z_index]["tcpdump"].get<std::string>();
         sprintf (cmd_str,
-            "tcpdump -i %s -n -c 1000 -w /rundir/bin/%s.pcap&",
-                iface.c_str(), zone_cname);
+            "tcpdump -i %s -n %s -w /rundir/bin/%s.pcap&",
+                iface.c_str(), tcpdump_s.c_str(), zone_cname);
         system_cmd ("tcpdump start", cmd_str);
 
-        std::this_thread::sleep_for(std::chrono::seconds(3));
+        std::this_thread::sleep_for(std::chrono::seconds(8));
 
-        std::vector<ev_app*> *app_list = create_app_list (cfg_json, z_index);
+        std::vector<app*> *app_list = create_app_list (cfg_json, z_index);
         update_registry_state (zone_file, 1);
 
         if ( app_list )
@@ -618,7 +620,7 @@ int main(int /*argc*/, char **argv)
                     tick_5sec++;
                 }
 
-                for (ev_app* app_ptr : *app_list)
+                for (app* app_ptr : *app_list)
                 {
                     app_ptr->run_iter (is_tick_sec);
                 }
@@ -658,14 +660,15 @@ int main(int /*argc*/, char **argv)
                         dump_stats (curr_dir_file, zone_tls_client_stats);
                     }
 
-                    for (ev_app* app_ptr : *app_list)
+                    for (app* app_ptr : *app_list)
                     {
                         sprintf (curr_dir_file,
                             "%s%s/"
                             "%s/%s_stats.json",
                             result_dir, zone_label.c_str(),
                             app_ptr->get_app_label(), app_ptr->get_app_type());
-                        dump_stats (curr_dir_file, app_ptr->get_app_stats());
+                        dump_stats (curr_dir_file
+                                    , (app_stats*)app_ptr->get_app_stats());
 
                         ev_stats_map* app_stats_map 
                             = app_ptr->get_app_stats_map ();
@@ -679,7 +682,7 @@ int main(int /*argc*/, char **argv)
                             result_dir, zone_label.c_str(),
                             app_ptr->get_app_label(), it->first.c_str(),
                             app_ptr->get_app_type());
-                            dump_stats (curr_dir_file, it->second);  
+                            dump_stats (curr_dir_file, (app_stats*)it->second);  
                         }
                     }
                 }

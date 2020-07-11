@@ -1,5 +1,5 @@
-#ifndef __TLSPACK_PLATFORM_H
-#define __TLSPACK_PLATFORM_H
+#ifndef __EV_PLATFORM_H
+#define __EV_PLATFORM_H
 
 #include <stdint.h>
 #include <errno.h>
@@ -24,16 +24,12 @@
 #include <thread>
 #include <chrono>
 #include <map>
-
-#include <nlohmann/json.hpp>
-using json = nlohmann::json;
+#include <random>
+#include <inttypes.h>
 
 template<typename P, typename C>
 inline bool isclass(const C*) {
    return std::is_base_of<P, C>::value;
 }
-
-enum enum_close_type { close_fin=1, close_reset };
-enum enum_tls_version { sslv3=0, tls1, tls1_1, tls1_2, tls1_3, tls_all};
 
 #endif

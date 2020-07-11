@@ -40,7 +40,12 @@ struct ev_portq
     }
 };
 
-#define STATE_TCP_PORT_ASSIGNED                         0x0000000000000001
+struct ev_socket_opt {
+    int snd_buff_len;
+    int rcv_buff_len;
+};
+
+#define _STATE_TCP_PORT_ASSIGNED                        0x0000000000000001
 #define STATE_TCP_SOCK_CREATE                           0x0000000000000002
 #define STATE_TCP_SOCK_REUSE                            0x0000000000000004
 #define STATE_TCP_SOCK_BIND                             0x0000000000000008
@@ -53,10 +58,10 @@ struct ev_portq
 #define STATE_TCP_LISTEN_STOP                           0x0000000000000400
 #define STATE_TCP_POLL_READ_CURRENT                     0x0000000000000800
 #define STATE_TCP_POLL_WRITE_CURRENT                    0x0000000000001000
-#define STATE_TCP_POLL_READ_STICKY                      0x0000000000002000
-#define STATE_TCP_POLL_WRITE_STICKY                     0x0000000000004000
+#define _STATE_TCP_POLL_READ_STICKY                     0x0000000000002000
+#define _STATE_TCP_POLL_WRITE_STICKY                    0x0000000000004000
 #define STATE_TCP_CONN_ACCEPT                           0x0000000000008000
-#define STATE_TCP_CONN_ACCEPT_O_NONBLOCK                0x0000000000010000
+#define _STATE_TCP_CONN_ACCEPT_O_NONBLOCK               0x0000000000010000
 #define STATE_SSL_CONN_INIT                             0x0000000000020000
 #define STATE_SSL_CONN_IN_PROGRESS                      0x0000000000040000
 #define STATE_SSL_CONN_ESTABLISHED                      0x0000000000080000
@@ -71,8 +76,8 @@ struct ev_portq
 #define STATE_TCP_TO_SEND_RST                           0x0000000010000000
 #define STATE_TCP_SENT_FIN                              0x0000000020000000
 #define STATE_TCP_SENT_RESET                            0x0000000040000000
-#define STATE_TCP_RECEIVED_FIN                          0x0000000080000000
-#define STATE_TCP_RECEIVED_RESET                        0x0000000100000000
+#define _STATE_TCP_RECEIVED_FIN                         0x0000000080000000
+#define _STATE_TCP_RECEIVED_RESET                       0x0000000100000000
 #define STATE_TCP_REMOTE_CLOSED                         0x0000000200000000
 #define STATE_SSL_CONN_CLIENT                           0x0000000400000000
 #define STATE_SSL_ENABLED_CONN                          0x0000000800000000
@@ -93,25 +98,27 @@ struct ev_portq
 #define STATE_TCP_SOCK_REUSE_FAIL                       0x0000000000000020
 #define STATE_TCP_SOCK_READ_FAIL                        0x0000000000000040
 #define STATE_TCP_SOCK_WRITE_FAIL                       0x0000000000000080
-#define STATE_TCP_SOCK_PORT_ASSIGN_FAIL                 0x0000000000000100
+#define _STATE_TCP_SOCK_PORT_ASSIGN_FAIL                0x0000000000000100
 #define STATE_TCP_SOCK_FD_CLOSE_FAIL                    0x0000000000000200
-#define STATE_TCP_SOCK_POLL_UPDATE_FAIL                 0x0000000000000400
+#define _STATE_TCP_SOCK_POLL_UPDATE_FAIL                0x0000000000000400
 #define STATE_TCP_CONN_ACCEPT_FAIL                      0x0000000000000800
-#define STATE_TCP_SOCK_F_GETFL_FAIL                     0x0000000000001000
-#define STATE_TCP_SOCK_F_SETFL_FAIL                     0x0000000000002000
-#define STATE_TCP_SOCK_O_NONBLOCK_FAIL                  0x0000000000004000
+#define _STATE_TCP_SOCK_F_GETFL_FAIL                    0x0000000000001000
+#define _STATE_TCP_SOCK_F_SETFL_FAIL                    0x0000000000002000
+#define _STATE_TCP_SOCK_O_NONBLOCK_FAIL                 0x0000000000004000
 #define STATE_SSL_SOCK_CONNECT_FAIL                     0x0000000000008000
 #define STATE_SSL_SOCK_FD_SET_ERROR                     0x0000000000010000
 #define STATE_SSL_SOCK_GENERAL_ERROR                    0x0000000000020000
 #define STATE_SSL_SOCK_HANDSHAKE_ERROR                  0x0000000000040000
 #define STATE_TCP_FIN_SEND_FAIL                         0x0000000000080000
-#define STATE_TCP_RESET_SEND_FAIL                       0x0000000000100000
+#define _STATE_TCP_RESET_SEND_FAIL                      0x0000000000100000
 #define STATE_TCP_REMOTE_CLOSED_ERROR                   0x0000000000200000
-#define STATE_TCP_TIMEOUT_CLOSED_ERROR                  0x0000000000400000
+#define _STATE_TCP_TIMEOUT_CLOSED_ERROR                 0x0000000000400000
 #define STATE_TCP_SOCK_LINGER_FAIL                      0x0000000000800000
-#define STATE_TCP_GETSOCKNAME_FAIL                      0x0000000001000000
-#define STATE_TCP_CONNECTION_EXPIRE                     0x0000000002000000
+#define _STATE_TCP_GETSOCKNAME_FAIL                     0x0000000001000000
+#define _STATE_TCP_CONNECTION_EXPIRE                    0x0000000002000000
 #define STATE_TCP_TRANSPARENT_IP_FAIL                   0x0000000004000000
+#define STATE_TCP_RCVBUFFORCE_FAIL                      0x0000000008000000
+#define STATE_TCP_SNDBUFFORCE_FAIL                      0x0000000010000000
 
 
 #define CONNAPP_STATE_INIT                               0
@@ -135,10 +142,21 @@ struct ev_portq
 #define WRITE_STATUS_TCP_TIMEOUT                         2
 #define WRITE_STATUS_ERROR                               3
 
+#define SSL_NOSEND_CLOSE_NOTIFY                         0
+#define SSL_SEND_CLOSE_NOTIFY                           1
+#define SSL_SEND_RECEIVE_CLOSE_NOTIFY                   2
+
 #define inc_stats(__stat_name) \
 { \
     for (uint i=0; i < this->m_sockstats_arr->size(); i++) { \
         (*(this->m_sockstats_arr))[i]->__stat_name++; \
+    } \
+}
+
+#define dec_stats(__stat_name) \
+{ \
+    for (uint i=0; i < this->m_sockstats_arr->size(); i++) { \
+        (*(this->m_sockstats_arr))[i]->__stat_name--; \
     } \
 }
 
@@ -149,6 +167,17 @@ struct ev_portq
         if (isclass<__stat_class>(__stats_ptr)) \
         { \
             ((__stat_class*)(__stats_ptr))->__stat_name++; \
+        } \
+    } \
+}
+
+#define dec_app_stats(__sock_ptr,__stat_class,__stat_name) \
+{ \
+    for (uint i=0; i < __sock_ptr->get_sockstats_arr()->size(); i++) { \
+        ev_sockstats* __stats_ptr = (*(__sock_ptr->get_sockstats_arr()))[i]; \
+        if (isclass<__stat_class>(__stats_ptr)) \
+        { \
+            ((__stat_class*)(__stats_ptr))->__stat_name--; \
         } \
     } \
 }
@@ -168,6 +197,9 @@ struct ev_sockstats_data
     uint64_t socketBindIpv4Fail;
     uint64_t socketBindIpv6;    
     uint64_t socketBindIpv6Fail;
+
+    uint64_t socketRcvBufForceFail;
+    uint64_t socketSndBufForceFail;
 
     uint64_t socketConnectEstablishFail;    
     uint64_t socketConnectEstablishFail2;    
@@ -214,75 +246,14 @@ struct ev_sockstats_data
     uint64_t appSessStructNotAvail;
     uint64_t tcpInitServerFail;
     uint64_t tcpGetSockNameFail;
+
+    uint64_t tcpActiveConns;
 };
 
 struct ev_sockstats : ev_sockstats_data
 {
     ev_sockstats () : ev_sockstats_data () {}
     virtual ~ev_sockstats () {};
-
-    virtual void dump_json (json &j)
-    {
-        j["socketCreate"] = socketCreate;    
-        j["socketCreateFail"] = socketCreateFail;
-        j["socketListenFail"] = socketListenFail;
-        j["socketReuseSet"] = socketReuseSet;
-        j["socketReuseSetFail"] = socketReuseSetFail;
-        j["socketIpTransparentSet"] = socketIpTransparentSet;
-        j["socketIpTransparentSetFail"] = socketIpTransparentSetFail;
-        j["socketLingerSet"] = socketLingerSet;
-        j["socketLingerSetFail"] = socketLingerSetFail;
-        j["socketBindIpv4"] = socketBindIpv4;    
-        j["socketBindIpv4Fail"] = socketBindIpv4Fail;
-        j["socketBindIpv6"] = socketBindIpv6;    
-        j["socketBindIpv6Fail"] = socketBindIpv6Fail;
-
-        j["socketConnectEstablishFail"] = socketConnectEstablishFail;    
-        j["socketConnectEstablishFail2"] = socketConnectEstablishFail2;    
-
-        j["tcpConnInit"] = tcpConnInit;
-        j["tcpConnInitInSec"] = tcpConnInitInSec;
-        j["tcpConnInitRate"] = tcpConnInitRate;
-        j["tcpConnInitSuccess"] = tcpConnInitSuccess;
-        j["tcpConnInitSuccessInSec"] = tcpConnInitSuccessInSec;
-        j["tcpConnInitSuccessRate"] = tcpConnInitSuccessRate;
-        j["tcpConnInitFail"] = tcpConnInitFail;
-        j["tcpConnInitFailImmediateEaddrNotAvail"] = tcpConnInitFailImmediateEaddrNotAvail;
-        j["tcpConnInitFailImmediateOther"] = tcpConnInitFailImmediateOther;
-        j["tcpConnInitProgress"] = tcpConnInitProgress;
-        j["tcpWriteFail"] = tcpWriteFail;
-        j["tcpWriteReturnsZero"] = tcpWriteReturnsZero;
-        j["tcpReadFail"] = tcpReadFail;
-
-        j["tcpListenStart"] = tcpListenStart;
-        j["tcpListenStop"] = tcpListenStop;
-        j["tcpListenStartFail"] = tcpListenStartFail;
-        j["tcpAcceptFail"] = tcpAcceptFail;
-        j["tcpAcceptSuccess"] = tcpAcceptSuccess;
-        j["tcpAcceptSuccessInSec"] = tcpAcceptSuccessInSec;
-        j["tcpAcceptSuccessRate"] = tcpAcceptSuccessRate;
-
-        j["tcpLocalPortAssignFail"] = tcpLocalPortAssignFail;
-        j["tcpPollRegUnregFail"] = tcpPollRegUnregFail;
-
-        j["sslConnInit"] = sslConnInit;
-        j["sslConnInitInSec"] = sslConnInitInSec;
-        j["sslConnInitRate"] = sslConnInitRate;
-        j["sslConnInitSuccess"] = sslConnInitSuccess;
-        j["sslConnInitSuccessInSec"] = sslConnInitSuccessInSec;
-        j["sslConnInitSuccessRate"] = sslConnInitSuccessRate;
-        j["sslConnInitFail"] = sslConnInitFail;
-        j["sslConnInitProgress"] = sslConnInitProgress;
-        j["sslAcceptSuccess"] = sslAcceptSuccess; 
-        j["sslAcceptSuccessInSec"] = sslAcceptSuccessInSec;
-        j["sslAcceptSuccessRate"] = sslAcceptSuccessRate; 
-
-        j["tcpConnStructNotAvail"] = tcpConnStructNotAvail;
-        j["tcpListenStructNotAvail"] = tcpListenStructNotAvail;
-        j["appSessStructNotAvail"] = appSessStructNotAvail;
-        j["tcpInitServerFail"] = tcpInitServerFail;
-        j["tcpGetSockNameFail"] = tcpGetSockNameFail;
-    }
 
     virtual void tick_sec ()
     {
@@ -381,6 +352,12 @@ private:
 
     ev_socket* m_parent;
 
+    ev_socket_opt* m_sock_opt;
+
+public:
+    ev_socket* m_next;
+    ev_socket* m_prev;
+
 
 public:
     ev_socket();
@@ -427,6 +404,11 @@ public:
         m_state |= state_bits;
     };
 
+    uint64_t get_state ()
+    {
+        return m_state;
+    };
+
     void clear_state (uint64_t state_bits)
     {
         m_state &= ~state_bits;
@@ -457,6 +439,17 @@ public:
     {
         m_socket_errno = sock_errno;
     }
+
+    void set_socket_opt (ev_socket_opt* ev_sock_opt)
+    {
+        m_sock_opt = ev_sock_opt;
+    }
+
+    ev_socket_opt* get_socket_opt ()
+    {
+        return m_sock_opt;
+    }
+
 
     bool is_fd_closed ()
     {
@@ -530,12 +523,14 @@ public:
                                         , ev_sockaddr* localAddress
                                         , ev_sockaddr* remoteAddress
                                         , std::vector<ev_sockstats*>* statsArr
-                                        , ev_portq* portq);
+                                        , ev_portq* portq
+                                        , ev_socket_opt* ev_sock_opt);
 
     static ev_socket* new_tcp_listen (epoll_ctx* epoll_ctxp
                                         , ev_sockaddr* localAddress
                                         , int listenQLen
-                                        , std::vector<ev_sockstats*>* statsArr);
+                                        , std::vector<ev_sockstats*>* statsArr
+                                        , ev_socket_opt* ev_sock_opt);
 
     void enable_rd_only_notification ();
     void enable_wr_only_notification ();
@@ -559,7 +554,7 @@ public:
                             , int writeDataLen
                             , bool partialWrite);
     
-    void write_close ();
+    void write_close (int send_close_notify=0);
     void abort ();
 
 
@@ -721,6 +716,50 @@ struct ev_sockaddrx
     ev_sockaddrx(u_short start_port, u_short end_port)
         : ev_sockaddrx ( new ev_portq (start_port, end_port) )
     {
+    }
+};
+
+struct ev_sock_ll { 
+   ev_socket *m_head;
+   int m_count;
+
+    ev_sock_ll ()
+    {
+        m_count = 0;
+        m_head = nullptr;
+    }
+    
+    void add (ev_socket* ev_sock) 
+    {
+        ev_sock->m_prev = nullptr;
+
+        if (m_head == nullptr) {
+            m_head = ev_sock;
+            ev_sock->m_next = nullptr;
+        } else {
+            ev_sock->m_next = m_head;
+            m_head->m_prev = ev_sock;
+            m_head = ev_sock;
+        }
+
+        m_count++;
+    }
+
+    void remove (ev_socket* ev_sock)
+    {
+        if (m_head == ev_sock) {
+            m_head = ev_sock->m_next;
+            if (m_head){
+                m_head->m_prev = nullptr;
+            }
+        } else {
+            ev_sock->m_prev->m_next = ev_sock->m_next;
+            if (ev_sock->m_next) {
+                ev_sock->m_next->m_prev = ev_sock->m_prev;
+            }
+        }
+
+        m_count--;
     }
 };
 
