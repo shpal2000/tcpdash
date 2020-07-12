@@ -159,9 +159,8 @@ void tls_client_app::free_socket(ev_socket* ev_sock)
 }
 
 
-void tls_client_socket::on_establish ()
+void tls_client_socket::ssl_init ()
 {
-    // printf ("on_establish\n");
     m_ssl = SSL_new (m_cs_grp->m_ssl_ctx);
     if (m_ssl){
         set_as_ssl_client (m_ssl);
@@ -170,6 +169,12 @@ void tls_client_socket::on_establish ()
         //stats
         abort ();
     }
+}
+
+void tls_client_socket::on_establish ()
+{
+    // printf ("on_establish\n");
+    ssl_init ();
 }
 
 void tls_client_socket::on_write ()

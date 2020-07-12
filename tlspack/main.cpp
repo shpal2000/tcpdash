@@ -207,7 +207,7 @@ static void start_zones (json cfg_json
                             , int is_debug
                             , char* host_src_dir)
 {
-    sprintf (ssh_host_file, "%s.ssh/host", RUN_DIR_PATH);
+    sprintf (ssh_host_file, "%ssys/host", RUN_DIR_PATH);
     std::ifstream ssh_host_stream(ssh_host_file);
     json ssh_host_json = json::parse(ssh_host_stream);
     auto ssh_host = ssh_host_json["host"].get<std::string>();
@@ -237,7 +237,7 @@ static void start_zones (json cfg_json
                         host_src_dir, SRC_DIR_PATH);
 
             sprintf (cmd_str,
-                    "ssh -i %s.ssh/id_rsa -tt "
+                    "ssh -i %ssys/id_rsa -tt "
                     // "-o LogLevel=quiet "
                     "-o StrictHostKeyChecking=no "
                     "-o UserKnownHostsFile=/dev/null "
@@ -265,7 +265,7 @@ static void start_zones (json cfg_json
             }
 
             sprintf (cmd_str,
-                    "ssh -i %s.ssh/id_rsa -tt "
+                    "ssh -i %ssys/id_rsa -tt "
                     // "-o LogLevel=quiet "
                     "-o StrictHostKeyChecking=no "
                     "-o UserKnownHostsFile=/dev/null "
@@ -288,7 +288,7 @@ static void start_zones (json cfg_json
 static void stop_zones (json cfg_json
                             , char* cfg_name)
 {
-    sprintf (ssh_host_file, "%s.ssh/host", RUN_DIR_PATH);
+    sprintf (ssh_host_file, "%ssys/host", RUN_DIR_PATH);
     std::ifstream ssh_host_stream(ssh_host_file);
     json ssh_host_json = json::parse(ssh_host_stream);
     auto ssh_host = ssh_host_json["host"].get<std::string>();
@@ -318,7 +318,7 @@ static void stop_zones (json cfg_json
     c_list.append (zone_cname);
 
     sprintf (cmd_str,
-                "ssh -i %s.ssh/id_rsa -tt "
+                "ssh -i %ssys/id_rsa -tt "
                 // "-o LogLevel=quiet "
                 "-o StrictHostKeyChecking=no "
                 "-o UserKnownHostsFile=/dev/null "
@@ -340,7 +340,7 @@ static void config_zone (json cfg_json
         = cfg_json["zones"][z_index]["zone_label"].get<std::string>();
     sprintf (zone_cname, "%s-%s", cfg_name, zone_label.c_str());
 
-    sprintf (ssh_host_file, "%s.ssh/host", RUN_DIR_PATH);
+    sprintf (ssh_host_file, "%ssys/host", RUN_DIR_PATH);
     std::ifstream ssh_host_stream(ssh_host_file);
     json ssh_host_json = json::parse(ssh_host_stream);
     auto ssh_host = ssh_host_json["host"].get<std::string>();
@@ -352,7 +352,7 @@ static void config_zone (json cfg_json
     {
         auto macvlan = cfg_json["zones"][z_index]["macvlan"].get<std::string>();
         sprintf (cmd_str,
-                "ssh -i %s.ssh/id_rsa -tt "
+                "ssh -i %ssys/id_rsa -tt "
                 // "-o LogLevel=quiet "
                 "-o StrictHostKeyChecking=no "
                 "-o UserKnownHostsFile=/dev/null "
@@ -516,6 +516,7 @@ int main(int /*argc*/, char **argv)
     sprintf (cfg_dir, "%straffic/%s/", RUN_DIR_PATH, cfg_name);
     sprintf (cfg_file, "%s%s", cfg_dir, "config.json");
     std::ifstream cfg_stream(cfg_file);
+    // printf ("cfg_file : %s\n", cfg_file);
     json cfg_json = json::parse(cfg_stream);
 
     if (strcmp(mode, "start") == 0)
@@ -525,7 +526,8 @@ int main(int /*argc*/, char **argv)
         int is_debug = atoi (argv[5]);
         char* host_src_dir = argv[6];
         
-        sprintf (result_dir, "%sresults/%s/%s/", RUN_DIR_PATH, cfg_name, run_tag);
+        sprintf (result_dir, "%straffic/%s/%s/%s", RUN_DIR_PATH, cfg_name
+                                                    , "results", run_tag);
 
         if ( is_registry_entry_exit() )
         {
@@ -567,7 +569,8 @@ int main(int /*argc*/, char **argv)
 
         sprintf (zone_cname, "%s-%s", cfg_name, zone_label.c_str());
 
-        sprintf (result_dir, "%sresults/%s/%s/", RUN_DIR_PATH, cfg_name, run_tag);
+        sprintf (result_dir, "%straffic/%s/%s/%s", RUN_DIR_PATH, cfg_name
+                                                    , "results", run_tag);
         
         if ( strcmp(config_zone_flag, "config_zone") == 0 )
         {
@@ -686,6 +689,11 @@ int main(int /*argc*/, char **argv)
                         }
                     }
                 }
+            }
+
+            for (std::string line; std::getline(std::cin, line);) 
+            {
+                std::cout << line << std::endl;
             }
         }
         else

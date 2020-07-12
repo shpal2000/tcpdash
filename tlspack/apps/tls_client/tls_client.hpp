@@ -133,6 +133,8 @@ public:
     {
 
     };
+    
+    void ssl_init ();
 
     void on_establish ();
     void on_write ();
