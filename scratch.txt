@@ -1,89 +1,16 @@
-                        // if ( (time(NULL) - epochSinceSeconds) >= 5) {
-                        //     GetStatsString();
-                        //     ignoreRet = write(tcp_client_fifo
-                        //             , statsString
-                        //             , strlen(statsString));
-                        //     ignoreRet += 1;
-                        //     epochSinceSeconds = time(NULL);
-                        // }
-
-
-
-sysctl net.ipv4.conf.all.rp_filter=0
-sysctl net.ipv4.conf.default.rp_filter=0
-
-ifconfig eth2 1.102.2.1 up
-ifconfig eth2 hw ether 00:0c:29:0c:77:65
-arp -i eth2 -s 1.102.2.254 00:0c:29:4a:4d:60
-sysctl net.ipv4.conf.eth2.rp_filter=0
-
-ifconfig eth1 1.102.1.1 up
-ifconfig eth1 hw ether 00:0c:29:4a:4d:60
-arp -i eth1 -s 1.102.1.254 00:0c:29:0c:77:65
-sysctl net.ipv4.conf.eth1.rp_filter=0
-
-iptables -t mangle -A PREROUTING -i eth2 -p tcp --dport 443 -j TPROXY --tproxy-mark 0x1/0x1 --on-port 883
-iptables -t mangle -A PREROUTING -i eth1 -p tcp -m tcp --sport 443 -j MARK --set-mark 0x1/0x1
-ip rule add fwmark 1 lookup 100
-ip route add local 0.0.0.0/0 dev lo table 100
-
-route add -net 12.20.50.0 netmask 255.255.255.0 gw 1.102.2.254 dev eth2
-route add -net 12.20.60.0 netmask 255.255.255.0 gw 1.102.1.254 dev eth1
-
-#####
-
-sysctl net.ipv4.conf.all.rp_filter=0
-sysctl net.ipv4.conf.default.rp_filter=0
-
-ifconfig eth2 1.102.2.1 up
-ifconfig eth2 hw ether 00:0c:29:0c:77:65
-arp -i eth2 -s 1.102.2.254 00:0c:29:4a:4d:60
-sysctl net.ipv4.conf.eth2.rp_filter=0
-
-ifconfig eth1 1.102.1.1 up
-ifconfig eth1 hw ether 00:0c:29:4a:4d:60
-arp -i eth1 -s 1.102.1.254 00:0c:29:0c:77:65
-sysctl net.ipv4.conf.eth1.rp_filter=0
-
-iptables -t mangle -N DIVERT
-iptables -t mangle -A PREROUTING -p tcp -m socket -j DIVERT
-iptables -t mangle -A DIVERT -j MARK --set-mark 1
-iptables -t mangle -A DIVERT -j ACCEPT
-
-ip rule add fwmark 1 lookup 100
-ip route add local 0.0.0.0/0 dev lo table 100
-
-iptables -t mangle -A PREROUTING -i eth2 -p tcp --dport 443 -j TPROXY --tproxy-mark 0x1/0x1 --on-port 883
-iptables -t mangle -A PREROUTING -i eth1 -p tcp --dport 443 -j TPROXY --tproxy-mark 0x1/0x1 --on-port 883
-
-route add -net 12.20.50.0 netmask 255.255.255.0 gw 1.102.2.254 dev eth2
-route add -net 12.20.60.0 netmask 255.255.255.0 gw 1.102.1.254 dev eth1
-
-####################
-
-sudo sysctl net.ipv4.conf.all.rp_filter=0
-sudo sysctl net.ipv4.conf.default.rp_filter=0
-
-sudo ifconfig ens192 1.102.2.1 up
-sudo ifconfig ens192 hw ether 00:0c:29:58:9f:a4
-sudo arp -i ens192 -s 1.102.2.254 00:0c:29:2d:96:b5
-sudo sysctl net.ipv4.conf.ens192.rp_filter=0
-
-sudo ifconfig ens224 1.102.1.1 up
-sudo ifconfig ens224 hw ether 00:0c:29:2d:96:b5
-sudo arp -i ens224 -s 1.102.1.254 00:0c:29:58:9f:a4
-sudo sysctl net.ipv4.conf.ens224.rp_filter=0
-
-sudo iptables -t mangle -N DIVERT
-sudo iptables -t mangle -A PREROUTING -p tcp -m socket -j DIVERT
-sudo iptables -t mangle -A DIVERT -j MARK --set-mark 1
-sudo iptables -t mangle -A DIVERT -j ACCEPT
-
-sudo ip rule add fwmark 1 lookup 100
-sudo ip route add local 0.0.0.0/0 dev lo table 100
-
-sudo iptables -t mangle -A PREROUTING -i ens192 -p tcp --dport 443 -j TPROXY --tproxy-mark 0x1/0x1 --on-port 883
-sudo iptables -t mangle -A PREROUTING -i ens224 -p tcp --dport 443 -j TPROXY --tproxy-mark 0x1/0x1 --on-port 883
-
-sudo route add -net 12.20.50.0 netmask 255.255.255.0 gw 1.102.2.254 dev ens192
-sudo route add -net 12.20.60.0 netmask 255.255.255.0 gw 1.102.1.254 dev ens224
+steps:
+cd /
+git config --global user.email shpal2000@gmail.com
+git clone https://github.com/shpal2000/tcpdash.git
+cd /tcpdash/ev_sock/
+meson build
+cd build
+ninja install
+cd ../../tlspack/
+mkdir subprojects
+cd subprojects/
+git clone https://github.com/nlohmann/json.git
+cd ..
+meson build
+cd build
+ninja
