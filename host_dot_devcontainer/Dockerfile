@@ -16,23 +16,23 @@ ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 
 # Configure apt and install packages
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
-    && apt-get -y install --no-install-recommends apt-utils dialog 2>&1 \
+    && apt-get -yq install apt-utils \
     #
     # Verify git, process tools, lsb-release (common in install instructions for CLIs) installed
-    && apt-get -y install git iproute2 procps lsb-release \
+    && apt-get -yq install git iproute2 procps lsb-release \
     # Install C++ tools
-    && apt-get -y install build-essential cmake cppcheck valgrind \
+    && apt-get -yq install build-essential cmake cppcheck valgrind \
     #
-    && apt-get -y install iputils-ping netcat tcpdump \
+    && apt-get -yq install iputils-ping netcat tcpdump \
     #
-    && apt-get -y install pkg-config \
-    && apt-get -y install python3-pip meson curl \
-    && apt-get -y install vim \
-    && apt-get -y install libssl-dev \
-    && apt-get -y install libjson-glib-dev \
-    && apt-get -y install libglib2.0-dev \
-    && apt-get -y install sshpass net-tools \
+    && apt-get -yq install pkg-config \
+    && apt-get -yq install python3-pip meson curl \
+    && apt-get -yq install vim \
+    && apt-get -yq install libssl-dev \
+    && apt-get -yq install libglib2.0-dev \
+    && apt-get -yq install sshpass net-tools \
     #
     && mkdir /workspace \
     && cd / \
@@ -52,13 +52,13 @@ RUN apt-get update \
     && groupadd --gid $USER_GID $USERNAME \
     && useradd -s /bin/bash --uid $USER_UID --gid $USER_GID -m $USERNAME \
     # [Optional] Add sudo support for the non-root user
-    && apt-get install -y sudo \
+    && apt-get install -yq sudo \
     && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME\
     && chmod 0440 /etc/sudoers.d/$USERNAME \
     #
     # Clean up
-    && apt-get autoremove -y \
-    && apt-get clean -y \
+    && apt-get autoremove -yq \
+    && apt-get clean -yq \
     && rm -rf /var/lib/apt/lists/*
 
 # Switch back to dialog for any ad-hoc use of apt-get
