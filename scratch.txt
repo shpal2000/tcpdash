@@ -1,4 +1,4 @@
-steps:
+##############################steps to build##############################
 cd /
 git config --global user.email shpal2000@gmail.com
 git clone https://github.com/shpal2000/tcpdash.git
@@ -14,3 +14,31 @@ cd ..
 meson build
 cd build
 ninja
+
+##############################copy to imgdir##############################
+cp -f /openssl-1.1.1d/libcrypto.so.1.1 /imgdir
+cp -f /openssl-1.1.1d/libssl.so.1.1 /imgdir
+cp -f /openssl-1.1.1d/apps/openssl /imgdir
+cp -f /tcpdash/tlspack/build/tlspack.exe /imgdir
+cp -f /tcpdash/target_container/Dockerfile /imgdir
+cp -f /tcpdash/tcpdash.conf /imgdir
+
+##############################projects.json##############################
+[
+	{
+		"name": "openssl-1.1.1d",
+		"rootPath": "/openssl-1.1.1d",
+		"paths": [],
+		"group": "",
+		"enabled": true
+	},
+
+	{
+		"name": "tcpdash",
+		"rootPath": "/tcpdash",
+		"paths": [],
+		"group": "",
+		"enabled": true
+	}
+]
+
