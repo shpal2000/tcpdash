@@ -24,18 +24,19 @@ RUN apt-get update \
     # Install C++ tools
     && apt-get -y install build-essential cmake cppcheck valgrind \
     #
-    && apt-get -y install libglib2.0 libjson-glib-1.0 \
-    #
     && apt-get -y install iputils-ping netcat tcpdump \
     #
+    && apt-get -y install pkg-config \
     && apt-get -y install python3-pip meson curl \
     && apt-get -y install vim \
     && apt-get -y install libssl-dev \
     && apt-get -y install libjson-glib-dev \
     && apt-get -y install libglib2.0-dev \
     && apt-get -y install sshpass net-tools \
-    && curl https://www.openssl.org/source/openssl-1.1.1d.tar.gz -o /root/openssl-1.1.1d.tar.gz \
-    && cd /root/ \
+    #
+    && mkdir /workspace \
+    && cd / \
+    && curl https://www.openssl.org/source/openssl-1.1.1d.tar.gz -o ./openssl-1.1.1d.tar.gz \
     && tar -xzvf ./openssl-1.1.1d.tar.gz \
     && cd openssl-1.1.1d \
     && ./config --prefix=/usr/local/ssl --openssldir=/usr/local/ssl shared zlib \
@@ -47,8 +48,6 @@ RUN apt-get update \
     && mv /usr/bin/openssl /usr/bin/openssl.BEKUP \
     && cp /usr/local/ssl/bin/c_rehash /usr/bin/c_rehash \ 
     && cp /usr/local/ssl/bin/openssl /usr/bin/openssl \
-    && mkdir /root/workspace \
-    #
     # Create a non-root user to use if preferred - see https://aka.ms/vscode-remote/containers/non-root-user.
     && groupadd --gid $USER_GID $USERNAME \
     && useradd -s /bin/bash --uid $USER_UID --gid $USER_GID -m $USERNAME \

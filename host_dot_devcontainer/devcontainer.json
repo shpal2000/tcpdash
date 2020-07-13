@@ -1,12 +1,20 @@
 // For format details, see https://aka.ms/vscode-remote/devcontainer.json or the definition README at
 // https://github.com/microsoft/vscode-dev-containers/tree/master/containers/ubuntu-18.04-git
 {
-	"name": "tgen_dev",
+	"name": "tgen-dev",
 	"dockerFile": "Dockerfile",
 	// The optional 'runArgs' property can be used to specify additional runtime arguments.
 	"runArgs": [
 		// Uncomment the line if you will use a ptrace-based debugger like C++, Go, and Rust.
-		"--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined", "--network=bridge", "--privileged", "--volume=/home/shirish/rundir:/rundir", "--name=tgen_dev", "--rm"
+		"--cap-add=SYS_PTRACE", 
+		"--security-opt", 
+		"seccomp=unconfined", 
+		"--network=bridge", 
+		"--privileged", 
+		"--volume=/home/shirish/tgen/rundir:/rundir",
+		// "--volume=/home/shirish/tgen/tcpdash:/tcpdash",
+		// "--volume=/home/shirish/tgen/openssl-1.1.1d:/openssl-1.1.1d",
+		 "--rm"
 
 		// Uncomment the next line to use a non-root user. On Linux, this will prevent
 		// new files getting created as root, but you may need to update the USER_UID
@@ -26,8 +34,8 @@
 	// Uncomment the next line to run commands after the container is created.
 	// "postCreateCommand": "uname -a",
 
-	"workspaceFolder": "/tgen_workspace/tcpdash",
-	"workspaceMount": "src=/home/shirish/tgen_workspace,dst=/tgen_workspace,type=bind",
+	"workspaceMount": "src=/home/shirish/tgen/imgdir,dst=/imgdir,type=bind",
+	"workspaceFolder": "/openssl-1.1.1d",
 	
 	// Add the IDs of extensions you want installed when the container is created in the array below.
 	"extensions": [
