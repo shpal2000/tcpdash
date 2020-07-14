@@ -249,70 +249,15 @@ cfj_template = '''
         }}
 '''
 
-def get_command_line_params():
-    arg_parser = argparse.ArgumentParser(description = \
-                                            'cps test')
- 
-    utils.add_common_arguments (arg_parser)
-
-    arg_parser.add_argument('--cipher'
-                                , action="store"
-                                , help = 'command name'
-                                , required=True)
-
-    arg_parser.add_argument('--cps'
-                                , action="store"
-                                , type=int
-                                , required=True
-                                , help = 'cps : 1 - 10000')
-
-    arg_parser.add_argument('--max_pipeline'
-                                , action="store"
-                                , type=int
-                                , default=100
-                                , help = 'max_pipeline : 1 - 10000')
-
-    arg_parser.add_argument('--max_active'
-                                , action="store"
-                                , type=int
-                                , default=100
-                                , help = 'max_active : 1 - 2000000')
-
-    arg_parser.add_argument('--sslv3'
-                                , action="store_true"
-                                , default=False
-                                , help = '0/1')
-
-    arg_parser.add_argument('--tls1'
-                                , action="store_true"
-                                , default=False
-                                , help = '0/1')
-
-    arg_parser.add_argument('--tls1_1'
-                                , action="store_true"
-                                , default=False
-                                , help = '0/1')
-
-    arg_parser.add_argument('--tls1_2'
-                                , action="store_true"
-                                , default=False
-                                , help = '0/1')
-
-    arg_parser.add_argument('--tls1_3'
-                                , action="store_true"
-                                , default=False
-                                , help = '0/1')
-
+def add_arguments_cb(arg_parser):
     arg_parser.add_argument('--ecdsa_cert'
                                 , action="store_true"
                                 , default=False
                                 , help = '0/1')
 
-    return arg_parser.parse_args()
-
 
 if __name__ == '__main__':
-    CmdArgs = get_command_line_params()
+    CmdArgs = utils.get_arguments("cps test", add_arguments_cb)
 
     cfg_j_pre = '''{
         "zones" : [
@@ -323,10 +268,6 @@ if __name__ == '__main__':
 }'''
 
     cfg_j = ''
-
-    CmdArgs.cps = CmdArgs.cps / CmdArgs.zones
-    CmdArgs.max_active = CmdArgs.max_active / CmdArgs.zones
-    CmdArgs.max_pipeline = CmdArgs.max_pipeline / CmdArgs.zones
     
     for i in range(CmdArgs.zones):
         if i:
@@ -335,38 +276,27 @@ if __name__ == '__main__':
         m = vars (CmdArgs)
         m['zone_id'] = i+1
         m['subnet_id'] = i+1
+        m['sslv3'] = 0
+        m['tls1'] = 0
+        m['tls1_1'] = 0
+        m['tls1_2'] = 0
+        m['tls1_3'] = 0
+        m['server_cert'] = '/rundir/certs/server.cert'
+        m['server_key'] = '/rundir/certs/server.key'
 
         if CmdArgs.sslv3:
             m['sslv3'] = 1
-        else:
-            m['sslv3'] = 0
-
         if CmdArgs.tls1:
             m['tls1'] = 1
-        else:
-            m['tls1'] = 0
-
         if CmdArgs.tls1_1:
             m['tls1_1'] = 1
-        else:
-            m['tls1_1'] = 0
-
         if CmdArgs.tls1_2:
             m['tls1_2'] = 1
-        else:
-            m['tls1_2'] = 0
-
         if CmdArgs.tls1_3:
             m['tls1_3'] = 1
-        else:
-            m['tls1_3'] = 0
-
         if CmdArgs.ecdsa_cert:
             m['server_cert'] = '/rundir/certs/server2.cert'
             m['server_key'] = '/rundir/certs/server2.key'
-        else:
-            m['server_cert'] = '/rundir/certs/server.cert'
-            m['server_key'] = '/rundir/certs/server.key'
 
         cfg_j += cfj_template.format(**m)
 
@@ -375,6 +305,7 @@ if __name__ == '__main__':
     traffic_dir = os.path.join(CmdArgs.rundir
                                 , 'traffic'
                                 , CmdArgs.cfg_id)
+                                
     os.system ( 'rm -rf {}'.format(traffic_dir) )
     os.system ( 'mkdir -p {}'.format(traffic_dir) )
 
