@@ -24,7 +24,6 @@ char cmd_str [MAX_CMD_LEN];
 char cfg_dir [MAX_CONFIG_DIR_PATH];
 char cfg_file [MAX_CONFIG_FILE_PATH];
 char ssh_host_file [MAX_CONFIG_FILE_PATH];
-char tlspack_exe_file [MAX_EXE_FILE_PATH];
 char volume_string [MAX_VOLUME_STRING];
 char result_dir [MAX_RESULT_DIR_PATH];
 char curr_dir_file [MAX_FILE_PATH_LEN];
@@ -243,15 +242,13 @@ static void start_zones (json cfg_json
                     "-o UserKnownHostsFile=/dev/null "
                     "%s@%s "
                     "sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged "
-                    "--name %s -it -d %s tgen /bin/bash",
+                    "--name %s -it -d %s tlspack/tgen:latest /bin/bash",
                     RUN_DIR_PATH,
                     ssh_user.c_str(), ssh_host.c_str(),
                     zone_cname, volume_string);
         }
         else
         {
-            sprintf (tlspack_exe_file, "%sbin/tlspack.exe", RUN_DIR_PATH);
-
             if (is_debug == 2) {
                 sprintf (volume_string,
                             "--volume=%s:%s "
@@ -270,12 +267,12 @@ static void start_zones (json cfg_json
                     "-o StrictHostKeyChecking=no "
                     "-o UserKnownHostsFile=/dev/null "
                     "%s@%s "
-                    "sudo docker run --env LD_LIBRARY_PATH='/root/openssl-1.1.1d/local/lib/' --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged "
-                    "--name %s -it -d %s tgen %s zone %s "
+                    "sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged "
+                    "--name %s -it -d %s tlspack/tgen:latest tlspack.exe zone %s "
                     "%s %d config_zone %d",
                     RUN_DIR_PATH,
                     ssh_user.c_str(), ssh_host.c_str(),
-                    zone_cname, volume_string, tlspack_exe_file, cfg_name,
+                    zone_cname, volume_string, cfg_name,
                     run_tag, z_index, is_debug);
         }
         
