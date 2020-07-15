@@ -5,6 +5,46 @@ import argparse
 import cmds
 import json
 
+supported_ciphers = ["AES128-SHA",	
+"AES256-SHA",	
+"DHE-RSA-AES128-SHA",	
+"DHE-RSA-AES256-SHA",	
+"DHE-RSA-AES128-GCM-SHA256",	
+"ECDHE-ECDSA-AES128-SHA",	
+"ECDHE-ECDSA-AES256-SHA",	
+"ECDHE-RSA-AES128-SHA",	
+"ECDHE-RSA-AES256-SHA",	
+"ECDHE-ECDSA-CHACHA20-POLY1305",	
+"DHE-RSA-CHACHA20-POLY1305",	
+"CAMELLIA128-SHA",	
+"CAMELLIA256-SHA",	
+"DHE-RSA-CAMELLIA128-SHA",	
+"DHE-RSA-CAMELLIA256-SHA",	
+"AES128-SHA256",	
+"AES256-SHA256",	
+"DHE-RSA-AES128-SHA256",	
+"AES128-GCM-SHA256",	
+"AES256-GCM-SHA384",	
+"ECDHE-RSA-AES128-GCM-SHA256",	
+"ECDHE-RSA-AES256-GCM-SHA384",	
+"ECDHE-RSA-AES128-SHA256",	
+"ECDHE-RSA-AES256-SHA384",	
+"DHE-RSA-AES256-SHA256",	
+"DHE-RSA-AES256-GCM-SHA384",	
+"ECDHE-RSA-CHACHA20-POLY1305",	
+"TLS_AES_128_GCM_SHA256",	
+"TLS_AES_256_GCM_SHA384",	
+"TLS_CHACHA20_POLY1305_SHA256",	
+"ECDHE-ECDSA-AES128-GCM-SHA256",	
+"ECDHE-ECDSA-AES256-GCM-SHA384",	
+"ECDHE-ECDSA-AES128-SHA256",	
+"ECDHE-ECDSA-AES256-SHA384",	
+"RC4-MD5",	
+"RC4-SHA",	
+"DES-CBC-SHA",	
+"DES-CBC3-SHA",	
+"SEED-SHA"]
+
 def get_arguments (description, add_arguments_cb):
     arg_parser = argparse.ArgumentParser(description = description)
 
@@ -52,11 +92,6 @@ def get_arguments (description, add_arguments_cb):
                                 , default=host_info['cores']/2
                                 , help = 'zones ')
 
-    arg_parser.add_argument('--cipher'
-                                , action="store"
-                                , help = 'command name'
-                                , required=True)
-
     arg_parser.add_argument('--cps'
                                 , action="store"
                                 , type=int
@@ -74,6 +109,11 @@ def get_arguments (description, add_arguments_cb):
                                 , type=int
                                 , default=100
                                 , help = 'max_active : 1 - 2000000')
+
+    arg_parser.add_argument('--cipher'
+                                , action="store"
+                                , help = 'command name'
+                                , required=True)
 
     arg_parser.add_argument('--sslv3'
                                 , action="store_true"
@@ -112,5 +152,13 @@ def get_arguments (description, add_arguments_cb):
     cmd_args.tls1_1 = 1 if cmd_args.tls1_1 else 0
     cmd_args.tls1_2 = 1 if cmd_args.tls1_2 else 0
     cmd_args.tls1_3 = 1 if cmd_args.tls1_3 else 0
+
+    cmd_args_map = vars (cmd_args)
+    selected_ciphers = map(lambda x : x.strip(), cmd_args.cipher.split(':'))
+    for ciph in supported_ciphers:
+        if ciph in selected_ciphers:
+            cmd_args_map[ciph] = 1
+        else:
+            cmd_args_map[ciph] = 0
 
     return cmd_args
