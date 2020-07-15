@@ -6,13 +6,15 @@ import cmds
 import json
 
 def get_arguments (description, add_arguments_cb):
-    arg_parser 
-        = argparse.ArgumentParser(description = description)
+    arg_parser = argparse.ArgumentParser(description = description)
 
     add_arguments_cb (arg_parser)
 
-    with open('/root/rundir/sys/host') as f:
-        host_info = json.load(f)
+    try:
+        with open('/root/rundir/sys/host') as f:
+            host_info = json.load(f)
+    except IOError:
+            host_info = {'cores' : 40}
 
     arg_parser.add_argument('--rundir'
                                 , action="store"
@@ -104,5 +106,11 @@ def get_arguments (description, add_arguments_cb):
     cmd_args.cps = cmd_args.cps / cmd_args.zones
     cmd_args.max_active = cmd_args.max_active / cmd_args.zones
     cmd_args.max_pipeline = cmd_args.max_pipeline / cmd_args.zones
+
+    cmd_args.sslv3 = 1 if cmd_args.sslv3 else 0
+    cmd_args.tls1 = 1 if cmd_args.tls1 else 0
+    cmd_args.tls1_1 = 1 if cmd_args.tls1_1 else 0
+    cmd_args.tls1_2 = 1 if cmd_args.tls1_2 else 0
+    cmd_args.tls1_3 = 1 if cmd_args.tls1_3 else 0
 
     return cmd_args

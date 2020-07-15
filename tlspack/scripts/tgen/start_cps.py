@@ -275,29 +275,14 @@ if __name__ == '__main__':
             
         m = vars (CmdArgs)
         m['zone_id'] = i+1
-        m['subnet_id'] = i+1
-        m['sslv3'] = 0
-        m['tls1'] = 0
-        m['tls1_1'] = 0
-        m['tls1_2'] = 0
-        m['tls1_3'] = 0
-        m['server_cert'] = '/rundir/certs/server.cert'
-        m['server_key'] = '/rundir/certs/server.key'
-
-        if CmdArgs.sslv3:
-            m['sslv3'] = 1
-        if CmdArgs.tls1:
-            m['tls1'] = 1
-        if CmdArgs.tls1_1:
-            m['tls1_1'] = 1
-        if CmdArgs.tls1_2:
-            m['tls1_2'] = 1
-        if CmdArgs.tls1_3:
-            m['tls1_3'] = 1
+        m['subnet_id'] = i+1        
         if CmdArgs.ecdsa_cert:
             m['server_cert'] = '/rundir/certs/server2.cert'
             m['server_key'] = '/rundir/certs/server2.key'
-
+        else:
+            m['server_cert'] = '/rundir/certs/server.cert'
+            m['server_key'] = '/rundir/certs/server.key'
+            
         cfg_j += cfj_template.format(**m)
 
     cfg_j = cfg_j_pre + cfg_j + cfg_j_post
