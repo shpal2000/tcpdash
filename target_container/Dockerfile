@@ -15,6 +15,7 @@ RUN apt-get update \
     && apt-get -yq install build-essential cmake cppcheck valgrind \
     #
     && apt-get -yq install iputils-ping netcat tcpdump \
+    && mv /usr/sbin/tcpdump /usr/bin/tcpdump \
     #
     && apt-get -yq install pkg-config \
     && apt-get -yq install python3-pip meson curl \
