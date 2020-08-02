@@ -579,11 +579,16 @@ int main(int /*argc*/, char **argv)
         OpenSSL_add_ssl_algorithms ();
         SSL_load_error_strings ();
 
+        sprintf (curr_dir_file,
+                "%s%s/"
+                "init.pcap",
+                result_dir, zone_label.c_str());
+
         auto iface = cfg_json["zones"][z_index]["iface"].get<std::string>();
         auto tcpdump_s = cfg_json["zones"][z_index]["tcpdump"].get<std::string>();
         sprintf (cmd_str,
-            "tcpdump -i %s -n %s -w /rundir/bin/%s.pcap&",
-                iface.c_str(), tcpdump_s.c_str(), zone_cname);
+            "tcpdump -i %s -n %s -w %s&",
+                iface.c_str(), tcpdump_s.c_str(), curr_dir_file);
         system_cmd ("tcpdump start", cmd_str);
 
         std::this_thread::sleep_for(std::chrono::seconds(8));
