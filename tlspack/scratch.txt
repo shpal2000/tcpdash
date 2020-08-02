@@ -1,0 +1,48 @@
+##############################steps to build##############################
+cd /
+git config --global user.email shpal2000@gmail.com
+git clone https://github.com/shpal2000/tcpdash.git
+cd /tcpdash/ev_sock/
+meson build
+cd build
+ninja install
+cd ../../tlspack/
+mkdir subprojects
+cd subprojects/
+git clone https://github.com/nlohmann/json.git
+cd ..
+meson build
+cd build
+ninja
+
+##############################copy to imgdir##############################
+cp -f /openssl-1.1.1d/libcrypto.so.1.1 /imgdir
+cp -f /openssl-1.1.1d/libssl.so.1.1 /imgdir
+cp -f /openssl-1.1.1d/apps/openssl /imgdir
+cp -f /tcpdash/tlspack/build/tlspack.exe /imgdir
+cp -f /tcpdash/target_container/Dockerfile /imgdir
+cp -f /tcpdash/tcpdash.conf /imgdir
+
+##############################projects.json##############################
+[
+	{
+		"name": "openssl-1.1.1d",
+		"rootPath": "/openssl-1.1.1d",
+		"paths": [],
+		"group": "",
+		"enabled": true
+	},
+
+	{
+		"name": "tcpdash",
+		"rootPath": "/tcpdash",
+		"paths": [],
+		"group": "",
+		"enabled": true
+	}
+]
+
+##############################docker load tar ##############################
+sudo docker image save tgen:1.0.0 --output tgen.1.0.0.tz 
+sudo docker load --input tgen.1.0.0.tz
+
