@@ -523,7 +523,7 @@ int main(int /*argc*/, char **argv)
         int is_debug = atoi (argv[5]);
         char* host_src_dir = argv[6];
         
-        sprintf (result_dir, "%straffic/%s/%s/%s", RUN_DIR_PATH, cfg_name
+        sprintf (result_dir, "%straffic/%s/%s/%s/", RUN_DIR_PATH, cfg_name
                                                     , "results", run_tag);
 
         if ( is_registry_entry_exit() )
@@ -566,7 +566,7 @@ int main(int /*argc*/, char **argv)
 
         sprintf (zone_cname, "%s-%s", cfg_name, zone_label.c_str());
 
-        sprintf (result_dir, "%straffic/%s/%s/%s", RUN_DIR_PATH, cfg_name
+        sprintf (result_dir, "%straffic/%s/%s/%s/", RUN_DIR_PATH, cfg_name
                                                     , "results", run_tag);
         
         if ( strcmp(config_zone_flag, "config_zone") == 0 )
