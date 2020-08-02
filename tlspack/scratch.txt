@@ -23,6 +23,20 @@ cp -f /tcpdash/tlspack/build/tlspack.exe /imgdir
 cp -f /tcpdash/target_container/Dockerfile /imgdir
 cp -f /tcpdash/tcpdash.conf /imgdir
 
+##############################  from local laptp ##############################
+ssh shirish@shirish-u18.eastus.cloudapp.azure.com
+cd ~/tgen/imgdir
+sudo docker image build --tag tgen:latest .
+sudo docker images 
+#get the image ID; use below to tag
+sudo docker tag cacf635692ed tlspack/tgen:latest
+#push to docker hub
+sudo docker push tlspack/tgen
+
+##############################  on the ubuntu / traffic gen vm ################
+docker pull tlspack/tgen:latest
+
+
 ##############################projects.json##############################
 [
 	{
@@ -42,7 +56,8 @@ cp -f /tcpdash/tcpdash.conf /imgdir
 	}
 ]
 
-##############################docker load tar ##############################
+
+
+##############################docker load tar (this step not used; use docker hub to push and pull) ##############################
 sudo docker image save tgen:1.0.0 --output tgen.1.0.0.tz 
 sudo docker load --input tgen.1.0.0.tz
-
