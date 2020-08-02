@@ -23,6 +23,15 @@ cp -f /tcpdash/tlspack/build/tlspack.exe /imgdir
 cp -f /tcpdash/target_container/Dockerfile /imgdir
 cp -f /tcpdash/tcpdash.conf /imgdir
 
+#####on dev laptop####
+ssh shirish@shirish-u18.eastus.cloudapp.azure.com
+cd tgen/imgdir/
+sudo docker image build --tag tgen:latest .
+sudo docker image ls
+sudo docker tag f6d60287f364 tlspack/tgen:latest
+sudo docker push tlspack/tgen
+
+
 ##############################projects.json##############################
 [
 	{
