@@ -194,7 +194,11 @@ void tls_server_socket::on_write ()
             next_chunk = next_chunk_target;
         }
 
-        write_next_data (m_app->m_write_buffer, 0, next_chunk, true);
+        if ( next_chunk > m_srv_grp->m_write_buffer_len){
+            next_chunk = m_srv_grp->m_write_buffer_len;
+        }
+
+        write_next_data (m_srv_grp->m_write_buffer, 0, next_chunk, true);
     } else {
         disable_wr_notification ();
     }
@@ -231,7 +235,7 @@ void tls_server_socket::on_wstatus (int bytes_written, int write_status)
 void tls_server_socket::on_read ()
 {
     // printf ("on_read\n");
-    read_next_data (m_app->m_read_buffer, 0, MAX_READ_BUFFER_LEN, true);
+    read_next_data (m_srv_grp->m_read_buffer, 0, m_srv_grp->m_read_buffer_len, true);
 }
 
 void tls_server_socket::on_rstatus (int bytes_read, int read_status)

@@ -1,7 +1,8 @@
 #include "app.hpp"
 
-#define MAX_READ_BUFFER_LEN 100000
-#define MAX_WRITE_BUFFER_LEN 100000
+#define DEFAULT_WRITE_CHUNK 1200
+#define DEFAULT_WRITE_BUFF_LEN 1000000
+#define DEFAULT_READ_BUFF_LEN 1000000
 
 class tls_client_cs_grp : public ev_app_cs_grp 
 {
@@ -22,7 +23,22 @@ public:
         const char* close_notify = jcfg["close_notify"].get<std::string>().c_str();
 
         m_write_chunk = jcfg["write_chunk"].get<int>();
+        if (m_write_chunk == 0){
+            m_write_chunk = DEFAULT_WRITE_CHUNK;
+        }
 
+        m_write_buffer_len = jcfg["app_snd_buff"].get<uint32_t>();
+        if (m_write_buffer_len == 0) {
+            m_write_buffer_len = DEFAULT_WRITE_BUFF_LEN;
+        }
+        m_write_buffer = (char*) malloc (m_write_buffer_len);
+
+        m_read_buffer_len = jcfg["app_rcv_buff"].get<uint32_t>();
+        if (m_read_buffer_len == 0) {
+            m_read_buffer_len = DEFAULT_READ_BUFF_LEN;
+        }
+        m_read_buffer = (char*) malloc (m_read_buffer_len);
+        
         if (strcmp(close_type, "fin") == 0) {
             m_close = close_fin;
         } else if (strcmp(close_type, "reset") == 0) {
@@ -65,7 +81,11 @@ public:
     int m_sc_start_tls_len;
 
     int m_write_chunk;
-    
+    char* m_read_buffer;
+    char* m_write_buffer;
+    int m_read_buffer_len;
+    int m_write_buffer_len;
+
     std::string m_cipher;
     std::string m_cipher2;
     enum_close_type m_close;
@@ -111,8 +131,6 @@ public:
     void free_socket(ev_socket* ev_sock);
 
 public:
-    char m_read_buffer[MAX_READ_BUFFER_LEN];
-    char m_write_buffer[MAX_WRITE_BUFFER_LEN];
     std::vector<tls_client_cs_grp*> m_cs_groups;
     int m_cs_group_index;
     int m_cs_group_count;
