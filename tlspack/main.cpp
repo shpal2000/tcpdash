@@ -246,6 +246,7 @@ static void start_zones (json cfg_json
                     RUN_DIR_PATH,
                     ssh_user.c_str(), ssh_host.c_str(),
                     zone_cname, volume_string);
+            system_cmd ("zone start", cmd_str);
         }
         else
         {
@@ -268,16 +269,43 @@ static void start_zones (json cfg_json
                     "-o UserKnownHostsFile=/dev/null "
                     "%s@%s "
                     "sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged "
-                    "--name %s -it -d %s tlspack/tgen:latest tlspack.exe zone %s "
+                    "--name %s -it -d %s tlspack/tgen:latest /bin/bash",
+                    RUN_DIR_PATH,
+                    ssh_user.c_str(), ssh_host.c_str(),
+                    zone_cname, volume_string);
+            system_cmd ("zone bash run", cmd_str);
+
+            sprintf (cmd_str,
+                    "ssh -i %ssys/id_rsa -tt "
+                    // "-o LogLevel=quiet "
+                    "-o StrictHostKeyChecking=no "
+                    "-o UserKnownHostsFile=/dev/null "
+                    "%s@%s "
+                    "sudo docker exec -d %s "
+                    "cp -f /usr/local/bin/tlspack.exe /usr/local/bin/%s.exe",
+                    RUN_DIR_PATH,
+                    ssh_user.c_str(), ssh_host.c_str(),
+                    zone_cname,
+                    zone_cname);
+            system_cmd ("zone exe rename", cmd_str);
+
+            sprintf (cmd_str,
+                    "ssh -i %ssys/id_rsa -tt "
+                    // "-o LogLevel=quiet "
+                    "-o StrictHostKeyChecking=no "
+                    "-o UserKnownHostsFile=/dev/null "
+                    "%s@%s "
+                    "sudo docker exec -d %s "
+                    "%s.exe zone %s "
                     "%s %d config_zone %d",
                     RUN_DIR_PATH,
                     ssh_user.c_str(), ssh_host.c_str(),
-                    zone_cname, volume_string, cfg_name,
+                    zone_cname,
+                    zone_cname, cfg_name,
                     run_tag, z_index, is_debug);
+            system_cmd ("zone start", cmd_str);
         }
         
-        system_cmd ("zone start", cmd_str);
-
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 }
