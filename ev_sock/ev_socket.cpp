@@ -388,6 +388,23 @@ int ev_socket::tcp_connect (epoll_ctx* epoll_ctxp
         inc_stats (socketCreate);
         set_state (STATE_TCP_SOCK_CREATE);
 
+        int tmp_op;
+        
+        tmp_op = 1;
+        setsockopt(m_fd, SOL_SOCKET, SO_KEEPALIVE, &tmp_op, sizeof(int));
+        
+        tmp_op = 3;
+        setsockopt(m_fd, SOL_TCP, TCP_KEEPCNT, &tmp_op, sizeof(int));
+
+        tmp_op = 5;
+        setsockopt(m_fd, SOL_TCP, TCP_KEEPIDLE, &tmp_op, sizeof(int));
+
+        tmp_op = 1;
+        setsockopt(m_fd, SOL_TCP, TCP_KEEPINTVL, &tmp_op, sizeof(int));
+
+        tmp_op = 5000;
+        setsockopt(m_fd, SOL_TCP, TCP_USER_TIMEOUT, &tmp_op, sizeof(int));
+
         int so_status = 0;
         if (m_sock_opt->rcv_buff_len) {
             so_status = setsockopt(m_fd
@@ -852,6 +869,23 @@ void ev_socket::tcp_accept (ev_socket* ev_sock_parent)
         //??? is it necessary
         // int recv_size = 1024 * 128;
         // setsockopt(m_fd, SOL_SOCKET, SO_RCVBUF, &recv_size, sizeof(int));
+
+        int tmp_op;
+
+        tmp_op = 1;
+        setsockopt(m_fd, SOL_SOCKET, SO_KEEPALIVE, &tmp_op, sizeof(int));
+        
+        tmp_op = 3;
+        setsockopt(m_fd, SOL_TCP, TCP_KEEPCNT, &tmp_op, sizeof(int));
+
+        tmp_op = 5;
+        setsockopt(m_fd, SOL_TCP, TCP_KEEPIDLE, &tmp_op, sizeof(int));
+
+        tmp_op = 1;
+        setsockopt(m_fd, SOL_TCP, TCP_KEEPINTVL, &tmp_op, sizeof(int));
+
+        tmp_op = 5000;
+        setsockopt(m_fd, SOL_TCP, TCP_USER_TIMEOUT, &tmp_op, sizeof(int));
 
         int so_op = 1;
         int ret = setsockopt(m_fd, SOL_SOCKET
