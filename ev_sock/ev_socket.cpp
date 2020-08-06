@@ -835,9 +835,10 @@ void ev_socket::tcp_accept (ev_socket* ev_sock_parent)
                     , sizeof (ev_sockaddr));
 
     socklen_t addrLen = sizeof (ev_sockaddr);
-    m_fd = accept(ev_sock_parent->m_fd
+    m_fd = accept4(ev_sock_parent->m_fd
                     , (struct sockaddr *) &m_remote_addr
-                    , &addrLen);
+                    , &addrLen
+                    , SOCK_NONBLOCK);
     
     if (m_fd < 0) {
         inc_stats (tcpAcceptFail);
