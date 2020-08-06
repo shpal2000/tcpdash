@@ -270,13 +270,13 @@ public:
                                 (m_app_stats->tcpConnInitSuccess
                                 + m_app_stats->tcpConnInitFail);
 
-            if (tcp_pending <= m_client_max_pending_conn_count ) {
+            if ((m_client_max_pending_conn_count == 0) || (tcp_pending <= m_client_max_pending_conn_count) ) {
                 auto t = std::chrono::steady_clock::now();
                 auto span = std::chrono::duration_cast<std::chrono::nanoseconds>
                                                 (t - m_conn_init_time).count();
                 uint64_t c = (m_client_cps * span) / 1000000000;
                 if (c > m_client_curr_conn_count && 
-                    m_app_stats->tcpActiveConns < m_client_max_active_conn_count) {
+                    ((m_client_max_active_conn_count == 0) || (m_app_stats->tcpActiveConns < m_client_max_active_conn_count)) ) {
                     n = 1;
                 }
             }
