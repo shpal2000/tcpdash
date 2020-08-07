@@ -205,6 +205,7 @@ struct ev_sockstats_data
     uint64_t socketConnectEstablishFail2;    
 
     uint64_t tcpConnInit;
+    uint64_t tcpConnInitInUse;
     uint64_t tcpConnInitInSec;
     uint64_t tcpConnInitRate;
     uint64_t tcpConnInitSuccess;

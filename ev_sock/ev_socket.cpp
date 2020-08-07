@@ -360,6 +360,7 @@ int ev_socket::tcp_connect (epoll_ctx* epoll_ctxp
 {
     //socket stats
     inc_stats (tcpConnInit);
+    inc_stats (tcpConnInitInUse);
     inc_stats (tcpConnInitInSec);
 
     //socket contexts
@@ -556,6 +557,7 @@ int ev_socket::tcp_connect (epoll_ctx* epoll_ctxp
     {
         ret_status = -1;
         inc_stats (tcpConnInitFail);
+        dec_stats (tcpConnInitInUse);
 
         if (m_fd != -1){
             tcp_close();
@@ -755,6 +757,7 @@ void ev_socket::tcp_verify_established ()
         set_error_state (STATE_TCP_SOCK_CONNECT_FAIL);
         set_socket_errno (socketErr);
         inc_stats (tcpConnInitFail);
+        dec_stats (tcpConnInitInUse);
     }
 }
 
@@ -785,6 +788,9 @@ void ev_socket::tcp_close (int isLinger, int lingerTime) {
 
     if (is_set_state (STATE_TCP_CONN_ESTABLISHED)) {
         dec_stats (tcpActiveConns);
+        if (is_set_state (STATE_TCP_CONN_INIT)) {
+            dec_stats (tcpConnInitInUse);
+        }
     }
 }
 
