@@ -119,11 +119,15 @@ private:
     ev_socket_opt m_sock_opt;
 };
 
+class tp_session;
 class tp_socket : public ev_socket
 {
 public:
     tp_socket()
     {
+        m_app = nullptr;
+        m_lsock = nullptr;
+        m_session = nullptr;
     };
 
     virtual ~tp_socket()
@@ -141,6 +145,7 @@ public:
 public:
     tp_app* m_app;
     tp_socket* m_lsock;
+    tp_session* m_session;
 };
 
 class tp_session
@@ -149,7 +154,8 @@ public:
 
     tp_session(tp_socket* server_sock)
     {
-
+        m_server_sock = server_sock;
+        m_client_sock = nullptr;
     }
 
     ~tp_session()

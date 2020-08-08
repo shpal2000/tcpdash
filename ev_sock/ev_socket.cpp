@@ -853,9 +853,6 @@ void ev_socket::tcp_accept (ev_socket* ev_sock_parent)
     set_state (STATE_TCP_CONN_ACCEPT);
     m_epoll_ctx = ev_sock_parent->m_epoll_ctx;
     m_parent = ev_sock_parent;
-    std::memcpy (&m_local_addr
-                    , &ev_sock_parent->m_local_addr
-                    , sizeof (ev_sockaddr));
 
     socklen_t addrLen = sizeof (ev_sockaddr);
     m_fd = accept4(ev_sock_parent->m_fd
@@ -902,6 +899,13 @@ void ev_socket::tcp_accept (ev_socket* ev_sock_parent)
         } else {
             inc_stats (socketReuseSet);
             set_state (STATE_TCP_SOCK_REUSE);
+        }
+
+        socklen_t addr_len = sizeof (ev_sockaddr);
+        ret = getsockname(m_fd, (struct sockaddr*) &m_local_addr, &addr_len);
+        if (ret < 0){
+            inc_stats (tcpGetSockNameFail);
+            set_error_state (STATE_TCP_GETSOCKNAME_FAIL);
         }
     }
 

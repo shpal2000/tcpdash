@@ -52,6 +52,18 @@ void tp_socket::on_establish ()
     // printf ("on_establish\n");
     m_lsock = (tp_socket*) get_parent();
     m_app = m_lsock->m_app;
+
+    if (m_session == nullptr)
+    {
+        // m_session = tp_session(this);
+
+        tp_socket* client_socket 
+                = (tp_socket*) new_tcp_connect (&client_addr->m_addr
+                                            , cs_grp->get_server_addr()
+                                            , cs_grp->m_stats_arr
+                                            , client_addr->m_portq
+                                            , &cs_grp->m_sock_opt);
+    }
 }
 
 void tp_socket::on_write ()
