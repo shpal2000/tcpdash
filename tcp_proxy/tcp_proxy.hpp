@@ -115,6 +115,7 @@ public:
 private:
     ev_sockaddr m_listen_addr;
     tp_stats* m_app_stats;
+public:
     std::vector<ev_sockstats*> *m_app_stats_arr;
     ev_socket_opt m_sock_opt;
 };
@@ -163,7 +164,7 @@ public:
 
     }
     
-private:
+public:
     tp_socket* m_server_sock;
     tp_socket* m_client_sock;
 };

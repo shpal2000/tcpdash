@@ -7,6 +7,10 @@ tp_app::tp_app(json app_json, tp_stats* app_stats)
     m_app_stats = app_stats;
     m_app_stats_arr->push_back (app_stats);
 
+    //todo
+    m_sock_opt.rcv_buff_len = 0;
+    m_sock_opt.snd_buff_len = 0;
+
     tp_socket* srv_socket 
         = (tp_socket*) new_tcp_listen (&m_listen_addr
                                                 , 10000
@@ -49,20 +53,42 @@ void tp_app::free_socket(ev_socket* ev_sock)
 
 void tp_socket::on_establish ()
 {
-    // printf ("on_establish\n");
     m_lsock = (tp_socket*) get_parent();
     m_app = m_lsock->m_app;
 
-    if (m_session == nullptr)
+    if (m_session == nullptr) // accepted socket; new session
     {
-        // m_session = tp_session(this);
+        // printf ("on_establish - server\n");
 
-        tp_socket* client_socket 
-                = (tp_socket*) new_tcp_connect (&client_addr->m_addr
-                                            , cs_grp->get_server_addr()
-                                            , cs_grp->m_stats_arr
-                                            , client_addr->m_portq
-                                            , &cs_grp->m_sock_opt);
+        m_session = new tp_session(this);
+
+        if (m_session)
+        {
+            tp_socket* client_socket 
+                    = (tp_socket*) m_app->new_tcp_connect (get_remote_addr()
+                                                        , get_local_addr()
+                                                        , m_app->m_app_stats_arr
+                                                        , NULL
+                                                        , &m_app->m_sock_opt);
+            if (client_socket)
+            {
+                //todo
+            }
+            else
+            {
+                //todo error handling
+            }
+        }
+        else
+        {
+            //todo error handling
+        }
+    }
+    else //client session
+    {
+        // printf ("on_establish - client\n");
+
+        m_session->m_client_sock = this;
     }
 }
 

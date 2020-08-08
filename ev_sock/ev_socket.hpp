@@ -464,6 +464,16 @@ public:
         m_ssl_errno = ssl_errno;
     };
 
+    ev_sockaddr* get_local_addr()
+    {
+        return &m_local_addr;
+    }
+
+    ev_sockaddr* get_remote_addr()
+    {
+        return &m_remote_addr;
+    }
+
 private:
     void init ();
     void set_ssl (SSL* ssl)
