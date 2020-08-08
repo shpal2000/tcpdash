@@ -104,7 +104,7 @@ struct tp_stats : tp_stats_data
 class tp_app : public ev_app
 {
 public:
-    tp_app(json app_json);
+    tp_app(json app_json, tp_stats* app_stats);
     ~tp_app();
 
     void run_iter(bool tick_sec);
@@ -112,7 +112,11 @@ public:
     ev_socket* alloc_socket();
     void free_socket(ev_socket* ev_sock);
 
-public:
+private:
+    ev_sockaddr m_listen_addr;
+    tp_stats* m_app_stats;
+    std::vector<ev_sockstats*> *m_app_stats_arr;
+    ev_socket_opt m_sock_opt;
 };
 
 class tp_socket : public ev_socket
@@ -135,6 +139,8 @@ public:
     void on_finish ();
 
 public:
+    tp_app* m_app;
+    tp_socket* m_lsock;
 };
 
 class tp_session
