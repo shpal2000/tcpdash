@@ -50,6 +50,254 @@ static void dump_stats (const char* stats_file, app_stats* stats)
     stats_stream << j << std::endl;
 }
 
+static bool is_registry_entry_exit (/*json cfg_json
+                                    , char* cfg_name*/)
+{
+    sprintf (curr_dir_file, "%stag.txt", registry_dir);
+    std::ifstream i_tagfile(curr_dir_file);
+    return i_tagfile.good ();
+}
+
+static void create_registry_entry (json cfg_json
+                                    , char* run_tag)
+{
+    //create registry dir
+    sprintf (cmd_str, "mkdir %s", registry_dir); 
+    system_cmd ("create registry dir", cmd_str);
+
+    sprintf (curr_dir_file, "%stag.txt", registry_dir);
+    std::ofstream o_tagfile(curr_dir_file);
+    o_tagfile << run_tag;
+
+    auto z_list = cfg_json["zones"];
+    for (auto z_it = z_list.begin(); z_it != z_list.end(); ++z_it)
+    {
+        int zone_enabe = z_it.value()["enable"].get<int>();
+        if (zone_enabe == 0) {
+            continue;
+        }
+
+        bool is_app_enable = false;
+        auto a_list = z_it.value()["app_list"];
+        for (auto a_it = a_list.begin(); a_it != a_list.end(); ++a_it) {
+            auto app_json = a_it.value ();
+            int app_enable = app_json["enable"].get<int>();
+            if (app_enable) {
+                is_app_enable = true;
+                break;
+            }
+        }
+
+        if (not is_app_enable) {
+            continue;
+        }
+
+        auto zone_label = z_it.value()["zone_label"].get<std::string>();
+        sprintf (curr_dir_file, "%s%s", registry_dir, zone_label.c_str());
+        std::ofstream f(curr_dir_file);
+        f << "0";
+    }
+
+    sprintf (curr_dir_file, "%smaster", registry_dir);
+    std::ofstream o_progress_master(curr_dir_file);
+    o_progress_master << "0";
+}
+
+static void remove_registry_entry (/*json cfg_json
+                                    , char* cfg_name*/)
+{
+    //remove registry dir
+    sprintf (cmd_str, "rm -rf %s", registry_dir); 
+    system_cmd ("delete registry dir", cmd_str);
+}
+
+static void create_result_entry (json cfg_json)
+{
+    //remove result dir
+    sprintf (cmd_str, "rm -rf %s", result_dir); 
+    system_cmd ("remove result dir if exist", cmd_str);
+
+    //create result dir
+    sprintf (cmd_str, "mkdir -p %s", result_dir); 
+    system_cmd ("create result dir", cmd_str);
+
+    //create zone dirs
+    auto z_list = cfg_json["zones"];
+    for (auto z_it = z_list.begin(); z_it != z_list.end(); ++z_it)
+    {
+        auto zone = z_it.value ();
+        int zone_enabe = zone["enable"].get<int>();
+        if (zone_enabe == 0) {
+            continue;
+        }
+
+        auto zone_label = zone ["zone_label"].get<std::string>();
+        
+        sprintf (curr_dir_file, "%s%s", result_dir, zone_label.c_str());
+        sprintf (cmd_str, "mkdir %s", curr_dir_file);
+        system_cmd ("create zone dir", cmd_str);
+    }
+}
+
+
+static void start_zones (json cfg_json
+                            , char* cfg_name
+                            , char* run_tag
+                            , char* host_run_dir
+                            , int is_debug
+                            , char* host_src_dir)
+{
+    sprintf (ssh_host_file, "%ssys/host", RUN_DIR_PATH);
+    std::ifstream ssh_host_stream(ssh_host_file);
+    json ssh_host_json = json::parse(ssh_host_stream);
+    auto ssh_host = ssh_host_json["host"].get<std::string>();
+    auto ssh_user = ssh_host_json["user"].get<std::string>();
+    auto ssh_pass = ssh_host_json["pass"].get<std::string>();
+
+    //launch containers
+    auto z_list = cfg_json["zones"];
+    int z_index = -1;
+    for (auto z_it = z_list.begin(); z_it != z_list.end(); ++z_it)
+    {
+        z_index++;
+        int zone_enabe = z_it.value()["enable"].get<int>();
+        if (zone_enabe == 0) {
+            continue;
+        }
+
+        auto zone_label = z_it.value()["zone_label"].get<std::string>();
+        sprintf (zone_cname, "%s-%s", cfg_name, zone_label.c_str());
+
+        if (is_debug == 1)
+        {
+            sprintf (volume_string,
+                        "--volume=%s:%s "
+                        "--volume=%s:%s", 
+                        host_run_dir, RUN_DIR_PATH,
+                        host_src_dir, SRC_DIR_PATH);
+
+            sprintf (cmd_str,
+                    "ssh -i %ssys/id_rsa -tt "
+                    // "-o LogLevel=quiet "
+                    "-o StrictHostKeyChecking=no "
+                    "-o UserKnownHostsFile=/dev/null "
+                    "%s@%s "
+                    "sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged "
+                    "--name %s -it -d %s tlspack/tgen:latest /bin/bash",
+                    RUN_DIR_PATH,
+                    ssh_user.c_str(), ssh_host.c_str(),
+                    zone_cname, volume_string);
+            system_cmd ("zone start", cmd_str);
+        }
+        else
+        {
+            if (is_debug == 2) {
+                sprintf (volume_string,
+                            "--volume=%s:%s "
+                            "--volume=%s:%s", 
+                            host_run_dir, RUN_DIR_PATH,
+                            host_src_dir, SRC_DIR_PATH);
+            } else {
+                sprintf (volume_string
+                            , "--volume=%s:%s"
+                            , host_run_dir, RUN_DIR_PATH);
+            }
+
+            sprintf (cmd_str,
+                    "ssh -i %ssys/id_rsa -tt "
+                    // "-o LogLevel=quiet "
+                    "-o StrictHostKeyChecking=no "
+                    "-o UserKnownHostsFile=/dev/null "
+                    "%s@%s "
+                    "sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged "
+                    "--name %s -it -d %s tlspack/tgen:latest /bin/bash",
+                    RUN_DIR_PATH,
+                    ssh_user.c_str(), ssh_host.c_str(),
+                    zone_cname, volume_string);
+            system_cmd ("zone bash run", cmd_str);
+
+            sprintf (cmd_str,
+                    "ssh -i %ssys/id_rsa -tt "
+                    // "-o LogLevel=quiet "
+                    "-o StrictHostKeyChecking=no "
+                    "-o UserKnownHostsFile=/dev/null "
+                    "%s@%s "
+                    "sudo docker exec -d %s "
+                    "cp -f /usr/local/bin/tcp_proxy.exe /usr/local/bin/%s.exe",
+                    RUN_DIR_PATH,
+                    ssh_user.c_str(), ssh_host.c_str(),
+                    zone_cname,
+                    zone_cname);
+            system_cmd ("zone exe rename", cmd_str);
+
+            sprintf (cmd_str,
+                    "ssh -i %ssys/id_rsa -tt "
+                    // "-o LogLevel=quiet "
+                    "-o StrictHostKeyChecking=no "
+                    "-o UserKnownHostsFile=/dev/null "
+                    "%s@%s "
+                    "sudo docker exec -d %s "
+                    "%s.exe zone %s "
+                    "%s %d config_zone %d",
+                    RUN_DIR_PATH,
+                    ssh_user.c_str(), ssh_host.c_str(),
+                    zone_cname,
+                    zone_cname, cfg_name,
+                    run_tag, z_index, is_debug);
+            system_cmd ("zone start", cmd_str);
+        }
+        
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+}
+
+static void stop_zones (json cfg_json
+                            , char* cfg_name)
+{
+    sprintf (ssh_host_file, "%ssys/host", RUN_DIR_PATH);
+    std::ifstream ssh_host_stream(ssh_host_file);
+    json ssh_host_json = json::parse(ssh_host_stream);
+    auto ssh_host = ssh_host_json["host"].get<std::string>();
+    auto ssh_user = ssh_host_json["user"].get<std::string>();
+    auto ssh_pass = ssh_host_json["pass"].get<std::string>();
+
+    auto z_list = cfg_json["zones"];
+    int z_index = -1;
+    std::string c_list = "";
+    for (auto z_it = z_list.begin(); z_it != z_list.end(); ++z_it)
+    {
+        z_index++;
+        int zone_enabe = z_it.value()["enable"].get<int>();
+        if (zone_enabe == 0) {
+            continue;
+        }
+
+        auto zone_label = z_it.value()["zone_label"].get<std::string>();
+        sprintf (zone_cname, "%s-%s", cfg_name, zone_label.c_str());
+
+        c_list.append (" ");
+        c_list.append (zone_cname);
+    }
+
+    sprintf (zone_cname, "%s-root", cfg_name);
+    c_list.append (" ");
+    c_list.append (zone_cname);
+
+    sprintf (cmd_str,
+                "ssh -i %ssys/id_rsa -tt "
+                // "-o LogLevel=quiet "
+                "-o StrictHostKeyChecking=no "
+                "-o UserKnownHostsFile=/dev/null "
+                "%s@%s "
+                "sudo docker rm -f %s",
+                RUN_DIR_PATH,
+                ssh_user.c_str(), ssh_host.c_str(),
+                c_list.c_str ());
+    system_cmd ("zone stop", cmd_str);
+
+    remove_registry_entry ();
+}
+
 static void config_zone (json cfg_json
                             , char* cfg_name
                             , int z_index)
@@ -444,11 +692,41 @@ int main(int /*argc*/, char **argv)
 
     if (strcmp(mode, "start") == 0)
     {
+        char* run_tag = argv[3];
+        char* host_run_dir = argv[4];
+        int is_debug = atoi (argv[5]);
+        char* host_src_dir = argv[6];
+        
+        sprintf (result_dir, "%straffic/%s/%s/%s/", RUN_DIR_PATH, cfg_name
+                                                    , "results", run_tag);
 
+        if ( is_registry_entry_exit() )
+        {
+            printf ("%s running : stop before starting again\n", cfg_name);
+            exit (-1);
+        }
+
+        create_registry_entry (cfg_json, run_tag);
+
+        create_result_entry (cfg_json);
+
+        start_zones (cfg_json, cfg_name, run_tag, host_run_dir
+                                        , is_debug, host_src_dir);
+
+        while (1)
+        {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
     }
     else if (strcmp(mode, "stop") == 0)
     {
+        if ( not is_registry_entry_exit() )
+        {
+            printf ("%s not running\n", cfg_name);
+            exit (-1);
+        }
 
+        stop_zones (cfg_json, cfg_name);
     }
     else //zone
     {
