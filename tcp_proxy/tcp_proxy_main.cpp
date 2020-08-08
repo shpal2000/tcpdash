@@ -102,6 +102,8 @@ static tp_app* create_app (json cfg_json, int z_index)
 
     zone_tp_stats = new tp_stats();
     tp_app* the_app = new tp_app (app_json, zone_tp_stats);
+
+    return the_app;
 }
 
 static void update_registry_state (const char* registry_file, int state)
