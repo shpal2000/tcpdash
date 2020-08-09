@@ -334,8 +334,8 @@ static void config_zone (json cfg_json
         auto tb_netmask = cfg_json["zones"][z_index]["tb_netmask"].get<std::string>();
         auto tb_gateway = cfg_json["zones"][z_index]["tb_gateway"].get<std::string>();
 
-        auto proxy_traffic_port = cfg_json["zones"][z_index]["proxy_traffic_port"].get<std::string>();
-        auto proxy_app_port = cfg_json["zones"][z_index]["proxy_app_port"].get<std::string>();
+        int proxy_traffic_port = cfg_json["zones"][z_index]["proxy_traffic_port"].get<int>();
+        int proxy_app_port = cfg_json["zones"][z_index]["proxy_app_port"].get<int>();
 
 
         //connect to docker network
@@ -368,26 +368,12 @@ static void config_zone (json cfg_json
 
         //set ip address
         sprintf (cmd_str,
-                "ssh -i %ssys/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
-                "sudo ifconfig %s %s up",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str(),
+                "ifconfig %s %s up",
                 ta_iface.c_str(), ta_ip.c_str());
         system_cmd ("set ip address", cmd_str);
 
         sprintf (cmd_str,
-                "ssh -i %ssys/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
-                "sudo ifconfig %s %s up",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str(),
+                "ifconfig %s %s up",
                 tb_iface.c_str(), tb_ip.c_str());
         system_cmd ("set ip address", cmd_str);
 
@@ -396,26 +382,12 @@ static void config_zone (json cfg_json
 
         //set mac address
         sprintf (cmd_str,
-                "ssh -i %ssys/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
-                "sudo ifconfig %s hw ether %s",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str(),
+                "ifconfig %s hw ether %s",
                 ta_iface.c_str(), ta_mac.c_str());
         system_cmd ("set mac address", cmd_str);
 
         sprintf (cmd_str,
-                "ssh -i %ssys/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
-                "sudo ifconfig %s hw ether %s",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str(),
+                "ifconfig %s hw ether %s",
                 tb_iface.c_str(), tb_mac.c_str());
         system_cmd ("set mac address", cmd_str);
 
@@ -424,26 +396,12 @@ static void config_zone (json cfg_json
 
         //static mac address for the gateway
         sprintf (cmd_str,
-                "ssh -i %ssys/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
-                "sudo arp -i %s -s %s %s",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str(),
+                "arp -i %s -s %s %s",
                 ta_iface.c_str(), ta_gateway.c_str(), tb_mac.c_str());
         system_cmd ("static mac address for the gateway", cmd_str);
 
         sprintf (cmd_str,
-                "ssh -i %ssys/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
-                "sudo arp -i %s -s %s %s",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str(),
+                "arp -i %s -s %s %s",
                 tb_iface.c_str(), tb_gateway.c_str(), ta_mac.c_str());
         system_cmd ("static mac address for the gateway", cmd_str);
 
@@ -452,175 +410,77 @@ static void config_zone (json cfg_json
 
         //rp_filter set to 0
         sprintf (cmd_str,
-                "ssh -i %ssys/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
-                "sudo sysctl net.ipv4.conf.%s.rp_filter=0",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str(),
+                "sysctl net.ipv4.conf.%s.rp_filter=0",
                 ta_iface.c_str());
         system_cmd ("rp_filter set to 0", cmd_str);
 
         sprintf (cmd_str,
-                "ssh -i %ssys/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
-                "sudo sysctl net.ipv4.conf.%s.rp_filter=0",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str(),
+                "sysctl net.ipv4.conf.%s.rp_filter=0",
                 tb_iface.c_str());
         system_cmd ("rp_filter set to 0", cmd_str);
 
 
         //set rp filter rule: 1
         sprintf (cmd_str,
-                "ssh -i %ssys/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
-                "sudo sysctl net.ipv4.conf.all.rp_filter=0",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str());
+                "sysctl net.ipv4.conf.all.rp_filter=0");
         system_cmd ("set rp filter rule: 1", cmd_str);
 
         //set rp filter rule: 2
         sprintf (cmd_str,
-                "ssh -i %ssys/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
-                "sudo sysctl net.ipv4.conf.default.rp_filter=0",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str());
+                "sysctl net.ipv4.conf.default.rp_filter=0");
         system_cmd ("set rp filter rule: 2", cmd_str);
 
         //set iptable rule: 1
         sprintf (cmd_str,
-                "ssh -i %ssys/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
-                "sudo iptables -t mangle -N DIVERT",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str());
+                "iptables -t mangle -N DIVERT");
         system_cmd ("set iptable rule: 1", cmd_str);
 
         //set iptable rule: 2
         sprintf (cmd_str,
-                "ssh -i %ssys/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
-                "sudo iptables -t mangle -A PREROUTING -p tcp -m socket -j DIVERT",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str());
+                "iptables -t mangle -A PREROUTING -p tcp -m socket -j DIVERT");
         system_cmd ("set iptable rule: 2", cmd_str);
 
         //set iptable rule: 3
         sprintf (cmd_str,
-                "ssh -i %ssys/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
-                "sudo iptables -t mangle -A DIVERT -j MARK --set-mark 1",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str());
+                "iptables -t mangle -A DIVERT -j MARK --set-mark 1");
         system_cmd ("set iptable rule: 3", cmd_str);
 
         //set iptable rule: 4
         sprintf (cmd_str,
-                "ssh -i %ssys/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
-                "sudo iptables -t mangle -A DIVERT -j ACCEPT",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str());
+                "iptables -t mangle -A DIVERT -j ACCEPT");
         system_cmd ("set iptable rule: 4", cmd_str);
 
         //set ip rule: 5
         sprintf (cmd_str,
-                "ssh -i %ssys/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
-                "sudo ip rule add fwmark 1 lookup 100",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str());
+                "ip rule add fwmark 1 lookup 100");
         system_cmd ("set ip rule: 5", cmd_str);
 
         //set ip rule: 6
         sprintf (cmd_str,
-                "ssh -i %ssys/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
-                "sudo ip route add local 0.0.0.0/0 dev lo table 100",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str());
+                "ip route add local 0.0.0.0/0 dev lo table 100");
         system_cmd ("set ip rule: 6", cmd_str);
 
         //set iptable rule: 7
         sprintf (cmd_str,
-                "ssh -i %ssys/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
-                "sudo iptables -t mangle -A PREROUTING -i %s -p tcp --dport %s -j TPROXY --tproxy-mark 0x1/0x1 --on-port %s",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str(),
-                ta_iface.c_str(), proxy_traffic_port.c_str(), proxy_app_port.c_str());
+                "iptables -t mangle -A PREROUTING -i %s -p tcp --dport %d -j TPROXY --tproxy-mark 0x1/0x1 --on-port %d",
+                ta_iface.c_str(), proxy_traffic_port, proxy_app_port);
         system_cmd ("set iptable rule: 7", cmd_str);
 
         //set iptable rule: 8
         sprintf (cmd_str,
-                "ssh -i %ssys/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
-                "sudo iptables -t mangle -A PREROUTING -i %s -p tcp --dport %s -j TPROXY --tproxy-mark 0x1/0x1 --on-port %s",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str(),
-                tb_iface.c_str(), proxy_traffic_port.c_str(), proxy_app_port.c_str());
+                "iptables -t mangle -A PREROUTING -i %s -p tcp --dport %d -j TPROXY --tproxy-mark 0x1/0x1 --on-port %d",
+                tb_iface.c_str(), proxy_traffic_port, proxy_app_port);
         system_cmd ("set iptable rule: 8", cmd_str);
 
         //set route rule: 9
         sprintf (cmd_str,
-                "ssh -i %ssys/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
-                "sudo route add-net %s netmask %s gw %s dev %s",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str(),
+                "route add -net %s netmask %s gw %s dev %s",
                 ta_net.c_str(), ta_netmask.c_str(), ta_gateway.c_str(), ta_iface.c_str());
         system_cmd ("set route rule: 9", cmd_str);
 
         //set route rule: 10
         sprintf (cmd_str,
-                "ssh -i %ssys/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
-                "sudo route add-net %s netmask %s gw %s dev %s",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str(),
+                "route add -net %s netmask %s gw %s dev %s",
                 tb_net.c_str(), tb_netmask.c_str(), tb_gateway.c_str(), tb_iface.c_str());
         system_cmd ("set route rule: 10", cmd_str);
     }

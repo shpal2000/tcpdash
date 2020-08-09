@@ -1,5 +1,6 @@
 FROM ubuntu:bionic
 COPY tlspack.exe /usr/local/bin
+COPY tcp_proxy.exe /usr/local/bin
 COPY openssl /usr/local/bin
 COPY libcrypto.so.1.1 /usr/local/lib
 COPY libssl.so.1.1 /usr/local/lib
