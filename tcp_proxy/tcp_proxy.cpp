@@ -11,6 +11,10 @@ tp_app::tp_app(json app_json, tp_stats* app_stats)
     m_sock_opt.rcv_buff_len = 0;
     m_sock_opt.snd_buff_len = 0;
 
+    const char* srv_ip = "0.0.0.0";
+    u_short srv_port = app_json["proxy_app_port"].get<u_short>();
+    ev_socket::set_sockaddr (&m_listen_addr, srv_ip, htons(srv_port));
+
     tp_socket* srv_socket 
         = (tp_socket*) new_tcp_listen (&m_listen_addr
                                                 , 10000

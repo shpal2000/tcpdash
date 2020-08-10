@@ -23,7 +23,7 @@ RUN apt-get update \
     && apt-get -yq install vim \
     && apt-get -yq install libssl-dev \
     && apt-get -yq install libglib2.0-dev \
-    && apt-get -yq install sshpass net-tools \
+    && apt-get -yq install openssh-client sshpass net-tools \
     && apt-get -yq install iptables \
     #
     && apt-get -yq install tmux \

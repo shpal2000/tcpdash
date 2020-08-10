@@ -364,19 +364,16 @@ static void config_zone (json cfg_json
         system_cmd ("connect docker network", cmd_str);
 
 
-
-
-        //set ip address
+        //interface down
         sprintf (cmd_str,
-                "ifconfig %s %s up",
-                ta_iface.c_str(), ta_ip.c_str());
-        system_cmd ("set ip address", cmd_str);
+                "ifconfig %s down",
+                ta_iface.c_str());
+        system_cmd ("interface down", cmd_str);
 
         sprintf (cmd_str,
-                "ifconfig %s %s up",
-                tb_iface.c_str(), tb_ip.c_str());
-        system_cmd ("set ip address", cmd_str);
-
+                "ifconfig %s down",
+                tb_iface.c_str());
+        system_cmd ("set mac address", cmd_str);
 
 
 
@@ -391,6 +388,28 @@ static void config_zone (json cfg_json
                 tb_iface.c_str(), tb_mac.c_str());
         system_cmd ("set mac address", cmd_str);
 
+
+        //set rp filter rule: 1
+        sprintf (cmd_str,
+                "sysctl net.ipv4.conf.all.rp_filter=0");
+        system_cmd ("set rp filter rule: 1", cmd_str);
+
+        //set rp filter rule: 2
+        sprintf (cmd_str,
+                "sysctl net.ipv4.conf.default.rp_filter=0");
+        system_cmd ("set rp filter rule: 2", cmd_str);
+        
+
+        //set ip address
+        sprintf (cmd_str,
+                "ifconfig %s %s up",
+                ta_iface.c_str(), ta_ip.c_str());
+        system_cmd ("set ip address", cmd_str);
+
+        sprintf (cmd_str,
+                "ifconfig %s %s up",
+                tb_iface.c_str(), tb_ip.c_str());
+        system_cmd ("set ip address", cmd_str);
 
 
 
@@ -407,7 +426,6 @@ static void config_zone (json cfg_json
 
 
 
-
         //rp_filter set to 0
         sprintf (cmd_str,
                 "sysctl net.ipv4.conf.%s.rp_filter=0",
@@ -419,16 +437,6 @@ static void config_zone (json cfg_json
                 tb_iface.c_str());
         system_cmd ("rp_filter set to 0", cmd_str);
 
-
-        //set rp filter rule: 1
-        sprintf (cmd_str,
-                "sysctl net.ipv4.conf.all.rp_filter=0");
-        system_cmd ("set rp filter rule: 1", cmd_str);
-
-        //set rp filter rule: 2
-        sprintf (cmd_str,
-                "sysctl net.ipv4.conf.default.rp_filter=0");
-        system_cmd ("set rp filter rule: 2", cmd_str);
 
         //set iptable rule: 1
         sprintf (cmd_str,
