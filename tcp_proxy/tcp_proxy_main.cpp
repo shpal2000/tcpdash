@@ -182,7 +182,7 @@ static void start_zones (json cfg_json
                     "-o StrictHostKeyChecking=no "
                     "-o UserKnownHostsFile=/dev/null "
                     "%s@%s "
-                    "sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged "
+                    "sudo docker run --cap-add=SYS_PTRACE --cap-add=NET_ADMIN --cap-add=NET_RAW --security-opt seccomp=unconfined --network=host --privileged "
                     "--name %s -it -d %s tlspack/tgen:latest /bin/bash",
                     RUN_DIR_PATH,
                     ssh_user.c_str(), ssh_host.c_str(),
@@ -209,7 +209,7 @@ static void start_zones (json cfg_json
                     "-o StrictHostKeyChecking=no "
                     "-o UserKnownHostsFile=/dev/null "
                     "%s@%s "
-                    "sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged "
+                    "sudo docker run --cap-add=SYS_PTRACE --cap-add=NET_ADMIN --cap-add=NET_RAW --security-opt seccomp=unconfined --network=host --privileged "
                     "--name %s -it -d %s tlspack/tgen:latest /bin/bash",
                     RUN_DIR_PATH,
                     ssh_user.c_str(), ssh_host.c_str(),
@@ -302,6 +302,8 @@ static void config_zone (json cfg_json
                             , char* cfg_name
                             , int z_index)
 {
+    return;
+
     auto zone_label 
         = cfg_json["zones"][z_index]["zone_label"].get<std::string>();
     sprintf (zone_cname, "%s-%s", cfg_name, zone_label.c_str());

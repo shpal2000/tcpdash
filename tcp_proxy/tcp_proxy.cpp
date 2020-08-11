@@ -57,17 +57,17 @@ void tp_app::free_socket(ev_socket* ev_sock)
 
 void tp_socket::on_establish ()
 {
-    m_lsock = (tp_socket*) get_parent();
-    m_app = m_lsock->m_app;
-
     if (m_session == nullptr) // accepted socket; new session
     {
         // printf ("on_establish - server\n");
-
-        m_session = new tp_session(this);
+        m_lsock = (tp_socket*) get_parent();
+        m_app = m_lsock->m_app;
+        m_session = new tp_session();
 
         if (m_session)
         {
+            m_session->m_server_sock = this;
+
             tp_socket* client_socket 
                     = (tp_socket*) m_app->new_tcp_connect (get_remote_addr()
                                                         , get_local_addr()
@@ -76,7 +76,8 @@ void tp_socket::on_establish ()
                                                         , &m_app->m_sock_opt);
             if (client_socket)
             {
-                //todo
+                client_socket->m_app = m_app;
+                client_socket->m_session = m_session;
             }
             else
             {
@@ -91,14 +92,16 @@ void tp_socket::on_establish ()
     else //client session
     {
         // printf ("on_establish - client\n");
-
         m_session->m_client_sock = this;
     }
 }
 
 void tp_socket::on_write ()
 {
+    if (m_session->m_client_sock && m_session->m_server_sock)
+    {
 
+    }
 }
 
 void tp_socket::on_wstatus (int bytes_written, int write_status)
@@ -108,7 +111,10 @@ void tp_socket::on_wstatus (int bytes_written, int write_status)
 
 void tp_socket::on_read ()
 {
-
+    if (m_session->m_client_sock && m_session->m_server_sock)
+    {
+        
+    }
 }
 
 void tp_socket::on_rstatus (int bytes_read, int read_status)

@@ -153,9 +153,9 @@ class tp_session
 {
 public:
 
-    tp_session(tp_socket* server_sock)
+    tp_session()
     {
-        m_server_sock = server_sock;
+        m_server_sock = nullptr;
         m_client_sock = nullptr;
     }
 
