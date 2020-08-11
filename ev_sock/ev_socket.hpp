@@ -774,4 +774,27 @@ struct ev_sock_ll {
     }
 };
 
+class ev_buff {
+public:
+    ev_buff (int buff_len)
+    {
+        m_buff = (char*) malloc (buff_len);
+        m_buff_len = buff_len;
+        m_data_len = 0;
+        m_data_offset = 0;
+    }
+
+    ~ev_buff()
+    {
+        if (m_buff)
+        {
+            free (m_buff);
+        }
+    }
+
+    char* m_buff;
+    int m_buff_len;
+    int m_data_len;
+    int m_data_offset;
+};
 #endif

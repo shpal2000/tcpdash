@@ -127,7 +127,6 @@ public:
     tp_socket()
     {
         m_app = nullptr;
-        m_lsock = nullptr;
         m_session = nullptr;
     };
 
@@ -145,7 +144,6 @@ public:
 
 public:
     tp_app* m_app;
-    tp_socket* m_lsock;
     tp_session* m_session;
 };
 
@@ -157,6 +155,13 @@ public:
     {
         m_server_sock = nullptr;
         m_client_sock = nullptr;
+        m_session_established = false;
+
+        m_client_current_wbuff = nullptr;
+        m_server_current_wbuff = nullptr;
+
+        m_client_current_rbuff = nullptr;
+        m_server_current_rbuff = nullptr;
     }
 
     ~tp_session()
@@ -167,6 +172,16 @@ public:
 public:
     tp_socket* m_server_sock;
     tp_socket* m_client_sock;
+    bool m_session_established;
+
+    ev_buff* m_client_current_wbuff;
+    ev_buff* m_server_current_wbuff;
+
+    ev_buff* m_client_current_rbuff;
+    ev_buff* m_server_current_rbuff;
+    
+    std::queue<ev_buff*> m_client_rbuffs;
+    std::queue<ev_buff*> m_server_rbuffs;
 };
 
 #endif
