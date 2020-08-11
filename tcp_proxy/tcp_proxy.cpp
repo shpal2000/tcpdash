@@ -61,15 +61,16 @@ void tp_socket::on_establish ()
     {
         tp_socket* server_socket = this;
         tp_session* new_sess = new tp_session();
+        tp_app* proxy_app = ((tp_socket*)get_parent())->m_app;
 
         if (new_sess)
         {
             tp_socket* client_socket 
-                    = (tp_socket*) m_app->new_tcp_connect (get_remote_addr()
+                    = (tp_socket*) proxy_app->new_tcp_connect (get_remote_addr()
                                                         , get_local_addr()
-                                                        , m_app->m_app_stats_arr
+                                                        , proxy_app->m_app_stats_arr
                                                         , NULL
-                                                        , &m_app->m_sock_opt);
+                                                        , &proxy_app->m_sock_opt);
             if (client_socket)
             {
                 server_socket->m_session = new_sess;
@@ -78,8 +79,8 @@ void tp_socket::on_establish ()
                 m_session->m_server_sock = server_socket;
                 m_session->m_client_sock = client_socket;
 
-                server_socket->m_app = ((tp_socket*)get_parent())->m_app;
-                client_socket->m_app = ((tp_socket*)get_parent())->m_app;
+                server_socket->m_app = proxy_app;
+                client_socket->m_app = proxy_app;
             }
             else
             {
