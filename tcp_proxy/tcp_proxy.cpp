@@ -182,8 +182,29 @@ void tp_socket::on_rstatus (int bytes_read, int read_status)
 {
     if (bytes_read == 0) 
     {
-        if (read_status != READ_STATUS_TCP_CLOSE) {
-            abort ();
+        if (m_session->m_client_sock == this)
+        { 
+            if (read_status == READ_STATUS_TCP_CLOSE) 
+            {
+                m_session->m_server_sock->write_close();
+            }
+            else
+            {
+                m_session->m_client_sock->abort ();
+                m_session->m_server_sock->abort();
+            }
+        } 
+        else
+        {
+            if (read_status == READ_STATUS_TCP_CLOSE) 
+            {
+                m_session->m_client_sock->write_close();
+            }
+            else
+            {
+                m_session->m_client_sock->abort ();
+                m_session->m_server_sock->abort();
+            }
         }
     } 
     else 
