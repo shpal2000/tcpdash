@@ -1,8 +1,8 @@
 ##############################steps to build##############################
-cd /
+cd /srcdir
 git config --global user.email shpal2000@gmail.com
 git clone https://github.com/shpal2000/tcpdash.git
-cd /tcpdash/ev_sock/
+cd /srcdir/tcpdash/ev_sock/
 meson build
 cd build
 ninja install
@@ -15,39 +15,31 @@ meson build
 cd build
 ninja
 
+cd /srcdir/tcpdash/tcp_proxy
+mkdir subprojects
+cd subprojects/
+git clone https://github.com/nlohmann/json.git
+cd ..
+meson build
+cd build
+ninja
+
+
 ##############################copy to imgdir##############################
-cp -f /openssl-1.1.1d/libcrypto.so.1.1 /imgdir
-cp -f /openssl-1.1.1d/libssl.so.1.1 /imgdir
-cp -f /openssl-1.1.1d/apps/openssl /imgdir
-cp -f /tcpdash/tlspack/build/tlspack.exe /imgdir
-cp -f /tcpdash/target_container/Dockerfile /imgdir
-cp -f /tcpdash/tcpdash.conf /imgdir
+cp -f /openssl-1.1.1d/libcrypto.so.1.1 /srcdir/imgdir
+cp -f /openssl-1.1.1d/libssl.so.1.1 /srcdir/imgdir
+cp -f /openssl-1.1.1d/apps/openssl /srcdir/imgdir
+cp -f /srcdir/tcpdash/tlspack/build/tlspack.exe /srcdir/imgdir
+cp -f /srcdir/tcpdash/tcp_proxy/build/tcp_proxy.exe /srcdir/imgdir
+cp -f /srcdir/tcpdash/target_container/Dockerfile /srcdir/imgdir
+cp -f /srcdir/tcpdash/tcpdash.conf /srcdir/imgdir
+cp -f /srcdir/tcpdash/target_container/Dockerfile /srcdir/imgdir
 
 #####on dev laptop####
 ssh shirish@shirish-u18.eastus.cloudapp.azure.com
-cd tgen/imgdir/
+cd tgen/srcdir/imgdir/
 sudo docker image build --tag tgen:latest .
 sudo docker image ls
-sudo docker tag f6d60287f364 tlspack/tgen:latest
+sudo docker tag 42f0ffb4a2da tlspack/tgen:latest
 sudo docker push tlspack/tgen
-
-
-##############################projects.json##############################
-[
-	{
-		"name": "openssl-1.1.1d",
-		"rootPath": "/openssl-1.1.1d",
-		"paths": [],
-		"group": "",
-		"enabled": true
-	},
-
-	{
-		"name": "tcpdash",
-		"rootPath": "/tcpdash",
-		"paths": [],
-		"group": "",
-		"enabled": true
-	}
-]
 
