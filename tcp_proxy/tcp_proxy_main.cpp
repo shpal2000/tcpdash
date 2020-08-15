@@ -298,13 +298,9 @@ static void stop_zones (json cfg_json
     remove_registry_entry ();
 }
 
-static void config_zone (json cfg_json
-                            , char* cfg_name
-                            , int z_index)
+static void host_command(const char* next_cmd_descp, const char* next_cmd)
 {
-    auto zone_label 
-        = cfg_json["zones"][z_index]["zone_label"].get<std::string>();
-    sprintf (zone_cname, "%s-%s", cfg_name, zone_label.c_str());
+    char cmd_buff[2048];
 
     sprintf (ssh_host_file, "%ssys/host", RUN_DIR_PATH);
     std::ifstream ssh_host_stream(ssh_host_file);
@@ -313,38 +309,62 @@ static void config_zone (json cfg_json
     auto ssh_user = ssh_host_json["user"].get<std::string>();
     auto ssh_pass = ssh_host_json["pass"].get<std::string>();
 
+    sprintf (cmd_buff,
+            "ssh -i %ssys/id_rsa -tt "
+            // "-o LogLevel=quiet "
+            "-o StrictHostKeyChecking=no "
+            "-o UserKnownHostsFile=/dev/null "
+            "%s@%s "
+            "%s",
+            RUN_DIR_PATH,
+            ssh_user.c_str(), ssh_host.c_str(),
+            next_cmd);
+    system_cmd (next_cmd_descp, cmd_buff);
+}
+
+static void config_zone (json cfg_json
+                            , char* cfg_name
+                            , int z_index)
+{
+    auto zone_label 
+        = cfg_json["zones"][z_index]["zone_label"].get<std::string>();
+    sprintf (zone_cname, "%s-%s", cfg_name, zone_label.c_str());
+
     auto topology = cfg_json["zones"][z_index]["zone_type"].get<std::string>();
     if ( strcmp(topology.c_str(), "proxy-interface") == 0 )
     {
+        auto ta_hostif = cfg_json["zones"][z_index]["ta_hostif"].get<std::string>();
+        auto tb_hostif = cfg_json["zones"][z_index]["tb_hostif"].get<std::string>();
         auto ta_macvlan = cfg_json["zones"][z_index]["ta_macvlan"].get<std::string>();
         auto tb_macvlan = cfg_json["zones"][z_index]["tb_macvlan"].get<std::string>();
         auto zone_cmds = cfg_json["zones"][z_index]["zone_cmds"];
 
+        //host interface up
+        sprintf (cmd_str,
+                "sudo ifconfig %s up",
+                ta_hostif.c_str());
+        host_command ("host: interface up", cmd_str);
+
+        sprintf (cmd_str,
+                "sudo ifconfig %s up",
+                tb_hostif.c_str());
+        host_command ("host: interface up", cmd_str);
+
+
+
         //connect to docker network
         sprintf (cmd_str,
-                "ssh -i %ssys/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
                 "sudo docker network connect %s %s",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str(),
                 ta_macvlan.c_str(), zone_cname);
-        system_cmd ("connect docker network", cmd_str);
+        host_command ("host: connect docker network", cmd_str);
 
         sprintf (cmd_str,
-                "ssh -i %ssys/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
                 "sudo docker network connect %s %s",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str(),
                 tb_macvlan.c_str(), zone_cname);
-        system_cmd ("connect docker network", cmd_str);
+        host_command ("host: connect docker network", cmd_str);
 
+
+        //run all zone commands
         for (auto cmd_it = zone_cmds.begin(); cmd_it != zone_cmds.end(); ++cmd_it) {
             auto cmd = cmd_it.value().get<std::string>();
             system_cmd ("zone_cmd", cmd.c_str());

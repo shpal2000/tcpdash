@@ -199,13 +199,10 @@ static void create_result_entry (json cfg_json)
     }
 }
 
-static void start_zones (json cfg_json
-                            , char* cfg_name
-                            , char* run_tag
-                            , char* host_run_dir
-                            , int is_debug
-                            , char* host_src_dir)
+static void host_cmd(const char* next_cmd_descp, const char* next_cmd)
 {
+    char cmd_buff[2048];
+
     sprintf (ssh_host_file, "%ssys/host", RUN_DIR_PATH);
     std::ifstream ssh_host_stream(ssh_host_file);
     json ssh_host_json = json::parse(ssh_host_stream);
@@ -213,6 +210,26 @@ static void start_zones (json cfg_json
     auto ssh_user = ssh_host_json["user"].get<std::string>();
     auto ssh_pass = ssh_host_json["pass"].get<std::string>();
 
+    sprintf (cmd_buff,
+            "ssh -i %ssys/id_rsa -tt "
+            // "-o LogLevel=quiet "
+            "-o StrictHostKeyChecking=no "
+            "-o UserKnownHostsFile=/dev/null "
+            "%s@%s "
+            "%s",
+            RUN_DIR_PATH,
+            ssh_user.c_str(), ssh_host.c_str(),
+            next_cmd);
+    system_cmd (next_cmd_descp, cmd_buff);
+}
+
+static void start_zones (json cfg_json
+                            , char* cfg_name
+                            , char* run_tag
+                            , char* host_run_dir
+                            , int is_debug
+                            , char* host_src_dir)
+{
     //launch containers
     auto z_list = cfg_json["zones"];
     int z_index = -1;
@@ -236,17 +253,10 @@ static void start_zones (json cfg_json
                         host_src_dir, SRC_DIR_PATH);
 
             sprintf (cmd_str,
-                    "ssh -i %ssys/id_rsa -tt "
-                    // "-o LogLevel=quiet "
-                    "-o StrictHostKeyChecking=no "
-                    "-o UserKnownHostsFile=/dev/null "
-                    "%s@%s "
                     "sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged "
                     "--name %s -it -d %s tlspack/tgen:latest /bin/bash",
-                    RUN_DIR_PATH,
-                    ssh_user.c_str(), ssh_host.c_str(),
                     zone_cname, volume_string);
-            system_cmd ("zone start", cmd_str);
+            host_cmd ("host: zone start", cmd_str);
         }
         else
         {
@@ -263,47 +273,26 @@ static void start_zones (json cfg_json
             }
 
             sprintf (cmd_str,
-                    "ssh -i %ssys/id_rsa -tt "
-                    // "-o LogLevel=quiet "
-                    "-o StrictHostKeyChecking=no "
-                    "-o UserKnownHostsFile=/dev/null "
-                    "%s@%s "
                     "sudo docker run --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --network=bridge --privileged "
                     "--name %s -it -d %s tlspack/tgen:latest /bin/bash",
-                    RUN_DIR_PATH,
-                    ssh_user.c_str(), ssh_host.c_str(),
                     zone_cname, volume_string);
-            system_cmd ("zone bash run", cmd_str);
+            host_cmd ("host: zone bash run", cmd_str);
 
             sprintf (cmd_str,
-                    "ssh -i %ssys/id_rsa -tt "
-                    // "-o LogLevel=quiet "
-                    "-o StrictHostKeyChecking=no "
-                    "-o UserKnownHostsFile=/dev/null "
-                    "%s@%s "
                     "sudo docker exec -d %s "
                     "cp -f /usr/local/bin/tlspack.exe /usr/local/bin/%s.exe",
-                    RUN_DIR_PATH,
-                    ssh_user.c_str(), ssh_host.c_str(),
                     zone_cname,
                     zone_cname);
-            system_cmd ("zone exe rename", cmd_str);
+            host_cmd ("host: zone exe rename", cmd_str);
 
             sprintf (cmd_str,
-                    "ssh -i %ssys/id_rsa -tt "
-                    // "-o LogLevel=quiet "
-                    "-o StrictHostKeyChecking=no "
-                    "-o UserKnownHostsFile=/dev/null "
-                    "%s@%s "
                     "sudo docker exec -d %s "
                     "%s.exe zone %s "
                     "%s %d config_zone %d",
-                    RUN_DIR_PATH,
-                    ssh_user.c_str(), ssh_host.c_str(),
                     zone_cname,
                     zone_cname, cfg_name,
                     run_tag, z_index, is_debug);
-            system_cmd ("zone start", cmd_str);
+            host_cmd ("host: zone start", cmd_str);
         }
         
         std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -313,13 +302,6 @@ static void start_zones (json cfg_json
 static void stop_zones (json cfg_json
                             , char* cfg_name)
 {
-    sprintf (ssh_host_file, "%ssys/host", RUN_DIR_PATH);
-    std::ifstream ssh_host_stream(ssh_host_file);
-    json ssh_host_json = json::parse(ssh_host_stream);
-    auto ssh_host = ssh_host_json["host"].get<std::string>();
-    auto ssh_user = ssh_host_json["user"].get<std::string>();
-    auto ssh_pass = ssh_host_json["pass"].get<std::string>();
-
     auto z_list = cfg_json["zones"];
     int z_index = -1;
     std::string c_list = "";
@@ -343,16 +325,9 @@ static void stop_zones (json cfg_json
     c_list.append (zone_cname);
 
     sprintf (cmd_str,
-                "ssh -i %ssys/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
                 "sudo docker rm -f %s",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str(),
                 c_list.c_str ());
-    system_cmd ("zone stop", cmd_str);
+    host_cmd ("host: zone stop", cmd_str);
 
     remove_registry_entry ();
 }
@@ -365,28 +340,25 @@ static void config_zone (json cfg_json
         = cfg_json["zones"][z_index]["zone_label"].get<std::string>();
     sprintf (zone_cname, "%s-%s", cfg_name, zone_label.c_str());
 
-    sprintf (ssh_host_file, "%ssys/host", RUN_DIR_PATH);
-    std::ifstream ssh_host_stream(ssh_host_file);
-    json ssh_host_json = json::parse(ssh_host_stream);
-    auto ssh_host = ssh_host_json["host"].get<std::string>();
-    auto ssh_user = ssh_host_json["user"].get<std::string>();
-    auto ssh_pass = ssh_host_json["pass"].get<std::string>();
-
     auto topology = cfg_json["zones"][z_index]["zone_type"].get<std::string>();
     if ( strcmp(topology.c_str(), "single-interface") == 0 )
     {
         auto macvlan = cfg_json["zones"][z_index]["macvlan"].get<std::string>();
+        auto hostif = cfg_json["zones"][z_index]["hostif"].get<std::string>();
+
+        //host interface up
         sprintf (cmd_str,
-                "ssh -i %ssys/id_rsa -tt "
-                // "-o LogLevel=quiet "
-                "-o StrictHostKeyChecking=no "
-                "-o UserKnownHostsFile=/dev/null "
-                "%s@%s "
+                "sudo docker ifconfig %s up",
+                hostif.c_str());
+        host_cmd ("host: interface up", cmd_str);
+
+        //connect docker network
+        sprintf (cmd_str,
                 "sudo docker network connect %s %s",
-                RUN_DIR_PATH,
-                ssh_user.c_str(), ssh_host.c_str(),
                 macvlan.c_str(), zone_cname);
-        system_cmd ("connect docker network", cmd_str);
+        host_cmd ("host: connect docker network", cmd_str);
+
+
 
         auto iface = cfg_json["zones"][z_index]["iface"].get<std::string>();
         sprintf (cmd_str,
@@ -736,4 +708,3 @@ int main(int /*argc*/, char **argv)
 }
 
 
-//docker rm -f  try2_0 try2_1 try2_2 try2_3 try2_4 try2_5 try2_6 try2_7 try2_8 try2_9 try2_10 try2_11 try2_12
