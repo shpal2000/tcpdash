@@ -298,7 +298,7 @@ static void stop_zones (json cfg_json
     remove_registry_entry ();
 }
 
-static void host_command(const char* next_cmd_descp, const char* next_cmd)
+static void host_cmd(const char* next_cmd_descp, const char* next_cmd)
 {
     char cmd_buff[2048];
 
@@ -326,56 +326,20 @@ static void config_zone (json cfg_json
                             , char* cfg_name
                             , int z_index)
 {
-    auto zone_label 
-        = cfg_json["zones"][z_index]["zone_label"].get<std::string>();
-    sprintf (zone_cname, "%s-%s", cfg_name, zone_label.c_str());
+    auto host_cmds = cfg_json["zones"][z_index]["host_cmds"];
+    auto zone_cmds = cfg_json["zones"][z_index]["zone_cmds"];
 
-    auto topology = cfg_json["zones"][z_index]["zone_type"].get<std::string>();
-    if ( strcmp(topology.c_str(), "proxy-interface") == 0 )
-    {
-        auto ta_hostif = cfg_json["zones"][z_index]["ta_hostif"].get<std::string>();
-        auto tb_hostif = cfg_json["zones"][z_index]["tb_hostif"].get<std::string>();
-        auto ta_macvlan = cfg_json["zones"][z_index]["ta_macvlan"].get<std::string>();
-        auto tb_macvlan = cfg_json["zones"][z_index]["tb_macvlan"].get<std::string>();
-        auto zone_cmds = cfg_json["zones"][z_index]["zone_cmds"];
-
-        //host interface up
-        sprintf (cmd_str,
-                "sudo ifconfig %s up",
-                ta_hostif.c_str());
-        host_command ("host: interface up", cmd_str);
-
-        sprintf (cmd_str,
-                "sudo ifconfig %s up",
-                tb_hostif.c_str());
-        host_command ("host: interface up", cmd_str);
-
-
-
-        //connect to docker network
-        sprintf (cmd_str,
-                "sudo docker network connect %s %s",
-                ta_macvlan.c_str(), zone_cname);
-        host_command ("host: connect docker network", cmd_str);
-
-        sprintf (cmd_str,
-                "sudo docker network connect %s %s",
-                tb_macvlan.c_str(), zone_cname);
-        host_command ("host: connect docker network", cmd_str);
-
-
-        //run all zone commands
-        for (auto cmd_it = zone_cmds.begin(); cmd_it != zone_cmds.end(); ++cmd_it) {
-            auto cmd = cmd_it.value().get<std::string>();
-            system_cmd ("zone_cmd", cmd.c_str());
-        }
-    }
-    else
-    {   
-        printf ("unknown zone type %s\n", topology.c_str());
-        exit (-1);
+    //run all host commands
+    for (auto cmd_it = host_cmds.begin(); cmd_it != host_cmds.end(); ++cmd_it) {
+        auto cmd = cmd_it.value().get<std::string>();
+        host_cmd ("host_cmd", cmd.c_str());
     }
 
+    //run all zone commands
+    for (auto cmd_it = zone_cmds.begin(); cmd_it != zone_cmds.end(); ++cmd_it) {
+        auto cmd = cmd_it.value().get<std::string>();
+        system_cmd ("zone_cmd", cmd.c_str());
+    }
 }
 
 static bool all_zones_initialized (json cfg_json)

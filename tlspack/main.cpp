@@ -336,65 +336,19 @@ static void config_zone (json cfg_json
                             , char* cfg_name
                             , int z_index)
 {
-    auto zone_label 
-        = cfg_json["zones"][z_index]["zone_label"].get<std::string>();
-    sprintf (zone_cname, "%s-%s", cfg_name, zone_label.c_str());
+    auto host_cmds = cfg_json["zones"][z_index]["host_cmds"];
+    auto zone_cmds = cfg_json["zones"][z_index]["zone_cmds"];
 
-    auto topology = cfg_json["zones"][z_index]["zone_type"].get<std::string>();
-    if ( strcmp(topology.c_str(), "single-interface") == 0 )
-    {
-        auto macvlan = cfg_json["zones"][z_index]["macvlan"].get<std::string>();
-        auto hostif = cfg_json["zones"][z_index]["hostif"].get<std::string>();
-
-        //host interface up
-        sprintf (cmd_str,
-                "sudo docker ifconfig %s up",
-                hostif.c_str());
-        host_cmd ("host: interface up", cmd_str);
-
-        //connect docker network
-        sprintf (cmd_str,
-                "sudo docker network connect %s %s",
-                macvlan.c_str(), zone_cname);
-        host_cmd ("host: connect docker network", cmd_str);
-
-
-
-        auto iface = cfg_json["zones"][z_index]["iface"].get<std::string>();
-        sprintf (cmd_str,
-                "ip link set dev %s up",
-                iface.c_str());
-        system_cmd ("dev up", cmd_str);
-
-        sprintf (cmd_str,
-                "ip route add default dev %s table 200",
-                iface.c_str());
-        system_cmd ("dev default gw", cmd_str);
-
-        // sprintf (cmd_str,
-        //         "ifconfig %s txqueuelen 300000",
-        //         iface.c_str());
-        // system_cmd ("dev txqueuelen", cmd_str);
-
-        auto subnets = cfg_json["zones"][z_index]["subnets"];
-        for (auto it = subnets.begin(); it != subnets.end(); ++it)
-        {
-            auto subnet = it.value().get<std::string>();
-            sprintf (cmd_str,
-                    "ip -4 route add local %s dev lo",
-                    subnet.c_str());
-            system_cmd ("ip configure", cmd_str);
-
-            sprintf (cmd_str,
-                    "ip rule add from %s table 200",
-                    subnet.c_str());
-            system_cmd ("ip source routing", cmd_str);
-        }
+    //run all host commands
+    for (auto cmd_it = host_cmds.begin(); cmd_it != host_cmds.end(); ++cmd_it) {
+        auto cmd = cmd_it.value().get<std::string>();
+        host_cmd ("host_cmd", cmd.c_str());
     }
-    else
-    {   
-        printf ("unknown zone type %s\n", topology.c_str());
-        exit (-1);
+
+    //run all zone commands
+    for (auto cmd_it = zone_cmds.begin(); cmd_it != zone_cmds.end(); ++cmd_it) {
+        auto cmd = cmd_it.value().get<std::string>();
+        system_cmd ("zone_cmd", cmd.c_str());
     }
 }
 

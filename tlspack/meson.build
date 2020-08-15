@@ -11,12 +11,15 @@ project('tlspack', 'cpp',
 openssl = dependency('openssl')
 nlohmann_json_proj = subproject('json')
 nlohmann_json_dep = nlohmann_json_proj.get_variable('nlohmann_json_dep')
-ev_sock = dependency('ev_sock', static: true)
+#ev_sock = dependency('ev_sock', static: true)
+incdirs = include_directories(['../ev_sock/'])
 
 executable('tlspack.exe'
-            , sources : ['./apps/tls_server/tls_server.cpp'
+            , sources : [ '../ev_sock/ev_socket.cpp'
+                          , './apps/tls_server/tls_server.cpp'
                           , './apps/tls_client/tls_client.cpp'
                           , 'main.cpp' ]
-            , dependencies: [openssl, nlohmann_json_dep, ev_sock]
+            , dependencies: [openssl, nlohmann_json_dep]
+            , include_directories : [incdirs]
             , install : true)
 
