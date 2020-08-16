@@ -717,134 +717,6 @@ def add_bw_params (cmd_parser):
                                 , help = '0/1')
 
 def process_bw_template (cmd_args):
-    __tlspack_cfg = jinja2.Template('''
-    {
-        "tgen_app" : "bw",
-        "zones" : [
-            {% set ns = namespace(cs_grp_count=0, srv_count=0) %}
-            {%- for zone_id in range(1, PARAMS.zones+1) %}
-                {
-                    "zone_label" : "zone-{{zone_id}}-client",
-                    "enable" : 1,
-                    "zone_type" : "single-interface",
-                    "iface" : "{{PARAMS.iface_container}}",
-                    "macvlan" : "{{PARAMS.na_macvlan}}",
-                    "hostif" : "{{PARAMS.na_iface}}",
-                    "tcpdump" : "{{PARAMS.tcpdump}}",
-                    "subnets" : ["2{{zone_id}}.21.51.0/24"],
-                    "app_list" : [
-                        {
-                            "app_type" : "tls_client",
-                            "app_label" : "tls_client_1",
-                            "enable" : 1,
-                            "conn_per_sec" : {{PARAMS.cps}},
-                            "max_pending_conn_count" : {{PARAMS.max_pipeline}},
-                            "max_active_conn_count" : {{PARAMS.max_active}},
-                            "total_conn_count" : {{PARAMS.total_conn_count}},
-                            "cs_grp_list" : [
-                                {% set ns.cs_grp_count = 0 %}
-                                {%- for server_index in range(PARAMS.server_count) %}
-                                    {%- for tls_ver in ['sslv3', 'tls1', 'tls1_1', 'tls1_2', 'tls1_3'] %}
-                                        {%- if (tls_ver == 'sslv3' and PARAMS.sslv3) 
-                                                or (tls_ver == 'tls1' and PARAMS.tls1) 
-                                                or (tls_ver == 'tls1_1' and PARAMS.tls1_1) 
-                                                or (tls_ver == 'tls1_2' and PARAMS.tls1_2) 
-                                                or (tls_ver == 'tls1_3' and PARAMS.tls1_3) %}
-                                            {{ "," if ns.cs_grp_count }}
-                                            {%- if ns.cs_grp_count < PARAMS.server_count %}
-                                                {% set ns.cs_grp_count = ns.cs_grp_count+1 %}
-                                                {
-                                                    "cs_grp_label" : "cs_grp_{{server_index+1}}",
-                                                    "enable" : 1,
-                                                    "srv_ip"   : "14.{{(zone_id*10)}}.{{server_index+1}}.1",
-                                                    "srv_port" : 443,
-                                                    "clnt_ip_begin" : "2{{zone_id}}.21.51.{{1+(server_index*10)}}",
-                                                    "clnt_ip_end" : "2{{zone_id}}.21.51.{{(server_index+1)*10}}",
-                                                    "clnt_port_begin" : 5000,
-                                                    "clnt_port_end" : 65000,
-                                                    "cipher" : "{{PARAMS.cipher}}",
-                                                    "tls_version" : "{{tls_ver}}",
-                                                    "close_type" : "reset",
-                                                    "close_notify" : "no_send",
-                                                    "app_rcv_buff" : 1000000,
-                                                    "app_snd_buff" : 1000000,
-                                                    "write_chunk" : 1000000,
-                                                    "tcp_rcv_buff" : 1000000,
-                                                    "tcp_snd_buff" : 1000000,
-                                                    "cs_data_len" : 1000000,
-                                                    "sc_data_len" : 1000000,
-                                                    "cs_start_tls_len" : 0,
-                                                    "sc_start_tls_len" : 0
-                                                }
-                                            {%- endif %}
-                                        {%- endif %}
-                                    {%- endfor %}
-                                {%- endfor %}                      
-                            ]
-                        }
-                    ]
-                }
-                ,
-                {
-                    "zone_label" : "zone-{{zone_id}}-server",
-                    "enable" : 1,
-                    "zone_type" : "single-interface",
-                    "iface" : "{{PARAMS.iface_container}}",
-                    "macvlan" : "{{PARAMS.nb_macvlan}}",
-                    "hostif" : "{{PARAMS.nb_iface}}",
-                    "tcpdump" : "{{PARAMS.tcpdump}}",
-                    "subnets" : ["14.{{(zone_id*10)}}.0.0/16"],
-                    "app_list" : [
-                        {
-                            "app_type" : "tls_server",
-                            "app_label" : "tls_server_1",
-                            "enable" : 1,
-                            "srv_list" : [
-                                {% set ns.srv_count = 0 %}
-                                {%- for server_index in range(PARAMS.server_count) %}
-                                    {%- for tls_ver in ['sslv3', 'tls1', 'tls1_1', 'tls1_2', 'tls1_3'] %}
-                                        {%- if (tls_ver == 'sslv3' and PARAMS.sslv3) 
-                                                or (tls_ver == 'tls1' and PARAMS.tls1) 
-                                                or (tls_ver == 'tls1_1' and PARAMS.tls1_1) 
-                                                or (tls_ver == 'tls1_2' and PARAMS.tls1_2) 
-                                                or (tls_ver == 'tls1_3' and PARAMS.tls1_3) %}
-                                            {{ "," if ns.srv_count }}
-                                            {%- if ns.srv_count < PARAMS.server_count %}
-                                                {% set ns.srv_count = ns.srv_count+1 %}
-                                                {
-                                                    "srv_label" : "srv_{{server_index+1}}",
-                                                    "enable" : 1,
-                                                    "srv_ip" : "14.{{(zone_id*10)}}.{{server_index+1}}.1",
-                                                    "srv_port" : 443,
-                                                    "srv_cert" : "{{PARAMS.server_cert}}",
-                                                    "srv_key" : "{{PARAMS.server_key}}",
-                                                    "cipher" : "{{PARAMS.cipher}}",
-                                                    "tls_version" : "{{tls_ver}}",
-                                                    "close_type" : "reset",
-                                                    "close_notify" : "no_send",
-                                                    "app_rcv_buff" : 1000000,
-                                                    "app_snd_buff" : 1000000,
-                                                    "write_chunk" : 1000000,
-                                                    "tcp_rcv_buff" : 1000000,
-                                                    "tcp_snd_buff" : 1000000,
-                                                    "cs_data_len" : 1000000,
-                                                    "sc_data_len" : 1000000,
-                                                    "cs_start_tls_len" : 0,
-                                                    "sc_start_tls_len" : 0
-                                                }
-                                            {%- endif %}
-                                        {%- endif %}
-                                    {%- endfor %}
-                                {%- endfor %}
-                            ]
-                        }
-                    ]
-                }
-                {{ "," if not loop.last }}
-            {%- endfor %}
-        ]
-    }
-    ''')
 
     tlspack_cfg = jinja2.Template('''
     {
@@ -855,12 +727,7 @@ def process_bw_template (cmd_args):
                 {
                     "zone_label" : "zone-{{zone_id}}-client",
                     "enable" : 1,
-                    "zone_type" : "single-interface",
-                    "iface" : "{{PARAMS.iface_container}}",
-                    "macvlan" : "{{PARAMS.na_macvlan}}",
-                    "hostif" : "{{PARAMS.na_iface}}",
-                    "tcpdump" : "{{PARAMS.tcpdump}}",
-                    "subnets" : ["12.2{{zone_id}}.51.0/24"],
+
                     "app_list" : [
                         {
                             "app_type" : "tls_client",
@@ -883,10 +750,10 @@ def process_bw_template (cmd_args):
                                         {
                                             "cs_grp_label" : "cs_grp_{{loop.index}}",
                                             "enable" : 1,
-                                            "srv_ip"   : "14.2{{zone_id}}.51.{{loop.index}}",
+                                            "srv_ip"   : "24.2{{zone_id}}.51.{{loop.index}}",
                                             "srv_port" : 443,
-                                            "clnt_ip_begin" : "12.2{{zone_id}}.51.{{1+loop.index0*10}}",
-                                            "clnt_ip_end" : "12.2{{zone_id}}.51.{{loop.index*10}}",
+                                            "clnt_ip_begin" : "22.2{{zone_id}}.51.{{1+loop.index0*10}}",
+                                            "clnt_ip_end" : "22.2{{zone_id}}.51.{{loop.index*10}}",
                                             "clnt_port_begin" : 5000,
                                             "clnt_port_end" : 65000,
                                             "cipher" : "{{PARAMS.cipher}}",
@@ -907,18 +774,27 @@ def process_bw_template (cmd_args):
                                 {%- endfor %}                         
                             ]
                         }
-                    ]
+                    ],
+
+                    "host_cmds" : [
+                        "sudo ip link set dev {{PARAMS.na_iface}} up",
+                        "sudo docker network connect {{PARAMS.na_macvlan}} {{PARAMS.runtag}}-zone-{{zone_id}}-client"
+                    ],
+
+                    "zone_cmds" : [
+                        "ip link set dev {{PARAMS.iface_container}} up",
+                        "ifconfig {{PARAMS.iface_container}} hw ether {{PARAMS.client_mac_seed}}:{{'{:02x}'.format(zone_id)}}",
+                        "ip route add default dev {{PARAMS.iface_container}} table 200",
+                        "ip -4 route add local 22.2{{zone_id}}.51.0/24 dev lo",
+                        "ip rule add from 22.2{{zone_id}}.51.0/24 table 200",
+                        "tcpdump -i {{PARAMS.iface_container}} {{PARAMS.tcpdump}} -w {{PARAMS.result_dir_container}}/zone-{{zone_id}}-client/init.pcap &"
+                    ]                    
                 }
                 ,
                 {
                     "zone_label" : "zone-{{zone_id}}-server",
                     "enable" : 1,
-                    "zone_type" : "single-interface",
-                    "iface" : "{{PARAMS.iface_container}}",
-                    "macvlan" : "{{PARAMS.nb_macvlan}}",
-                    "hostif" : "{{PARAMS.nb_iface}}",
-                    "tcpdump" : "{{PARAMS.tcpdump}}",
-                    "subnets" : ["14.2{{zone_id}}.51.0/24"],
+
                     "app_list" : [
                         {
                             "app_type" : "tls_server",
@@ -937,7 +813,7 @@ def process_bw_template (cmd_args):
                                         {
                                             "srv_label" : "srv_{{loop.index}}",
                                             "enable" : 1,
-                                            "srv_ip" : "14.2{{zone_id}}.51.{{loop.index}}",
+                                            "srv_ip" : "24.2{{zone_id}}.51.{{loop.index}}",
                                             "srv_port" : 443,
                                             "srv_cert" : "{{PARAMS.server_cert}}",
                                             "srv_key" : "{{PARAMS.server_key}}",
@@ -959,6 +835,20 @@ def process_bw_template (cmd_args):
                                 {%- endfor %}
                             ]
                         }
+                    ],
+
+                    "host_cmds" : [
+                        "sudo ip link set dev {{PARAMS.nb_iface}} up",
+                        "sudo docker network connect {{PARAMS.nb_macvlan}} {{PARAMS.runtag}}-zone-{{zone_id}}-server"
+                    ],
+
+                    "zone_cmds" : [
+                        "ip link set dev {{PARAMS.iface_container}} up",
+                        "ifconfig {{PARAMS.iface_container}} hw ether {{PARAMS.server_mac_seed}}:{{'{:02x}'.format(zone_id)}}",
+                        "ip route add default dev {{PARAMS.iface_container}} table 200",
+                        "ip -4 route add local 24.2{{zone_id}}.51.0/24 dev lo",
+                        "ip rule add from 24.2{{zone_id}}.51.0/24 table 200",
+                        "tcpdump -i {{PARAMS.iface_container}} {{PARAMS.tcpdump}} -w {{PARAMS.result_dir_container}}/zone-{{zone_id}}-server/init.pcap &"
                     ]
                 }
                 {{ "," if not loop.last }}
