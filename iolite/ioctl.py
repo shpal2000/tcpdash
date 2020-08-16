@@ -534,8 +534,6 @@ def process_cps_template (cmd_args):
                 {
                     "zone_label" : "zone-{{zone_id}}-client",
                     "enable" : 1,
-                    "iface" : "{{PARAMS.iface_container}}",
-                    "tcpdump" : "{{PARAMS.tcpdump}}",
                     "app_list" : [
                         {
                             "app_type" : "tls_client",
@@ -594,7 +592,8 @@ def process_cps_template (cmd_args):
                         "ifconfig {{PARAMS.iface_container}} hw ether {{PARAMS.client_mac_seed}}:{{'{:02x}'.format(zone_id)}}",
                         "ip route add default dev {{PARAMS.iface_container}} table 200",
                         "ip -4 route add local 12.2{{zone_id}}.51.0/24 dev lo",
-                        "ip rule add from 12.2{{zone_id}}.51.0/24 table 200"
+                        "ip rule add from 12.2{{zone_id}}.51.0/24 table 200",
+                        "tcpdump -i {{PARAMS.iface_container}} {{PARAMS.tcpdump}} -w {{PARAMS.result_dir_container}}/zone-{{zone_id}}-client/init.pcap &"
                     ]
                 }
                 ,
@@ -655,7 +654,8 @@ def process_cps_template (cmd_args):
                         "ifconfig {{PARAMS.iface_container}} hw ether {{PARAMS.server_mac_seed}}:{{'{:02x}'.format(zone_id)}}",
                         "ip route add default dev {{PARAMS.iface_container}} table 200",
                         "ip -4 route add local 14.2{{zone_id}}.51.0/24 dev lo",
-                        "ip rule add from 14.2{{zone_id}}.51.0/24 table 200"
+                        "ip rule add from 14.2{{zone_id}}.51.0/24 table 200",
+                        "tcpdump -i {{PARAMS.iface_container}} {{PARAMS.tcpdump}} -w {{PARAMS.result_dir_container}}/zone-{{zone_id}}-server/init.pcap &"
                     ]
                 }
                 {{ "," if not loop.last }}
@@ -1030,6 +1030,11 @@ def add_tproxy_params (cmd_parser):
                                 , default='/root/rundir'
                                 , help = 'macvlan1 name')
 
+    cmd_parser.add_argument('--rundir_container'
+                                , action="store"
+                                , default='/rundir'
+                                , help = 'rundir path in container')
+
     cmd_parser.add_argument('--debug'
                                 , action="store"
                                 , type=int
@@ -1121,11 +1126,6 @@ def process_tproxy_template (cmd_args):
                 
                 "proxy_traffic_port" : 443,
                 "proxy_app_port" : 883,
-
-                "ta_iface" : "{{PARAMS.ta_iface_container}}",
-                "ta_tcpdump" : "{{PARAMS.ta_tcpdump}}",
-                "tb_iface" : "{{PARAMS.tb_iface_container}}",
-                "tb_tcpdump" : "{{PARAMS.tb_tcpdump}}",
                 
                 "host_cmds" : [
                     "sudo ip link set dev {{PARAMS.ta_iface}} up",
@@ -1163,7 +1163,10 @@ def process_tproxy_template (cmd_args):
                     "ip rule add fwmark 1 lookup 100",
                     "ip route add local 0.0.0.0/0 dev lo table 100",
                     "iptables -t mangle -A PREROUTING -i {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}} -p tcp --dport 443 -j TPROXY --tproxy-mark 0x1/0x1 --on-port 883",
-                    "iptables -t mangle -A PREROUTING -i {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}} -p tcp --dport 443 -j TPROXY --tproxy-mark 0x1/0x1 --on-port 883"
+                    "iptables -t mangle -A PREROUTING -i {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}} -p tcp --dport 443 -j TPROXY --tproxy-mark 0x1/0x1 --on-port 883",
+
+                    "tcpdump -i {{PARAMS.ta_iface_container}} {{PARAMS.ta_tcpdump}} -w {{PARAMS.result_dir_container}}/proxy-1/ta.pcap &",
+                    "tcpdump -i {{PARAMS.tb_iface_container}} {{PARAMS.tb_tcpdump}} -w {{PARAMS.result_dir_container}}/proxy-1/tb.pcap &"
                 ]
             }
         ]
@@ -1188,7 +1191,12 @@ def add_c_arguments (arg_parser):
     arg_parser.add_argument('--rundir'
                                 , action="store"
                                 , default='/root/rundir'
-                                , help = 'macvlan1 name')
+                                , help = 'rundir path')
+
+    arg_parser.add_argument('--rundir_container'
+                                , action="store"
+                                , default='/rundir'
+                                , help = 'rundir path in container')
 
     arg_parser.add_argument('--na_macvlan'
                                 , action="store"
@@ -1359,6 +1367,7 @@ def get_arguments ():
                                 , required=True
                                 , help = 'config id')
 
+
     stop_tproxy_parser.add_argument('--runtag'
                                 , action="store"
                                 , required=True
@@ -1367,7 +1376,27 @@ def get_arguments ():
 
     cmd_args = arg_parser.parse_args()
 
+
+    if cmd_args.cmd_name in ['cps', 'bw', 'cipher', 'active', 'tproxy']:
+        cmd_args.traffic_dir = os.path.join(cmd_args.rundir
+                                            , 'traffic'
+                                            , cmd_args.runtag).rstrip('/')
+
+        cmd_args.result_dir = os.path.join (cmd_args.traffic_dir
+                                            , 'results'
+                                            ,  cmd_args.result_tag).rstrip('/')
+
+        cmd_args.traffic_dir_container = os.path.join(cmd_args.rundir_container
+                                            , 'traffic'
+                                            , cmd_args.runtag).rstrip('/')
+
+        cmd_args.result_dir_container = os.path.join (cmd_args.traffic_dir_container
+                                            , 'results'
+                                            ,  cmd_args.result_tag).rstrip('/')
+
+
     if cmd_args.cmd_name in ['cps', 'bw', 'cipher', 'active']:
+
         if not cmd_args.na_macvlan:
             cmd_args.na_macvlan = cmd_args.na_iface+'macvlan'
         if not cmd_args.nb_macvlan:
@@ -1395,6 +1424,9 @@ def get_arguments ():
             cmd_args.ta_macvlan = cmd_args.ta_iface+'macvlan'
         if not cmd_args.tb_macvlan:
             cmd_args.tb_macvlan = cmd_args.tb_iface+'macvlan'
+
+    else: #stop
+        pass
 
     return cmd_args
 
@@ -1436,16 +1468,14 @@ if __name__ == '__main__':
         traffic_s = json.dumps(traffic_j, indent=4)
         print traffic_s
 
-        traffic_dir = os.path.join(CmdArgs.rundir
-                                    , 'traffic'
-                                    , CmdArgs.runtag)
-        mon_dir = os.path.join (CmdArgs.rundir, 'mon')
 
-        os.system ( 'rm -rf {}'.format(traffic_dir) )
-        os.system ( 'mkdir -p {}'.format(traffic_dir) )
+        mon_dir = os.path.join (CmdArgs.traffic_dir, 'mon')
+
+        os.system ( 'rm -rf {}'.format(CmdArgs.traffic_dir) )
+        os.system ( 'mkdir -p {}'.format(CmdArgs.traffic_dir) )
         os.system ( 'mkdir -p {}'.format(mon_dir) )
 
-        with open(os.path.join(traffic_dir, 'config.json'), 'w') as f:
+        with open(os.path.join(CmdArgs.traffic_dir, 'config.json'), 'w') as f:
             f.write(traffic_s)
 
 
@@ -1467,22 +1497,21 @@ if __name__ == '__main__':
                 sys.exit(1)
             
             mon_file = os.path.join (mon_dir, CmdArgs.runtag)
-            result_dir = os.path.join (traffic_dir, 'results', CmdArgs.result_tag)
             devnull = open(os.devnull, 'w')
             while True:
                 time.sleep (1)
 
                 subprocess.call(['rsync', '-av', '--delete'
-                                    , traffic_dir.rstrip('/')
+                                    , CmdArgs.traffic_dir.rstrip('/')
                                     , '/var/www/html/tmp']
                                     , stdout=devnull, stderr=devnull)
                 
                 if CmdArgs.cmd_name == 'cps':
-                    process_cps_stats (result_dir)
+                    process_cps_stats (CmdArgs.result_dir)
                 elif CmdArgs.cmd_name == 'bw':
-                    process_bw_stats (result_dir)
+                    process_bw_stats (CmdArgs.result_dir)
                 elif CmdArgs.cmd_name == 'tproxy':
-                    process_tproxy_stats (result_dir);
+                    process_tproxy_stats (CmdArgs.result_dir);
 
                 if not os.path.exists (mon_file):
                     sys.exit(0)
