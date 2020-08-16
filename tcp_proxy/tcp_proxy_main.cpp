@@ -460,32 +460,6 @@ int main(int /*argc*/, char **argv)
 
         signal(SIGPIPE, SIG_IGN);
 
-        //tcpdump:ta
-        sprintf (curr_dir_file,
-                "%s%s/"
-                "ta.pcap",
-                result_dir, zone_label.c_str());
-        auto ta_iface = cfg_json["zones"][z_index]["ta_iface"].get<std::string>();
-        auto ta_tcpdump_s = cfg_json["zones"][z_index]["ta_tcpdump"].get<std::string>();
-        sprintf (cmd_str,
-            "tcpdump -i %s -n %s -w %s&",
-                ta_iface.c_str(), ta_tcpdump_s.c_str(), curr_dir_file);
-        system_cmd ("tcpdump start", cmd_str);
-
-        //tcpdump:tb
-        sprintf (curr_dir_file,
-                "%s%s/"
-                "tb.pcap",
-                result_dir, zone_label.c_str());
-        auto tb_iface = cfg_json["zones"][z_index]["tb_iface"].get<std::string>();
-        auto tb_tcpdump_s = cfg_json["zones"][z_index]["tb_tcpdump"].get<std::string>();
-        sprintf (cmd_str,
-            "tcpdump -i %s -n %s -w %s&",
-                tb_iface.c_str(), tb_tcpdump_s.c_str(), curr_dir_file);
-        system_cmd ("tcpdump start", cmd_str);
-
-        std::this_thread::sleep_for(std::chrono::seconds(8));
-
         tp_app* next_app = create_app (cfg_json, z_index);
 
         update_registry_state (zone_file, 1);
