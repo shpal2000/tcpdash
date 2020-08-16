@@ -534,11 +534,8 @@ def process_cps_template (cmd_args):
                 {
                     "zone_label" : "zone-{{zone_id}}-client",
                     "enable" : 1,
-                    "zone_type" : "single-interface",
-                    "iface" : "{{PARAMS.iface}}",
-                    "macvlan" : "{{PARAMS.client_macvlan}}",
+                    "iface" : "{{PARAMS.iface_container}}",
                     "tcpdump" : "{{PARAMS.tcpdump}}",
-                    "subnets" : ["12.2{{zone_id}}.51.0/24"],
                     "app_list" : [
                         {
                             "app_type" : "tls_client",
@@ -585,17 +582,27 @@ def process_cps_template (cmd_args):
                                 {%- endfor %}                         
                             ]
                         }
+                    ],
+
+                    "host_cmds" : [
+                        "sudo ip link set dev {{PARAMS.na_iface}} up",
+                        "sudo docker network connect {{PARAMS.na_macvlan}} {{PARAMS.runtag}}-zone-{{zone_id}}-client"
+                    ],
+
+                    "zone_cmds" : [
+                        "ip link set dev {{PARAMS.iface_container}} up",
+                        "ifconfig {{PARAMS.iface_container}} hw ether {{PARAMS.client_mac_seed}}:{{'{:02x}'.format(zone_id)}}",
+                        "ip route add default dev {{PARAMS.iface_container}} table 200",
+                        "ip -4 route add local 12.2{{zone_id}}.51.0/24 dev lo",
+                        "ip rule add from 12.2{{zone_id}}.51.0/24 table 200"
                     ]
                 }
                 ,
                 {
                     "zone_label" : "zone-{{zone_id}}-server",
                     "enable" : 1,
-                    "zone_type" : "single-interface",
-                    "iface" : "{{PARAMS.iface}}",
-                    "macvlan" : "{{PARAMS.server_macvlan}}",
+                    "iface" : "{{PARAMS.iface_container}}",
                     "tcpdump" : "{{PARAMS.tcpdump}}",
-                    "subnets" : ["14.2{{zone_id}}.51.0/24"],
                     "app_list" : [
                         {
                             "app_type" : "tls_server",
@@ -636,6 +643,19 @@ def process_cps_template (cmd_args):
                                 {%- endfor %}
                             ]
                         }
+                    ],
+
+                    "host_cmds" : [
+                        "sudo ip link set dev {{PARAMS.nb_iface}} up",
+                        "sudo docker network connect {{PARAMS.nb_macvlan}} {{PARAMS.runtag}}-zone-{{zone_id}}-server"
+                    ],
+
+                    "zone_cmds" : [
+                        "ip link set dev {{PARAMS.iface_container}} up",
+                        "ifconfig {{PARAMS.iface_container}} hw ether {{PARAMS.server_mac_seed}}:{{'{:02x}'.format(zone_id)}}",
+                        "ip route add default dev {{PARAMS.iface_container}} table 200",
+                        "ip -4 route add local 14.2{{zone_id}}.51.0/24 dev lo",
+                        "ip rule add from 14.2{{zone_id}}.51.0/24 table 200"
                     ]
                 }
                 {{ "," if not loop.last }}
@@ -707,8 +727,9 @@ def process_bw_template (cmd_args):
                     "zone_label" : "zone-{{zone_id}}-client",
                     "enable" : 1,
                     "zone_type" : "single-interface",
-                    "iface" : "{{PARAMS.iface}}",
-                    "macvlan" : "{{PARAMS.client_macvlan}}",
+                    "iface" : "{{PARAMS.iface_container}}",
+                    "macvlan" : "{{PARAMS.na_macvlan}}",
+                    "hostif" : "{{PARAMS.na_iface}}",
                     "tcpdump" : "{{PARAMS.tcpdump}}",
                     "subnets" : ["2{{zone_id}}.21.51.0/24"],
                     "app_list" : [
@@ -768,8 +789,9 @@ def process_bw_template (cmd_args):
                     "zone_label" : "zone-{{zone_id}}-server",
                     "enable" : 1,
                     "zone_type" : "single-interface",
-                    "iface" : "{{PARAMS.iface}}",
-                    "macvlan" : "{{PARAMS.server_macvlan}}",
+                    "iface" : "{{PARAMS.iface_container}}",
+                    "macvlan" : "{{PARAMS.nb_macvlan}}",
+                    "hostif" : "{{PARAMS.nb_iface}}",
                     "tcpdump" : "{{PARAMS.tcpdump}}",
                     "subnets" : ["14.{{(zone_id*10)}}.0.0/16"],
                     "app_list" : [
@@ -834,8 +856,9 @@ def process_bw_template (cmd_args):
                     "zone_label" : "zone-{{zone_id}}-client",
                     "enable" : 1,
                     "zone_type" : "single-interface",
-                    "iface" : "{{PARAMS.iface}}",
-                    "macvlan" : "{{PARAMS.client_macvlan}}",
+                    "iface" : "{{PARAMS.iface_container}}",
+                    "macvlan" : "{{PARAMS.na_macvlan}}",
+                    "hostif" : "{{PARAMS.na_iface}}",
                     "tcpdump" : "{{PARAMS.tcpdump}}",
                     "subnets" : ["12.2{{zone_id}}.51.0/24"],
                     "app_list" : [
@@ -891,8 +914,9 @@ def process_bw_template (cmd_args):
                     "zone_label" : "zone-{{zone_id}}-server",
                     "enable" : 1,
                     "zone_type" : "single-interface",
-                    "iface" : "{{PARAMS.iface}}",
-                    "macvlan" : "{{PARAMS.server_macvlan}}",
+                    "iface" : "{{PARAMS.iface_container}}",
+                    "macvlan" : "{{PARAMS.nb_macvlan}}",
+                    "hostif" : "{{PARAMS.nb_iface}}",
                     "tcpdump" : "{{PARAMS.tcpdump}}",
                     "subnets" : ["14.2{{zone_id}}.51.0/24"],
                     "app_list" : [
@@ -1018,60 +1042,119 @@ def add_tproxy_params (cmd_parser):
                                 , help = 'host src dir for debuging'
                                 , default='/root/tcpdash')
 
+    cmd_parser.add_argument('--issl_tool_vlan'
+                                , action="store"
+                                , type=int
+                                , required=True
+                                , help = '1-4095')
+
+    cmd_parser.add_argument('--ta'
+                                , action="store"
+                                , required=True
+                                , dest = 'ta_iface'
+                                , help = 'ta host interface')
+
+    cmd_parser.add_argument('--tb'
+                                , action="store"
+                                , required=True
+                                , dest = 'tb_iface'
+                                , help = 'tb host interface')
+
+    cmd_parser.add_argument('--ta_macvlan'
+                                , action="store"
+                                , default=''
+                                , help = 'ta host macvlan')
+
+    cmd_parser.add_argument('--tb_macvlan'
+                                , action="store"
+                                , default=''
+                                , help = 'tb host macvlan')
+
+    cmd_parser.add_argument('--ta_iface_container'
+                                , action="store"
+                                , help = 'ta interface'
+                                , default='eth1')
+
+    cmd_parser.add_argument('--tb_iface_container'
+                                , action="store"
+                                , help = 'tb interface'
+                                , default='eth2')
+
+    cmd_parser.add_argument('--ta_subnet'
+                                , action="store"
+                                , help = 'ta subnet'
+                                , required=True)
+
+    cmd_parser.add_argument('--tb_subnet'
+                                , action="store"
+                                , help = 'tb subnet'
+                                , required=True)
+
+    cmd_parser.add_argument('--ta_tcpdump'
+                                , action="store"
+                                , help = 'ta tcpdump'
+                                , default='-c 100')
+
+    cmd_parser.add_argument('--tb_tcpdump'
+                                , action="store"
+                                , help = 'tb tcpdump'
+                                , default='-c 100')
+
+    cmd_parser.add_argument('--client_mac_seed'
+                                , action="store"
+                                , help = '5 bytes'
+                                , default='02:42:ac:14:00')
+
+    cmd_parser.add_argument('--server_mac_seed'
+                                , action="store"
+                                , help = '5 bytes'
+                                , default='02:42:ac:15:00')
+
 
 def process_tproxy_template (cmd_args):
-    tlspack_cfg = '''    {
+    tlspack_cfg = jinja2.Template ('''{
         "tgen_app" : "tproxy",
         "zones" : [
             {
                 "zone_label" : "proxy-1",
                 "enable" : 1,
                 
-                "zone_type" : "proxy-interface",
                 "proxy_traffic_port" : 443,
                 "proxy_app_port" : 883,
 
-
-                "ta_macvlan" : "ens160macvlan",
-                "ta_iface" : "eth1",
-                "ta_tcpdump" : "-c 100",
-                "ta_mac" : "00:50:56:8c:5a:54",
-                "ta_ip" : "12.20.50.253",
-                "ta_net" : "12.20.50.0",
-                "ta_netmask" : "255.255.255.0",
-                "ta_gateway" : "12.20.50.254",
-
-
-                "tb_macvlan" : "ens192macvlan",
-                "tb_iface": "eth2",
-                "tb_tcpdump" : "-c 100",
-                "tb_mac" : "00:50:56:8c:86:c3",
-                "tb_ip" : "12.20.60.253",
-                "tb_net" : "12.20.60.0",
-                "tb_netmask" : "255.255.255.0",
-                "tb_gateway" : "12.20.60.254",
+                "ta_iface" : "{{PARAMS.ta_iface_container}}",
+                "ta_tcpdump" : "{{PARAMS.ta_tcpdump}}",
+                "tb_iface" : "{{PARAMS.tb_iface_container}}",
+                "tb_tcpdump" : "{{PARAMS.tb_tcpdump}}",
+                
+                "host_cmds" : [
+                    "sudo ip link set dev {{PARAMS.ta_iface}} up",
+                    "sudo ip link set dev {{PARAMS.tb_iface}} up",
+                    "sudo docker network connect {{PARAMS.ta_macvlan}} {{PARAMS.runtag}}-proxy-1",
+                    "sudo docker network connect {{PARAMS.tb_macvlan}} {{PARAMS.runtag}}-proxy-1"
+                ],
 
                 "zone_cmds" : [
                     "sysctl net.ipv4.conf.all.rp_filter=0",
                     "sysctl net.ipv4.conf.default.rp_filter=0",
 
-                    "ip link set dev eth1 up",
-                    "ifconfig eth1 hw ether 00:50:56:8c:5a:54",
-                    "sysctl net.ipv4.conf.eth1.rp_filter=0",
-                    "ip link add link eth1 name eth1.12 type vlan id 12",
-                    "ip link set dev eth1.12 up",
-                    "ip addr add 1.102.192.1/24 dev eth1.12",
-                    "arp -i eth1.12 -s 1.102.192.254 00:50:56:8c:86:c3",
-                    "route add -net 20.20.50.0 netmask 255.255.255.0 gw 1.102.192.254 dev eth1.12",
+                    "ip link set dev {{PARAMS.ta_iface_container}} up",
+                    "ifconfig {{PARAMS.ta_iface_container}} hw ether {{PARAMS.server_mac_seed}}:{{'{:02x}'.format(1)}}",
+                    "sysctl net.ipv4.conf.{{PARAMS.ta_iface_container}}.rp_filter=0",
+                    "ip link add link {{PARAMS.ta_iface_container}} name {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}} type vlan id {{PARAMS.issl_tool_vlan}}",
+                    "ip link set dev {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}} up",
+                    "ip addr add 1.1.1.1/24 dev {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}}",
+                    "arp -i {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}} -s 1.1.1.254 {{PARAMS.client_mac_seed}}:{{'{:02x}'.format(1)}}",
+                    "ip route add {{PARAMS.ta_subnet}} via 1.1.1.254 dev {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}}",
 
-                    "ip link set dev eth2 up",
-                    "ifconfig eth2 hw ether 00:50:56:8c:86:c3",
-                    "sysctl net.ipv4.conf.eth2.rp_filter=0",
-                    "ip link add link eth2 name eth2.12 type vlan id 12",
-                    "ip link set dev eth2.12 up",
-                    "ip addr add 1.102.224.1/24 dev eth2.12",
-                    "arp -i eth2.12 -s 1.102.224.254 00:50:56:8c:5a:54",
-                    "route add -net 20.20.60.0 netmask 255.255.255.0 gw 1.102.224.254 dev eth2.12",
+                    "ip link set dev {{PARAMS.tb_iface_container}} up",
+                    "ifconfig {{PARAMS.tb_iface_container}} hw ether {{PARAMS.client_mac_seed}}:{{'{:02x}'.format(1)}}",
+                    "sysctl net.ipv4.conf.{{PARAMS.tb_iface_container}}.rp_filter=0",
+                    "ip link add link {{PARAMS.tb_iface_container}} name {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}} type vlan id {{PARAMS.issl_tool_vlan}}",
+                    "ip link set dev {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}} up",
+                    "ip addr add 2.2.2.1/24 dev {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}}",
+                    "arp -i {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}} -s 2.2.2.254 {{PARAMS.server_mac_seed}}:{{'{:02x}'.format(1)}}",
+                    "ip route add {{PARAMS.tb_subnet}} via 2.2.2.254 dev {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}}",
 
                     "iptables -t mangle -N DIVERT",
                     "iptables -t mangle -A PREROUTING -p tcp -m socket -j DIVERT",
@@ -1079,17 +1162,21 @@ def process_tproxy_template (cmd_args):
                     "iptables -t mangle -A DIVERT -j ACCEPT",
                     "ip rule add fwmark 1 lookup 100",
                     "ip route add local 0.0.0.0/0 dev lo table 100",
-                    "iptables -t mangle -A PREROUTING -i eth1.12 -p tcp --dport 443 -j TPROXY --tproxy-mark 0x1/0x1 --on-port 883",
-                    "iptables -t mangle -A PREROUTING -i eth2.12 -p tcp --dport 443 -j TPROXY --tproxy-mark 0x1/0x1 --on-port 883"
+                    "iptables -t mangle -A PREROUTING -i {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}} -p tcp --dport 443 -j TPROXY --tproxy-mark 0x1/0x1 --on-port 883",
+                    "iptables -t mangle -A PREROUTING -i {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}} -p tcp --dport 443 -j TPROXY --tproxy-mark 0x1/0x1 --on-port 883"
                 ]
             }
         ]
     }
-    '''
-    return tlspack_cfg
+    ''')
+
+    return tlspack_cfg.render(PARAMS = cmd_args)
 
 def process_tproxy_stats (result_dir):
     pass
+
+
+
 
 def add_c_arguments (arg_parser):
     try:
@@ -1103,20 +1190,32 @@ def add_c_arguments (arg_parser):
                                 , default='/root/rundir'
                                 , help = 'macvlan1 name')
 
-    arg_parser.add_argument('--client_macvlan'
+    arg_parser.add_argument('--na_macvlan'
                                 , action="store"
-                                , default='ens160macvlan'
-                                , help = 'client_macvlan name')
+                                , default=''
+                                , help = 'na_macvlan name')
 
-    arg_parser.add_argument('--server_macvlan'
+    arg_parser.add_argument('--na'
                                 , action="store"
-                                , default='ens192macvlan'
-                                , help = 'server_macvlan name')
+                                , required=True
+                                , dest='na_iface'
+                                , help = 'na_iface name')
 
-    arg_parser.add_argument('--iface'
+    arg_parser.add_argument('--nb'
+                                , action="store"
+                                , required=True
+                                , dest='nb_iface'
+                                , help = 'nb_iface name')
+
+    arg_parser.add_argument('--nb_macvlan'
+                                , action="store"
+                                , default=''
+                                , help = 'nb_macvlan name')
+
+    arg_parser.add_argument('--iface_container'
                                 , action="store"
                                 , default='eth1'
-                                , help = 'iface name')
+                                , help = 'iface_container name')
 
     arg_parser.add_argument('--runtag'
                                 , action="store"
@@ -1212,6 +1311,17 @@ def add_c_arguments (arg_parser):
                                 , default=0
                                 , help = 'total connection counts')
 
+    arg_parser.add_argument('--client_mac_seed'
+                                , action="store"
+                                , help = '5 bytes'
+                                , default='02:42:ac:14:00')
+
+    arg_parser.add_argument('--server_mac_seed'
+                                , action="store"
+                                , help = '5 bytes'
+                                , default='02:42:ac:15:00')
+
+
     return arg_parser
 
 def get_arguments ():
@@ -1258,6 +1368,11 @@ def get_arguments ():
     cmd_args = arg_parser.parse_args()
 
     if cmd_args.cmd_name in ['cps', 'bw', 'cipher', 'active']:
+        if not cmd_args.na_macvlan:
+            cmd_args.na_macvlan = cmd_args.na_iface+'macvlan'
+        if not cmd_args.nb_macvlan:
+            cmd_args.nb_macvlan = cmd_args.nb_iface+'macvlan'
+
         cmd_args.cps = cmd_args.cps / cmd_args.zones
         cmd_args.max_active = cmd_args.max_active / cmd_args.zones
         cmd_args.max_pipeline = cmd_args.max_pipeline / cmd_args.zones
@@ -1274,6 +1389,12 @@ def get_arguments ():
         elif cmd_args.cmd_name == 'cps':
             if cmd_args.cipher not in supported_cipher_names:
                     raise Exception ('unsupported cipher - ' + cmd_args.cipher)
+
+    elif cmd_args.cmd_name in ['tproxy']:
+        if not cmd_args.ta_macvlan:
+            cmd_args.ta_macvlan = cmd_args.ta_iface+'macvlan'
+        if not cmd_args.tb_macvlan:
+            cmd_args.tb_macvlan = cmd_args.tb_iface+'macvlan'
 
     return cmd_args
 
