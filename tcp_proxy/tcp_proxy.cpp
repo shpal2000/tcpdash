@@ -11,6 +11,8 @@ tp_app::tp_app(json app_json, tp_stats* app_stats)
     m_sock_opt.rcv_buff_len = 0;
     m_sock_opt.snd_buff_len = 0;
 
+    m_proxy_type = app_json["proxy_type_id"].get<int>();
+
     const char* srv_ip = "0.0.0.0";
     u_short srv_port = app_json["proxy_app_port"].get<u_short>();
     ev_socket::set_sockaddr (&m_listen_addr, srv_ip, htons(srv_port));
@@ -155,7 +157,7 @@ void tp_socket::on_wstatus (int bytes_written, int write_status)
 
 void tp_socket::on_read ()
 {
-    if (m_session->m_session_established)
+    if (m_session->m_session_established || m_app->m_proxy_type == 1)
     {
         ev_buff* rd_buff = new ev_buff(2048);
         if (rd_buff && rd_buff->m_buff)
@@ -183,10 +185,19 @@ void tp_socket::on_rstatus (int bytes_read, int read_status)
     if (bytes_read == 0) 
     {
         if (m_session->m_client_sock == this)
-        { 
+        {
+            delete m_session->m_client_current_rbuff;
+
             if (read_status == READ_STATUS_TCP_CLOSE) 
             {
-                m_session->m_server_sock->write_close();
+                if (m_app->m_proxy_type == 1)
+                {
+                    m_session->m_client_sock->write_close();
+                }
+                else
+                {
+                    m_session->m_server_sock->write_close();
+                }
             }
             else
             {
@@ -196,9 +207,18 @@ void tp_socket::on_rstatus (int bytes_read, int read_status)
         } 
         else
         {
+            delete m_session->m_server_current_rbuff;
+
             if (read_status == READ_STATUS_TCP_CLOSE) 
             {
-                m_session->m_client_sock->write_close();
+                if (m_app->m_proxy_type == 1)
+                {
+                    m_session->m_server_sock->write_close();
+                }
+                else
+                {
+                    m_session->m_client_sock->write_close();
+                }
             }
             else
             {
@@ -211,13 +231,27 @@ void tp_socket::on_rstatus (int bytes_read, int read_status)
     {
         if (m_session->m_client_sock == this)
         { 
-            m_session->m_client_current_rbuff->m_data_len = bytes_read;
-            m_session->m_client_rbuffs.push (m_session->m_client_current_rbuff);
+            if (m_app->m_proxy_type == 1)
+            {
+                delete m_session->m_client_current_rbuff;
+            }
+            else
+            {
+                m_session->m_client_current_rbuff->m_data_len = bytes_read;
+                m_session->m_client_rbuffs.push (m_session->m_client_current_rbuff);
+            }
         } 
         else
         {
-            m_session->m_server_current_rbuff->m_data_len = bytes_read;
-            m_session->m_server_rbuffs.push (m_session->m_server_current_rbuff);
+            if (m_app->m_proxy_type == 1)
+            {
+                delete m_session->m_server_current_rbuff;
+            }
+            else
+            {
+                m_session->m_server_current_rbuff->m_data_len = bytes_read;
+                m_session->m_server_rbuffs.push (m_session->m_server_current_rbuff);
+            }
         }
     }
 }

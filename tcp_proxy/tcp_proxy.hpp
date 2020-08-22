@@ -118,6 +118,7 @@ private:
 public:
     std::vector<ev_sockstats*> *m_app_stats_arr;
     ev_socket_opt m_sock_opt;
+    int m_proxy_type;
 };
 
 class tp_session;
