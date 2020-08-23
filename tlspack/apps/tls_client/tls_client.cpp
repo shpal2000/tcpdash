@@ -39,7 +39,7 @@ tls_client_app::tls_client_app(json app_json
 
         next_cs_grp->m_ssl_ctx = SSL_CTX_new(TLS_client_method());
 
-        int status;
+        int status = 0;
         if (next_cs_grp->m_version == sslv3) {
             status = SSL_CTX_set_min_proto_version (next_cs_grp->m_ssl_ctx, SSL3_VERSION);
             status = SSL_CTX_set_max_proto_version (next_cs_grp->m_ssl_ctx, SSL3_VERSION);
@@ -58,6 +58,9 @@ tls_client_app::tls_client_app(json app_json
         } else {
             status = SSL_CTX_set_min_proto_version (next_cs_grp->m_ssl_ctx, SSL3_VERSION);
             status = SSL_CTX_set_max_proto_version (next_cs_grp->m_ssl_ctx, TLS1_3_VERSION);       
+        }
+        if (status){
+            
         }
 
         if (next_cs_grp->m_version == tls_all) {

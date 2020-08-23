@@ -261,7 +261,6 @@ public:
         int n = 0;
 
         if (m_client_curr_conn_count == 0){
-            // m_last_new_conn_time = std::chrono::steady_clock::now ();
             m_conn_init_time = std::chrono::steady_clock::now ();
             n = 1;
         } else if ((m_client_total_conn_count == 0) 
@@ -297,7 +296,7 @@ public:
         m_client_curr_conn_count = 0;
     }
 
-    void server_config_init (json jcfg)
+    void server_config_init (json /*jcfg*/)
     {
         
     }
@@ -318,9 +317,7 @@ private:
     ev_stats_map m_stats_map;
     char m_app_type[MAX_APP_TYPE_NAME];
     char m_app_label[MAX_APP_TYPE_NAME];
-    std::chrono::steady_clock::time_point m_last_new_conn_time;
     std::chrono::steady_clock::time_point m_conn_init_time;
-    int m_last_new_conn_count;
     int m_chunk_sizes [MAX_CHUNK_SIZES_ARRAY_LEN] = { 
         1, 2, 256, 257, 512, 513, 801, 1023, 1024, 1256, 
         1513, 1800, 2512, 3801, 4006, 5023, 5024, 6023, 7024, 7001, 

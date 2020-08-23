@@ -333,7 +333,6 @@ static void stop_zones (json cfg_json
 }
 
 static void config_zone (json cfg_json
-                            , char* cfg_name
                             , int z_index)
 {
     auto host_cmds = cfg_json["zones"][z_index]["host_cmds"];
@@ -525,7 +524,7 @@ int main(int /*argc*/, char **argv)
         
         if ( strcmp(config_zone_flag, "config_zone") == 0 )
         {
-            config_zone (cfg_json, cfg_name, z_index);
+            config_zone (cfg_json, z_index);
         }
 
         signal(SIGPIPE, SIG_IGN);
