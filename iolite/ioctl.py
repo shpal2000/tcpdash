@@ -1026,12 +1026,30 @@ def process_tproxy_template (cmd_args):
         "tgen_app" : "tproxy",
         "zones" : [
             {
-                "zone_label" : "proxy-1",
+                "zone_label" : "zone-1-proxy",
                 "enable" : 1,
-                
-                "proxy_traffic_port" : 443,
-                "proxy_app_port" : 883,
-                "proxy_type_id" : 1, 
+            
+                "app_list" : [
+                    {
+                        "app_type" : "tcp_proxy",
+                        "app_label" : "tcp_proxy_1",
+                        "enable" : 1,
+
+                        "proxy_list" : [
+                            {
+                                "proxy_label" : "bae-issue",
+                                "enable" : 1,
+
+                                "proxy_ip" : "0.0.0.0",
+                                "proxy_port" : 883,
+                                "proxy_type_id" : 1,
+
+                                "tcp_rcv_buff" : 0,
+                                "tcp_snd_buff : 0
+                            }
+                        ]
+                    }
+                ]
                 
                 "host_cmds" : [
                     "sudo ip link set dev {{PARAMS.ta_iface}} up",
@@ -1045,21 +1063,21 @@ def process_tproxy_template (cmd_args):
                     "sysctl net.ipv4.conf.default.rp_filter=0",
 
                     "ip link set dev {{PARAMS.ta_iface_container}} up",
-                    "ifconfig {{PARAMS.ta_iface_container}} hw ether 00:50:56:8c:5a:54",
+                    "ifconfig {{PARAMS.ta_iface_container}} hw ether {{PARAMS.server_mac_seed}}:{{'{:02x}'.format(1)}}",
                     "sysctl net.ipv4.conf.{{PARAMS.ta_iface_container}}.rp_filter=0",
                     "ip link add link {{PARAMS.ta_iface_container}} name {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}} type vlan id {{PARAMS.issl_tool_vlan}}",
                     "ip link set dev {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}} up",
                     "ip addr add 1.1.1.1/24 dev {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}}",
-                    "arp -i {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}} -s 1.1.1.254 00:50:56:8c:86:c3",
+                    "arp -i {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}} -s 1.1.1.254 {{PARAMS.client_mac_seed}}:{{'{:02x}'.format(1)}}",
                     "ip route add {{PARAMS.ta_subnet}} via 1.1.1.254 dev {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}}",
 
                     "ip link set dev {{PARAMS.tb_iface_container}} up",
-                    "ifconfig {{PARAMS.tb_iface_container}} hw ether 00:50:56:8c:86:c3",
+                    "ifconfig {{PARAMS.tb_iface_container}} hw ether {{PARAMS.client_mac_seed}}:{{'{:02x}'.format(1)}}",
                     "sysctl net.ipv4.conf.{{PARAMS.tb_iface_container}}.rp_filter=0",
                     "ip link add link {{PARAMS.tb_iface_container}} name {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}} type vlan id {{PARAMS.issl_tool_vlan}}",
                     "ip link set dev {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}} up",
                     "ip addr add 2.2.2.1/24 dev {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}}",
-                    "arp -i {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}} -s 2.2.2.254 00:50:56:8c:5a:54",
+                    "arp -i {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}} -s 2.2.2.254 {{PARAMS.server_mac_seed}}:{{'{:02x}'.format(1)}}",
                     "ip route add {{PARAMS.tb_subnet}} via 2.2.2.254 dev {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}}",
 
                     "iptables -t mangle -N DIVERT",
