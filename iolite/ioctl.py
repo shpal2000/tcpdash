@@ -1045,11 +1045,11 @@ def process_tproxy_template (cmd_args):
                                 "proxy_type_id" : 1,
 
                                 "tcp_rcv_buff" : 0,
-                                "tcp_snd_buff : 0
+                                "tcp_snd_buff" : 0
                             }
                         ]
                     }
-                ]
+                ],
                 
                 "host_cmds" : [
                     "sudo ip link set dev {{PARAMS.ta_iface}} up",
@@ -1063,21 +1063,21 @@ def process_tproxy_template (cmd_args):
                     "sysctl net.ipv4.conf.default.rp_filter=0",
 
                     "ip link set dev {{PARAMS.ta_iface_container}} up",
-                    "ifconfig {{PARAMS.ta_iface_container}} hw ether {{PARAMS.server_mac_seed}}:{{'{:02x}'.format(1)}}",
+                    "ifconfig {{PARAMS.ta_iface_container}} hw ether 00:50:56:8c:5a:54",
                     "sysctl net.ipv4.conf.{{PARAMS.ta_iface_container}}.rp_filter=0",
                     "ip link add link {{PARAMS.ta_iface_container}} name {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}} type vlan id {{PARAMS.issl_tool_vlan}}",
                     "ip link set dev {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}} up",
                     "ip addr add 1.1.1.1/24 dev {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}}",
-                    "arp -i {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}} -s 1.1.1.254 {{PARAMS.client_mac_seed}}:{{'{:02x}'.format(1)}}",
+                    "arp -i {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}} -s 1.1.1.254 00:50:56:8c:86:c3",
                     "ip route add {{PARAMS.ta_subnet}} via 1.1.1.254 dev {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}}",
 
                     "ip link set dev {{PARAMS.tb_iface_container}} up",
-                    "ifconfig {{PARAMS.tb_iface_container}} hw ether {{PARAMS.client_mac_seed}}:{{'{:02x}'.format(1)}}",
+                    "ifconfig {{PARAMS.tb_iface_container}} hw ether 00:50:56:8c:86:c3",
                     "sysctl net.ipv4.conf.{{PARAMS.tb_iface_container}}.rp_filter=0",
                     "ip link add link {{PARAMS.tb_iface_container}} name {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}} type vlan id {{PARAMS.issl_tool_vlan}}",
                     "ip link set dev {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}} up",
                     "ip addr add 2.2.2.1/24 dev {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}}",
-                    "arp -i {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}} -s 2.2.2.254 {{PARAMS.server_mac_seed}}:{{'{:02x}'.format(1)}}",
+                    "arp -i {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}} -s 2.2.2.254 00:50:56:8c:5a:54",
                     "ip route add {{PARAMS.tb_subnet}} via 2.2.2.254 dev {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}}",
 
                     "iptables -t mangle -N DIVERT",
@@ -1401,13 +1401,6 @@ def start_traffic (cfgid, result_tag, is_debug, host_src_dir):
 def stop_traffic (cfgid):
     os.system ( 'sudo docker run --rm -it --volume=/root/rundir:/rundir tlspack/tgen:latest tlspack.exe stop "{}"'.format(cfgid) )
 
-def start_tproxy (cfgid, result_tag, is_debug, host_src_dir):
-    return os.system ( 'sudo docker run --name "{}-root" -it -d --volume=/root/rundir:/rundir tlspack/tgen:latest tcp_proxy.exe start "{}" "{}" /root/rundir {} {}'.format(cfgid, cfgid, result_tag, is_debug, host_src_dir) )
-
-def stop_tproxy (cfgid):
-
-    os.system ( 'sudo docker run --rm -it --volume=/root/rundir:/rundir tlspack/tgen:latest tcp_proxy.exe stop "{}"'.format(cfgid) )
-
 if __name__ == '__main__':
 
     try:
@@ -1443,11 +1436,9 @@ if __name__ == '__main__':
         with open(os.path.join(CmdArgs.traffic_dir, 'config.json'), 'w') as f:
             f.write(traffic_s)
 
-
-        if CmdArgs.cmd_name in ['cps', 'bw', 'cipher', 'active']:
+        start_status = -1
+        if CmdArgs.cmd_name in ['cps', 'bw', 'cipher', 'active', 'tproxy']:
             start_status = start_traffic(CmdArgs.runtag, CmdArgs.result_tag, CmdArgs.is_debug, CmdArgs.host_src_dir)
-        elif CmdArgs.cmd_name == 'tproxy':
-            start_status = start_tproxy(CmdArgs.runtag, CmdArgs.result_tag, CmdArgs.is_debug, CmdArgs.host_src_dir)
 
         if start_status == 0:
             try:
@@ -1489,9 +1480,8 @@ if __name__ == '__main__':
         cfg_file = os.path.join ('/root/rundir/traffic', CmdArgs.runtag, 'config.json')
         with open (cfg_file) as f:
             cfg_j = json.load(f)
-        if cfg_j['tgen_app'] in ['cps', 'bw', 'cipher', 'active']:
+        if cfg_j['tgen_app'] in ['cps', 'bw', 'cipher', 'active', 'tproxy']:
             stop_traffic (CmdArgs.runtag)
-        elif cfg_j['tgen_app'] == 'tproxy':
-            stop_tproxy (CmdArgs.runtag)
+
 
 
