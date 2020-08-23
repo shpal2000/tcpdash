@@ -1,3 +1,5 @@
+#ifndef __TLS_CLIENT__H
+
 #include "app.hpp"
 
 #define DEFAULT_WRITE_CHUNK 1200
@@ -168,3 +170,5 @@ public:
     int m_bytes_written;
     int m_bytes_read;
 };
+
+#endif

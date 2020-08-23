@@ -131,7 +131,7 @@ void tp_socket::on_write ()
     }
 }
 
-void tp_socket::on_wstatus (int bytes_written, int write_status)
+void tp_socket::on_wstatus (int /*bytes_written*/, int write_status)
 {
     if (m_session->m_client_sock == this)
     {
