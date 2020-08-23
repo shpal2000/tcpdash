@@ -139,7 +139,6 @@ public:
 
 public:
     std::vector<tls_server_srv_grp*> m_srv_groups;
-    int m_emulation_id;
 };
 
 class tls_server_socket : public ev_socket

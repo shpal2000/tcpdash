@@ -136,7 +136,6 @@ public:
     std::vector<tls_client_cs_grp*> m_cs_groups;
     int m_cs_group_index;
     int m_cs_group_count;
-    int m_emulation_id;
 };
 
 class tls_client_socket : public ev_socket

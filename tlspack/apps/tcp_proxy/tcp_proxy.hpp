@@ -3,45 +3,55 @@
 
 #include "app.hpp"
 
-struct tp_stats_data : app_stats
+class tcp_proxy_grp : public ev_app_proxy_grp 
 {
-    uint64_t tp_stats_1;
-    uint64_t tp_stats_100;
+    public:
+    tcp_proxy_grp (json jcfg
+                        , std::vector<ev_sockstats*> *stats_arr) 
+                    
+                    : ev_app_proxy_grp (jcfg, stats_arr) 
+    {
+        
+    }
+};
+
+struct tcp_proxy_stats_data : app_stats
+{
+    uint64_t tcp_proxy_stats_1;
+    uint64_t tcp_proxy_stats_100;
 
     virtual void dump_json (json &j)
     {
         app_stats::dump_json (j);
         
-        j["tp_stats_1"] = tp_stats_1;
-        j["tp_stats_100"] = tp_stats_100;
+        j["tcp_proxy_stats_1"] = tcp_proxy_stats_1;
+        j["tcp_proxy_stats_100"] = tcp_proxy_stats_100;
     }
 
-    virtual ~tp_stats_data() {};
+    virtual ~tcp_proxy_stats_data() {};
 };
 
-struct tp_stats : tp_stats_data
+struct tcp_proxy_stats : tcp_proxy_stats_data
 {
-    tp_stats () : tp_stats_data () {}
+    tcp_proxy_stats () : tcp_proxy_stats_data () {}
 };
 
-class tp_app : public app
+class tcp_proxy_app : public app
 {
 public:
-    tp_app(json app_json, tp_stats* app_stats);
-    ~tp_app();
+    tcp_proxy_app(json app_json
+                    , tcp_proxy_stats* zone_app_stats
+                    , ev_sockstats* zone_sock_stats);
+
+    ~tcp_proxy_app();
 
     void run_iter(bool tick_sec);
     
     ev_socket* alloc_socket();
     void free_socket(ev_socket* ev_sock);
 
-private:
-    ev_sockaddr m_listen_addr;
-    tp_stats* m_app_stats;
 public:
-    std::vector<ev_sockstats*> *m_app_stats_arr;
-    ev_socket_opt m_sock_opt;
-    int m_proxy_type;
+    std::vector<tcp_proxy_grp*> m_proxy_groups;
 };
 
 class tp_session;
@@ -67,8 +77,9 @@ public:
     void on_finish ();
 
 public:
-    tp_app* m_app;
     tp_session* m_session;
+    tcp_proxy_app* m_app;
+    tcp_proxy_grp* m_proxy_grp;
 };
 
 class tp_session

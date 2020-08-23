@@ -215,6 +215,27 @@ public:
     }
 };
 
+class ev_app_proxy_grp : public ev_app_conn_grp
+{
+public:
+
+    ev_sockaddr m_proxy_addr;
+    std::vector<ev_sockstats*> *m_stats_arr;
+    int m_proxy_type;
+
+    ev_app_proxy_grp (json jcfg, std::vector<ev_sockstats*> *stats_arr)
+                                                : ev_app_conn_grp (jcfg)
+    {
+        const char* proxy_ip = jcfg["proxy_ip"].get<std::string>().c_str();
+        u_short proxy_port = jcfg["proxy_port"].get<u_short>();
+        ev_socket::set_sockaddr (&m_proxy_addr, proxy_ip, htons(proxy_port));
+
+        m_stats_arr = stats_arr;
+
+        m_proxy_type = jcfg["proxy_type_id"].get<u_short>();
+    }
+};
+
 class app : public ev_app
 {
 public:
@@ -297,6 +318,11 @@ public:
     }
 
     void server_config_init (json /*jcfg*/)
+    {
+        
+    }
+
+    void proxy_config_init (json /*jcfg*/)
     {
         
     }

@@ -1,43 +1,68 @@
 #include "tcp_proxy.hpp"
 
-tp_app::tp_app(json app_json, tp_stats* app_stats)
+tcp_proxy_app::tcp_proxy_app(json app_json
+                                , tcp_proxy_stats* zone_app_stats
+                                , ev_sockstats* zone_sock_stats)
 {
-    m_app_stats_arr = new std::vector<ev_sockstats*> ();
+    proxy_config_init (app_json);
 
-    m_app_stats = app_stats;
-    m_app_stats_arr->push_back (app_stats);
+    m_app_stats = new tcp_proxy_stats();
 
-    //todo
-    m_sock_opt.rcv_buff_len = 0;
-    m_sock_opt.snd_buff_len = 0;
-
-    m_proxy_type = app_json["proxy_type_id"].get<int>();
-
-    const char* srv_ip = "0.0.0.0";
-    u_short srv_port = app_json["proxy_app_port"].get<u_short>();
-    ev_socket::set_sockaddr (&m_listen_addr, srv_ip, htons(srv_port));
-
-    tp_socket* srv_socket 
-        = (tp_socket*) new_tcp_listen (&m_listen_addr
-                                                , 10000
-                                                , m_app_stats_arr
-                                                , &m_sock_opt);
-    if (srv_socket)
+    auto proxy_list = app_json["proxy_list"];
+    for (auto it = proxy_list.begin(); it != proxy_list.end(); ++it)
     {
-        srv_socket->m_app = this;
+        auto proxy_cfg = it.value ();
+
+        const char* proxy_label 
+            = proxy_cfg["proxy_label"].get<std::string>().c_str();
+        
+        int proxy_enable = proxy_cfg["enable"].get<int>();
+        if (proxy_enable == 0) {
+            continue;
+        }
+
+        tcp_proxy_stats* proxy_stats = new tcp_proxy_stats();
+        set_app_stats (proxy_stats, proxy_label);
+
+        std::vector<ev_sockstats*> *proxy_stats_arr
+            = new std::vector<ev_sockstats*> ();
+
+        proxy_stats_arr->push_back (proxy_stats);
+        proxy_stats_arr->push_back (m_app_stats);
+        proxy_stats_arr->push_back (zone_app_stats);
+        proxy_stats_arr->push_back (zone_sock_stats);
+
+        tcp_proxy_grp* next_proxy_grp
+            = new tcp_proxy_grp (proxy_cfg, proxy_stats_arr);
+
+        m_proxy_groups.push_back (next_proxy_grp);
     }
-    else 
+
+    for (auto proxy_grp : m_proxy_groups)
     {
-        //todo error handling
+        tp_socket* proxy_socket 
+            = (tp_socket*) new_tcp_listen (&proxy_grp->m_proxy_addr
+                                                    , 10000
+                                                    , proxy_grp->m_stats_arr
+                                                    , &proxy_grp->m_sock_opt);
+        if (proxy_socket) 
+        {
+            proxy_socket->m_app = this;
+            proxy_socket->m_proxy_grp = proxy_grp;
+        }
+        else
+        {
+            //todo error handling
+        }
     }
 }
 
-tp_app::~tp_app()
+tcp_proxy_app::~tcp_proxy_app()
 {
 
 }
 
-void tp_app::run_iter(bool tick_sec)
+void tcp_proxy_app::run_iter(bool tick_sec)
 {
     ev_app::run_iter (tick_sec);
 
@@ -47,12 +72,12 @@ void tp_app::run_iter(bool tick_sec)
     }
 }
 
-ev_socket* tp_app::alloc_socket()
+ev_socket* tcp_proxy_app::alloc_socket()
 {
     return new tp_socket();
 }
 
-void tp_app::free_socket(ev_socket* ev_sock)
+void tcp_proxy_app::free_socket(ev_socket* ev_sock)
 {
     delete ev_sock;
 }
@@ -63,16 +88,17 @@ void tp_socket::on_establish ()
     {
         tp_socket* server_socket = this;
         tp_session* new_sess = new tp_session();
-        tp_app* proxy_app = ((tp_socket*)get_parent())->m_app;
+        tcp_proxy_app* proxy_app = ((tp_socket*)get_parent())->m_app;
+        tcp_proxy_grp* proxy_grp = ((tp_socket*)get_parent())->m_proxy_grp;
 
         if (new_sess)
         {
             tp_socket* client_socket 
                     = (tp_socket*) proxy_app->new_tcp_connect (get_remote_addr()
                                                         , get_local_addr()
-                                                        , proxy_app->m_app_stats_arr
+                                                        , proxy_grp->m_stats_arr
                                                         , NULL
-                                                        , &proxy_app->m_sock_opt);
+                                                        , &proxy_grp->m_sock_opt);
             if (client_socket)
             {
                 server_socket->m_session = new_sess;
@@ -83,6 +109,9 @@ void tp_socket::on_establish ()
 
                 server_socket->m_app = proxy_app;
                 client_socket->m_app = proxy_app;
+
+                server_socket->m_proxy_grp = proxy_grp;
+                client_socket->m_proxy_grp = proxy_grp;
             }
             else
             {
@@ -157,7 +186,7 @@ void tp_socket::on_wstatus (int /*bytes_written*/, int write_status)
 
 void tp_socket::on_read ()
 {
-    if (m_session->m_session_established || m_app->m_proxy_type == 1)
+    if (m_session->m_session_established || m_proxy_grp->m_proxy_type == 1)
     {
         ev_buff* rd_buff = new ev_buff(2048);
         if (rd_buff && rd_buff->m_buff)
@@ -190,7 +219,7 @@ void tp_socket::on_rstatus (int bytes_read, int read_status)
 
             if (read_status == READ_STATUS_TCP_CLOSE) 
             {
-                if (m_app->m_proxy_type == 1)
+                if (m_proxy_grp->m_proxy_type == 1)
                 {
                     m_session->m_client_sock->write_close();
                 }
@@ -211,7 +240,7 @@ void tp_socket::on_rstatus (int bytes_read, int read_status)
 
             if (read_status == READ_STATUS_TCP_CLOSE) 
             {
-                if (m_app->m_proxy_type == 1)
+                if (m_proxy_grp->m_proxy_type == 1)
                 {
                     m_session->m_server_sock->write_close();
                 }
@@ -231,7 +260,7 @@ void tp_socket::on_rstatus (int bytes_read, int read_status)
     {
         if (m_session->m_client_sock == this)
         { 
-            if (m_app->m_proxy_type == 1)
+            if (m_proxy_grp->m_proxy_type == 1)
             {
                 delete m_session->m_client_current_rbuff;
             }
@@ -243,7 +272,7 @@ void tp_socket::on_rstatus (int bytes_read, int read_status)
         } 
         else
         {
-            if (m_app->m_proxy_type == 1)
+            if (m_proxy_grp->m_proxy_type == 1)
             {
                 delete m_session->m_server_current_rbuff;
             }

@@ -7,6 +7,7 @@
 
 #include "./apps/tls_server/tls_server.hpp"
 #include "./apps/tls_client/tls_client.hpp"
+#include "./apps/tcp_proxy/tcp_proxy.hpp"
 
 #define MAX_CONFIG_DIR_PATH 256
 #define MAX_CONFIG_FILE_PATH 512
@@ -34,6 +35,7 @@ char zone_cname [MAX_ZONE_CNAME];
 app_stats* zone_ev_sockstats = nullptr;
 tls_server_stats* zone_tls_server_stats = nullptr;
 tls_client_stats* zone_tls_client_stats = nullptr;
+tcp_proxy_stats* zone_tcp_proxy_stats = nullptr;
 
 static void system_cmd (const char* label, const char* cmd_str)
 {
@@ -356,25 +358,24 @@ static std::vector<app*>* create_app_list (json cfg_json, int z_index)
     std::vector<app*> *app_list = nullptr;
 
     auto a_list = cfg_json["zones"][z_index]["app_list"];
-    int a_index = -1;
     for (auto a_it = a_list.begin(); a_it != a_list.end(); ++a_it)
     {
+        auto app_json = a_it.value ();
+
+        int app_enable = app_json["enable"].get<int>();
+        if (app_enable ==0){
+            continue;
+        }
+
         if (zone_ev_sockstats == nullptr)
         {
             zone_ev_sockstats = new app_stats();
         }
 
-        a_index++;
-        auto app_json = a_it.value ();
+        app* next_app = nullptr;
         const char* app_type = app_json["app_type"].get<std::string>().c_str();
         const char* app_label = app_json["app_label"].get<std::string>().c_str();
-        int app_enable = app_json["enable"].get<int>();
 
-        if (app_enable ==0){
-            continue;
-        }
-
-        app* next_app = nullptr;
         if ( strcmp("tls_server", app_type) == 0 )
         {
             if (zone_tls_server_stats == nullptr)
@@ -396,6 +397,17 @@ static std::vector<app*>* create_app_list (json cfg_json, int z_index)
             
             next_app = new tls_client_app (app_json
                                             , zone_tls_client_stats
+                                            , zone_ev_sockstats);
+        }
+        else if ( strcmp("tcp_proxy", app_type) == 0 )
+        {
+            if (zone_tcp_proxy_stats == nullptr)
+            {
+                zone_tcp_proxy_stats = new tcp_proxy_stats ();
+            }
+            
+            next_app = new tcp_proxy_app (app_json
+                                            , zone_tcp_proxy_stats
                                             , zone_ev_sockstats);
         }
 
