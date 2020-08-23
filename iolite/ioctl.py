@@ -1054,8 +1054,8 @@ def process_tproxy_template (cmd_args):
                 "host_cmds" : [
                     "sudo ip link set dev {{PARAMS.ta_iface}} up",
                     "sudo ip link set dev {{PARAMS.tb_iface}} up",
-                    "sudo docker network connect {{PARAMS.ta_macvlan}} {{PARAMS.runtag}}-proxy-1",
-                    "sudo docker network connect {{PARAMS.tb_macvlan}} {{PARAMS.runtag}}-proxy-1"
+                    "sudo docker network connect {{PARAMS.ta_macvlan}} {{PARAMS.runtag}}-zone-1-proxy",
+                    "sudo docker network connect {{PARAMS.tb_macvlan}} {{PARAMS.runtag}}-zone-1-proxy"
                 ],
 
                 "zone_cmds" : [
@@ -1089,8 +1089,8 @@ def process_tproxy_template (cmd_args):
                     "iptables -t mangle -A PREROUTING -i {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}} -p tcp --dport 443 -j TPROXY --tproxy-mark 0x1/0x1 --on-port 883",
                     "iptables -t mangle -A PREROUTING -i {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}} -p tcp --dport 443 -j TPROXY --tproxy-mark 0x1/0x1 --on-port 883",
 
-                    "tcpdump -i {{PARAMS.ta_iface_container}} {{PARAMS.ta_tcpdump}} -w {{PARAMS.result_dir_container}}/proxy-1/ta.pcap &",
-                    "tcpdump -i {{PARAMS.tb_iface_container}} {{PARAMS.tb_tcpdump}} -w {{PARAMS.result_dir_container}}/proxy-1/tb.pcap &"
+                    "tcpdump -i {{PARAMS.ta_iface_container}} {{PARAMS.ta_tcpdump}} -w {{PARAMS.result_dir_container}}/zone-1-proxy/ta.pcap &",
+                    "tcpdump -i {{PARAMS.tb_iface_container}} {{PARAMS.tb_tcpdump}} -w {{PARAMS.result_dir_container}}/zone-1-proxy/tb.pcap &"
                 ]
             }
         ]
