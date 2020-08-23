@@ -177,6 +177,28 @@ static void create_result_entry (json cfg_json)
                 system_cmd ("create srv dir", cmd_str);
             }
 
+
+            auto proxy_list = app["proxy_list"];
+            for (auto s_it = proxy_list.begin(); s_it != proxy_list.end(); ++s_it)
+            {
+                auto srv = s_it.value ();
+                auto proxy_label = srv["proxy_label"].get<std::string>();
+                int proxy_enable = srv["enable"].get<int>();
+
+                if (proxy_enable == 0) {
+                    continue;
+                }
+
+                sprintf (curr_dir_file,
+                        "%s%s/"
+                        "%s/%s",
+                        result_dir, zone_label.c_str(), 
+                        app_label.c_str(), proxy_label.c_str());
+                sprintf (cmd_str, "mkdir %s", curr_dir_file);
+                system_cmd ("create proxy dir", cmd_str);
+            }
+
+
             auto cs_grp_list = app["cs_grp_list"];
             for (auto cs_it = cs_grp_list.begin(); 
                     cs_it != cs_grp_list.end(); ++cs_it)
