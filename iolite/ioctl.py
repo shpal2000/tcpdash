@@ -566,13 +566,13 @@ def process_cps_template (cmd_args):
                                             "tls_version" : "{{tls_ver}}",
                                             "close_type" : "fin",
                                             "close_notify" : "no_send",
-                                            "app_rcv_buff" : 0,
-                                            "app_snd_buff" : 0,
-                                            "write_chunk" : 0,
-                                            "tcp_rcv_buff" : 0,
-                                            "tcp_snd_buff" : 0,
-                                            "cs_data_len" : 128,
-                                            "sc_data_len" : 128,
+                                            "app_rcv_buff" : {{PARAMS.app_rcv_buff}},
+                                            "app_snd_buff" : {{PARAMS.app_snd_buff}},
+                                            "write_chunk" : {{PARAMS.app_next_write}},
+                                            "tcp_rcv_buff" : {{PARAMS.tcp_rcv_buff}},
+                                            "tcp_snd_buff" : {{PARAMS.tcp_snd_buff}},
+                                            "cs_data_len" : {{PARAMS.app_cs_data_len}},
+                                            "sc_data_len" : {{PARAMS.app_sc_data_len}},
                                             "cs_start_tls_len" : 0,
                                             "sc_start_tls_len" : 0
                                         }
@@ -628,13 +628,13 @@ def process_cps_template (cmd_args):
                                             "tls_version" : "{{tls_ver}}",
                                             "close_type" : "fin",
                                             "close_notify" : "no_send",
-                                            "app_rcv_buff" : 0,
-                                            "app_snd_buff" : 0,
-                                            "write_chunk" : 0,
-                                            "tcp_rcv_buff" : 0,
-                                            "tcp_snd_buff" : 0,
-                                            "cs_data_len" : 128,
-                                            "sc_data_len" : 128,
+                                            "app_rcv_buff" : {{PARAMS.app_rcv_buff}},
+                                            "app_snd_buff" : {{PARAMS.app_snd_buff}},
+                                            "write_chunk" : {{PARAMS.app_next_write}},
+                                            "tcp_rcv_buff" : {{PARAMS.tcp_rcv_buff}},
+                                            "tcp_snd_buff" : {{PARAMS.tcp_snd_buff}},
+                                            "cs_data_len" : {{PARAMS.app_cs_data_len}},
+                                            "sc_data_len" : {{PARAMS.app_sc_data_len}},
                                             "cs_start_tls_len" : 0,
                                             "sc_start_tls_len" : 0
                                         }
@@ -674,7 +674,14 @@ def process_cps_template (cmd_args):
 def process_cps_stats(result_dir):
     ev_sockstats_client_list = []
     ev_sockstats_server_list = []
-    for zone_dir in os.listdir(result_dir):
+
+    result_dir_contents = []
+    try:
+        result_dir_contents = os.listdir(result_dir)
+    except:
+        pass
+
+    for zone_dir in result_dir_contents:
         zone_dir_path = os.path.join(result_dir, zone_dir)
         if os.path.isdir(zone_dir_path):
             ev_sockstats_json_file = os.path.join (zone_dir_path
@@ -690,6 +697,7 @@ def process_cps_stats(result_dir):
                 ev_sockstats_client_list = []
                 ev_sockstats_server_list = []
                 break
+
     if ev_sockstats_client_list:
         ev_sockstats = ev_sockstats_client_list.pop()
         while ev_sockstats_client_list:
@@ -760,13 +768,13 @@ def process_bw_template (cmd_args):
                                             "tls_version" : "{{tls_ver}}",
                                             "close_type" : "reset",
                                             "close_notify" : "no_send",
-                                            "app_rcv_buff" : 2000000,
-                                            "app_snd_buff" : 2000000,
-                                            "write_chunk" : 2000000,
-                                            "tcp_rcv_buff" : 10000000,
-                                            "tcp_snd_buff" : 10000000,
-                                            "cs_data_len" : 2000000,
-                                            "sc_data_len" : 2000000,
+                                            "app_rcv_buff" : {{PARAMS.app_rcv_buff}},
+                                            "app_snd_buff" : {{PARAMS.app_snd_buff}},
+                                            "write_chunk" : {{PARAMS.app_next_write}},
+                                            "tcp_rcv_buff" : {{PARAMS.tcp_rcv_buff}},
+                                            "tcp_snd_buff" : {{PARAMS.tcp_snd_buff}},
+                                            "cs_data_len" : {{PARAMS.app_cs_data_len}},
+                                            "sc_data_len" : {{PARAMS.app_sc_data_len}},
                                             "cs_start_tls_len" : 0,
                                             "sc_start_tls_len" : 0
                                         }
@@ -821,13 +829,13 @@ def process_bw_template (cmd_args):
                                             "tls_version" : "{{tls_ver}}",
                                             "close_type" : "reset",
                                             "close_notify" : "no_send",
-                                            "app_rcv_buff" : 2000000,
-                                            "app_snd_buff" : 2000000,
-                                            "write_chunk" : 2000000,
-                                            "tcp_rcv_buff" : 10000000,
-                                            "tcp_snd_buff" : 10000000,
-                                            "cs_data_len" : 2000000,
-                                            "sc_data_len" : 2000000,
+                                            "app_rcv_buff" : {{PARAMS.app_rcv_buff}},
+                                            "app_snd_buff" : {{PARAMS.app_snd_buff}},
+                                            "write_chunk" : {{PARAMS.app_next_write}},
+                                            "tcp_rcv_buff" : {{PARAMS.tcp_rcv_buff}},
+                                            "tcp_snd_buff" : {{PARAMS.tcp_snd_buff}},
+                                            "cs_data_len" : {{PARAMS.app_cs_data_len}},
+                                            "sc_data_len" : {{PARAMS.app_sc_data_len}},
                                             "cs_start_tls_len" : 0,
                                             "sc_start_tls_len" : 0
                                         }
@@ -868,7 +876,14 @@ def process_bw_template (cmd_args):
 def process_bw_stats(result_dir):
     ev_sockstats_client_list = []
     ev_sockstats_server_list = []
-    for zone_dir in os.listdir(result_dir):
+
+    result_dir_contents = []
+    try:
+        result_dir_contents = os.listdir(result_dir)
+    except:
+        pass
+
+    for zone_dir in result_dir_contents:
         zone_dir_path = os.path.join(result_dir, zone_dir)
         if os.path.isdir(zone_dir_path):
             ev_sockstats_json_file = os.path.join (zone_dir_path
@@ -1016,6 +1031,7 @@ def process_tproxy_template (cmd_args):
                 
                 "proxy_traffic_port" : 443,
                 "proxy_app_port" : 883,
+                "proxy_type_id" : 1, 
                 
                 "host_cmds" : [
                     "sudo ip link set dev {{PARAMS.ta_iface}} up",
@@ -1029,21 +1045,21 @@ def process_tproxy_template (cmd_args):
                     "sysctl net.ipv4.conf.default.rp_filter=0",
 
                     "ip link set dev {{PARAMS.ta_iface_container}} up",
-                    "ifconfig {{PARAMS.ta_iface_container}} hw ether {{PARAMS.server_mac_seed}}:{{'{:02x}'.format(1)}}",
+                    "ifconfig {{PARAMS.ta_iface_container}} hw ether 00:50:56:8c:5a:54",
                     "sysctl net.ipv4.conf.{{PARAMS.ta_iface_container}}.rp_filter=0",
                     "ip link add link {{PARAMS.ta_iface_container}} name {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}} type vlan id {{PARAMS.issl_tool_vlan}}",
                     "ip link set dev {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}} up",
                     "ip addr add 1.1.1.1/24 dev {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}}",
-                    "arp -i {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}} -s 1.1.1.254 {{PARAMS.client_mac_seed}}:{{'{:02x}'.format(1)}}",
+                    "arp -i {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}} -s 1.1.1.254 00:50:56:8c:86:c3",
                     "ip route add {{PARAMS.ta_subnet}} via 1.1.1.254 dev {{PARAMS.ta_iface_container}}.{{PARAMS.issl_tool_vlan}}",
 
                     "ip link set dev {{PARAMS.tb_iface_container}} up",
-                    "ifconfig {{PARAMS.tb_iface_container}} hw ether {{PARAMS.client_mac_seed}}:{{'{:02x}'.format(1)}}",
+                    "ifconfig {{PARAMS.tb_iface_container}} hw ether 00:50:56:8c:86:c3",
                     "sysctl net.ipv4.conf.{{PARAMS.tb_iface_container}}.rp_filter=0",
                     "ip link add link {{PARAMS.tb_iface_container}} name {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}} type vlan id {{PARAMS.issl_tool_vlan}}",
                     "ip link set dev {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}} up",
                     "ip addr add 2.2.2.1/24 dev {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}}",
-                    "arp -i {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}} -s 2.2.2.254 {{PARAMS.server_mac_seed}}:{{'{:02x}'.format(1)}}",
+                    "arp -i {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}} -s 2.2.2.254 00:50:56:8c:5a:54",
                     "ip route add {{PARAMS.tb_subnet}} via 2.2.2.254 dev {{PARAMS.tb_iface_container}}.{{PARAMS.issl_tool_vlan}}",
 
                     "iptables -t mangle -N DIVERT",
@@ -1219,6 +1235,47 @@ def add_c_arguments (arg_parser):
                                 , help = '5 bytes'
                                 , default='02:42:ac:15:00')
 
+    arg_parser.add_argument('--app_next_write'
+                                , action="store"
+                                , type=int
+                                , default=0
+                                , help = 'app_next_write')
+
+    arg_parser.add_argument('--app_cs_data_len'
+                                , action="store"
+                                , type=int
+                                , default=128
+                                , help = 'app_cs_data_len')
+
+    arg_parser.add_argument('--app_sc_data_len'
+                                , action="store"
+                                , type=int
+                                , default=128
+                                , help = 'app_sc_data_len')
+
+    arg_parser.add_argument('--app_rcv_buff'
+                                , action="store"
+                                , type=int
+                                , default=0
+                                , help = 'app_rcv_buff')
+
+    arg_parser.add_argument('--app_snd_buff'
+                                , action="store"
+                                , type=int
+                                , default=0
+                                , help = 'app_snd_buff')
+
+    arg_parser.add_argument('--tcp_rcv_buff'
+                                , action="store"
+                                , type=int
+                                , default=0
+                                , help = 'tcp_rcv_buff')
+
+    arg_parser.add_argument('--tcp_snd_buff'
+                                , action="store"
+                                , type=int
+                                , default=0
+                                , help = 'tcp_snd_buff')
 
     return arg_parser
 
@@ -1396,6 +1453,9 @@ if __name__ == '__main__':
                                     , '/var/www/html/tmp']
                                     , stdout=devnull, stderr=devnull)
                 
+                if not os.path.exists (mon_file):
+                    sys.exit(0)
+
                 if CmdArgs.cmd_name == 'cps':
                     process_cps_stats (CmdArgs.result_dir)
                 elif CmdArgs.cmd_name == 'bw':
@@ -1403,8 +1463,7 @@ if __name__ == '__main__':
                 elif CmdArgs.cmd_name == 'tproxy':
                     process_tproxy_stats (CmdArgs.result_dir);
 
-                if not os.path.exists (mon_file):
-                    sys.exit(0)
+
 
     elif CmdArgs.cmd_name == 'stop':
         mon_file = os.path.join ('/root/rundir/mon', CmdArgs.runtag)
