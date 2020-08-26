@@ -37,86 +37,9 @@ tls_server_app::tls_server_app(json app_json
         tls_server_srv_grp* next_srv_grp
             = new tls_server_srv_grp (srv_cfg, srv_stats_arr);
 
-        next_srv_grp->m_ssl_ctx = SSL_CTX_new(TLS_server_method());
-
-        int status = 0;
-        if (next_srv_grp->m_version == sslv3) {
-            status = SSL_CTX_set_min_proto_version (next_srv_grp->m_ssl_ctx, SSL3_VERSION);
-            status = SSL_CTX_set_max_proto_version (next_srv_grp->m_ssl_ctx, SSL3_VERSION);
-        } else if (next_srv_grp->m_version == tls1) {
-            status = SSL_CTX_set_min_proto_version (next_srv_grp->m_ssl_ctx, TLS1_VERSION);
-            status = SSL_CTX_set_max_proto_version (next_srv_grp->m_ssl_ctx, TLS1_VERSION);
-        } else if (next_srv_grp->m_version == tls1_1) {
-            status = SSL_CTX_set_min_proto_version (next_srv_grp->m_ssl_ctx, TLS1_1_VERSION);
-            status = SSL_CTX_set_max_proto_version (next_srv_grp->m_ssl_ctx, TLS1_1_VERSION);
-        } else if (next_srv_grp->m_version == tls1_2) {
-            status = SSL_CTX_set_min_proto_version (next_srv_grp->m_ssl_ctx, TLS1_2_VERSION);
-            status = SSL_CTX_set_max_proto_version (next_srv_grp->m_ssl_ctx, TLS1_2_VERSION);
-        } else if (next_srv_grp->m_version == tls1_3) {
-            status = SSL_CTX_set_min_proto_version (next_srv_grp->m_ssl_ctx, TLS1_3_VERSION);
-            SSL_CTX_set_max_proto_version (next_srv_grp->m_ssl_ctx, TLS1_3_VERSION);
-        } else {
-            status = SSL_CTX_set_min_proto_version (next_srv_grp->m_ssl_ctx
-                                                    , SSL3_VERSION);
-            status = SSL_CTX_set_max_proto_version (next_srv_grp->m_ssl_ctx
-                                                    , TLS1_3_VERSION);       
+        if (next_srv_grp->m_emulation_id == 0) {
+            next_srv_grp->m_ssl_ctx = next_srv_grp->create_ssl_ctx ();
         }
-        if (status){
-
-        }
-
-        if (next_srv_grp->m_version == tls_all) {
-            next_srv_grp->m_cipher2 = srv_cfg["cipher2"].get<std::string>().c_str();
-            SSL_CTX_set_ciphersuites (next_srv_grp->m_ssl_ctx
-                                        , next_srv_grp->m_cipher2.c_str());
-            SSL_CTX_set_cipher_list (next_srv_grp->m_ssl_ctx
-                                        , next_srv_grp->m_cipher.c_str());
-        } else if (next_srv_grp->m_version == tls1_3) {
-            SSL_CTX_set_ciphersuites (next_srv_grp->m_ssl_ctx
-                                        , next_srv_grp->m_cipher.c_str());
-        } else {
-            SSL_CTX_set_cipher_list (next_srv_grp->m_ssl_ctx
-                                        , next_srv_grp->m_cipher.c_str());
-        }
-
-        SSL_CTX_set_mode(next_srv_grp->m_ssl_ctx
-                                , SSL_MODE_ENABLE_PARTIAL_WRITE);
-
-        SSL_CTX_set_session_cache_mode(next_srv_grp->m_ssl_ctx
-                                                , SSL_SESS_CACHE_OFF);
-
-        status = SSL_CTX_set1_groups_list(next_srv_grp->m_ssl_ctx
-                                            , "P-521:P-384:P-256");
-
-        SSL_CTX_set_dh_auto(next_srv_grp->m_ssl_ctx, 1);
-
-        std::ifstream f(next_srv_grp->m_srv_cert);
-        std::ostringstream ss;
-        std::string str;
-        ss << f.rdbuf();
-        str = ss.str();
-
-        BIO *bio = NULL;
-        BIO *kbio = NULL;
-        X509 *cert = NULL;
-        bio = BIO_new_mem_buf((char *)str.c_str(), -1);
-        cert = PEM_read_bio_X509(bio, NULL, 0, NULL);
-        SSL_CTX_use_certificate (next_srv_grp->m_ssl_ctx, cert);
-
-        std::ifstream f2(next_srv_grp->m_srv_key);
-        std::ostringstream ss2;
-        std::string str2;
-        ss2 << f2.rdbuf();
-        str2 = ss2.str();
-        kbio = BIO_new_mem_buf(str2.c_str(), -1);
-        EVP_PKEY *key = NULL;
-        key = PEM_read_bio_PrivateKey(kbio, NULL, 0, NULL);
-        SSL_CTX_use_PrivateKey(next_srv_grp->m_ssl_ctx, key);
-
-        BIO_free(bio);
-        BIO_free(kbio);
-        EVP_PKEY_free(key);
-        X509_free(cert);
 
         m_srv_groups.push_back (next_srv_grp);
     }
@@ -171,7 +94,18 @@ void tls_server_socket::on_establish ()
     m_app = m_lsock->m_app;
     m_srv_grp = m_lsock->m_srv_grp;
 
-    m_ssl = SSL_new (m_srv_grp->m_ssl_ctx);
+    if (m_srv_grp->m_emulation_id == 0){
+        m_ssl = SSL_new (m_srv_grp->m_ssl_ctx);
+    }else{
+        m_ssl_ctx = m_srv_grp->create_ssl_ctx ();
+        if (m_ssl_ctx) {
+            m_ssl = SSL_new (m_ssl_ctx);
+            if (not m_ssl){
+                SSL_CTX_free (m_ssl_ctx);
+                m_ssl_ctx = nullptr;
+            }
+        }
+    }
 
     if (m_ssl){
         set_as_ssl_server (m_ssl);
@@ -260,5 +194,9 @@ void tls_server_socket::on_finish ()
     if (m_ssl) {
         SSL_free (m_ssl);
         m_ssl = nullptr;
+    }
+    if (m_ssl_ctx) {
+        SSL_CTX_free (m_ssl_ctx);
+        m_ssl_ctx = nullptr;
     }
 }
