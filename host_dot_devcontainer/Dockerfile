@@ -87,4 +87,6 @@ RUN apt-get update \
     && apt-get clean -yq \
     && rm -rf /var/lib/apt/lists/* 
 # Switch back to dialog for any ad-hoc use of apt-get
+RUN pip3 install flask
+RUN pip3 install python-dotenv
 ENV DEBIAN_FRONTEND=

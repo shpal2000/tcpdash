@@ -52,4 +52,6 @@ RUN apt-get update \
     && echo "bind-key p save-buffer ~/.tmux-buffer" >> /root/.tmux.conf \
     #
     && mkdir /workspace
+RUN pip3 install flask
+RUN pip3 install python-dotenv
 ENV DEBIAN_FRONTEND=
