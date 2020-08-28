@@ -52,6 +52,5 @@ RUN apt-get update \
     && echo "bind-key p save-buffer ~/.tmux-buffer" >> /root/.tmux.conf \
     #
     && mkdir /workspace
-RUN pip3 install flask
-RUN pip3 install python-dotenv
+pip3 install fastapi uvicorn orjson
 ENV DEBIAN_FRONTEND=
