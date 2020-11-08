@@ -1,14 +1,22 @@
-FROM ubuntu:bionic
-COPY tlspack.exe /usr/local/bin
-COPY tcp_proxy.exe /usr/local/bin
-COPY openssl /usr/local/bin
-COPY libcrypto.so.1.1 /usr/local/lib
-COPY libssl.so.1.1 /usr/local/lib
+FROM ubuntu:focal
+COPY tlspack.exe /usr/local/bin/
+COPY rpc_proxy_main.py /usr/local/bin/
+COPY openssl /usr/local/bin/
+COPY *.so.* /usr/local/lib/
+COPY *.so /usr/local/lib/
+COPY arena-0.json /
+COPY ssh_ecdsa_id /
+COPY ssh_ecdsa_id.pub /
+COPY ssh_rsa_id /
+COPY ssh_rsa_id.pub /
+ADD traffic_node /traffic_node
+ADD traffic_node/tgen /traffic_node/tgen
 COPY tcpdash.conf /etc/ld.so.conf.d/
 RUN ldconfig
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
     && apt-get -yq install apt-utils \
+    && apt-get -yq install mongodb \
     #
     # Verify git, process tools, lsb-release (common in install instructions for CLIs) installed
     && apt-get -yq install git iproute2 procps lsb-release \
@@ -51,6 +59,6 @@ RUN apt-get update \
     && echo "bind-key -T copy-mode-vi r send-keys -X rectangle-toggle" >> /root/.tmux.conf \
     && echo "bind-key p save-buffer ~/.tmux-buffer" >> /root/.tmux.conf \
     #
-    && mkdir /workspace
-pip3 install fastapi uvicorn orjson python-dotenv requests pytest
+    && mkdir /workspace \
+    && pip3 install fastapi uvicorn orjson python-dotenv requests pytest aiohttp pymongo
 ENV DEBIAN_FRONTEND=

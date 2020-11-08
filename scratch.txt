@@ -43,3 +43,44 @@ sudo docker image ls
 sudo docker tag 42f0ffb4a2da tlspack/tgen:latest
 sudo docker push tlspack/tgen
 
+#!/bin/bash
+
+read -p 'Host Network Interface1 (Na): ' Na1
+read -p 'Host Network Interface2 (Nb): ' Nb1
+
+docker network create -d macvlan -o parent=$Na1 macvlan_${Na1}
+docker network create -d macvlan -o parent=$Nb1 macvlan_${Nb1}
+
+
+curdir=$(pwd)
+
+rm -rf tlsjet
+mkdir ./tlsjet
+mkdir ./tlsjet/certs
+mkdir ./tlsjet/traffic
+
+cd ./tlsjet
+
+curl -O -J http://10.115.78.80/tlsjet/tlsjet_docker.tar.gz
+docker load --input tlsjet_docker.tar.gz
+rm tlsjet_docker.tar.gz
+
+curl -O -J http://10.115.78.80/tlsjet/arena-0.json
+sed -i -e "s/IfaceNa1/$Na1/g" -e "s/IfaceNb1/$Nb1/g" -e "s/MacvlanNa1/macvlan_$Na1/g" -e "s/MacvlanNb1/macvlan_$Nb1/g" ./arena-0.json
+
+cd ./certs
+curl -O -J http://10.115.78.80/tlsjet/tlsjet_certs.tar.gz
+tar -xzvf tlsjet_certs.tar.gz
+rm tlsjet_certs.tar.gz
+
+cd ../tlsjet
+curl -O -J http://10.115.78.80/run.sh
+
+
+
+
+# docker run --network=host --name tlsjet_node_admin -it -d --rm tlsjet:latest python3 -m traffic_node.node_admin ${curdir}/tlsjet
+
+cd $curdir
+
+
