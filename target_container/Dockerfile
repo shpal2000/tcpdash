@@ -60,5 +60,5 @@ RUN apt-get update \
     && echo "bind-key p save-buffer ~/.tmux-buffer" >> /root/.tmux.conf \
     #
     && mkdir /workspace \
-    && pip3 install fastapi uvicorn orjson python-dotenv requests pytest aiohttp pymongo
+    && pip3 install fastapi uvicorn orjson python-dotenv requests pytest aiohttp pymongo jinja2
 ENV DEBIAN_FRONTEND=
