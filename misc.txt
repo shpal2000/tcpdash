@@ -1,0 +1,240 @@
+---tcpflow process----
+
+import subprocess
+import os
+import re
+import traceback
+import xmltodict
+ 
+def local_shell_cmd(cmd, wait_complete=True):
+    p = subprocess.Popen(['/bin/bash']
+                            , stdin=subprocess.PIPE
+                            , stdout=subprocess.PIPE)
+    if wait_complete:
+        cmd_out, cmd_err = p.communicate(cmd.encode())
+        return cmd_out.decode()
+    return p
+ 
+ 
+def start_capture (eface, capfile):
+    cmd = 'tcpdump -i {} -w {} -n'.format(eface, capfile)
+    return local_shell_cmd (cmd, False)
+ 
+ 
+def stop_capture (proc):
+    proc.terminate()
+ 
+ 
+def replay_pcap (eface, sndfile, pps=10000):
+    cmd = 'tcpreplay -i {} -p {} {}'.format(eface, pps, sndfile)
+    return local_shell_cmd (cmd)
+ 
+ 
+def process_tcpflow_helper(pcap_file, pcap_path):
+    filename_map = {}
+    xml_file = os.path.join(pcap_path, 'report.xml')
+    cmd = 'tcpflow -FX -r {} -o {}'.format(pcap_file, pcap_path)
+    local_shell_cmd(cmd)
+    try:
+        with open(xml_file) as f:
+            report_data = f.read().replace('\n', '').strip()
+            report_dict = xmltodict.parse(report_data)
+ 
+        configuration_element = report_dict['dfxml'].get('configuration')
+        if configuration_element:
+            if isinstance(configuration_element, list):
+                cfgs = configuration_element
+            else:
+                cfgs = [configuration_element]
+           
+            for cfg in cfgs:
+                if cfg:
+                    fileobject_element = cfg.get('fileobject')
+                    if fileobject_element:
+                        if isinstance(fileobject_element, list):
+                            fobjs = fileobject_element
+                        else:
+                            fobjs = [fileobject_element]
+ 
+                        for fobj in fobjs:
+                            tcpflow_object = fobj.get('tcpflow')
+                            if tcpflow_object and \
+                                    tcpflow_object.get('@src_ipn') and \
+                                    tcpflow_object.get('@dst_ipn') and \
+                                    tcpflow_object.get('@srcport') and \
+                                    tcpflow_object.get('@dstport'):
+                                filename = '{}.{}-{}.{}'.format(tcpflow_object.get('@src_ipn')
+                                                                    , tcpflow_object.get('@srcport')
+                                                                    , tcpflow_object.get('@dst_ipn')
+                                                                    , tcpflow_object.get('@dstport'))
+                                if not filename_map.get(filename):
+                                    filename_map[filename] = {'count' : 0}
+ 
+                                filename_map[filename]['count'] += 1
+ 
+        to_extract_payload = True
+        for filename in filename_map.keys():
+            if filename_map[filename]['count'] != 1:
+                to_extract_payload = False
+        if  to_extract_payload:
+            local_shell_cmd('tcpflow -r {} -o {}'.format(pcap_file, pcap_path))
+        else:
+            print('\n' + 'error; skiping tcpflow extraction for {}'.format(pcap_file))
+    except:
+        print('\n' + traceback.format_exc())
+ 
+def extract_tcpdata (pcap_file_name, pcap_path):
+    pcap_file = os.path.join(pcap_path, pcap_file_name)
+ 
+    stream_index = -1
+    stream_pcap_files = []
+    while stream_index < 1000:
+        stream_index += 1
+        stream_pcap_file = os.path.join(pcap_path, 'stream_{}.pcap'.format(stream_index))
+        stream_log_file = os.path.join(pcap_path, 'stream_log_{}.txt'.format(stream_index))
+        cmd = 'tshark -r {} -Y "tcp.stream eq {}" -F pcap -w {} > {} 2>&1 | cat'.format(pcap_file, stream_index, stream_pcap_file, stream_log_file)
+        local_shell_cmd(cmd)
+ 
+        cmd = 'capinfos {}'.format(stream_pcap_file)
+        cmd_out = local_shell_cmd(cmd)
+        m = re.search('Number of packets:\s+(\d+)', cmd_out)
+        packet_count = 0
+        if m:
+            try:
+                packet_count = int(m.groups()[0])
+            except:
+                print ('\n' + traceback.format_exc())
+        if packet_count == 0:
+            break
+       
+        stream_pcap_files.append(stream_pcap_file)
+ 
+    for stream_pcap_file in stream_pcap_files:
+        process_tcpflow_helper(stream_pcap_file, pcap_path)
+       
+        for check_file in os.listdir(pcap_path):
+            check_file_path = os.path.join(pcap_path, check_file)
+            if os.path.isfile(check_file_path):
+                check_file_size = os.path.getsize(check_file_path)
+                if check_file_size > 5000000:
+                    print ('\n removing file({}) {}'.format(check_file_size, check_file_path))
+                    try:
+                        os.remove(check_file_path)
+                    except:
+                        print ('\n' + traceback.format_exc())
+ 
+import pytest
+import mylib
+import time
+ 
+ 
+def test1():
+    print ('test1')
+ 
+def test2():
+    print ('test1')
+ 
+def test3():
+    cap_iface = 'ens224'
+    cap_file = '/var/www/html/myresult/receive.pcap'
+    cap_id = mylib.start_capture(cap_iface, cap_file)
+ 
+ 
+    snd_iface = 'ens192'
+    snd_file = '/var/www/html/myresult/send.pcap'
+    mylib.replay_pcap(snd_iface, snd_file)
+ 
+    time.sleep(2)
+    mylib.stop_capture(cap_id)
+ 
+def test4():
+    mylib.extract_tcpdata ('receive.pcap', '/var/www/html/myresult/')
+ 
+ ---
+ 
+ 
+ from aiohttp import web
+import json
+import os
+import sys
+import asyncio
+import asyncssh
+import crypt
+
+class SshLinux():
+    def __init__(self, ip, username, password):
+        self.ip = ip
+        self.username = username
+        self.password = password
+        self.log = []
+   
+    async def read_until(self, reader, msg_list):
+        y = ''
+        while True:
+            y += await reader.read(1)
+            if y == '':
+                return ''
+            for msg in msg_list:
+                if y.endswith(msg):
+                    self.log.append(y)
+                    return msg
+ 
+    def get_log(self):
+        return ''.join(self.log)
+ 
+    async def add_user(self, new_user, new_pass):
+        async with asyncssh.connect(self.ip
+                                    , username=self.username
+                                    , password=self.password
+                                    , known_hosts=None) as conn:
+            _stdin, _stdout, _stderr = await conn.open_session('sudo -S useradd -m {}'.format(new_user))
+           
+            
+ 
+            user_exist_msg = 'already exists'
+            sudo_pass_msg = 'for {}: '.format(self.username)
+ 
+            read_msg = await self.read_until(_stderr, [user_exist_msg, sudo_pass_msg])
+ 
+            if read_msg == user_exist_msg:
+                return False
+            elif read_msg == sudo_pass_msg:
+                _stdin.write ('{}\n'.format(self.password))
+                read_msg = await _stderr.read(-1)
+                self.log.append(read_msg)
+                if read_msg.endswith (user_exist_msg):
+                    return False
+ 
+            _stdin, _stdout, _stderr = await conn.open_session('sudo -S passwd {}'.format(new_user))
+           
+            user_pass_msg = 'assword: '
+            read_msg = await self.read_until(_stderr, [user_pass_msg, sudo_pass_msg])
+ 
+            if read_msg == user_pass_msg:
+                _stdin.write ('{}\n'.format(new_pass))
+                await self.read_until(_stderr, [user_pass_msg])
+                _stdin.write ('{}\n'.format(new_pass))
+                await _stderr.read(-1)
+                return True
+            elif read_msg == sudo_pass_msg:
+                _stdin.write ('{}\n'.format(self.password))
+                await self.read_until(_stderr, [user_pass_msg])
+                _stdin.write ('{}\n'.format(new_pass))
+                await self.read_until(_stderr, [user_pass_msg])
+                _stdin.write ('{}\n'.format(new_pass))
+                await _stderr.read(-1)
+                return True
+            else:
+                return False
+ 
+    async def send_commamnd(self, command):
+        async with asyncssh.connect(self.ip
+                                    , username=self.username
+                                    , password=self.password
+                                    , known_hosts=None) as conn:
+            _stdin, _stdout, _stderr = await conn.open_session(command)
+            read_msg = await _stdout.read(-1)
+            read_msg += await _stderr.read(-1)
+            self.log.append(read_msg)
+            return read_msg
+            
