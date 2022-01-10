@@ -238,3 +238,53 @@ class SshLinux():
             self.log.append(read_msg)
             return read_msg
             
+---
+
+async def authorize_user(request):
+    try:
+        data_s = await request.read()
+        data_j = json.loads(data_s)
+ 
+        ssh_linux = SshLinux(data_j['ssh_ip']
+                            , data_j['ssh_user']
+                            , data_j['ssh_pass'])
+        await ssh_linux.add_user('user1', 'user1')
+ 
+        ssh_user1 = SshLinux(data_j['ssh_ip']
+                            , 'user1'
+                            , 'user1')
+        await ssh_secops.send_commamnd ('mkdir ~/.ssh')
+ 
+        async with asyncssh.connect(data_j['ssh_ip']
+                                    , username='user1'
+                                    , password='user1'
+                                    , known_hosts=None) as conn:
+            async with conn.start_sftp_client() as sftp:
+                import pdb; pdb.set_trace()
+                await sftp.put('/rundir/data/user1_key.pub')
+       
+        await ssh_user1.send_commamnd ('cat ~/user1_key.pub >> ~/.ssh/authorized_keys')
+ 
+        return web.Response (status=200
+                            , text=ssh_user1.get_log()
+                            , content_type='text/text')
+    except Exception as err:
+        return web.Response (status=500, text=str(err))
+ 
+    return web.json_response ({'status' : 0})
+
+
+
+
+ 
+if __name__ == '__main__':
+    app = web.Application()
+ 
+    app.add_routes( [
+        web.post('/authorize_user', authorize_user),
+
+    ])
+ 
+
+    web.run_app(app, port=5000)
+ 
