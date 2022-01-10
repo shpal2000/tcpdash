@@ -288,3 +288,40 @@ if __name__ == '__main__':
 
     web.run_app(app, port=5000)
  
+---
+
+import paramiko
+import scp
+import tempfile
+import os
+import time
+import re
+
+ client = paramiko.SSHClient()
+ client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+ client.connect(ssh_server_ip
+                 , username='user1'
+                 , password='user2')
+ client.exec_command('ls -l')
+ client.close()
+ 
+ ---
+ 
+ client = paramiko.SSHClient()
+ client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+ client.connect(ssh_server_ip
+                 , username='user1'
+                 , password='user2')
+ 
+  temp = tempfile.NamedTemporaryFile(delete=False)
+  temp.close()
+  scp_client = scp.SCPClient(client.get_transport())
+  try:
+      scp_client.get(log_file, temp.name)
+      with open (temp.name) as f:
+          fileData = f.read()
+      os.remove(temp.name)
+  except:
+      fileData = ''
+
+ client.close()
